@@ -15,6 +15,9 @@
 /*global jQuery*/
 /*jslint unparam: true */
 
+// Ajouter ici votre clé d'API BetaSeries
+let betaseries_api_user_key = '';
+
 (function($) {
     'use strict';
 
@@ -108,7 +111,7 @@
             headers = {
                 'X-BetaSeries-Version': '3.0',
                 'x-betaseries-token': betaseries_api_user_token,
-                'x-betaseries-key': '45028a0b0d3c'
+                'x-betaseries-key': betaseries_api_user_key
             };
         if (type == 'GET' & args != null && args.length > 0) {
             url = '?';
