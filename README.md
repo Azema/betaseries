@@ -16,3 +16,6 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Décode les HTMLEntities dans le titre de la série
 
 ![HTMLEntities](/img/HTMLEntities-title.png "HTMLEntities dans le titre")
+
+## Futures améliorations possibles
+* Ajouter le bouton "Vu" sur les vignettes des épisodes d'une saison, sans devoir aller sur la page de l'épisode
