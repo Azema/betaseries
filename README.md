@@ -15,4 +15,4 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série
 
-![HTMLEntities](/img/HTMLEntites-title.png "HTMLEntities dans le titre")
+![HTMLEntities](/img/HTMLEntities-title.png "HTMLEntities dans le titre")
