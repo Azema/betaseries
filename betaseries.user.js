@@ -16,13 +16,13 @@
 /*global betaseries_api_user_token*/
 /*jslint unparam: true */
 
-// Ajouter ici votre clé d'API BetaSeries (https://www.betaseries.com/api/)
+// Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/)
 let betaseries_api_user_key = '';
 
 (function($) {
     'use strict';
 
-    let debug = true;
+    let debug = false;
 
     removeAds();
     addStylesheet();
@@ -140,7 +140,7 @@ let betaseries_api_user_key = '';
              * On ajoute un bouton de mise à jour des series vues
              * et on vérifie qu'il n'existe pas déjà
              */
-            if ($('.updateSimilarsBlock').length < 1) {
+            if ($('#updateSimilarsBlock').length < 1) {
                 let img = '<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
                 if ($('#similars button.blockTitle-subtitle').length == 1) {
                     img = '<div id="updateSimilarsBlock" style="margin-left:10px;"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
