@@ -141,9 +141,11 @@ let betaseries_api_user_key = '';
              * et on vérifie qu'il n'existe pas déjà
              */
             if ($('.updateSimilarsBlock').length < 1) {
-                $('#similars .blockTitles').append(
-                    '<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars"/></div>'
-                );
+                let img = '<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
+                if ($('#similars button.blockTitle-subtitle').length == 1) {
+                    img = '<div id="updateSimilarsBlock" style="margin-left:10px;"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
+                }
+                $('#similars .blockTitles').append(img);
                 // On ajoute la gestion de l'event click sur le bouton
                 $('.updateSimilars').click(function(e) {
                     e.stopPropagation();
