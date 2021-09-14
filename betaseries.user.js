@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -13,25 +13,39 @@
 // ==/UserScript==
 
 /*global jQuery*/
+/*global betaseries_api_user_token*/
 /*jslint unparam: true */
 
-// Ajouter ici votre clé d'API BetaSeries
+// Ajouter ici votre clé d'API BetaSeries (https://www.betaseries.com/api/)
 let betaseries_api_user_key = '';
 
 (function($) {
     'use strict';
 
-    let debug = false;
-    /*
-     * Masque les emplacements de pub
-     */
-    $('.parent-ad-desktop').attr('style', 'display: none !important');
+    let debug = true;
+
+    removeAds();
     addStylesheet();
     decodeTitle();
     similarsViewed();
 
     /*
-     * Ajout d'une feulle de style
+     * Masque les pubs
+     */
+    function removeAds() {
+        setTimeout(function() {
+            $('script[src*="securepubads"]').remove();
+            $('script[src*="static-od.com"]').remove();
+            $('script[src*="ad.doubleclick.net"]').remove();
+            $('script[src*="sddan.com"]').remove();
+        }, 500);
+        $('.parent-ad-desktop').attr('style', 'display: none !important');
+        setInterval(function() {$('iframe').remove();}, 1000);
+        $('.blockPartner').attr('style', 'display: none !important');
+    }
+
+    /*
+     * Ajout d'une feuille de style
      */
     function addStylesheet() {
         let style = `
@@ -62,7 +76,7 @@ let betaseries_api_user_key = '';
      */
     function decodeTitle() {
         let theString = $('.blockInformations__title').text(),
-            matches = theString.match(/&/);
+            matches = theString.match(/&#/);
         if (matches != undefined && matches.length > 0) {
             $('.blockInformations__title').text($('<textarea />').html(theString).text());
             //console.log('Title updated');
@@ -71,8 +85,13 @@ let betaseries_api_user_key = '';
 
     /*
      * Vérifie si les séries/films similaires ont été vues
+     * Nécessite que l'utilisateur soit connecté et que la clé d'API soit renseignée
      */
     function similarsViewed() {
+        // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
+        if (typeof betaseries_api_user_token == 'undefined') return;
+        if (betaseries_api_user_key == '') return;
+
         let similars = $('#similars .slide__title'),
             type;
         if (debug) console.log('nb similars: %d', similars.length);
@@ -90,6 +109,7 @@ let betaseries_api_user_key = '';
                 // On decode les HTMLEntities dans les titres des similaires
                 if (matches && matches.length > 0) {
                     title = $('<textarea />').html(title).text();
+                    // On en profite pour mettre à jour le titre du similaire
                     $(elt).text(title);
                 }
                 // On effectue une recherche par titre pour chaque serie sur l'API BetaSeries
@@ -117,10 +137,13 @@ let betaseries_api_user_key = '';
             });
 
             /*
-             * On ajoute le bouton de mise à jour des series vues
+             * On ajoute un bouton de mise à jour des series vues
+             * et on vérifie qu'il n'existe pas déjà
              */
             if ($('.updateSimilarsBlock').length < 1) {
-                $('#similars .blockTitles').append('<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars"/></div>');
+                $('#similars .blockTitles').append(
+                    '<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars"/></div>'
+                );
                 // On ajoute la gestion de l'event click sur le bouton
                 $('.updateSimilars').click(function(e) {
                     e.stopPropagation();
@@ -132,11 +155,21 @@ let betaseries_api_user_key = '';
                 });
             }
         }
+        /**
+         * Fonction d'ajout du bandeau "Viewed" sur les images des similaire
+         * si la série a été vue totalement/partiellement
+         *
+         * @object elt      Noeud HTML contenant le titre du similaire
+         * @number status   Le statut de vu de la serie pour l'utilisateur courant
+         * @return void
+         */
         function addBandeau(elt, status) {
             // Si la série a été vue ou commencée
             if (status && status > 0) {
                 // On ajoute le bandeau "Viewed"
-                $(elt).siblings('a').prepend('<img src="//www.aufilelec.fr/static/viewed.png" class="bandViewed"/>');
+                $(elt).siblings('a').prepend(
+                    '<img src="//www.aufilelec.fr/static/viewed.png" class="bandViewed"/>'
+                );
             }
         }
     }
@@ -152,7 +185,6 @@ let betaseries_api_user_key = '';
      * @return   void
      */
     function callBetaSeries(cb, type, methode, fonction, args) {
-        /*global betaseries_api_user_token*/
         let url = 'https://api.betaseries.com/' + methode + '/' + fonction,
             headers = {
                 'X-BetaSeries-Version': '3.0',
