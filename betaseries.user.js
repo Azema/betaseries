@@ -8,6 +8,7 @@
 // @match        https://www.betaseries.com/serie/*
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
+// @match        https://www.betaseries.com/membre/*/series
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
 // @grant        none
 // ==/UserScript==
@@ -22,12 +23,20 @@ let betaseries_api_user_key = '';
 (function($) {
     'use strict';
 
-    let debug = false;
+    const regexGestionSeries = new RegExp('^/membre/.*/series$'),
+          regexSerieOrMovie = new RegExp('^/(serie|film)/*');
+    let debug = false,
+        url = location.pathname;
 
-    removeAds();
-    addStylesheet();
-    decodeTitle();
-    similarsViewed();
+    if (regexSerieOrMovie.test(url)) {
+        removeAds();
+        addStylesheet();
+        decodeTitle();
+        similarsViewed();
+    }
+    if (regexGestionSeries.test(url)) {
+        addStatusToGestionSeries();
+    }
 
     /*
      * Masque les pubs
@@ -65,7 +74,7 @@ let betaseries_api_user_key = '';
             position:absolute;
             top:0;
             left:-64px;
-            z-index:1000;
+            z-index:1;
         }
         `;
         $('head').append(`<style type="text/css">${style}/<style>`);
@@ -174,6 +183,28 @@ let betaseries_api_user_key = '';
                 );
             }
         }
+    }
+
+    /*
+     * Ajoute le statut de chaque série sur la page de gestion des séries de l'utilisateur
+     */
+    function addStatusToGestionSeries() {
+        // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
+        if (typeof betaseries_api_user_token == 'undefined') return;
+        if (betaseries_api_user_key == '') return;
+
+        let series = $('#member_shows div.showItem.cf');
+        if (series.length < 1) return;
+
+        series.each(function(index, serie) {
+            let id = $(serie).data('id'),
+                infos = $($(serie).find('.infos'));
+            callBetaSeries(function(error, data) {
+                if (error != null) return;
+                let statut = (data.show.status == 'Continuing') ? 'En cours' : 'Terminée';
+                infos.append(`<br>Statut: ${statut}`);
+            }, 'GET', 'shows', 'display', {'id': id});
+        });
     }
 
     /**
