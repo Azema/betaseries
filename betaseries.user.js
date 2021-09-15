@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.8
+// @version      0.8.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -24,7 +24,7 @@ let betaseries_api_user_key = '';
     'use strict';
 
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
-          regexSerieOrMovie = new RegExp('^/(serie|film)/*');
+          regexSerieOrMovie = new RegExp('^/(serie|film|episode)/*');
     let debug = false,
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
@@ -99,6 +99,28 @@ let betaseries_api_user_key = '';
         }
     }
 
+    /**
+     * Retourne la ressource associée au type de page
+     *
+     * @string pageType  Le type de page consultée
+     * @bool   singulier Retourne la methode au singulier (par défaut: false)
+     * @return string Retourne le nom de la ressource API
+     */
+    function getApiResource(pageType, singulier = false) {
+        let methods = {
+            'serie': 'show',
+            'film': 'movie',
+            'episode': 'episode'
+        };
+        for (const [key, value] of Object.entries(methods)) {
+            if (pageType == key) {
+                if (singulier == false) return value + 's';
+                else return value;
+            }
+        }
+        return null;
+    }
+
     /*
      * Ajoute le nombre de votants à la note de la série
      */
@@ -108,17 +130,20 @@ let betaseries_api_user_key = '';
 
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
             note = parseInt(votes.attr('title').split('/')[0], 10),
-            type = location.pathname.split('/')[1] == 'serie' ? 'show' : 'movie', // Indique de quel type de ressource il s'agit
+            type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
             eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
-            fonction = type == 'show' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+            fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
         // On sort si il n'y a aucun vote
         if (note <= 0) return;
-        if (debug) console.log('votes %d, showId: %d', votes.length, eltId);
+        if (debug) console.log('votes %d, showId: %d, type: %s', votes.length, eltId, type);
         // On recupère les détails de la ressource
         callBetaSeries(function(error, data) {
             if (error != null) return;
+            let notes;
+            if (type == 'show' || type == 'movie') notes = data[type].notes;
+            else notes = data[type].note;
             // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
-            votes.attr('title', votes.attr('title') + ' (' + data[type].notes.total + ' votant' + (data[type].notes.total > 1 ? 's' : '') + ')');
+            votes.attr('title', votes.attr('title') + ' (' + notes.total + ' votant' + (notes.total > 1 ? 's' : '') + ')');
         }, 'GET', type + 's', fonction, {'id': eltId});
     }
 
