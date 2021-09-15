@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -26,7 +26,8 @@ let betaseries_api_user_key = '';
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
           regexSerieOrMovie = new RegExp('^/(serie|film)/*');
     let debug = false,
-        url = location.pathname;
+        url = location.pathname,
+        userIdentified = typeof betaseries_api_user_token != 'undefined';
 
     if (regexSerieOrMovie.test(url)) {
         removeAds();
@@ -97,6 +98,8 @@ let betaseries_api_user_key = '';
      * Ajoute le nombre de votants à la note de la série
      */
     function addNumberVoters() {
+        // On sort si la clé d'API n'est pas renseignée
+        if (betaseries_api_user_key == '') return;
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
             note = parseInt(votes.attr('title').split('/')[0], 10),
             type = location.pathname.split('/')[1] == 'serie' ? 'show' : 'movie', // Indique de quel type de ressource il s'agit
@@ -119,8 +122,7 @@ let betaseries_api_user_key = '';
      */
     function similarsViewed() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (typeof betaseries_api_user_token == 'undefined') return;
-        if (betaseries_api_user_key == '') return;
+        if (! userIdentified || betaseries_api_user_key == '') return;
 
         let similars = $('#similars .slide__title'),
             type;
@@ -210,8 +212,7 @@ let betaseries_api_user_key = '';
      */
     function addStatusToGestionSeries() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (typeof betaseries_api_user_token == 'undefined') return;
-        if (betaseries_api_user_key == '') return;
+        if (! userIdentified || betaseries_api_user_key == '') return;
 
         let series = $('#member_shows div.showItem.cf');
         if (series.length < 1) return;
