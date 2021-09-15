@@ -33,6 +33,7 @@ let betaseries_api_user_key = '';
         addStylesheet();
         decodeTitle();
         similarsViewed();
+        addNumberVoters();
     }
     if (regexGestionSeries.test(url)) {
         addStatusToGestionSeries();
@@ -93,6 +94,26 @@ let betaseries_api_user_key = '';
     }
 
     /*
+     * Ajoute le nombre de votants à la note de la série
+     */
+    function addNumberVoters() {
+        let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
+            note = parseInt(votes.attr('title').split('/')[0], 10),
+            type = location.pathname.split('/')[1] == 'serie' ? 'show' : 'movie', // Indique de quel type de ressource il s'agit
+            eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
+            fonction = type == 'show' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        // On sort si il n'y a aucun vote
+        if (note <= 0) return;
+        if (debug) console.log('votes %d, showId: %d', votes.length, eltId);
+        // On recupère les détails de la ressource
+        callBetaSeries(function(error, data) {
+            if (error != null) return;
+            // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
+            votes.attr('title', votes.attr('title') + ' (' + data[type].notes.total + ' votant' + (data[type].notes.total > 1 ? 's' : '') + ')');
+        }, 'GET', type + 's', fonction, {'id': eltId});
+    }
+
+    /*
      * Vérifie si les séries/films similaires ont été vues
      * Nécessite que l'utilisateur soit connecté et que la clé d'API soit renseignée
      */
@@ -107,65 +128,64 @@ let betaseries_api_user_key = '';
         // On recupere le type d'élément de recherche
         type = location.pathname.split('/')[1] == 'serie' ? 'shows' : 'movies';
 
-        if (similars.length > 0) {
-            // On vérifie qu'il ne s'agit pas de la vignette d'ajout
-            if (similars.length == 1 && $(similars.parent().get(0)).find('button').length == 1) return;
+        // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
+        if (similars.length <= 0 || (similars.length == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
 
-            similars.each(function(index, elt) {
-                let title = $(elt).text().trim(),
-                    matches = title.match(/&#/);
-                if (debug) console.log('Tilte similar: %s', title, matches);
-                // On decode les HTMLEntities dans les titres des similaires
-                if (matches && matches.length > 0) {
-                    title = $('<textarea />').html(title).text();
-                    // On en profite pour mettre à jour le titre du similaire
-                    $(elt).text(title);
+        similars.each(function(index, elt) {
+            let title = $(elt).text().trim(),
+                matches = title.match(/&#/);
+            if (debug) console.log('Tilte similar: %s', title, matches);
+            // On decode les HTMLEntities dans les titres des similaires
+            if (matches && matches.length > 0) {
+                title = $('<textarea />').html(title).text();
+                // On en profite pour mettre à jour le titre du similaire
+                $(elt).text(title);
+            }
+            // On effectue une recherche par titre pour chaque serie sur l'API BetaSeries
+            callBetaSeries(function(error, data) {
+                if (error != null) return;
+                /* Si nous n'avons qu'un seul résultat */
+                if (data[type].length == 1) {
+                    addBandeau(elt, data[type][0].user.status);
                 }
-                // On effectue une recherche par titre pour chaque serie sur l'API BetaSeries
-                callBetaSeries(function(error, data) {
-                    if (error != null) return;
-                    /* Si nous n'avons qu'un seul résultat */
-                    if (data[type].length == 1) {
-                        addBandeau(elt, data[type][0].user.status);
-                    }
-                    // Si il y a plusieurs résultats de recherche
-                    else if (data[type].length > 1) {
-                        let url = $(elt).siblings('a').attr('href');
-                        if (debug) console.log('URL de la serie: %s', url);
-                        for (let i = 0; i < data[type].length; i++) {
-                            if (debug) console.log('URL similar: %s', data[type][i].resource_url);
-                            // On verifie la concordance avec l'URL de la serie
-                            if (data[type][i].resource_url === url) {
-                                if (debug) console.log('Concordance trouvée');
-                                addBandeau(elt, data[type][i].user.status);
-                                break;
-                            }
+                // Si il y a plusieurs résultats de recherche
+                else if (data[type].length > 1) {
+                    let url = $(elt).siblings('a').attr('href');
+                    if (debug) console.log('URL de la serie: %s', url);
+                    for (let i = 0; i < data[type].length; i++) {
+                        if (debug) console.log('URL similar: %s', data[type][i].resource_url);
+                        // On verifie la concordance avec l'URL de la serie
+                        if (data[type][i].resource_url === url) {
+                            if (debug) console.log('Concordance trouvée');
+                            addBandeau(elt, data[type][i].user.status);
+                            break;
                         }
                     }
-                }, 'GET', type, 'search', {title: title});
-            });
-
-            /*
-             * On ajoute un bouton de mise à jour des series vues
-             * et on vérifie qu'il n'existe pas déjà
-             */
-            if ($('#updateSimilarsBlock').length < 1) {
-                let img = '<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
-                if ($('#similars button.blockTitle-subtitle').length == 1) {
-                    img = '<div id="updateSimilarsBlock" style="margin-left:10px;"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
                 }
-                $('#similars .blockTitles').append(img);
-                // On ajoute la gestion de l'event click sur le bouton
-                $('.updateSimilars').click(function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    // On supprime les coins viewed
-                    $('.bandViewed').remove();
-                    // On met à jour les series similaires
-                    similarsViewed();
-                });
+            }, 'GET', type, 'search', {title: title});
+        });
+
+        /*
+         * On ajoute un bouton de mise à jour des series vues
+         * et on vérifie qu'il n'existe pas déjà
+         */
+        if ($('#updateSimilarsBlock').length < 1) {
+            let img = '<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
+            if ($('#similars button.blockTitle-subtitle').length == 1) {
+                img = '<div id="updateSimilarsBlock" style="margin-left:10px;"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
             }
+            $('#similars .blockTitles').append(img);
+            // On ajoute la gestion de l'event click sur le bouton
+            $('.updateSimilars').click(function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                // On supprime les coins viewed
+                $('.bandViewed').remove();
+                // On met à jour les series similaires
+                similarsViewed();
+            });
         }
+
         /**
          * Fonction d'ajout du bandeau "Viewed" sur les images des similaire
          * si la série a été vue totalement/partiellement
@@ -186,7 +206,7 @@ let betaseries_api_user_key = '';
     }
 
     /*
-     * Ajoute le statut de chaque série sur la page de gestion des séries de l'utilisateur
+     * Ajoute le statut de la série sur la page de gestion des séries de l'utilisateur
      */
     function addStatusToGestionSeries() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
