@@ -15,6 +15,9 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout du nombre de votants à la note d'une série ou d'un film
 
 ![Nombre de votants](/img/nbVotants.jpg "Nombre de votants")
+* Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus (Astuce: cocher seulement le dernier épisode vu et rafraîchissez la page)
+
+![Case à cocher VU d'un épisode](/img/checkSeen.jpg "Case à cocher VU d'un épisode")
 
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série
@@ -22,4 +25,4 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ![HTMLEntities](/img/HTMLEntities-title.png "HTMLEntities dans le titre")
 
 ## Futures améliorations possibles
-* Ajouter le bouton "Vu" sur les vignettes des épisodes d'une saison, sans devoir aller sur la page de l'épisode
+
