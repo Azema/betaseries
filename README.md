@@ -12,6 +12,9 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Séries similaires avec le bandeau vues](/img/similarsViewed.jpg "Séries similaires avec le bandeau vues")
 * Ajout du statut des séries sur la page de gestion des séries de l'utilisateur connecté
+* Ajout du nombre de votants à la note d'une série ou d'un film
+
+![Nombre de votants](/img/nbVotants.jpg "Nombre de votants")
 
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série
