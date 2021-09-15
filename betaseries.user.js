@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
