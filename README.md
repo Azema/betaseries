@@ -12,7 +12,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Séries similaires avec le bandeau vues](/img/similarsViewed.jpg "Séries similaires avec le bandeau vues")
 * Ajout du statut des séries sur la page de gestion des séries de l'utilisateur connecté
-* Ajout du nombre de votants à la note d'une série ou d'un film
+* Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode
 
 ![Nombre de votants](/img/nbVotants.jpg "Nombre de votants")
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus (Astuce: cocher seulement le dernier épisode vu et rafraîchissez la page)
