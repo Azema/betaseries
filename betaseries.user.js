@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      0.8
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -27,7 +27,8 @@ let betaseries_api_user_key = '';
           regexSerieOrMovie = new RegExp('^/(serie|film)/*');
     let debug = false,
         url = location.pathname,
-        userIdentified = typeof betaseries_api_user_token != 'undefined';
+        userIdentified = typeof betaseries_api_user_token != 'undefined',
+        timer;
 
     if (regexSerieOrMovie.test(url)) {
         removeAds();
@@ -35,6 +36,10 @@ let betaseries_api_user_key = '';
         decodeTitle();
         similarsViewed();
         addNumberVoters();
+        // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
+        timer = setInterval(function() {
+            addBtnWatchedToEpisode();
+        }, 500);
     }
     if (regexGestionSeries.test(url)) {
         addStatusToGestionSeries();
@@ -100,6 +105,7 @@ let betaseries_api_user_key = '';
     function addNumberVoters() {
         // On sort si la clé d'API n'est pas renseignée
         if (betaseries_api_user_key == '') return;
+
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
             note = parseInt(votes.attr('title').split('/')[0], 10),
             type = location.pathname.split('/')[1] == 'serie' ? 'show' : 'movie', // Indique de quel type de ressource il s'agit
@@ -114,6 +120,108 @@ let betaseries_api_user_key = '';
             // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
             votes.attr('title', votes.attr('title') + ' (' + data[type].notes.total + ' votant' + (data[type].notes.total > 1 ? 's' : '') + ')');
         }, 'GET', type + 's', fonction, {'id': eltId});
+    }
+
+    /*
+     * Ajoute un bouton Vu sur la vignette d'un épisode
+     */
+    function addBtnWatchedToEpisode() {
+        if (debug) console.log('addBtnWatchedToEpisode');
+        // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
+        if (! userIdentified || betaseries_api_user_key == '') return;
+        // On sort si il ne s'agit pas d'une série
+        if (location.pathname.split('/')[1] != 'serie') return;
+
+        let seasons = $('#seasons div[role="button"]'),
+            vignettes = $('#episodes .slide__image');
+
+        if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
+        // On vérifie que les saisons et les episodes soient chargés sur la page
+        if (vignettes.length > 0) {
+            // On supprime le timer Interval
+            clearInterval(timer);
+        } else {
+            return;
+        }
+        // Ajoute les cases à cocher sur les vignettes des épisodes
+        function addCheckbox() {
+            vignettes = getVignettes();
+            vignettes.each(function(index, elt) {
+                let $vignette = $(elt),
+                    id = getEpisodeId($vignette);
+                if (checkSeenPresent($vignette)) {
+                    // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
+                    let checkbox = $vignette.find('.checkSeen');
+                    checkbox.attr('id', 'episode-' + id);
+                    checkbox.addClass('seen');
+                } else {
+                    // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
+                    $vignette.append('<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>');
+                }
+                // On ajoute un event click sur la case 'checkSeen'
+                $('#episode-' + id).click(function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    let $elt = $(this),
+                        episodeId = getEpisodeId($elt);
+                    // On vérifie si l'épisode a déjà été vu
+                    if ($elt.hasClass('seen')) {
+                        // On demande à l'enlever des épisodes vus
+                        callBetaSeries(function(err, data) {
+                            if (debug) console.log('callBetaSeries DELETE episodes/watched', err, data);
+                            if (err) return;
+                            $elt.css('background', 'none'); // On enlève le check dans la case à cocher
+                            $elt.removeClass('seen'); // On supprime la classe 'seen'
+                            // On remet le voile masquant sur la vignette de l'épisode
+                            $elt.parent('div.slide__image').find('img').attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                        }, 'DELETE', 'episodes', 'watched', {'id': episodeId});
+                    }
+                    // Sinon, on l'ajoute aux épisodes vus
+                    else {
+                        callBetaSeries(function(err, data) {
+                            if (debug) console.log('callBetaSeries POST episodes/watched', err, data);
+                            if (err) return;
+
+                            let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
+                            $elt.css('background', background); // On ajoute le check dans la case à cocher
+                            $elt.addClass('seen'); // On ajoute la classe 'seen'
+                            // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
+                            $elt.parent('div.slide__image').find('img').removeAttr('style');
+                        }, 'POST', 'episodes', 'watched', {'id': episodeId});
+                    }
+                });
+            });
+        }
+        // On ajoute les cases à cocher sur les vignettes courantes
+        addCheckbox();
+        // On ajoute un event sur le changement de saison
+        seasons.click(function(e) {
+            if (debug) console.log('season click');
+            // On attend que les vignettes de la saison choisie soient chargées
+            timer = setInterval(function() {
+                if (getVignettes().length > 0) {
+                    addCheckbox();
+                    // On supprime le timer Interval
+                    clearInterval(timer);
+                }
+            }, 500);
+        });
+        // Retourne la saison courante
+        function getCurrentSeason() {
+            return $('#seasons div[role="button"].slide--current');
+        }
+        // On récupère les vignettes des épisodes
+        function getVignettes() {
+            return $('#episodes .slide__image');
+        }
+        // On vérifie si le flag 'checkSeen' est présent
+        function checkSeenPresent(elt) {
+            return elt.find('.checkSeen').length > 0;
+        }
+        // Retourne l'identifiant de l'épisode
+        function getEpisodeId(episode) {
+            return episode.parents('div.slide_flex').find('button').first().attr('id').split('-')[1];
+        }
     }
 
     /*
