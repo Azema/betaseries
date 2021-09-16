@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.9.0
+// @version      0.10.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -248,6 +248,13 @@ let betaseries_api_user_key = '';
             font-size: 12px;
             line-height: 1.2;
         }
+        .stars .us-star-svg {
+            width: 18px;
+            height: 18px;
+        }
+        .similars-stars {
+            text-align: center;
+        }
 [data-a11y-dialog-native] .dialog-overlay {
   display: none;
 }
@@ -439,9 +446,45 @@ dialog.dialog-content {
     }
 
     /*
+     * Crée les étoiles de la note
+     */
+    function usRenderStars() {
+        const renderStars = $('.js-render-stars.us-render-stars');
+        if (renderStars.length <= 0) {
+            return;
+        }
+        renderStars.empty();
+        let svg,
+            use,
+            typeSvg;
+        const nsSvg = "http://www.w3.org/2000/svg",
+              nsLink = "http://www.w3.org/1999/xlink";
+
+        renderStars.each(function(index, elt) {
+            let $elt = $(elt),
+                note = $elt.data('note'),
+                votants = $elt.data('votants');
+            $elt.attr('title', `${note} / 5 (${votants} votants)`);
+
+            for (let i = 0; i < 5; i++) {
+                typeSvg = (note <= i) ? 'empty' : (note <= i+1) ? 'half' : 'full';
+                svg = document.createElementNS(nsSvg, 'svg');
+                svg.classList.add('star-svg');
+                svg.classList.add('us-star-svg');
+                svg.setAttribute('viewBox', '0 0 100 100');
+                use = document.createElementNS(nsSvg, 'use');
+                use.setAttributeNS(nsLink, 'href', `#icon-star-${typeSvg}`);
+                svg.appendChild(use);
+                $elt.append(svg);
+            }
+        });
+    }
+
+    /*
      * Ajoute un bouton Vu sur la vignette d'un épisode
      */
     function addBtnWatchedToEpisode() {
+        if (! /serie/.test(url)) return;
         if (debug) console.log('addBtnWatchedToEpisode');
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '') return;
@@ -549,6 +592,7 @@ dialog.dialog-content {
         if (! userIdentified || betaseries_api_user_key == '') return;
 
         let similars = $('#similars .slide__title'),
+            len = similars.length,
             type;
         if (debug) console.log('nb similars: %d', similars.length);
         // On recupere le type d'élément de recherche
@@ -572,7 +616,7 @@ dialog.dialog-content {
                 if (error != null) return;
                 /* Si nous n'avons qu'un seul résultat */
                 if (data[type].length == 1) {
-                    addBandeau(elt, data[type][0].user.status);
+                    addBandeau(elt, data[type][0].user.status, data[type][0].notes);
                 }
                 // Si il y a plusieurs résultats de recherche
                 else if (data[type].length > 1) {
@@ -583,10 +627,14 @@ dialog.dialog-content {
                         // On verifie la concordance avec l'URL de la serie
                         if (data[type][i].resource_url === url) {
                             if (debug) console.log('Concordance trouvée');
-                            addBandeau(elt, data[type][i].user.status);
+                            addBandeau(elt, data[type][i].user.status, data[type][i].notes);
                             break;
                         }
                     }
+                }
+                if (index == len - 1) {
+                    if (debug) console.log('call usRenderStars');
+                    usRenderStars();
                 }
             }, 'GET', type, 'search', {title: title});
         });
@@ -618,9 +666,10 @@ dialog.dialog-content {
          *
          * @object elt      Noeud HTML contenant le titre du similaire
          * @number status   Le statut de vu de la serie pour l'utilisateur courant
+         * @object objNote  Objet note contenant la note moyenne et le nombre total de votes
          * @return void
          */
-        function addBandeau(elt, status) {
+        function addBandeau(elt, status, objNote) {
             // Si la série a été vue ou commencée
             if (status && status > 0) {
                 // On ajoute le bandeau "Viewed"
@@ -628,6 +677,11 @@ dialog.dialog-content {
                     '<img src="//www.aufilelec.fr/static/viewed.png" class="bandViewed"/>'
                 );
             }
+            let note = parseFloat(objNote.mean).toPrecision(2),
+                votants = objNote.total;
+            $(elt).after(
+                `<div class="similars-stars"><span class="stars js-render-stars us-render-stars" data-note="${note}" data-votants="${votants}"></span></div>`
+            );
         }
     }
 

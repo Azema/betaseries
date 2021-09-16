@@ -19,6 +19,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Case à cocher VU d'un épisode](/img/checkSeen.jpg "Case à cocher VU d'un épisode")
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
+* Ajout des notes sous les titres des similaires
 
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série
