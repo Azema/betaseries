@@ -1,19 +1,20 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.8.1
+// @version      0.9.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
 // @match        https://www.betaseries.com/serie/*
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
-// @match        https://www.betaseries.com/membre/*/series
+// @match        https://www.betaseries.com/membre/*
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
+// @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js
 // @grant        none
 // ==/UserScript==
 
-/*global jQuery*/
+/*global jQuery A11yDialog humanizeDuration*/
 /*global betaseries_api_user_token*/
 /*jslint unparam: true */
 
@@ -24,12 +25,14 @@ let betaseries_api_user_key = '';
     'use strict';
 
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
+          regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           regexSerieOrMovie = new RegExp('^/(serie|film|episode)/*');
     let debug = false,
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
-        timer;
+        timer, currentUser;
 
+    // Fonctions appeler pour les pages des series, des films et des episodes
     if (regexSerieOrMovie.test(url)) {
         removeAds();
         addStylesheet();
@@ -41,8 +44,160 @@ let betaseries_api_user_key = '';
             addBtnWatchedToEpisode();
         }, 500);
     }
+    // Fonctions appeler pour la page de gestion des series
     if (regexGestionSeries.test(url)) {
         addStatusToGestionSeries();
+    }
+    // Fonctions appeler sur la page des membres
+    if (regexUser.test(url) && userIdentified) {
+        removeAds();
+        addStylesheet();
+        getMember(function(member) {
+            currentUser = member;
+            let login = url.split('/')[2];
+            // On ajoute la fonction de comparaison des membres
+            if (currentUser && login != currentUser.login) {
+                compareMembers();
+            }
+        }, null);
+    }
+
+    /**
+     * @function cb    Fonction de callback retournant le membre demandé
+     * @number   id    Identifiant du membre (par défaut: le membre connecté)
+     * @return void
+     */
+    function getMember(cb, id = null) {
+        // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
+        if (! userIdentified || betaseries_api_user_key == '') return;
+
+        let args = {};
+        if (id) args.id = id;
+        callBetaSeries(function(err, data) {
+            if (err != null) { cb(null); return }
+            // On retourne les infos du membre
+            cb(data.member);
+        }, 'GET', 'members', 'infos', args);
+    }
+
+    /*
+     * Compare le membre courant avec un autre membre
+     */
+    function compareMembers() {
+        let id = $('#temps').data('loginid');
+        getMember(function(member) {
+            let otherMember = member;
+            const dialogHTML = `
+    <div
+      class="dialog dialog-container table-dark"
+      id="dialog-compare"
+      aria-hidden="true"
+      aria-labelledby="dialog-compare-title"
+    >
+      <div class="dialog-overlay" data-a11y-dialog-hide></div>
+      <div class="dialog-content" role="document">
+        <button
+          data-a11y-dialog-hide
+          class="dialog-close"
+          aria-label="Fermer cette boîte de dialogue"
+        >
+          &times;
+        </button>
+
+        <h1 id="dialog-compare-title">Comparaison des membres</h1>
+
+        <div id="compare table-responsive-lg">
+          <table class="table table-dark table-striped">
+            <thead>
+              <tr>
+                <th scope="col" class="col-lg-5">Infos</th>
+                <th scope="col" class="col-lg-3">Vous</th>
+                <th scope="col" class="other-user col-lg-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+                `,
+                trads = {
+                    "id": 'ID',
+                    "login": "Login",
+                    "xp": 'Pts d\'expérience',
+                    "subscription": 'Année d\'inscription',
+                    stats: {
+                        "friends": 'Amis',
+                        "shows": 'Séries',
+                        "seasons": 'Saisons',
+                        "episodes": 'Episodes',
+                        "comments": 'Commentaires',
+                        "progress": 'Progression de visionnage',
+                        "episodes_to_watch": 'Nb d\'épisodes à regarder',
+                        "time_on_tv": 'Temps devant la TV',
+                        "time_to_spend": 'Temps restant devant des séries à regarder',
+                        "movies": 'Nb de films',
+                        "badges": 'Nb de badges',
+                        "member_since_days": 'Membre depuis (jours)',
+                        "friends_of_friends": 'Les amis du réseau étendu',
+                        "episodes_per_month": 'Nb d\'épisodes par mois',
+                        "favorite_day": 'Jour favori',
+                        "five_stars_percent": '% de votes 5 étoiles',
+                        "four-five_stars_total": 'Nb de votes 4 ou 5 étoiles',
+                        "streak_days": 'Nb de jours consécutifs à regarder des épisodes',
+                        "favorite_genre": 'Genre favori',
+                        "written_words": 'Nb de mots écrits sur BetaSeries',
+                        "without_days": 'Nb jours d\'abstinence',
+                        "shows_finished": 'Nb de séries terminées',
+                        "shows_current": 'Nb de séries en cours',
+                        "shows_to_watch": 'Nb de séries à voir',
+                        "shows_abandoned": 'Nb de séries abandonnées',
+                        "movies_to_watch": 'Nb de films à voir',
+                        "time_on_movies": 'Temps devant les films',
+                        "time_to_spend_movies": 'Temps restant devant les films à regarder'
+                    }
+                };
+            $('head').append(`<style type="text/css">${tableCSS}/<style>`);
+            $('body').append(dialogHTML);
+            if (debug) console.log(currentUser, otherMember, trads);
+            for (const [key, value] of Object.entries(trads)) {
+                if (typeof value == 'object') {
+                    for (const [subkey, subvalue] of Object.entries(trads[key])) {
+                        if (/time/.test(subkey)) {
+                            currentUser[key][subkey] = humanizeDuration((currentUser[key][subkey] * 60 * 1000), { language: currentUser.locale });
+                            otherMember[key][subkey] = humanizeDuration((otherMember[key][subkey] * 60 * 1000), { language: currentUser.locale });
+                        }
+                        $('#dialog-compare table tbody').append(
+                            '<tr><td>' + subvalue + '</td><td>' + currentUser[key][subkey] + '</td><td>' + otherMember[key][subkey] + '</td></tr>'
+                        );
+                    }
+                } else {
+                    $('#dialog-compare table tbody').append(
+                        '<tr><td>' + value + '</td><td>' + currentUser[key] + '</td><td>' + otherMember[key] + '</td></tr>'
+                    );
+                }
+            }
+            $('.other-user').append(otherMember.login);
+            const dialog = new A11yDialog(document.querySelector('#dialog-compare')),
+                  html = document.documentElement;
+            $('#stats_container h1')
+                .css('display', 'inline-block')
+                .after('<button type="button" class="button blue" data-a11y-dialog-show="dialog-compare">Se comparer à ce membre</button>');
+            $('button.button.blue').click(function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                dialog.show();
+            });
+            $('.dialog-close').click(function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                dialog.hide();
+            });
+            dialog
+                .on('show', function() { html.style.overflowY = 'hidden'; $('#dialog-compare').css('z-index', '1005').css('overflow', 'scroll');})
+                .on('hide', function() { html.style.overflowY = ''; $('#dialog-compare').css('z-index', '0').css('overflow', 'none');});
+        }, id);
     }
 
     /*
@@ -83,8 +238,144 @@ let betaseries_api_user_key = '';
             left:-64px;
             z-index:1;
         }
-        `;
-        $('head').append(`<style type="text/css">${style}/<style>`);
+        button.button.blue {
+            padding: 5px 10px;
+            background-color: #556fa3;
+            color: white;
+            border-radius: 4px;
+            font-family: Muli,"Lucida Grande","Trebuchet MS",sans-serif;
+            letter-spacing: .5px;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+[data-a11y-dialog-native] .dialog-overlay {
+  display: none;
+}
+
+/**
+ * When <dialog> is not supported, its default display is inline which can
+ * cause layout issues.
+ */
+dialog[open] {
+  display: block;
+}
+
+.dialog[aria-hidden='true'] {
+  display: none;
+}
+
+/* -------------------------------------------------------------------------- *\
+ * Styling to make the dialog look like a dialog
+ * -------------------------------------------------------------------------- */
+
+.dialog:not([data-a11y-dialog-native]),
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+
+.dialog {
+  display: flex;
+}
+
+.dialog-overlay {
+  background-color: rgba(43, 46, 56, 0.9);
+}
+
+dialog::backdrop {
+  background-color: rgba(43, 46, 56, 0.9);
+}
+
+.dialog-content {
+  margin: auto;
+  z-index: 20;
+  position: relative;
+}
+
+dialog.dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  color: white;
+}
+
+/* -------------------------------------------------------------------------- *\
+ * Extra dialog styling to make it shiny
+ * -------------------------------------------------------------------------- */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(10%);
+  }
+}
+
+.dialog-overlay {
+  animation: fade-in 200ms both;
+}
+
+.dialog-content {
+  animation: fade-in 400ms 200ms both, slide-up 400ms 200ms both;
+}
+
+dialog.dialog-content {
+  animation: fade-in 400ms 200ms both;
+}
+
+.dialog-content {
+  padding: 1em;
+  max-width: 90%;
+  width: 600px;
+  border-radius: 2px;
+}
+
+@media screen and (min-width: 700px) {
+  .dialog-content {
+    padding: 2em;
+  }
+}
+
+.dialog h1 {
+  margin: 0;
+  font-size: 1.25em;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  border: 0;
+  padding: 0;
+  background-color: transparent;
+  font-weight: bold;
+  font-size: 1.25em;
+  width: 1.2em;
+  height: 1.2em;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+@media screen and (min-width: 700px) {
+  .dialog-close {
+    top: 1em;
+    right: 1em;
+  }
+}
+`;
+        $('head')
+            .append(`<style type="text/css">${style}/<style>`)
+            //.append('<link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"></link>');
     }
 
     /*
@@ -398,4 +689,349 @@ let betaseries_api_user_key = '';
             }
         });
     }
+
+    const tableCSS = `
+.table {
+  width: 100%;
+  margin-bottom: 1rem;
+  color: #212529;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem;
+  vertical-align: top;
+  border-top: 1px solid #dee2e6;
+}
+
+.table thead th {
+  vertical-align: bottom;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.table tbody + tbody {
+  border-top: 2px solid #dee2e6;
+}
+
+.table-sm th,
+.table-sm td {
+  padding: 0.3rem;
+}
+
+.table-bordered {
+  border: 1px solid #dee2e6;
+}
+
+.table-bordered th,
+.table-bordered td {
+  border: 1px solid #dee2e6;
+}
+
+.table-bordered thead th,
+.table-bordered thead td {
+  border-bottom-width: 2px;
+}
+
+.table-borderless th,
+.table-borderless td,
+.table-borderless thead th,
+.table-borderless tbody + tbody {
+  border: 0;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.table-hover tbody tr:hover {
+  color: #212529;
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.table-primary,
+.table-primary > th,
+.table-primary > td {
+  background-color: #b8daff;
+}
+
+.table-primary th,
+.table-primary td,
+.table-primary thead th,
+.table-primary tbody + tbody {
+  border-color: #7abaff;
+}
+
+.table-hover .table-primary:hover {
+  background-color: #9fcdff;
+}
+
+.table-hover .table-primary:hover > td,
+.table-hover .table-primary:hover > th {
+  background-color: #9fcdff;
+}
+
+.table-secondary,
+.table-secondary > th,
+.table-secondary > td {
+  background-color: #d6d8db;
+}
+
+.table-secondary th,
+.table-secondary td,
+.table-secondary thead th,
+.table-secondary tbody + tbody {
+  border-color: #b3b7bb;
+}
+
+.table-hover .table-secondary:hover {
+  background-color: #c8cbcf;
+}
+
+.table-hover .table-secondary:hover > td,
+.table-hover .table-secondary:hover > th {
+  background-color: #c8cbcf;
+}
+
+.table-success,
+.table-success > th,
+.table-success > td {
+  background-color: #c3e6cb;
+}
+
+.table-success th,
+.table-success td,
+.table-success thead th,
+.table-success tbody + tbody {
+  border-color: #8fd19e;
+}
+
+.table-hover .table-success:hover {
+  background-color: #b1dfbb;
+}
+
+.table-hover .table-success:hover > td,
+.table-hover .table-success:hover > th {
+  background-color: #b1dfbb;
+}
+
+.table-info,
+.table-info > th,
+.table-info > td {
+  background-color: #bee5eb;
+}
+
+.table-info th,
+.table-info td,
+.table-info thead th,
+.table-info tbody + tbody {
+  border-color: #86cfda;
+}
+
+.table-hover .table-info:hover {
+  background-color: #abdde5;
+}
+
+.table-hover .table-info:hover > td,
+.table-hover .table-info:hover > th {
+  background-color: #abdde5;
+}
+
+.table-warning,
+.table-warning > th,
+.table-warning > td {
+  background-color: #ffeeba;
+}
+
+.table-warning th,
+.table-warning td,
+.table-warning thead th,
+.table-warning tbody + tbody {
+  border-color: #ffdf7e;
+}
+
+.table-hover .table-warning:hover {
+  background-color: #ffe8a1;
+}
+
+.table-hover .table-warning:hover > td,
+.table-hover .table-warning:hover > th {
+  background-color: #ffe8a1;
+}
+
+.table-danger,
+.table-danger > th,
+.table-danger > td {
+  background-color: #f5c6cb;
+}
+
+.table-danger th,
+.table-danger td,
+.table-danger thead th,
+.table-danger tbody + tbody {
+  border-color: #ed969e;
+}
+
+.table-hover .table-danger:hover {
+  background-color: #f1b0b7;
+}
+
+.table-hover .table-danger:hover > td,
+.table-hover .table-danger:hover > th {
+  background-color: #f1b0b7;
+}
+
+.table-light,
+.table-light > th,
+.table-light > td {
+  background-color: #fdfdfe;
+}
+
+.table-light th,
+.table-light td,
+.table-light thead th,
+.table-light tbody + tbody {
+  border-color: #fbfcfc;
+}
+
+.table-hover .table-light:hover {
+  background-color: #ececf6;
+}
+
+.table-hover .table-light:hover > td,
+.table-hover .table-light:hover > th {
+  background-color: #ececf6;
+}
+
+.table-dark,
+.table-dark > th,
+.table-dark > td {
+  background-color: #c6c8ca;
+}
+
+.table-dark th,
+.table-dark td,
+.table-dark thead th,
+.table-dark tbody + tbody {
+  border-color: #95999c;
+}
+
+.table-hover .table-dark:hover {
+  background-color: #b9bbbe;
+}
+
+.table-hover .table-dark:hover > td,
+.table-hover .table-dark:hover > th {
+  background-color: #b9bbbe;
+}
+
+.table-active,
+.table-active > th,
+.table-active > td {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.table-hover .table-active:hover {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.table-hover .table-active:hover > td,
+.table-hover .table-active:hover > th {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.table .thead-dark th {
+  color: #fff;
+  background-color: #343a40;
+  border-color: #454d55;
+}
+
+.table .thead-light th {
+  color: #495057;
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.table-dark {
+  color: #fff;
+  background-color: #343a40;
+}
+
+.table-dark th,
+.table-dark td,
+.table-dark thead th {
+  border-color: #454d55;
+}
+
+.table-dark.table-bordered {
+  border: 0;
+}
+
+.table-dark.table-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.table-dark.table-hover tbody tr:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.075);
+}
+
+@media (max-width: 575.98px) {
+  .table-responsive-sm {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-responsive-sm > .table-bordered {
+    border: 0;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .table-responsive-md {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-responsive-md > .table-bordered {
+    border: 0;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .table-responsive-lg {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-responsive-lg > .table-bordered {
+    border: 0;
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .table-responsive-xl {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-responsive-xl > .table-bordered {
+    border: 0;
+  }
+}
+
+.table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive > .table-bordered {
+  border: 0;
+}
+`;
 })(jQuery);
