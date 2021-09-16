@@ -18,6 +18,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus (Astuce: cocher seulement le dernier épisode vu et rafraîchissez la page)
 
 ![Case à cocher VU d'un épisode](/img/checkSeen.jpg "Case à cocher VU d'un épisode")
+* Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
 
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série
