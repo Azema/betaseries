@@ -1,0 +1,19 @@
+{
+  "esversion"     : 6,
+  "undef"         : true,     // Require all non-global variables be declared before they are used.
+  "strict"        : true,     // Require `use strict` pragma in every file.
+  "unused"        : true,     // Warn when you define and never use your variables
+  "browser"       : true,     // Standard browser globals e.g. `window`, `document`.
+  "devel"         : true,    // Allow development statements e.g. `console.log();`.
+  "jquery"        : true,    // Enable globals exposed by jQuery JavaScript library.
+  "predef"        : [         // Extra globals.
+    "A11yDialog",
+    "humanizeDuration",
+    "renderjson"
+  ],
+  "globals" : {
+    "GM_addStyle": true,
+    "betaseries_api_user_token": true
+  },
+  "indent"        : 4         // Specify indentation spacing
+}

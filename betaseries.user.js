@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.10.0
+// @version      0.11.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -9,20 +9,27 @@
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
 // @match        https://www.betaseries.com/membre/*
+// @match        https://www.betaseries.com/api/methodes/*
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
 // @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js
-// @grant        none
+// @require      https://cdn.jsdelivr.net/npm/renderjson@1.4.0/renderjson.min.js
+// @resource     FontAwesome   https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
+// @grant        GM_addStyle
+// @grant        GM_getResourceText
 // ==/UserScript==
 
-/*global jQuery A11yDialog humanizeDuration*/
-/*global betaseries_api_user_token*/
-/*jslint unparam: true */
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token */
+/* jslint unparam: true */
 
-// Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/)
+
+/************************************************************************************************/
+/* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
+/************************************************************************************************/
 let betaseries_api_user_key = '';
 
 (function($) {
     'use strict';
+    $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />');
 
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
@@ -30,15 +37,34 @@ let betaseries_api_user_key = '';
     let debug = false,
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
-        timer, currentUser;
+        timer, currentUser, mock = function() {},
+        resources = {shows: {}, episodes: {}, movies: {}, members: {}},
+        // Equivalences des classifications TV
+        ratings = {
+            'TV-Y': '',
+            'TV-Y7': 'D-10',
+            'TV-G': '',
+            'TV-PG': 'D-12',
+            'TV-14': 'D-16',
+            'TV-MA': 'D-18'
+        },
+        // URI des images de classifications TV
+        ratingImgs = {
+            'D-10': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
+            'D-12': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
+            'D-16': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
+            'D-18': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png'
+        };
 
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (regexSerieOrMovie.test(url)) {
+        addRating();
         removeAds();
         addStylesheet();
         decodeTitle();
         similarsViewed();
-        addNumberVoters();
+        if (debug) addBtnDev();
+        setTimeout(addNumberVoters, 500);
         // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
         timer = setInterval(function() {
             addBtnWatchedToEpisode();
@@ -52,14 +78,179 @@ let betaseries_api_user_key = '';
     if (regexUser.test(url) && userIdentified) {
         removeAds();
         addStylesheet();
-        getMember(function(member) {
+        getMember()
+        .then(function(member) {
             currentUser = member;
             let login = url.split('/')[2];
             // On ajoute la fonction de comparaison des membres
             if (currentUser && login != currentUser.login) {
                 compareMembers();
             }
-        }, null);
+        });
+    }
+
+    if (/^\/api\/methodes/.test(url)) {
+        sommaireDevApi();
+    }
+
+    /*
+     * Ajoute un sommaire sur les pages de documentation des méthodes de l'API
+     * Le sommaire est constitué des liens vers les fonctions des méthodes.
+     */
+    function sommaireDevApi() {
+        let titles = $('.maincontent h2'),
+            len = titles.length,
+            ids = [],
+            style = `
+.sommaire {
+  border: 1px solid white;
+}
+.maincontent li.liSommaire {
+  margin-left: 30px;
+}
+.fa-chevron-circle-up {
+  cursor: pointer;
+  margin-left: 10px;
+}
+.sommaire .liTitle {
+  margin-bottom: 15px;
+  color: var(--top_color);
+  list-style: none;
+  font-size: 1.3em;
+}
+.linkSommaire {
+  color: var(--link_color);
+  text-decoration: none;
+  cursor: pointer;
+}
+`;
+        GM_addStyle(style);
+        titles.each((i, title) => {
+            // ajouter les ID aux titres des methodes, ainsi qu'un chevron pour renvoyer au sommaire
+            let $title = $(title),
+                id = $(title).text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-');
+            $title.attr('id', id);
+            $title.append('<i class="fa fa-chevron-circle-up" aria-hidden="true" title="Retour au sommaire"></i>');
+            ids.push({id: id, title: $title.text()});
+
+            // Construire un sommaire des fonctions
+            if (i == len-1) {
+                let sommaire = '<ul id="sommaire" class="sommaire"><li class="liTitle"><strong>Sommaire</strong></li>';
+                for (let j = 0; j < ids.length; j++) {
+                    sommaire += '<li class="liSommaire"><i data-id="' + ids[j].id + '" class="linkSommaire">' + ids[j].title + '</a></li>';
+                }
+                $('.maincontent h1').after(sommaire + '</ul>');
+
+                $('.linkSommaire').click(function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    $('#' + $(e.currentTarget).data('id')).get(0).scrollIntoView(true);
+                });
+                $('.fa-chevron-circle-up').click(function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    document.getElementById('sommaire').scrollIntoView(true);
+                });
+            }
+        });
+    }
+
+    /*
+     * Ajoute un bouton pour le dev pour afficher les données de la ressource
+     * dans une modal
+     */
+    function addBtnDev() {
+        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button"><i class="fa fa-2x fa-wrench" aria-hidden="true"></i></button><div class="label">Favoris</div></div>',
+              dialogHTML = `
+    <div
+      class="dialog dialog-container table-dark"
+      id="dialog-resource"
+      aria-hidden="true"
+      aria-labelledby="dialog-resource-title"
+    >
+      <div class="dialog-overlay" data-a11y-dialog-hide></div>
+      <div class="dialog-content" role="document" style="width: 80%;">
+        <button
+          data-a11y-dialog-hide
+          class="dialog-close"
+          title="Fermer cette boîte de dialogue"
+          aria-label="Fermer cette boîte de dialogue"
+        >
+          <i class="fa fa-times" aria-hidden="true"></i>
+        </button>
+
+        <h1 id="dialog-resource-title">Données de la ressource</h1>
+
+        <div class="data-resource content"></div>
+      </div>
+    </div>
+        `;
+        $('.blockInformations__actions').append(btnHTML);
+        $('body').append(dialogHTML);
+        const dialog = new A11yDialog(document.querySelector('#dialog-resource')),
+              html = document.documentElement;
+
+        $('.fa-wrench').parent().click((e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            let type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
+                eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
+                $dataRes = $('#dialog-resource .data-resource'), // DOMElement contenant le rendu JSON de la ressource
+                fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+
+            callBetaSeries('GET', type + 's', fonction, {'id': eltId})
+            .then(function(data) {
+                if (! $dataRes.is(':empty')) $dataRes.empty();
+                $dataRes.append(renderjson.set_show_to_level(2)(data[type]));
+                dialog.show();
+            });
+        });
+        $('.dialog-close').click(function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            dialog.hide();
+        });
+        dialog
+            .on('show', function() { html.style.overflowY = 'hidden'; $('#dialog-resource').css('z-index', '1005').css('overflow', 'scroll');})
+            .on('hide', function() { html.style.overflowY = ''; $('#dialog-resource').css('z-index', '0').css('overflow', 'none');});
+    }
+
+    /*
+     * Ajoute la classification dans les détails de la ressource
+     */
+    function addRating() {
+        if (debug) console.log('addRating');
+        let type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
+            eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
+            fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+
+        callBetaSeries('GET', type + 's', fonction, {'id': eltId})
+        .then(function(data) {
+            if (data[type].hasOwnProperty('rating')) {
+                // On ajoute la classification
+                let html = '<li id="rating"><strong>Classification</strong><img src="' + ratingImg(equivRating(data[type].rating)) + '"/></li>';
+                $('.blockInformations__details').append(html);
+            }
+        });
+
+        /**
+         * Retourne l'equivalent de classification US en FR
+         *
+         * @param string ratingUS Le code de classification US
+         * @return string|null
+         */
+        function equivRating(ratingUS) {
+            return ratings.hasOwnProperty(ratingUS) ? ratings[ratingUS] : null;
+        }
+        /**
+         * Retourne l'URI de l'image de classification TV
+         *
+         * @param string rating Le code de classification FR
+         * @return string
+         */
+        function ratingImg(rating) {
+            return (ratingImgs.hasOwnProperty(rating)) ? ratingImgs[rating] : '';
+        }
     }
 
     /**
@@ -67,17 +258,19 @@ let betaseries_api_user_key = '';
      * @number   id    Identifiant du membre (par défaut: le membre connecté)
      * @return void
      */
-    function getMember(cb, id = null) {
+    function getMember(id = null) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '') return;
 
         let args = {};
         if (id) args.id = id;
-        callBetaSeries(function(err, data) {
-            if (err != null) { cb(null); return }
-            // On retourne les infos du membre
-            cb(data.member);
-        }, 'GET', 'members', 'infos', args);
+        return new Promise((resolve) => {
+            callBetaSeries('GET', 'members', 'infos', args)
+                .then(function(data) {
+                // On retourne les infos du membre
+                resolve(data.member);
+            });
+        });
     }
 
     /*
@@ -85,7 +278,8 @@ let betaseries_api_user_key = '';
      */
     function compareMembers() {
         let id = $('#temps').data('loginid');
-        getMember(function(member) {
+        getMember(id).
+        then(function(member) {
             let otherMember = member;
             const dialogHTML = `
     <div
@@ -101,7 +295,7 @@ let betaseries_api_user_key = '';
           class="dialog-close"
           aria-label="Fermer cette boîte de dialogue"
         >
-          &times;
+          <i class="fa fa-times" aria-hidden="true"></i>
         </button>
 
         <h1 id="dialog-compare-title">Comparaison des membres</h1>
@@ -160,7 +354,7 @@ let betaseries_api_user_key = '';
                 };
             $('head').append(`<style type="text/css">${tableCSS}/<style>`);
             $('body').append(dialogHTML);
-            if (debug) console.log(currentUser, otherMember, trads);
+            //if (debug) console.log(currentUser, otherMember, trads);
             for (const [key, value] of Object.entries(trads)) {
                 if (typeof value == 'object') {
                     for (const [subkey, subvalue] of Object.entries(trads[key])) {
@@ -197,7 +391,7 @@ let betaseries_api_user_key = '';
             dialog
                 .on('show', function() { html.style.overflowY = 'hidden'; $('#dialog-compare').css('z-index', '1005').css('overflow', 'scroll');})
                 .on('hide', function() { html.style.overflowY = ''; $('#dialog-compare').css('z-index', '0').css('overflow', 'none');});
-        }, id);
+        });
     }
 
     /*
@@ -211,7 +405,7 @@ let betaseries_api_user_key = '';
             $('script[src*="sddan.com"]').remove();
         }, 500);
         $('.parent-ad-desktop').attr('style', 'display: none !important');
-        setInterval(function() {$('iframe').remove();}, 1000);
+        setInterval(function() {$('iframe[name!="userscript"]').remove();}, 1000);
         $('.blockPartner').attr('style', 'display: none !important');
     }
 
@@ -219,42 +413,68 @@ let betaseries_api_user_key = '';
      * Ajout d'une feuille de style
      */
     function addStylesheet() {
-        let style = `
-        #updateSimilarsBlock {vertical-align: middle;}
-        .updateSimilars {
-            cursor:pointer;
-            -webkit-transform: rotate(-45deg) scale(1);
-            transform: rotate(-45deg) scale(1);
-            -webkit-transition: .3s ease-in-out;
-            transition: .3s ease-in-out;
-        }
-        .updateSimilars:hover {
-            -webkit-transform: rotate(0) scale(1.2);
-            transform: rotate(0) scale(1.2);
-        }
-        .bandViewed {
-            position:absolute;
-            top:0;
-            left:-64px;
-            z-index:1;
-        }
-        button.button.blue {
-            padding: 5px 10px;
-            background-color: #556fa3;
-            color: white;
-            border-radius: 4px;
-            font-family: Muli,"Lucida Grande","Trebuchet MS",sans-serif;
-            letter-spacing: .5px;
-            font-size: 12px;
-            line-height: 1.2;
-        }
-        .stars .us-star-svg {
-            width: 18px;
-            height: 18px;
-        }
-        .similars-stars {
-            text-align: center;
-        }
+        /* jshint ignore:start */
+        GM_addStyle((<><![CDATA[
+#updateSimilarsBlock {vertical-align: middle;}
+.updateSimilars {
+    cursor:pointer;
+    -webkit-transform: rotate(-45deg) scale(1);
+    transform: rotate(-45deg) scale(1);
+    -webkit-transition: .3s ease-in-out;
+    transition: .3s ease-in-out;
+}
+.updateSimilars:hover {
+    -webkit-transform: rotate(0) scale(1.2);
+    transform: rotate(0) scale(1.2);
+}
+.bandViewed {
+    position:absolute;
+    top:0;
+    left:-64px;
+    z-index:1;
+}
+button.button.blue {
+    padding: 5px 10px;
+    background-color: #556fa3;
+    color: white;
+    border-radius: 4px;
+    font-family: Muli,"Lucida Grande","Trebuchet MS",sans-serif;
+    letter-spacing: .5px;
+    font-size: 12px;
+    line-height: 1.2;
+}
+.stars-outer {
+  display: inline-block;
+  position: relative;
+  font-family: FontAwesome;
+}
+
+.stars-outer::before {
+  content: "\f006 \f006 \f006 \f006 \f006";
+}
+
+.stars-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 0;
+}
+
+.stars-inner::before {
+  content: "\f005 \f005 \f005 \f005 \f005";
+  color: #f8ce0b;
+}
+
+.checkSeen:hover {
+    opacity: 0.5;
+}
+
+/* -------------------------------------------------------------------------- *\
+ * Styling to make the dialog look like a dialog
+ * -------------------------------------------------------------------------- */
+
 [data-a11y-dialog-native] .dialog-overlay {
   display: none;
 }
@@ -270,10 +490,6 @@ dialog[open] {
 .dialog[aria-hidden='true'] {
   display: none;
 }
-
-/* -------------------------------------------------------------------------- *\
- * Styling to make the dialog look like a dialog
- * -------------------------------------------------------------------------- */
 
 .dialog:not([data-a11y-dialog-native]),
 .dialog-overlay {
@@ -349,12 +565,14 @@ dialog.dialog-content {
 @media screen and (min-width: 700px) {
   .dialog-content {
     padding: 2em;
+    font-size: 1.2em;
   }
 }
 
 .dialog h1 {
   margin: 0;
   font-size: 1.25em;
+  padding-left: 20px;
 }
 
 .dialog-close {
@@ -371,18 +589,39 @@ dialog.dialog-content {
   text-align: center;
   cursor: pointer;
   transition: 0.15s;
+  color: white;
 }
 
 @media screen and (min-width: 700px) {
   .dialog-close {
-    top: 1em;
-    right: 1em;
+    top: 2em;
+    right: 3em;
   }
 }
-`;
-        $('head')
-            .append(`<style type="text/css">${style}/<style>`)
-            //.append('<link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css"></link>');
+.renderjson a              { text-decoration: none; }
+.renderjson .disclosure    { color: crimson;
+                             font-size: 150%; }
+.renderjson .syntax        { color: grey; }
+.renderjson .string        { color: red; }
+.renderjson .number        { color: cyan; }
+.renderjson .boolean       { color: plum; }
+.renderjson .key           { color: lightblue; }
+.renderjson .keyword       { color: lightgoldenrodyellow; }
+.renderjson .object.syntax { color: lightseagreen; }
+.renderjson .array.syntax  { color: lightsalmon; }
+
+#containerIframe {
+  position: fixed;
+  top: 80px;
+  left: 0;
+  width: 100%;
+  height: 400px;
+  margin: auto;
+  text-align: center;
+  z-index: 1000;
+}
+]]></>).toString());
+        /* jshint ignore:end */
     }
 
     /*
@@ -391,9 +630,9 @@ dialog.dialog-content {
     function decodeTitle() {
         let theString = $('.blockInformations__title').text(),
             matches = theString.match(/&#/);
-        if (matches != undefined && matches.length > 0) {
+
+        if (matches && matches.length > 0) {
             $('.blockInformations__title').text($('<textarea />').html(theString).text());
-            //console.log('Title updated');
         }
     }
 
@@ -410,11 +649,8 @@ dialog.dialog-content {
             'film': 'movie',
             'episode': 'episode'
         };
-        for (const [key, value] of Object.entries(methods)) {
-            if (pageType == key) {
-                if (singulier == false) return value + 's';
-                else return value;
-            }
+        if (pageType in methods) {
+            return (! singulier) ? methods[pageType] + 's' : methods[pageType];
         }
         return null;
     }
@@ -427,57 +663,63 @@ dialog.dialog-content {
         if (betaseries_api_user_key == '') return;
 
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
-            note = parseInt(votes.attr('title').split('/')[0], 10),
             type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
             eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
             fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
-        // On sort si il n'y a aucun vote
-        if (note <= 0) return;
+
         if (debug) console.log('votes %d, showId: %d, type: %s', votes.length, eltId, type);
+
         // On recupère les détails de la ressource
-        callBetaSeries(function(error, data) {
-            if (error != null) return;
-            let notes;
-            if (type == 'show' || type == 'movie') notes = data[type].notes;
-            else notes = data[type].note;
+        callBetaSeries('GET', type + 's', fonction, {'id': eltId})
+        .then((data) => {
+            if (debug) console.log('addNumberVoters callBetaSeries', data);
+            let note;
+            if (type == 'show' || type == 'movie') note = data[type].notes;
+            else note = data[type].note;
             // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
-            votes.attr('title', votes.attr('title') + ' (' + notes.total + ' votant' + (notes.total > 1 ? 's' : '') + ')');
-        }, 'GET', type + 's', fonction, {'id': eltId});
+            changeTitleNote(votes, note.mean, note.total);
+        });
     }
 
-    /*
-     * Crée les étoiles de la note
+    /**
+     * Ajoute le nombre de votes à la note dans l'attribut title de la balise
+     * contenant la représentation de la note de la ressource
+     *
+     * @param Object $elt    Le DOMElement jQuery à modifier
+     * @param Number note    La note de la ressource
+     * @param Number total   Le nombre de votants
+     * @return void
      */
-    function usRenderStars() {
-        const renderStars = $('.js-render-stars.us-render-stars');
-        if (renderStars.length <= 0) {
+    function changeTitleNote($elt, note, total) {
+        if (note <= 0 || total <= 0) {
+            $elt.attr('title', 'Aucun vote');
             return;
         }
-        renderStars.empty();
-        let svg,
-            use,
-            typeSvg;
-        const nsSvg = "http://www.w3.org/2000/svg",
-              nsLink = "http://www.w3.org/1999/xlink";
 
-        renderStars.each(function(index, elt) {
-            let $elt = $(elt),
-                note = $elt.data('note'),
-                votants = $elt.data('votants');
-            $elt.attr('title', `${note} / 5 (${votants} votants)`);
+        let title = $elt.attr('title');
+        // On met en forme le nombre de votes
+        total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(total);
+        // On limite le nombre de chiffre après la virgule
+        note = parseFloat(note).toFixed(1);
+        // On vérifie que l'attribut title possède déjà la note, sinon on l'ajoute
+        if (! /\/ 5/.test(title)) {
+            title = note + ' / 5';
+        }
+        // On modifie l'attribut title pour y ajouter le nombre de votes
+        $elt.attr('title', total + ' vote' + (total > 1 ? 's' : '') + ': ' + title);
+    }
 
-            for (let i = 0; i < 5; i++) {
-                typeSvg = (note <= i) ? 'empty' : (note <= i+1) ? 'half' : 'full';
-                svg = document.createElementNS(nsSvg, 'svg');
-                svg.classList.add('star-svg');
-                svg.classList.add('us-star-svg');
-                svg.setAttribute('viewBox', '0 0 100 100');
-                use = document.createElementNS(nsSvg, 'use');
-                use.setAttributeNS(nsLink, 'href', `#icon-star-${typeSvg}`);
-                svg.appendChild(use);
-                $elt.append(svg);
-            }
-        });
+    /**
+     * Crée les étoiles de la note
+     *
+     * @param Object $elt     Objet JQuery
+     * @param number note     La note de la ressource
+     * @param number total    Le nombre de votants
+     */
+    function usRenderStars($elt, note, total) {
+        changeTitleNote($elt.parent('.stars-outer'), note, total);
+        let starPercentageRounded = `${(Math.round(((note / 5) * 100) / 10) * 10)}%`;
+        $elt.css('width', starPercentageRounded);
     }
 
     /*
@@ -485,7 +727,9 @@ dialog.dialog-content {
      */
     function addBtnWatchedToEpisode() {
         if (! /serie/.test(url)) return;
+
         if (debug) console.log('addBtnWatchedToEpisode');
+
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '') return;
         // On sort si il ne s'agit pas d'une série
@@ -505,6 +749,7 @@ dialog.dialog-content {
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckbox() {
             vignettes = getVignettes();
+            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
             vignettes.each(function(index, elt) {
                 let $vignette = $(elt),
                     id = getEpisodeId($vignette);
@@ -521,54 +766,136 @@ dialog.dialog-content {
                 $('#episode-' + id).click(function(e) {
                     e.stopPropagation();
                     e.preventDefault();
-                    let $elt = $(this),
+                    let $elt = $(e.currentTarget),
                         episodeId = getEpisodeId($elt);
                     // On vérifie si l'épisode a déjà été vu
                     if ($elt.hasClass('seen')) {
                         // On demande à l'enlever des épisodes vus
-                        callBetaSeries(function(err, data) {
-                            if (debug) console.log('callBetaSeries DELETE episodes/watched', err, data);
-                            if (err) return;
-                            $elt.css('background', 'none'); // On enlève le check dans la case à cocher
-                            $elt.removeClass('seen'); // On supprime la classe 'seen'
-                            // On remet le voile masquant sur la vignette de l'épisode
-                            $elt.parent('div.slide__image').find('img').attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
-                        }, 'DELETE', 'episodes', 'watched', {'id': episodeId});
+                        callBetaSeries('DELETE', 'episodes', 'watched', {'id': episodeId})
+                        .then(function(data) {
+                            if (debug) console.log('callBetaSeries DELETE episodes/watched', data);
+                            changeStatus($elt, 'notSeen');
+                        },
+                        function(err) {
+                            if (err && err == 'changeStatus') {
+                                changeStatus($elt, 'notSeen');
+                            } else if (err && err == 'accessToken') {
+                                if (debug) console.log('similars error DELETE accessToken');
+                                authenticate().then(function() {
+                                    callBetaSeries('DELETE', 'episodes', 'watched', {'id': episodeId})
+                                    .then(function(data) {
+                                        if (debug) console.log('callBetaSeries DELETE episodes/watched', data);
+                                        changeStatus($elt, 'notSeen');
+                                    },
+                                    function(err) {
+                                        if (err && err == 'changeStatus') {
+                                            changeStatus($elt, 'notSeen');
+                                        }
+                                    });
+                                });
+                            }
+                        });
                     }
                     // Sinon, on l'ajoute aux épisodes vus
                     else {
-                        callBetaSeries(function(err, data) {
-                            if (debug) console.log('callBetaSeries POST episodes/watched', err, data);
-                            if (err) return;
-
-                            let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
-                            $elt.css('background', background); // On ajoute le check dans la case à cocher
-                            $elt.addClass('seen'); // On ajoute la classe 'seen'
-                            // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
-                            $elt.parent('div.slide__image').find('img').removeAttr('style');
-                        }, 'POST', 'episodes', 'watched', {'id': episodeId});
+                        callBetaSeries('POST', 'episodes', 'watched', {'id': episodeId, 'bulk': false})
+                        .then(function(data) {
+                            if (debug) console.log('callBetaSeries POST episodes/watched', data);
+                            changeStatus($elt, 'seen');
+                        },
+                        function(err) {
+                            if (err && err == 'changeStatus') {
+                                changeStatus($elt, 'seen');
+                            } else if (err && err == 'accessToken') {
+                                if (debug) console.log('similars error POST accessToken');
+                                authenticate().then(function() {
+                                    callBetaSeries('POST', 'episodes', 'watched', {'id': episodeId, 'bulk': false})
+                                    .then(function(data) {
+                                        if (debug) console.log('callBetaSeries POST episodes/watched', data);
+                                        changeStatus($elt, 'seen');
+                                    },
+                                    function(err) {
+                                        if (err && err == 'changeStatus') {
+                                            changeStatus($elt, 'seen');
+                                        }
+                                    });
+                                });
+                            }
+                        });
                     }
                 });
+                function changeStatus($elt, newStatus) {
+                    if (newStatus == 'seen') {
+                        let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
+                        $elt.css('background', background); // On ajoute le check dans la case à cocher
+                        $elt.addClass('seen'); // On ajoute la classe 'seen'
+                        // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
+                        $elt.parent('div.slide__image').find('img').removeAttr('style');
+                        $elt.parent('div.slide_flex').removeClass('slide--notSeen');
+                        updateProgressBar(-1);
+
+                        if ($('#episodes .seen').length == len) {
+                            $('div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
+                            $('div.slide--current').removeClass('slide--notSeen');
+                            $('div.slide--current').addClass('slide--seen');
+                        }
+                    } else {
+                        $elt.css('background', 'none'); // On enlève le check dans la case à cocher
+                        $elt.removeClass('seen'); // On supprime la classe 'seen'
+                        // On remet le voile masquant sur la vignette de l'épisode
+                        $elt.parent('div.slide__image').find('img').attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+
+                        let contVignette = $elt.parent('div.slide_flex');
+                        if (!contVignette.hasClass('slide--notSeen')) {
+                            contVignette.addClass('slide--notSeen');
+                        }
+                        updateProgressBar(1);
+
+                        if ($('#episodes .seen').length < len) {
+                            $('div.slide--current .checkSeen').remove();
+                            $('div.slide--current').addClass('slide--seen');
+                            $('div.slide--current').addClass('slide--notSeen');
+                        }
+                    }
+                }
+                function updateProgressBar(i) {
+                    let showId = $('#reactjs-show-actions').data('show-id'),
+                        progBar = $('.progressBarShow'),
+                        show = resources.shows[showId].show,
+                        nbEpisodes = parseInt(show.episodes, 10),
+                        remaining = i + show.user.remaining,
+                        nbSeen = nbEpisodes - remaining,
+                        status = (nbSeen * 100) / nbEpisodes;
+                    if (debug) console.log('updateProgessBar {showId: %d, episodes: %d, nbSeen: %d, indice: %d, remaining: %d, calcul: %d, status: %f}',
+                                           show.id, nbEpisodes, nbSeen, i, show.user.remaining, remaining, status);
+                    // On met à jour les infos dans l'objet ressource
+                    resources.shows[show.id].show.user.remaining = remaining;
+                    resources.shows[show.id].show.user.status = parseFloat(status.toFixed(1));
+                    // On met à jour la barre de progression
+                    progBar.css('width', status.toFixed(1) + '%');
+                }
             });
         }
         // On ajoute les cases à cocher sur les vignettes courantes
         addCheckbox();
         // On ajoute un event sur le changement de saison
-        seasons.click(function(e) {
+        seasons.click(function() {
+            //e.stopPropagation();
+            //e.preventDefault();
             if (debug) console.log('season click');
             // On attend que les vignettes de la saison choisie soient chargées
             timer = setInterval(function() {
                 if (getVignettes().length > 0) {
-                    addCheckbox();
                     // On supprime le timer Interval
                     clearInterval(timer);
+                    addCheckbox();
                 }
             }, 500);
         });
         // Retourne la saison courante
-        function getCurrentSeason() {
+        /*function getCurrentSeason() {
             return $('#seasons div[role="button"].slide--current');
-        }
+        }*/
         // On récupère les vignettes des épisodes
         function getVignettes() {
             return $('#episodes .slide__image');
@@ -589,33 +916,38 @@ dialog.dialog-content {
      */
     function similarsViewed() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key == '') return;
+        if (! userIdentified || betaseries_api_user_key == '' || ! /(serie|film)/.test(url)) return;
 
-        let similars = $('#similars .slide__title'),
-            len = similars.length,
-            type;
+        let similars = $('#similars .slide__title'), // Les titres des ressources similaires
+            len = similars.length, // Le nombre de similaires
+            type = getApiResource(url.split('/')[1], false); // Le type de ressource
+
         if (debug) console.log('nb similars: %d', similars.length);
-        // On recupere le type d'élément de recherche
-        type = location.pathname.split('/')[1] == 'serie' ? 'shows' : 'movies';
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
-        if (similars.length <= 0 || (similars.length == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
+        if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
 
         similars.each(function(index, elt) {
-            let title = $(elt).text().trim(),
-                matches = title.match(/&#/);
-            if (debug) console.log('Tilte similar: %s', title, matches);
+            let title = $(elt).text().trim();
+
+            if (debug) console.log('Similar: %s', title);
             // On decode les HTMLEntities dans les titres des similaires
-            if (matches && matches.length > 0) {
+            if (/&#/.test(title)) {
                 title = $('<textarea />').html(title).text();
                 // On en profite pour mettre à jour le titre du similaire
                 $(elt).text(title);
             }
             // On effectue une recherche par titre pour chaque serie sur l'API BetaSeries
-            callBetaSeries(function(error, data) {
-                if (error != null) return;
+            callBetaSeries('GET', type, 'search', {title: title})
+            .then(function(data) {
                 /* Si nous n'avons qu'un seul résultat */
                 if (data[type].length == 1) {
+                    // On stocke la ressource en cache
+                    if (! resources[type].hasOwnProperty(data[type][0].id)) {
+                        if (debug) console.log('Ajout de la ressource (%s: %d) en cache', type, data[type][0].id);
+                        resources[type][data[type][0].id] = {'show': data[type][0]};
+                    }
+                    // On ajoute le bandeau Vu sur l'image du similar
                     addBandeau(elt, data[type][0].user.status, data[type][0].notes);
                 }
                 // Si il y a plusieurs résultats de recherche
@@ -627,16 +959,18 @@ dialog.dialog-content {
                         // On verifie la concordance avec l'URL de la serie
                         if (data[type][i].resource_url === url) {
                             if (debug) console.log('Concordance trouvée');
+                            // On stocke la ressource en cache
+                            if (! resources[type].hasOwnProperty(data[type][i].id)) {
+                                if (debug) console.log('Ajout de la ressource (%s: %d) en cache', type, data[type][i].id);
+                                resources[type][data[type][i].id] = {'show': data[type][i]};
+                            }
+                            // On ajoute le bandeau Vu sur l'image du similar
                             addBandeau(elt, data[type][i].user.status, data[type][i].notes);
                             break;
                         }
                     }
                 }
-                if (index == len - 1) {
-                    if (debug) console.log('call usRenderStars');
-                    usRenderStars();
-                }
-            }, 'GET', type, 'search', {title: title});
+            });
         });
 
         /*
@@ -644,17 +978,22 @@ dialog.dialog-content {
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            let img = '<div id="updateSimilarsBlock"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
+            $('#similars .blockTitles').append(`
+            <div id="updateSimilarsBlock">
+              <img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/>
+            </div>`);
+            // Si le bouton d'ajout de similaire est présent, on ajoute une marge
             if ($('#similars button.blockTitle-subtitle').length == 1) {
-                img = '<div id="updateSimilarsBlock" style="margin-left:10px;"><img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/></div>';
+                $('#updateSimilarsBlock').css('margin-left', '10px');
             }
-            $('#similars .blockTitles').append(img);
             // On ajoute la gestion de l'event click sur le bouton
             $('.updateSimilars').click(function(e) {
                 e.stopPropagation();
                 e.preventDefault();
                 // On supprime les coins viewed
                 $('.bandViewed').remove();
+                // On supprime les notes stars
+                $('.stars-outer').remove();
                 // On met à jour les series similaires
                 similarsViewed();
             });
@@ -670,18 +1009,19 @@ dialog.dialog-content {
          * @return void
          */
         function addBandeau(elt, status, objNote) {
+            let $elt = $(elt);
             // Si la série a été vue ou commencée
             if (status && status > 0) {
                 // On ajoute le bandeau "Viewed"
-                $(elt).siblings('a').prepend(
+                $elt.siblings('a').prepend(
                     '<img src="//www.aufilelec.fr/static/viewed.png" class="bandViewed"/>'
                 );
             }
-            let note = parseFloat(objNote.mean).toPrecision(2),
-                votants = objNote.total;
-            $(elt).after(
-                `<div class="similars-stars"><span class="stars js-render-stars us-render-stars" data-note="${note}" data-votants="${votants}"></span></div>`
+            let note = parseFloat(objNote.mean).toFixed(2);
+            $elt.after(
+                `<div class="stars-outer"><div class="stars-inner"></div></div>`
             );
+            usRenderStars($('.stars-inner', $elt.parent()), note, objNote.total);
         }
     }
 
@@ -698,49 +1038,117 @@ dialog.dialog-content {
         series.each(function(index, serie) {
             let id = $(serie).data('id'),
                 infos = $($(serie).find('.infos'));
-            callBetaSeries(function(error, data) {
-                if (error != null) return;
+            callBetaSeries('GET', 'shows', 'display', {'id': id})
+            .then(function(data) {
                 let statut = (data.show.status == 'Continuing') ? 'En cours' : 'Terminée';
                 infos.append(`<br>Statut: ${statut}`);
-            }, 'GET', 'shows', 'display', {'id': id});
+            });
+        });
+    }
+
+    /**
+     * Fonction d'authentification sur l'API BetaSeries
+     *
+     * @param Function cb Fonction de callback
+     */
+    function authenticate() {
+        if (debug) console.log('authenticate');
+        $('body').append(`
+            <div id="containerIframe">
+              <iframe id="userscript"
+                      name="userscript"
+                      title="Connexion à BetaSeries"
+                      width="50%"
+                      height="400"
+                      src="https://betaseries.aufilelec.fr/"
+                      style="background:white;margin:auto;">
+              </iframe>
+            </div>'
+        `);
+        return new Promise((resolve, reject) => {
+            window.addEventListener("message", receiveMessage, false);
+            function receiveMessage(event) {
+                if (debug) console.log('receiveMessage', event);
+                if (event.origin !== "https://betaseries.aufilelec.fr") {
+                    if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
+                    reject('event.origin is not betaseries.aufilelec.fr');
+                    return;
+                }
+                let msg = event.data.message;
+                if (msg == 'access_token') {
+                    betaseries_api_user_token = event.data.value;
+                    $('#containerIframe').remove();
+                    //cb(msg);
+                    resolve(msg);
+                } else {
+                    if (debug) console.error('Erreur de récuperation du token', event);
+                    reject(event.data);
+                }
+            }
         });
     }
 
     /**
      * Fonction servant à appeler l'API de BetaSeries
      *
-     * @function cb       Fonction de callback(error, data)
-     * @string   type     Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-     * @string   methode  La ressource de l'API (ex: shows, seasons, episodes...)
-     * @string   fonction La fonction à appliquer sur la ressource (ex: search, list...)
-     * @object   args     Un objet (clef, valeur) à transmettre dans la requête
-     * @return   void
+     * @param function cb       Fonction de callback(error, data)
+     * @param string   type     Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
+     * @param string   methode  La ressource de l'API (ex: shows, seasons, episodes...)
+     * @param string   fonction La fonction à appliquer sur la ressource (ex: search, list...)
+     * @param object   args     Un objet (clef, valeur) à transmettre dans la requête
+     * @param bool     nocache  Indique si on doit utiliser le cache ou non (Par défaut: false)
+     * @return   Promise
      */
-    function callBetaSeries(cb, type, methode, fonction, args) {
-        let url = 'https://api.betaseries.com/' + methode + '/' + fonction,
+    function callBetaSeries(type, methode, fonction, args, nocache = false) {
+        let urlAPI = 'https://api.betaseries.com/' + methode + '/' + fonction,
             headers = {
+                'Accept': 'application/json',
                 'X-BetaSeries-Version': '3.0',
                 'x-betaseries-token': betaseries_api_user_token,
                 'x-betaseries-key': betaseries_api_user_key
             };
-        if (type == 'GET' & args != null && args.length > 0) {
-            url = '?';
-            for (const [key, value] of Object.entries(args)) {
-                url += '&' + key + '=' + value;
-            }
+
+        if (type == 'GET' && args && 'id' in args)
+            if (debug) console.log('callBetaSeries {type: %s, methode: %s, fonction: %s, nocache: %s}', type, methode, fonction, nocache ? 'true' : 'false', args, resources[methode].hasOwnProperty(args.id), resources);
+
+        // On retourne la ressource en cache si elle y est présente
+        if (!nocache && type == 'GET' && args && 'id' in args && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(args.id)) {
+            if (debug) console.log('resource (%s) en cache', methode, resources[methode][args.id]);
+            return new Promise((resolve) => {
+                resolve(resources[methode][args.id]);
+            });
         }
-        $.ajax(url, {
-            method: type,
-            data: args,
-            dataType: 'json',
-            headers: headers,
-            success: function(data) {
-                cb(null, data);
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.error('callBetaSeries error: ', errorThrown, url);
-                cb(textStatus);
-            }
+        return new Promise((resolve, reject) => {
+            $.ajax(urlAPI, {
+                method: type,
+                data: args,
+                dataType: 'json',
+                headers: headers,
+                crossDomain: true
+            }).done(function(data) {
+                // Mise en cache de la ressource
+                if (args && 'id' in args && type == 'GET') {
+                    if (debug) console.log('Stockage de la ressource (%s: %d) en cache', methode, args.id, data);
+                    resources[methode][args.id] = data;
+                }
+                resolve(data);
+            })
+            .fail(function(jqXHR, textStatus) {
+                console.error('callBetaSeries error: ', textStatus, type, urlAPI);
+                if (! jqXHR.responseJSON) {
+                    reject(textStatus);
+                }
+
+                let code = jqXHR.responseJSON.errors[0].code,
+                    text = jqXHR.responseJSON.errors[0].text;
+                if (code == 2005 || (jqXHR.status == 400 && code == 0 && text == "L'utilisateur a déjà marqué cet épisode comme vu.")) {
+                    reject('changeStatus');
+                } else if (code == 2001) {
+                    reject('accessToken');
+                } else {
+                    reject(textStatus);
+                }
+            });
         });
     }
 

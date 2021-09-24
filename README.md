@@ -20,7 +20,9 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ![Case à cocher VU d'un épisode](/img/checkSeen.jpg "Case à cocher VU d'un épisode")
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
 * Ajout des notes sous les titres des similaires
-
+* Ajout du logo de classification TV dans les infos de la ressource (série et film)
+* En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
+* Ajout d'une fonction d'authentification sur le site API BetaSeries, en cas de perte du token sur le site
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série
 
@@ -28,3 +30,6 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ## Futures améliorations possibles
 
+## Dévelopement
+* Utilisation des Promise
+* Mise en cache des ressources, pour limiter les appels à l'API
