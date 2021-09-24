@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.12.0
+// @version      0.12.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -29,7 +29,7 @@ let betaseries_api_user_key = '';
 
 (function($) {
     'use strict';
-    //GM_addStyle(GM_getResourceText("FontAwesome"));
+
     $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />');
 
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
@@ -38,8 +38,7 @@ let betaseries_api_user_key = '';
     let debug = false,
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
-        timer, currentUser,
-        resources = {shows: {}, episodes: {}, movies: {}, members: {}},
+        timer, currentUser, cache = new Cache(),
         // Equivalences des classifications TV
         ratings = {
             'TV-Y': '',
@@ -59,26 +58,30 @@ let betaseries_api_user_key = '';
 
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (regexSerieOrMovie.test(url)) {
-        addRating();
-        removeAds();
-        addStylesheet();
-        decodeTitle();
-        similarsViewed();
-        if (debug) addBtnDev();
-        setTimeout(addNumberVoters, 500);
-        // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
-        timer = setInterval(function() {
-            addBtnWatchedToEpisode();
-        }, 500);
+        // On récupère d'abord la ressource courante pour la mettre en cache
+        getCurrentResource().then(function() {
+            removeAds();  // On retire les pubs
+            addStylesheet();  // On ajoute le CSS
+            decodeTitle();  // On décode le titre de la ressource
+            addRating();  // On ajoute la classification TV de la ressource courante
+            similarsViewed();  // On s'occupe des ressources similaires
+            if (debug) addBtnDev();  // On ajoute le bouton de Dev
+            addNumberVoters();  // On ajoute le nombre de votes à la note
+            // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
+            timer = setInterval(function() {
+                addBtnWatchedToEpisode();
+            }, 500);
+        });
     }
     // Fonctions appeler pour la page de gestion des series
-    if (regexGestionSeries.test(url)) {
+    else if (regexGestionSeries.test(url)) {
         addStatusToGestionSeries();
     }
     // Fonctions appeler sur la page des membres
-    if (regexUser.test(url) && userIdentified) {
+    else if (regexUser.test(url) && userIdentified) {
         removeAds();
         addStylesheet();
+        // On récupère les infos du membre connecté
         getMember()
         .then(function(member) {
             currentUser = member;
@@ -89,8 +92,8 @@ let betaseries_api_user_key = '';
             }
         });
     }
-
-    if (/^\/api\/methodes/.test(url)) {
+    // Fonctions appeler sur les pages des méthodes de l'API
+    else if (/^\/api\/methodes/.test(url)) {
         sommaireDevApi();
     }
 
@@ -217,6 +220,19 @@ let betaseries_api_user_key = '';
     }
 
     /*
+     * Cette fonction permet de stocker la ressource courante
+     * dans le cache, pour être utilisé par les autres fonctions
+     */
+    function getCurrentResource() {
+        if (debug) console.log('getCurrentResource');
+        let type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
+            eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
+            fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+
+        return callBetaSeries('GET', type + 's', fonction, {'id': eltId});
+    }
+
+    /*
      * Ajoute la classification dans les détails de la ressource
      */
     function addRating() {
@@ -261,8 +277,9 @@ let betaseries_api_user_key = '';
     }
 
     /**
-     * @function cb    Fonction de callback retournant le membre demandé
-     * @number   id    Identifiant du membre (par défaut: le membre connecté)
+     * Retourne les infos d'un membre
+     *
+     * @param Number   id    Identifiant du membre (par défaut: le membre connecté)
      * @return void
      */
     function getMember(id = null) {
@@ -273,7 +290,7 @@ let betaseries_api_user_key = '';
         if (id) args.id = id;
         return new Promise((resolve) => {
             callBetaSeries('GET', 'members', 'infos', args)
-                .then(function(data) {
+            .then(function(data) {
                 // On retourne les infos du membre
                 resolve(data.member);
             });
@@ -629,6 +646,7 @@ dialog.dialog-content {
 }
 ]]></>).toString());
         /* jshint ignore:end */
+        // Fin
     }
 
     /*
@@ -663,7 +681,7 @@ dialog.dialog-content {
     }
 
     /*
-     * Ajoute le nombre de votants à la note de la série
+     * Ajoute le nombre de votes à la note de la ressource
      */
     function addNumberVoters() {
         // On sort si la clé d'API n'est pas renseignée
@@ -679,7 +697,7 @@ dialog.dialog-content {
         // On recupère les détails de la ressource
         callBetaSeries('GET', type + 's', fonction, {'id': eltId})
         .then((data) => {
-            if (debug) console.log('addNumberVoters callBetaSeries', data);
+            //if (debug) console.log('addNumberVoters callBetaSeries', data);
             let note;
             if (type == 'show' || type == 'movie') note = data[type].notes;
             else note = data[type].note;
@@ -717,11 +735,11 @@ dialog.dialog-content {
     }
 
     /**
-     * Crée les étoiles de la note
+     * Crée les étoiles pour le rendu de la note
      *
      * @param Object $elt     Objet JQuery
      * @param number note     La note de la ressource
-     * @param number total    Le nombre de votants
+     * @param number total    Le nombre de votes
      */
     function usRenderStars($elt, note, total) {
         changeTitleNote($elt.parent('.stars-outer'), note, total);
@@ -745,14 +763,18 @@ dialog.dialog-content {
         let seasons = $('#seasons div[role="button"]'),
             vignettes = $('#episodes .slide__image');
 
-        if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
         // On vérifie que les saisons et les episodes soient chargés sur la page
         if (vignettes.length > 0) {
             // On supprime le timer Interval
             clearInterval(timer);
+            // On ajoute les cases à cocher sur les vignettes courantes
+            addCheckbox();
         } else {
+            if (debug) console.log('En attente du chargement des vignettes');
             return;
         }
+        if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
+
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckbox() {
             vignettes = getVignettes();
@@ -831,61 +853,59 @@ dialog.dialog-content {
                         });
                     }
                 });
-                function changeStatus($elt, newStatus) {
-                    if (newStatus == 'seen') {
-                        let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
-                        $elt.css('background', background); // On ajoute le check dans la case à cocher
-                        $elt.addClass('seen'); // On ajoute la classe 'seen'
-                        // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
-                        $elt.parent('div.slide__image').find('img').removeAttr('style');
-                        $elt.parent('div.slide_flex').removeClass('slide--notSeen');
-                        updateProgressBar(-1);
+            });
+            // Change le statut de la vignette
+            function changeStatus($elt, newStatus) {
+                if (newStatus == 'seen') {
+                    let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
+                    $elt.css('background', background); // On ajoute le check dans la case à cocher
+                    $elt.addClass('seen'); // On ajoute la classe 'seen'
+                    // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
+                    $elt.parent('div.slide__image').find('img').removeAttr('style');
+                    $elt.parent('div.slide_flex').removeClass('slide--notSeen');
+                    updateProgressBar(-1);
 
-                        if ($('#episodes .seen').length == len) {
-                            $('div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
-                            $('div.slide--current').removeClass('slide--notSeen');
-                            $('div.slide--current').addClass('slide--seen');
-                        }
-                    } else {
-                        $elt.css('background', 'none'); // On enlève le check dans la case à cocher
-                        $elt.removeClass('seen'); // On supprime la classe 'seen'
-                        // On remet le voile masquant sur la vignette de l'épisode
-                        $elt.parent('div.slide__image').find('img').attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                    if ($('#episodes .seen').length == len) {
+                        $('div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
+                        $('div.slide--current').removeClass('slide--notSeen');
+                        $('div.slide--current').addClass('slide--seen');
+                    }
+                } else {
+                    $elt.css('background', 'none'); // On enlève le check dans la case à cocher
+                    $elt.removeClass('seen'); // On supprime la classe 'seen'
+                    // On remet le voile masquant sur la vignette de l'épisode
+                    $elt.parent('div.slide__image').find('img').attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
 
-                        let contVignette = $elt.parent('div.slide_flex');
-                        if (!contVignette.hasClass('slide--notSeen')) {
-                            contVignette.addClass('slide--notSeen');
-                        }
-                        updateProgressBar(1);
+                    let contVignette = $elt.parent('div.slide_flex');
+                    if (!contVignette.hasClass('slide--notSeen')) {
+                        contVignette.addClass('slide--notSeen');
+                    }
+                    updateProgressBar(1);
 
-                        if ($('#episodes .seen').length < len) {
-                            $('div.slide--current .checkSeen').remove();
-                            $('div.slide--current').addClass('slide--seen');
-                            $('div.slide--current').addClass('slide--notSeen');
-                        }
+                    if ($('#episodes .seen').length < len) {
+                        $('div.slide--current .checkSeen').remove();
+                        $('div.slide--current').addClass('slide--seen');
+                        $('div.slide--current').addClass('slide--notSeen');
                     }
                 }
-                function updateProgressBar(i) {
-                    let showId = $('#reactjs-show-actions').data('show-id'),
-                        progBar = $('.progressBarShow'),
-                        show = getCache('shows', showId).show,
-                        nbEpisodes = parseInt(show.episodes, 10),
-                        remaining = i + show.user.remaining,
-                        nbSeen = nbEpisodes - remaining,
-                        status = (nbSeen * 100) / nbEpisodes;
-                    if (debug) console.log('updateProgessBar {showId: %d, episodes: %d, nbSeen: %d, indice: %d, remaining: %d, calcul: %d, status: %f}',
-                                           show.id, nbEpisodes, nbSeen, i, show.user.remaining, remaining, status);
-                    // On met à jour les infos dans l'objet ressource
-                    show.user.remaining = remaining;
-                    show.user.status = parseFloat(status.toFixed(1));
-                    addCache('shows', showId, {'show': show});
-                    // On met à jour la barre de progression
-                    progBar.css('width', status.toFixed(1) + '%');
-                }
-            });
+            }
+            function updateProgressBar(i) {
+                let showId = $('#reactjs-show-actions').data('show-id'),
+                    progBar = $('.progressBarShow'),
+                    show = cache.get('shows', showId).show,
+                    nbEpisodes = parseInt(show.episodes, 10),
+                    remaining = i + show.user.remaining,
+                    nbSeen = nbEpisodes - remaining,
+                    status = (nbSeen * 100) / nbEpisodes;
+                // On met à jour les infos dans l'objet ressource
+                show.user.remaining = remaining;
+                show.user.status = parseFloat(status.toFixed(1));
+                cache.set('shows', showId, {'show': show});
+                // On met à jour la barre de progression
+                progBar.css('width', status.toFixed(1) + '%');
+            }
         }
-        // On ajoute les cases à cocher sur les vignettes courantes
-        addCheckbox();
+
         // On ajoute un event sur le changement de saison
         seasons.click(function() {
             //e.stopPropagation();
@@ -893,7 +913,12 @@ dialog.dialog-content {
             if (debug) console.log('season click');
             // On attend que les vignettes de la saison choisie soient chargées
             timer = setInterval(function() {
-                if (getVignettes().length > 0) {
+                let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
+                    vigns = getVignettes();
+                // On vérifie qu'il y a des vignettes et que leur nombre soit égale
+                // ou supérieur au nombre d'épisodes indiqués dans la saison
+                if (vigns.length > 0 && vigns.length >= len) {
+                    if (debug) console.log('Season click clear timer', vigns.length, len);
                     // On supprime le timer Interval
                     clearInterval(timer);
                     addCheckbox();
@@ -939,7 +964,7 @@ dialog.dialog-content {
             let $elt = $(elt),
                 title = $elt.text().trim();
 
-            if (debug) console.log('Similar: %s', title);
+            //if (debug) console.log('Similar: %s', title);
             // On decode les HTMLEntities dans les titres des similaires
             decodeTitle($elt);
             // On effectue une recherche par titre pour chaque serie sur l'API BetaSeries
@@ -947,26 +972,28 @@ dialog.dialog-content {
             .then(function(data) {
                 /* Si nous n'avons qu'un seul résultat */
                 if (data[type].length == 1) {
+                    // TODO: Stocker les similaires en cache pour afficher une popup au survol des similaires
                     // On stocke la ressource en cache
-                    if (! hasCache(type, data[type][0].id)) {
-                        addCache(type, data[type][0].id, {'show': data[type][0]});
-                    }
+                    /*if (! cache.has(type, data[type][0].id)) {
+                        cache.set(type, data[type][0].id, {'show': data[type][0]} );
+                    }*/
                     // On ajoute le bandeau Vu sur l'image du similar
                     addBandeau($elt, data[type][0].user.status, data[type][0].notes);
                 }
                 // Si il y a plusieurs résultats de recherche
                 else if (data[type].length > 1) {
                     let url = $elt.siblings('a').attr('href');
-                    if (debug) console.log('URL de la serie: %s', url);
+                    //if (debug) console.log('URL de la serie: %s', url);
                     for (let i = 0; i < data[type].length; i++) {
-                        if (debug) console.log('URL similar: %s', data[type][i].resource_url);
+                        //if (debug) console.log('URL similar: %s', data[type][i].resource_url);
                         // On verifie la concordance avec l'URL de la serie
                         if (data[type][i].resource_url === url) {
-                            if (debug) console.log('Concordance trouvée');
+                            //if (debug) console.log('Concordance trouvée');
+                            // TODO: Stocker les similaires en cache pour afficher une popup au survol des similaires
                             // On stocke la ressource en cache
-                            if (! hasCache(type, data[type][i].id)) {
-                                addCache(type, data[type][i].id, {'show': data[type][i]});
-                            }
+                            /*if (! cache.has(type, data[type][i].id)) {
+                                cache.set(type, data[type][i].id, {'show': data[type][i]} );
+                            }*/
                             // On ajoute le bandeau Vu sur l'image du similar
                             addBandeau($elt, data[type][i].user.status, data[type][i].notes);
                             break;
@@ -981,6 +1008,7 @@ dialog.dialog-content {
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
+            // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
             <div id="updateSimilarsBlock">
               <img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/>
@@ -1003,12 +1031,12 @@ dialog.dialog-content {
         }
 
         /**
-         * Fonction d'ajout du bandeau "Viewed" sur les images des similaire
+         * Fonction d'ajout du bandeau "Viewed" sur les images des similaires
          * si la série a été vue totalement/partiellement
          *
-         * @object elt      Noeud HTML contenant le titre du similaire
-         * @number status   Le statut de vu de la serie pour l'utilisateur courant
-         * @object objNote  Objet note contenant la note moyenne et le nombre total de votes
+         * @param object elt      Objet jQuery du Noeud HTML contenant le titre du similaire
+         * @param number status   Le statut de vu de la serie pour l'utilisateur courant
+         * @param object objNote  Objet note contenant la note moyenne et le nombre total de votes
          * @return void
          */
         function addBandeau(elt, status, objNote) {
@@ -1055,7 +1083,7 @@ dialog.dialog-content {
     /**
      * Fonction d'authentification sur l'API BetaSeries
      *
-     * @param Function cb Fonction de callback
+     * @return Promise
      */
     function authenticate() {
         if (debug) console.log('authenticate');
@@ -1094,48 +1122,9 @@ dialog.dialog-content {
         });
     }
 
-    function getCache(methode, id) {
-        if (methode && id && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(id)) {
-            if (debug) console.log('Retourne la ressource (%s: %d) du cache', methode, id);
-            return resources[methode][id];
-        }
-        return null;
-    }
-
-    function hasCache(methode, id) {
-        return (methode && id && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(id));
-    }
-
-    function addCache(methode, id, data) {
-        if (debug) console.log('Ajout de la ressource (%s: %d) en cache', methode, id, data);
-        if (methode && id && resources.hasOwnProperty(methode)) {
-            resources[methode][id] = data;
-            return true;
-        }
-        return false;
-    }
-
-    function removeCache(methode, id) {
-        if (debug) console.log('Suppression de la ressource[%s]: %d du cache', methode, id);
-        if (methode && id && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(id)) {
-            return delete resources[methode][id];
-        }
-        return false;
-    }
-
-    function clearCache(methode = null) {
-        if (debug) console.log('Nettoyage du cache', methode);
-        if (methode) {
-            resources[methode] = {};
-        } else {
-            resources = {shows: {}, episodes: {}, movies: {}, members: {}};
-        }
-    }
-
     /**
      * Fonction servant à appeler l'API de BetaSeries
      *
-     * @param function cb       Fonction de callback(error, data)
      * @param string   type     Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
      * @param string   methode  La ressource de l'API (ex: shows, seasons, episodes...)
      * @param string   fonction La fonction à appliquer sur la ressource (ex: search, list...)
@@ -1153,10 +1142,9 @@ dialog.dialog-content {
             };
 
         // On retourne la ressource en cache si elle y est présente
-        if (!nocache && type == 'GET' && args && 'id' in args && hasCache(methode, args.id)) {
-            if (debug) console.log('resource (%s) en cache', methode, getCache(methode, args.id));
+        if (! nocache && type == 'GET' && args && 'id' in args && cache.has(methode, args.id)) {
             return new Promise((resolve) => {
-                resolve(getCache(methode, args.id));
+                resolve(cache.get(methode, args.id));
             });
         }
         return new Promise((resolve, reject) => {
@@ -1169,7 +1157,7 @@ dialog.dialog-content {
             }).done(function(data) {
                 // Mise en cache de la ressource
                 if (args && 'id' in args && type == 'GET') {
-                    addCache(methode, args.id, data);
+                    cache.set(methode, args.id, data);
                 }
                 resolve(data);
             })
@@ -1190,6 +1178,94 @@ dialog.dialog-content {
                 }
             });
         });
+    }
+
+    function Cache() {
+
+        var data = {shows: {}, episodes: {}, movies: {}, members: {}};
+        var self = this;
+
+        /**
+         * Returns an Array of all currently set keys.
+         * @returns {Array} cache keys
+         */
+        this.keys = function(type = null) {
+            if (! type) return Object.keys(data);
+            return Object.keys(data[type]);
+        };
+
+        /**
+         * Checks if a key is currently set in the cache.
+         * @param key the key to look for
+         * @returns {boolean} true if set, false otherwise
+         */
+        this.has = function(type, key) {
+            return (data.hasOwnProperty(type) && data[type].hasOwnProperty(key));
+        };
+
+        /**
+         * Clears all cache entries.
+         */
+        this.clear = function(type = null) {
+            if (debug) console.log('Nettoyage du cache', type);
+            // On nettoie juste un type de ressource
+            if (type) {
+                for (let key in data[type])
+                    delete data[type][key];
+            }
+            // On nettoie l'ensemble du cache
+            else {
+                for (type in data)
+                    self.clear(type);
+            }
+        };
+
+        /**
+         * Gets the cache entry for the given key.
+         * @param key the cache key
+         * @returns {*} the cache entry if set, or undefined otherwise
+         */
+        this.get = function(type, key) {
+            if (self.has(type, key)) {
+                if (debug) console.log('Retourne la ressource (%s: %d) du cache', type, key);
+                return data[type][key];
+            }
+            return null;
+        };
+
+        /**
+         * Returns the cache entry if set, or a default value otherwise.
+         * @param key the key to retrieve
+         * @param def the default value to return if unset
+         * @returns {*} the cache entry if set, or the default value provided.
+         */
+        this.getOrDefault = function(type, key, def) {
+            if (debug) console.log('Retourne la ressource (%s: %d) du cache ou valeur par défaut', type, key, def);
+            return self.has(type, key) ? self.get(type, key) : def;
+        };
+
+        /**
+         * Sets a cache entry with the provided key and value.
+         * @param key the key to set
+         * @param value the value to set
+         */
+        this.set = function(type, key, value) {
+            if (debug) console.log('Ajout de la ressource (%s: %d) en cache', type, key, value);
+            if (data.hasOwnProperty(type)) {
+                data[type][key] = value;
+            }
+        };
+
+        /**
+         * Removes the cache entry for the given key.
+         * @param key the key to remove
+         */
+        this.remove = function(type, key) {
+            if (debug) console.log('Suppression de la ressource[%s]: %d du cache', type, key);
+            if (self.has(type, key)) {
+                delete data[type][key];
+            }
+        };
     }
 
     const tableCSS = `
