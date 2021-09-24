@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.12.2
+// @version      0.12.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -954,12 +954,12 @@ let betaseries_api_user_key = '';
             resId = $('#reactjs-' + type + '-actions').data(type + '-id'), // Identifiant de la ressource
             show = cache.get(type + 's', resId).show;
 
-        if (debug) console.log('nb similars: %d', show.similars);
+        if (debug) console.log('nb similars: %d', parseInt(show.similars, 10));
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
 
-        callBetaSeries('GET', type + 's', 'similars', {'id': resId, 'details': true}, true)
+        callBetaSeries('GET', type + 's', 'similars', {'thetvdb_id': show.thetvdb_id, 'details': true})
         .then(function(data) {
             for (let s = 0; s < data.similars.length; s++) {
                 let $elt = $($('#similars .slide__title').get(s)),
@@ -1099,7 +1099,7 @@ let betaseries_api_user_key = '';
      * @param bool     nocache  Indique si on doit utiliser le cache ou non (Par défaut: false)
      * @return   Promise
      */
-    function callBetaSeries(type, methode, fonction, args, nocache = false) {
+    function callBetaSeries(type, methode, fonction, args = {}, nocache = false) {
         let urlAPI = 'https://api.betaseries.com/' + methode + '/' + fonction,
             headers = {
                 'Accept': 'application/json',
