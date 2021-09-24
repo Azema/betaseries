@@ -106,28 +106,27 @@ let betaseries_api_user_key = '';
             len = titles.length,
             ids = [],
             style = `
-.sommaire {
-  border: 1px solid white;
-}
-.maincontent li.liSommaire {
-  margin-left: 30px;
-}
-.fa-chevron-circle-up {
-  cursor: pointer;
-  margin-left: 10px;
-}
-.sommaire .liTitle {
-  margin-bottom: 15px;
-  color: var(--top_color);
-  list-style: none;
-  font-size: 1.3em;
-}
-.linkSommaire {
-  color: var(--link_color);
-  text-decoration: none;
-  cursor: pointer;
-}
-`;
+                .sommaire {
+                  border: 1px solid white;
+                }
+                .maincontent li.liSommaire {
+                  margin-left: 30px;
+                }
+                .fa-chevron-circle-up {
+                  cursor: pointer;
+                  margin-left: 10px;
+                }
+                .sommaire .liTitle {
+                  margin-bottom: 15px;
+                  color: var(--top_color);
+                  list-style: none;
+                  font-size: 1.3em;
+                }
+                .linkSommaire {
+                  color: var(--link_color);
+                  text-decoration: none;
+                  cursor: pointer;
+                }`;
         GM_addStyle(style);
         titles.each((i, title) => {
             // ajouter les ID aux titres des methodes, ainsi qu'un chevron pour renvoyer au sommaire
@@ -166,29 +165,29 @@ let betaseries_api_user_key = '';
     function addBtnDev() {
         const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button"><i class="fa fa-2x fa-wrench" aria-hidden="true"></i></button><div class="label">Favoris</div></div>',
               dialogHTML = `
-    <div
-      class="dialog dialog-container table-dark"
-      id="dialog-resource"
-      aria-hidden="true"
-      aria-labelledby="dialog-resource-title"
-    >
-      <div class="dialog-overlay" data-a11y-dialog-hide></div>
-      <div class="dialog-content" role="document" style="width: 80%;">
-        <button
-          data-a11y-dialog-hide
-          class="dialog-close"
-          title="Fermer cette boîte de dialogue"
-          aria-label="Fermer cette boîte de dialogue"
-        >
-          <i class="fa fa-times" aria-hidden="true"></i>
-        </button>
+                <div
+                  class="dialog dialog-container table-dark"
+                  id="dialog-resource"
+                  aria-hidden="true"
+                  aria-labelledby="dialog-resource-title"
+                >
+                  <div class="dialog-overlay" data-a11y-dialog-hide></div>
+                  <div class="dialog-content" role="document" style="width: 80%;">
+                    <button
+                      data-a11y-dialog-hide
+                      class="dialog-close"
+                      title="Fermer cette boîte de dialogue"
+                      aria-label="Fermer cette boîte de dialogue"
+                    >
+                      <i class="fa fa-times" aria-hidden="true"></i>
+                    </button>
 
-        <h1 id="dialog-resource-title">Données de la ressource</h1>
+                    <h1 id="dialog-resource-title">Données de la ressource</h1>
 
-        <div class="data-resource content"></div>
-      </div>
-    </div>
-        `;
+                    <div class="data-resource content"></div>
+                  </div>
+                </div>`;
+
         $('.blockInformations__actions').append(btnHTML);
         $('body').append(dialogHTML);
         const dialog = new A11yDialog(document.querySelector('#dialog-resource')),
@@ -306,40 +305,39 @@ let betaseries_api_user_key = '';
         then(function(member) {
             let otherMember = member;
             const dialogHTML = `
-    <div
-      class="dialog dialog-container table-dark"
-      id="dialog-compare"
-      aria-hidden="true"
-      aria-labelledby="dialog-compare-title"
-    >
-      <div class="dialog-overlay" data-a11y-dialog-hide></div>
-      <div class="dialog-content" role="document">
-        <button
-          data-a11y-dialog-hide
-          class="dialog-close"
-          aria-label="Fermer cette boîte de dialogue"
-        >
-          <i class="fa fa-times" aria-hidden="true"></i>
-        </button>
+                <div
+                  class="dialog dialog-container table-dark"
+                  id="dialog-compare"
+                  aria-hidden="true"
+                  aria-labelledby="dialog-compare-title"
+                >
+                  <div class="dialog-overlay" data-a11y-dialog-hide></div>
+                  <div class="dialog-content" role="document">
+                    <button
+                      data-a11y-dialog-hide
+                      class="dialog-close"
+                      aria-label="Fermer cette boîte de dialogue"
+                    >
+                      <i class="fa fa-times" aria-hidden="true"></i>
+                    </button>
 
-        <h1 id="dialog-compare-title">Comparaison des membres</h1>
+                    <h1 id="dialog-compare-title">Comparaison des membres</h1>
 
-        <div id="compare table-responsive-lg">
-          <table class="table table-dark table-striped">
-            <thead>
-              <tr>
-                <th scope="col" class="col-lg-5">Infos</th>
-                <th scope="col" class="col-lg-3">Vous</th>
-                <th scope="col" class="other-user col-lg-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-                `,
+                    <div id="compare table-responsive-lg">
+                      <table class="table table-dark table-striped">
+                        <thead>
+                          <tr>
+                            <th scope="col" class="col-lg-5">Infos</th>
+                            <th scope="col" class="col-lg-3">Vous</th>
+                            <th scope="col" class="other-user col-lg-3"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>`,
                 trads = {
                     "id": 'ID',
                     "login": "Login",
@@ -439,212 +437,212 @@ let betaseries_api_user_key = '';
     function addStylesheet() {
         /* jshint ignore:start */
         GM_addStyle((<><![CDATA[
-#updateSimilarsBlock {vertical-align: middle;}
-.updateSimilars {
-    cursor:pointer;
-    -webkit-transform: rotate(-45deg) scale(1);
-    transform: rotate(-45deg) scale(1);
-    -webkit-transition: .3s ease-in-out;
-    transition: .3s ease-in-out;
-}
-.updateSimilars:hover {
-    -webkit-transform: rotate(0) scale(1.2);
-    transform: rotate(0) scale(1.2);
-}
-.bandViewed {
-    position:absolute;
-    top:0;
-    left:-64px;
-    z-index:1;
-}
-button.button.blue {
-    padding: 5px 10px;
-    background-color: #556fa3;
-    color: white;
-    border-radius: 4px;
-    font-family: Muli,"Lucida Grande","Trebuchet MS",sans-serif;
-    letter-spacing: .5px;
-    font-size: 12px;
-    line-height: 1.2;
-}
-.stars-outer {
-  display: inline-block;
-  position: relative;
-  font-family: FontAwesome;
-}
+            #updateSimilarsBlock {vertical-align: middle;}
+            .updateSimilars {
+                cursor:pointer;
+                -webkit-transform: rotate(-45deg) scale(1);
+                transform: rotate(-45deg) scale(1);
+                -webkit-transition: .3s ease-in-out;
+                transition: .3s ease-in-out;
+            }
+            .updateSimilars:hover {
+                -webkit-transform: rotate(0) scale(1.2);
+                transform: rotate(0) scale(1.2);
+            }
+            .bandViewed {
+                position:absolute;
+                top:0;
+                left:-64px;
+                z-index:1;
+            }
+            button.button.blue {
+                padding: 5px 10px;
+                background-color: #556fa3;
+                color: white;
+                border-radius: 4px;
+                font-family: Muli,"Lucida Grande","Trebuchet MS",sans-serif;
+                letter-spacing: .5px;
+                font-size: 12px;
+                line-height: 1.2;
+            }
+            .stars-outer {
+              display: inline-block;
+              position: relative;
+              font-family: FontAwesome;
+            }
 
-.stars-outer::before {
-  content: "\f006 \f006 \f006 \f006 \f006";
-}
+            .stars-outer::before {
+              content: "\f006 \f006 \f006 \f006 \f006";
+            }
 
-.stars-inner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  width: 0;
-}
+            .stars-inner {
+              position: absolute;
+              top: 0;
+              left: 0;
+              white-space: nowrap;
+              overflow: hidden;
+              width: 0;
+            }
 
-.stars-inner::before {
-  content: "\f005 \f005 \f005 \f005 \f005";
-  color: #f8ce0b;
-}
+            .stars-inner::before {
+              content: "\f005 \f005 \f005 \f005 \f005";
+              color: #f8ce0b;
+            }
 
-.checkSeen:hover {
-    opacity: 0.5;
-}
+            .checkSeen:hover {
+                opacity: 0.5;
+            }
 
-/* -------------------------------------------------------------------------- *\
- * Styling to make the dialog look like a dialog
- * -------------------------------------------------------------------------- */
+            /* -------------------------------------------------------------------------- *\
+             * Styling to make the dialog look like a dialog
+             * -------------------------------------------------------------------------- */
 
-[data-a11y-dialog-native] .dialog-overlay {
-  display: none;
-}
+            [data-a11y-dialog-native] .dialog-overlay {
+              display: none;
+            }
 
-/**
- * When <dialog> is not supported, its default display is inline which can
- * cause layout issues.
- */
-dialog[open] {
-  display: block;
-}
+            /**
+             * When <dialog> is not supported, its default display is inline which can
+             * cause layout issues.
+             */
+            dialog[open] {
+              display: block;
+            }
 
-.dialog[aria-hidden='true'] {
-  display: none;
-}
+            .dialog[aria-hidden='true'] {
+              display: none;
+            }
 
-.dialog:not([data-a11y-dialog-native]),
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-}
+            .dialog:not([data-a11y-dialog-native]),
+            .dialog-overlay {
+              position: fixed;
+              top: 0;
+              left: 0;
+              bottom: 0;
+              right: 0;
+            }
 
-.dialog {
-  display: flex;
-}
+            .dialog {
+              display: flex;
+            }
 
-.dialog-overlay {
-  background-color: rgba(43, 46, 56, 0.9);
-}
+            .dialog-overlay {
+              background-color: rgba(43, 46, 56, 0.9);
+            }
 
-dialog::backdrop {
-  background-color: rgba(43, 46, 56, 0.9);
-}
+            dialog::backdrop {
+              background-color: rgba(43, 46, 56, 0.9);
+            }
 
-.dialog-content {
-  margin: auto;
-  z-index: 20;
-  position: relative;
-}
+            .dialog-content {
+              margin: auto;
+              z-index: 20;
+              position: relative;
+            }
 
-dialog.dialog-content {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-  color: white;
-}
+            dialog.dialog-content {
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              margin: 0;
+              color: white;
+            }
 
-/* -------------------------------------------------------------------------- *\
- * Extra dialog styling to make it shiny
- * -------------------------------------------------------------------------- */
+            /* -------------------------------------------------------------------------- *\
+             * Extra dialog styling to make it shiny
+             * -------------------------------------------------------------------------- */
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
+            @keyframes fade-in {
+              from {
+                opacity: 0;
+              }
+            }
 
-@keyframes slide-up {
-  from {
-    transform: translateY(10%);
-  }
-}
+            @keyframes slide-up {
+              from {
+                transform: translateY(10%);
+              }
+            }
 
-.dialog-overlay {
-  animation: fade-in 200ms both;
-}
+            .dialog-overlay {
+              animation: fade-in 200ms both;
+            }
 
-.dialog-content {
-  animation: fade-in 400ms 200ms both, slide-up 400ms 200ms both;
-}
+            .dialog-content {
+              animation: fade-in 400ms 200ms both, slide-up 400ms 200ms both;
+            }
 
-dialog.dialog-content {
-  animation: fade-in 400ms 200ms both;
-}
+            dialog.dialog-content {
+              animation: fade-in 400ms 200ms both;
+            }
 
-.dialog-content {
-  padding: 1em;
-  max-width: 90%;
-  width: 600px;
-  border-radius: 2px;
-}
+            .dialog-content {
+              padding: 1em;
+              max-width: 90%;
+              width: 600px;
+              border-radius: 2px;
+            }
 
-@media screen and (min-width: 700px) {
-  .dialog-content {
-    padding: 2em;
-    font-size: 1.2em;
-  }
-}
+            @media screen and (min-width: 700px) {
+              .dialog-content {
+                padding: 2em;
+                font-size: 1.2em;
+              }
+            }
 
-.dialog h1 {
-  margin: 0;
-  font-size: 1.25em;
-  padding-left: 20px;
-}
+            .dialog h1 {
+              margin: 0;
+              font-size: 1.25em;
+              padding-left: 20px;
+            }
 
-.dialog-close {
-  position: absolute;
-  top: 0.5em;
-  right: 0.5em;
-  border: 0;
-  padding: 0;
-  background-color: transparent;
-  font-weight: bold;
-  font-size: 1.25em;
-  width: 1.2em;
-  height: 1.2em;
-  text-align: center;
-  cursor: pointer;
-  transition: 0.15s;
-  color: white;
-}
+            .dialog-close {
+              position: absolute;
+              top: 0.5em;
+              right: 0.5em;
+              border: 0;
+              padding: 0;
+              background-color: transparent;
+              font-weight: bold;
+              font-size: 1.25em;
+              width: 1.2em;
+              height: 1.2em;
+              text-align: center;
+              cursor: pointer;
+              transition: 0.15s;
+              color: white;
+            }
 
-@media screen and (min-width: 700px) {
-  .dialog-close {
-    top: 2em;
-    right: 3em;
-  }
-}
-.renderjson a              { text-decoration: none; }
-.renderjson .disclosure    { color: crimson;
-                             font-size: 150%; }
-.renderjson .syntax        { color: grey; }
-.renderjson .string        { color: red; }
-.renderjson .number        { color: cyan; }
-.renderjson .boolean       { color: plum; }
-.renderjson .key           { color: lightblue; }
-.renderjson .keyword       { color: lightgoldenrodyellow; }
-.renderjson .object.syntax { color: lightseagreen; }
-.renderjson .array.syntax  { color: lightsalmon; }
+            @media screen and (min-width: 700px) {
+              .dialog-close {
+                top: 2em;
+                right: 3em;
+              }
+            }
+            .renderjson a              { text-decoration: none; }
+            .renderjson .disclosure    { color: crimson;
+                                         font-size: 150%; }
+            .renderjson .syntax        { color: grey; }
+            .renderjson .string        { color: red; }
+            .renderjson .number        { color: cyan; }
+            .renderjson .boolean       { color: plum; }
+            .renderjson .key           { color: lightblue; }
+            .renderjson .keyword       { color: lightgoldenrodyellow; }
+            .renderjson .object.syntax { color: lightseagreen; }
+            .renderjson .array.syntax  { color: lightsalmon; }
 
-#containerIframe {
-  position: fixed;
-  top: 80px;
-  left: 0;
-  width: 100%;
-  height: 400px;
-  margin: auto;
-  text-align: center;
-  z-index: 1000;
-}
-]]></>).toString());
+            #containerIframe {
+              position: fixed;
+              top: 80px;
+              left: 0;
+              width: 100%;
+              height: 400px;
+              margin: auto;
+              text-align: center;
+              z-index: 1000;
+            }
+        ]]></>).toString());
         /* jshint ignore:end */
         // Fin
     }
