@@ -187,7 +187,6 @@ let betaseries_api_user_key = '';
                     <div class="data-resource content"></div>
                   </div>
                 </div>`;
-
         $('.blockInformations__actions').append(btnHTML);
         $('body').append(dialogHTML);
         const dialog = new A11yDialog(document.querySelector('#dialog-resource')),
@@ -236,7 +235,7 @@ let betaseries_api_user_key = '';
      */
     function addRating() {
         if (debug) console.log('addRating');
-        let type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
+        let type = getApiResource(url.split('/')[1], true), // Indique de quel type de ressource il s'agit
             eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
             fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
@@ -951,54 +950,24 @@ let betaseries_api_user_key = '';
 
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
-            type = getApiResource(url.split('/')[1], false); // Le type de ressource
+            type = getApiResource(url.split('/')[1], true), // Le type de ressource
+            resId = $('#reactjs-' + type + '-actions').data(type + '-id'), // Identifiant de la ressource
+            show = cache.get(type + 's', resId).show;
 
-        if (debug) console.log('nb similars: %d', similars.length);
+        if (debug) console.log('nb similars: %d', show.similars);
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
 
-        similars.each(function(index, elt) {
-            let $elt = $(elt),
-                title = $elt.text().trim();
-
-            //if (debug) console.log('Similar: %s', title);
-            // On decode les HTMLEntities dans les titres des similaires
-            decodeTitle($elt);
-            // On effectue une recherche par titre pour chaque serie sur l'API BetaSeries
-            callBetaSeries('GET', type, 'search', {title: title})
-            .then(function(data) {
-                /* Si nous n'avons qu'un seul résultat */
-                if (data[type].length == 1) {
-                    // TODO: Stocker les similaires en cache pour afficher une popup au survol des similaires
-                    // On stocke la ressource en cache
-                    /*if (! cache.has(type, data[type][0].id)) {
-                        cache.set(type, data[type][0].id, {'show': data[type][0]} );
-                    }*/
-                    // On ajoute le bandeau Vu sur l'image du similar
-                    addBandeau($elt, data[type][0].user.status, data[type][0].notes);
-                }
-                // Si il y a plusieurs résultats de recherche
-                else if (data[type].length > 1) {
-                    let url = $elt.siblings('a').attr('href');
-                    //if (debug) console.log('URL de la serie: %s', url);
-                    for (let i = 0; i < data[type].length; i++) {
-                        //if (debug) console.log('URL similar: %s', data[type][i].resource_url);
-                        // On verifie la concordance avec l'URL de la serie
-                        if (data[type][i].resource_url === url) {
-                            //if (debug) console.log('Concordance trouvée');
-                            // TODO: Stocker les similaires en cache pour afficher une popup au survol des similaires
-                            // On stocke la ressource en cache
-                            /*if (! cache.has(type, data[type][i].id)) {
-                                cache.set(type, data[type][i].id, {'show': data[type][i]} );
-                            }*/
-                            // On ajoute le bandeau Vu sur l'image du similar
-                            addBandeau($elt, data[type][i].user.status, data[type][i].notes);
-                            break;
-                        }
-                    }
-                }
-            });
+        callBetaSeries('GET', type + 's', 'similars', {'id': resId, 'details': true}, true)
+        .then(function(data) {
+            for (let s = 0; s < data.similars.length; s++) {
+                let $elt = $($('#similars .slide__title').get(s)),
+                    resource = data.similars[s][type];
+                decodeTitle($elt);
+                addBandeau($elt, resource.user.status, resource.notes);
+                cache.set(type, resource.id, {'show': resource});
+            }
         });
 
         /*
@@ -1154,7 +1123,7 @@ let betaseries_api_user_key = '';
                 crossDomain: true
             }).done(function(data) {
                 // Mise en cache de la ressource
-                if (args && 'id' in args && type == 'GET') {
+                if (!nocache && args && 'id' in args && type == 'GET') {
                     cache.set(methode, args.id, data);
                 }
                 resolve(data);
