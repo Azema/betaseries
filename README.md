@@ -23,6 +23,8 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout du logo de classification TV dans les infos de la ressource (série et film)
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
 * Ajout d'une fonction d'authentification sur le site API BetaSeries, en cas de perte du token sur le site
+* Ajout d'un sommaire, sur les pages des méthodes de l'[API](https://www.betaseries.com/api/), avec les liens des différentes fonctions. Ce qui permet de voir toutes les fonctions liées aux méthodes, en début de page.
+
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série
 
