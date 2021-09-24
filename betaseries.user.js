@@ -39,6 +39,7 @@ let betaseries_api_user_key = '';
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, currentUser, cache = new Cache(),
+        counter = 0, // Compteur d'appels à l'API
         // Equivalences des classifications TV
         ratings = {
             'TV-Y': '',
@@ -182,7 +183,7 @@ let betaseries_api_user_key = '';
                       <i class="fa fa-times" aria-hidden="true"></i>
                     </button>
 
-                    <h1 id="dialog-resource-title">Données de la ressource</h1>
+                    <h1 id="dialog-resource-title">Données de la ressource <span style="font-size:0.8em;"></span></h1>
 
                     <div class="data-resource content"></div>
                   </div>
@@ -204,6 +205,7 @@ let betaseries_api_user_key = '';
             .then(function(data) {
                 if (! $dataRes.is(':empty')) $dataRes.empty();
                 $dataRes.append(renderjson.set_show_to_level(2)(data[type]));
+                $('#dialog-resource-title span').empty().text('(' + counter + ' appels API)');
                 dialog.show();
             });
         });
@@ -1143,7 +1145,8 @@ let betaseries_api_user_key = '';
                 } else {
                     reject(textStatus);
                 }
-            });
+            })
+            .always(function() {counter++;});
         });
     }
 
