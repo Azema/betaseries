@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.11.0
+// @version      0.12.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -29,6 +29,7 @@ let betaseries_api_user_key = '';
 
 (function($) {
     'use strict';
+    //GM_addStyle(GM_getResourceText("FontAwesome"));
     $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />');
 
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
@@ -37,7 +38,7 @@ let betaseries_api_user_key = '';
     let debug = false,
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
-        timer, currentUser, mock = function() {},
+        timer, currentUser,
         resources = {shows: {}, episodes: {}, movies: {}, members: {}},
         // Equivalences des classifications TV
         ratings = {
@@ -227,9 +228,15 @@ let betaseries_api_user_key = '';
         callBetaSeries('GET', type + 's', fonction, {'id': eltId})
         .then(function(data) {
             if (data[type].hasOwnProperty('rating')) {
-                // On ajoute la classification
-                let html = '<li id="rating"><strong>Classification</strong><img src="' + ratingImg(equivRating(data[type].rating)) + '"/></li>';
-                $('.blockInformations__details').append(html);
+                let imgRating = ratingImg(equivRating(data[type].rating));
+                if (imgRating != '') {
+                    // On ajoute la classification
+                    $('.blockInformations__details')
+                    .append(
+                        '<li id="rating"><strong>Classification</strong><img src="' +
+                        imgRating + '"/></li>'
+                    );
+                }
             }
         });
 
@@ -627,12 +634,12 @@ dialog.dialog-content {
     /*
      * Decode les HTMLEntities dans le titre
      */
-    function decodeTitle() {
-        let theString = $('.blockInformations__title').text(),
-            matches = theString.match(/&#/);
+    function decodeTitle($eltTitle = null) {
+        let $elt = ($eltTitle && $eltTitle.length > 0) ? $eltTitle : $('.blockInformations__title'),
+            title = $elt.text();
 
-        if (matches && matches.length > 0) {
-            $('.blockInformations__title').text($('<textarea />').html(theString).text());
+        if (/&#/.test(title)) {
+            $elt.text($('<textarea />').html(title).text());
         }
     }
 
@@ -861,7 +868,7 @@ dialog.dialog-content {
                 function updateProgressBar(i) {
                     let showId = $('#reactjs-show-actions').data('show-id'),
                         progBar = $('.progressBarShow'),
-                        show = resources.shows[showId].show,
+                        show = getCache('shows', showId).show,
                         nbEpisodes = parseInt(show.episodes, 10),
                         remaining = i + show.user.remaining,
                         nbSeen = nbEpisodes - remaining,
@@ -869,8 +876,9 @@ dialog.dialog-content {
                     if (debug) console.log('updateProgessBar {showId: %d, episodes: %d, nbSeen: %d, indice: %d, remaining: %d, calcul: %d, status: %f}',
                                            show.id, nbEpisodes, nbSeen, i, show.user.remaining, remaining, status);
                     // On met à jour les infos dans l'objet ressource
-                    resources.shows[show.id].show.user.remaining = remaining;
-                    resources.shows[show.id].show.user.status = parseFloat(status.toFixed(1));
+                    show.user.remaining = remaining;
+                    show.user.status = parseFloat(status.toFixed(1));
+                    addCache('shows', showId, {'show': show});
                     // On met à jour la barre de progression
                     progBar.css('width', status.toFixed(1) + '%');
                 }
@@ -928,31 +936,27 @@ dialog.dialog-content {
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
 
         similars.each(function(index, elt) {
-            let title = $(elt).text().trim();
+            let $elt = $(elt),
+                title = $elt.text().trim();
 
             if (debug) console.log('Similar: %s', title);
             // On decode les HTMLEntities dans les titres des similaires
-            if (/&#/.test(title)) {
-                title = $('<textarea />').html(title).text();
-                // On en profite pour mettre à jour le titre du similaire
-                $(elt).text(title);
-            }
+            decodeTitle($elt);
             // On effectue une recherche par titre pour chaque serie sur l'API BetaSeries
             callBetaSeries('GET', type, 'search', {title: title})
             .then(function(data) {
                 /* Si nous n'avons qu'un seul résultat */
                 if (data[type].length == 1) {
                     // On stocke la ressource en cache
-                    if (! resources[type].hasOwnProperty(data[type][0].id)) {
-                        if (debug) console.log('Ajout de la ressource (%s: %d) en cache', type, data[type][0].id);
-                        resources[type][data[type][0].id] = {'show': data[type][0]};
+                    if (! hasCache(type, data[type][0].id)) {
+                        addCache(type, data[type][0].id, {'show': data[type][0]});
                     }
                     // On ajoute le bandeau Vu sur l'image du similar
-                    addBandeau(elt, data[type][0].user.status, data[type][0].notes);
+                    addBandeau($elt, data[type][0].user.status, data[type][0].notes);
                 }
                 // Si il y a plusieurs résultats de recherche
                 else if (data[type].length > 1) {
-                    let url = $(elt).siblings('a').attr('href');
+                    let url = $elt.siblings('a').attr('href');
                     if (debug) console.log('URL de la serie: %s', url);
                     for (let i = 0; i < data[type].length; i++) {
                         if (debug) console.log('URL similar: %s', data[type][i].resource_url);
@@ -960,12 +964,11 @@ dialog.dialog-content {
                         if (data[type][i].resource_url === url) {
                             if (debug) console.log('Concordance trouvée');
                             // On stocke la ressource en cache
-                            if (! resources[type].hasOwnProperty(data[type][i].id)) {
-                                if (debug) console.log('Ajout de la ressource (%s: %d) en cache', type, data[type][i].id);
-                                resources[type][data[type][i].id] = {'show': data[type][i]};
+                            if (! hasCache(type, data[type][i].id)) {
+                                addCache(type, data[type][i].id, {'show': data[type][i]});
                             }
                             // On ajoute le bandeau Vu sur l'image du similar
-                            addBandeau(elt, data[type][i].user.status, data[type][i].notes);
+                            addBandeau($elt, data[type][i].user.status, data[type][i].notes);
                             break;
                         }
                     }
@@ -990,9 +993,9 @@ dialog.dialog-content {
             $('.updateSimilars').click(function(e) {
                 e.stopPropagation();
                 e.preventDefault();
-                // On supprime les coins viewed
+                // On supprime les bandeaux Viewed
                 $('.bandViewed').remove();
-                // On supprime les notes stars
+                // On supprime les notes
                 $('.stars-outer').remove();
                 // On met à jour les series similaires
                 similarsViewed();
@@ -1009,19 +1012,22 @@ dialog.dialog-content {
          * @return void
          */
         function addBandeau(elt, status, objNote) {
-            let $elt = $(elt);
             // Si la série a été vue ou commencée
             if (status && status > 0) {
                 // On ajoute le bandeau "Viewed"
-                $elt.siblings('a').prepend(
+                elt.siblings('a').prepend(
                     '<img src="//www.aufilelec.fr/static/viewed.png" class="bandViewed"/>'
                 );
             }
-            let note = parseFloat(objNote.mean).toFixed(2);
-            $elt.after(
+            // On ajoute le code HTML pour le rendu de la note
+            elt.after(
                 `<div class="stars-outer"><div class="stars-inner"></div></div>`
             );
-            usRenderStars($('.stars-inner', $elt.parent()), note, objNote.total);
+            usRenderStars(
+                $('.stars-inner', elt.parent()),
+                parseFloat(objNote.mean).toFixed(2),
+                objNote.total
+            );
         }
     }
 
@@ -1088,6 +1094,44 @@ dialog.dialog-content {
         });
     }
 
+    function getCache(methode, id) {
+        if (methode && id && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(id)) {
+            if (debug) console.log('Retourne la ressource (%s: %d) du cache', methode, id);
+            return resources[methode][id];
+        }
+        return null;
+    }
+
+    function hasCache(methode, id) {
+        return (methode && id && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(id));
+    }
+
+    function addCache(methode, id, data) {
+        if (debug) console.log('Ajout de la ressource (%s: %d) en cache', methode, id, data);
+        if (methode && id && resources.hasOwnProperty(methode)) {
+            resources[methode][id] = data;
+            return true;
+        }
+        return false;
+    }
+
+    function removeCache(methode, id) {
+        if (debug) console.log('Suppression de la ressource[%s]: %d du cache', methode, id);
+        if (methode && id && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(id)) {
+            return delete resources[methode][id];
+        }
+        return false;
+    }
+
+    function clearCache(methode = null) {
+        if (debug) console.log('Nettoyage du cache', methode);
+        if (methode) {
+            resources[methode] = {};
+        } else {
+            resources = {shows: {}, episodes: {}, movies: {}, members: {}};
+        }
+    }
+
     /**
      * Fonction servant à appeler l'API de BetaSeries
      *
@@ -1108,14 +1152,11 @@ dialog.dialog-content {
                 'x-betaseries-key': betaseries_api_user_key
             };
 
-        if (type == 'GET' && args && 'id' in args)
-            if (debug) console.log('callBetaSeries {type: %s, methode: %s, fonction: %s, nocache: %s}', type, methode, fonction, nocache ? 'true' : 'false', args, resources[methode].hasOwnProperty(args.id), resources);
-
         // On retourne la ressource en cache si elle y est présente
-        if (!nocache && type == 'GET' && args && 'id' in args && resources.hasOwnProperty(methode) && resources[methode].hasOwnProperty(args.id)) {
-            if (debug) console.log('resource (%s) en cache', methode, resources[methode][args.id]);
+        if (!nocache && type == 'GET' && args && 'id' in args && hasCache(methode, args.id)) {
+            if (debug) console.log('resource (%s) en cache', methode, getCache(methode, args.id));
             return new Promise((resolve) => {
-                resolve(resources[methode][args.id]);
+                resolve(getCache(methode, args.id));
             });
         }
         return new Promise((resolve, reject) => {
@@ -1128,8 +1169,7 @@ dialog.dialog-content {
             }).done(function(data) {
                 // Mise en cache de la ressource
                 if (args && 'id' in args && type == 'GET') {
-                    if (debug) console.log('Stockage de la ressource (%s: %d) en cache', methode, args.id, data);
-                    resources[methode][args.id] = data;
+                    addCache(methode, args.id, data);
                 }
                 resolve(data);
             })
