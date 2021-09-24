@@ -31,6 +31,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ![HTMLEntities](/img/HTMLEntities-title.png "HTMLEntities dans le titre")
 
 ## Futures améliorations possibles
+* Afficher les infos de la ressource dans une popup, lors du survol d'un similar
 
 ## Dévelopement
 * Utilisation des [Promise](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Promise)
