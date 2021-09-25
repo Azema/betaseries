@@ -24,7 +24,16 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
 * Ajout d'une fonction d'authentification sur le site API BetaSeries, en cas de perte du token sur le site
 * Ajout d'un sommaire, sur les pages des méthodes de l'[API](https://www.betaseries.com/api/), avec les liens des différentes fonctions. Ce qui permet de voir toutes les fonctions liées aux méthodes, en début de page.
+
 ![Sommaire des méthodes de l'API](/img/sommaireMethodes.png "Sommaire des méthodes de l'API")
+* Ajout d'améliorations sur la page de la console de l'API
+  - Un bouton pour supprimer la ligne de paramètre
+  - Un bouton pour vérouiller la ligne de paramètre
+  - La suppression des paramètres, hors ceux vérouillés, lors du changement de méthode
+  - Un bouton pour afficher/masquer le résultat de la requête
+  - Un clic sur un paramètre, dans la section __documentation__, permet d'ajouter ce paramètre directement
+
+![Console de l'API](/img/console.png "Console de l'API")
 
 ### Corrections
 * Décode les HTMLEntities dans le titre de la série

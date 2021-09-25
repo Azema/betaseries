@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.12.6
+// @version      0.13.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -9,7 +9,7 @@
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
 // @match        https://www.betaseries.com/membre/*
-// @match        https://www.betaseries.com/api/methodes/*
+// @match        https://www.betaseries.com/api/*
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
 // @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js
 // @require      https://cdn.jsdelivr.net/npm/renderjson@1.4.0/renderjson.min.js
@@ -96,8 +96,96 @@ let betaseries_api_user_key = '';
         });
     }
     // Fonctions appeler sur les pages des méthodes de l'API
-    else if (/^\/api\/methodes/.test(url)) {
-        sommaireDevApi();
+    else if (/^\/api/.test(url)) {
+        if (/\/methodes/.test(url))
+            sommaireDevApi();
+        else if (/\/console/.test(url)) {
+            updateApiConsole();
+        }
+    }
+
+    /**
+     * Ajoute des améliorations sur la page de la console de l'API
+     */
+    function updateApiConsole() {
+        // Listener sur le btn nouveau paramètre
+        $('.form-group .btn-btn').prop('onclick', null).off('click').click((e, key) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (debug) console.log('nouveau parametre handler', key);
+            // On ajoute une nouvelle ligne de paramètre
+            newApiParameter();
+            // On insère la clé du paramètre, si elle est présente
+            if (key) {
+                $('input.name:last').val(key);
+                $('input.form-control:last').focus();
+            }
+            addRemoveParamToConsole();
+        });
+        // Listener sur la liste des méthodes
+        $('#method').on('change', (e) => {
+            // On supprime tous les paramètres existants
+            $('#api-params .remove').remove();
+            // En attente de la documentation de l'API
+            timer = setInterval(() => {
+                if ($('#doc code') <= 0) return;
+
+                clearInterval(timer); // On supprime le timer
+                let paramsDoc = $('#doc > ul > li > code');
+                if (debug) console.log('paramsDoc', paramsDoc);
+                paramsDoc.css('cursor', 'pointer');
+                // On ajoute la clé du paramètre dans une nouvelle ligne de paramètre
+                paramsDoc.click((e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    $('.form-group .btn-btn').trigger('click', [$(e.currentTarget).text().trim()]);
+                });
+            }, 500);
+        });
+        // Ajoute un cadenas vérouillé au paramètre 'Version' non-modifiable
+        $('.api-params:first').append('<i class="fa fa-lock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:not-allowed;" aria-hidden="true"></i>');
+        addRemoveParamToConsole();
+        addToggleShowResult();
+        /**
+         * On ajoute un bouton pour supprimer la ligne d'un paramètre
+         */
+        function addRemoveParamToConsole() {
+            $('.api-params:not(.remove):not(:first)')
+                .append('<i class="remove-input fa fa-minus-circle fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
+                .append('<i class="lock-param fa fa-unlock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
+                .addClass('remove');
+            $('.remove-input').click((e) => {
+                $(e.currentTarget).parent('.api-params').remove();
+            });
+            $('.lock-param').click((e) => {
+                let self = $(e.currentTarget);
+                if (self.hasClass('fa-unlock')) {
+                    self.removeClass('fa-unlock').addClass('fa-lock');
+                    self.parent('.api-params').removeClass('remove');
+                } else {
+                    self.removeClass('fa-lock').addClass('fa-unlock')
+                    self.parent('.api-params').addClass('remove');
+                }
+            });
+        }
+        function addToggleShowResult() {
+            let result = $('#result');
+            // On ajoute un titre pour la section de résultat de la requête
+            result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa fa-chevron-circle-down" aria-hidden="true"></i></span></h2>');
+            $('.toggle').click((e) => {
+                // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
+                result.toggle('400', () => {
+                    if (result.is(':hidden'))
+                        $('.toggle i').removeClass('fa-chevron-circle-up').addClass('fa-chevron-circle-down');
+                    else
+                        $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
+                });
+            });
+            // On modifie le sens du chevron lors du lancement d'une requête
+            $('button.is-full').click((e) => {
+                $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
+            });
+        }
     }
 
     /*
