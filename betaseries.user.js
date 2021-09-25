@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.12.4
+// @version      0.12.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -13,7 +13,8 @@
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
 // @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js
 // @require      https://cdn.jsdelivr.net/npm/renderjson@1.4.0/renderjson.min.js
-// @resource     FontAwesome   https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
+// @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
+// @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
@@ -34,12 +35,13 @@ let betaseries_api_user_key = '';
 
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
-          regexSerieOrMovie = new RegExp('^/(serie|film|episode)/*');
+          regexSerieOrMovie = new RegExp('^/(serie|film|episode)/*'),
+          tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css';
     let debug = false,
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, currentUser, cache = new Cache(),
-        counter = 0, // Compteur d'appels à l'API
+        counter = 0,
         // Equivalences des classifications TV
         ratings = {
             'TV-Y': '',
@@ -105,19 +107,26 @@ let betaseries_api_user_key = '';
     function sommaireDevApi() {
         let titles = $('.maincontent h2'),
             len = titles.length,
-            ids = [],
+            methods = {},
             style = `
-                .sommaire {
-                  border: 1px solid white;
-                }
-                .maincontent li.liSommaire {
-                  margin-left: 30px;
-                }
                 .fa-chevron-circle-up {
                   cursor: pointer;
                   margin-left: 10px;
                 }
-                .sommaire .liTitle {
+                #sommaire {
+                  text-align: center;
+                  display: none;
+                }
+                #sommaire .table {
+                  display: inline-table;
+                }
+                @media screen and (min-width: 700px) {
+                    #sommaire .table {
+                      width: 50%;
+                      display: inline-table;
+                    }
+                }
+                .liTitle {
                   margin-bottom: 15px;
                   color: var(--top_color);
                   list-style: none;
@@ -127,23 +136,96 @@ let betaseries_api_user_key = '';
                   color: var(--link_color);
                   text-decoration: none;
                   cursor: pointer;
-                }`;
+                }
+                table.table thead tr th {
+                  text-align: center;
+                }
+                table.table tbody tr td {
+                  text-align: center;
+                }
+                table.table tbody tr th.fonction {
+                  font-weight: bold;
+                  font-size: 1.1em;
+                  text-align: left;
+                  vertical-align: middle;
+                }
+                `;
+        $('head').append(`<link rel="stylesheet" href="${tableCSS}" integrity="sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm" crossorigin="anonymous" referrerpolicy="no-referrer" />`);
         GM_addStyle(style);
+        /**
+         * Construit une cellule de table HTML pour une methode
+         *
+         * @param  {String} verb Le verbe HTTP utilisé par la fonction
+         * @param  {String} key  L'identifiant de la fonction
+         * @return {String}
+         */
+        function buildCell(verb, key) {
+            let cell = '<td>';
+            if (verb in methods[key])
+                cell += '<i data-id="' + methods[key][verb].id + '" class="linkSommaire fa fa-check fa-2x" title="' +
+                        methods[key][verb].title + '"></i>';
+            return cell + '</td>';
+        }
+        /**
+         * Construit une ligne de table HTML pour une fonction
+         *
+         * @param  {String} key L'identifiant de la fonction
+         * @return {String}     La ligne HTML
+         */
+        function buildRow(key) {
+            let row = '<tr><th scope="row" class="fonction">' + methods[key].title + '</th>';
+            row += buildCell('GET', key);
+            row += buildCell('POST', key);
+            row += buildCell('PUT', key);
+            row += buildCell('DELETE', key);
+            return row + '</tr>';
+        }
+        /**
+         * Fabrique la table HTML du sommaire
+         * @return {Object} L'objet jQuery de la table HTML
+         */
+        function buildTable() {
+            let $table = $('<div id="sommaire" class="table-responsive">' +
+                            '<table class="table table-dark table-striped table-bordered">' +
+                                '<thead class="thead-dark">' +
+                                    '<tr>' +
+                                        '<th colspan="5" scope="col" class="col-lg-12 liTitle">Sommaire</th>' +
+                                    '</tr><tr>' +
+                                        '<th scope="col" class="col-lg-3">Fonction</th>' +
+                                        '<th scope="col" class="col-lg-2">GET</th>' +
+                                        '<th scope="col" class="col-lg-2">POST</th>' +
+                                        '<th scope="col" class="col-lg-2">PUT</th>' +
+                                        '<th scope="col" class="col-lg-2">DELETE</th>' +
+                                    '</tr>' +
+                                '</thead>' +
+                                '<tbody></tbody>' +
+                            '</table></div>'),
+                $tbody = $table.find('tbody');
+
+            for (let key in methods) {
+                $tbody.append(buildRow(key));
+            }
+            return $table;
+        }
+
         titles.each((i, title) => {
             // ajouter les ID aux titres des methodes, ainsi qu'un chevron pour renvoyer au sommaire
             let $title = $(title),
-                id = $(title).text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-');
+                id = $title.text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-'),
+                txt = $title.text().trim().split(' ')[1],
+                desc = $title.next('p').text(),
+                key = txt.toLowerCase().replace(/\//, ''),
+                verb = $title.text().trim().split(' ')[0].toUpperCase();
             $title.attr('id', id);
             $title.append('<i class="fa fa-chevron-circle-up" aria-hidden="true" title="Retour au sommaire"></i>');
-            ids.push({id: id, title: $title.text()});
+            if (! (key in methods)) methods[key] = {title: txt};
+            methods[key][verb] = {id: id, title: desc};
 
             // Construire un sommaire des fonctions
             if (i == len-1) {
-                let sommaire = '<ul id="sommaire" class="sommaire"><li class="liTitle"><strong>Sommaire</strong></li>';
-                for (let j = 0; j < ids.length; j++) {
-                    sommaire += '<li class="liSommaire"><i data-id="' + ids[j].id + '" class="linkSommaire">' + ids[j].title + '</a></li>';
-                }
-                $('.maincontent h1').after(sommaire + '</ul>');
+                //if (debug) console.log('methods', methods);
+                $('.maincontent h1').after(buildTable());
+                $('#sommaire').slideDown();
 
                 $('.linkSommaire').click(function(e) {
                     e.stopPropagation();
@@ -159,7 +241,7 @@ let betaseries_api_user_key = '';
         });
     }
 
-    /*
+    /**
      * Ajoute un bouton pour le dev pour afficher les données de la ressource
      * dans une modal
      */
@@ -219,9 +301,10 @@ let betaseries_api_user_key = '';
             .on('hide', function() { html.style.overflowY = ''; $('#dialog-resource').css('z-index', '0').css('overflow', 'none');});
     }
 
-    /*
+    /**
      * Cette fonction permet de stocker la ressource courante
      * dans le cache, pour être utilisé par les autres fonctions
+     * @return {Promise}
      */
     function getCurrentResource() {
         if (debug) console.log('getCurrentResource');
@@ -232,7 +315,7 @@ let betaseries_api_user_key = '';
         return callBetaSeries('GET', type + 's', fonction, {'id': eltId});
     }
 
-    /*
+    /**
      * Ajoute la classification dans les détails de la ressource
      */
     function addRating() {
@@ -259,8 +342,8 @@ let betaseries_api_user_key = '';
         /**
          * Retourne l'equivalent de classification US en FR
          *
-         * @param string ratingUS Le code de classification US
-         * @return string|null
+         * @param {String} ratingUS Le code de classification US
+         * @return {String|null}
          */
         function equivRating(ratingUS) {
             return ratings.hasOwnProperty(ratingUS) ? ratings[ratingUS] : null;
@@ -268,8 +351,8 @@ let betaseries_api_user_key = '';
         /**
          * Retourne l'URI de l'image de classification TV
          *
-         * @param string rating Le code de classification FR
-         * @return string
+         * @param {String} rating Le code de classification FR
+         * @return {String}
          */
         function ratingImg(rating) {
             return (ratingImgs.hasOwnProperty(rating)) ? ratingImgs[rating] : '';
@@ -279,8 +362,8 @@ let betaseries_api_user_key = '';
     /**
      * Retourne les infos d'un membre
      *
-     * @param Number   id    Identifiant du membre (par défaut: le membre connecté)
-     * @return void
+     * @param {Number}   id    Identifiant du membre (par défaut: le membre connecté)
+     * @return {Promise} Le membre
      */
     function getMember(id = null) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
@@ -297,7 +380,7 @@ let betaseries_api_user_key = '';
         });
     }
 
-    /*
+    /**
      * Compare le membre courant avec un autre membre
      */
     function compareMembers() {
@@ -324,7 +407,7 @@ let betaseries_api_user_key = '';
 
                     <h1 id="dialog-compare-title">Comparaison des membres</h1>
 
-                    <div id="compare table-responsive-lg">
+                    <div id="compare" class="table-responsive-lg">
                       <table class="table table-dark table-striped">
                         <thead>
                           <tr>
@@ -375,7 +458,7 @@ let betaseries_api_user_key = '';
                         "time_to_spend_movies": 'Temps restant devant les films à regarder'
                     }
                 };
-            $('head').append(`<style type="text/css">${tableCSS}/<style>`);
+            $('head').append(`<link rel="stylesheet" href="${tableCSS}" integrity="sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm" crossorigin="anonymous" referrerpolicy="no-referrer" />`);
             $('body').append(dialogHTML);
             //if (debug) console.log(currentUser, otherMember, trads);
             for (const [key, value] of Object.entries(trads)) {
@@ -417,7 +500,7 @@ let betaseries_api_user_key = '';
         });
     }
 
-    /*
+    /**
      * Masque les pubs
      */
     function removeAds() {
@@ -432,7 +515,7 @@ let betaseries_api_user_key = '';
         $('.blockPartner').attr('style', 'display: none !important');
     }
 
-    /*
+    /**
      * Ajout d'une feuille de style
      */
     function addStylesheet() {
@@ -648,8 +731,11 @@ let betaseries_api_user_key = '';
         // Fin
     }
 
-    /*
+    /**
      * Decode les HTMLEntities dans le titre
+     *
+     * @param  {Object} [$eltTitle] L'objet jQuery du titre à décoder
+     * @return {void}
      */
     function decodeTitle($eltTitle = null) {
         let $elt = ($eltTitle && $eltTitle.length > 0) ? $eltTitle : $('.blockInformations__title'),
@@ -663,9 +749,9 @@ let betaseries_api_user_key = '';
     /**
      * Retourne la ressource associée au type de page
      *
-     * @string pageType  Le type de page consultée
-     * @bool   singulier Retourne la methode au singulier (par défaut: false)
-     * @return string Retourne le nom de la ressource API
+     * @param  {String} pageType           Le type de page consultée
+     * @param  {bool}   [singulier=false]  Retourne la methode au singulier (par défaut: false)
+     * @return {String} Retourne le nom de la ressource API
      */
     function getApiResource(pageType, singulier = false) {
         let methods = {
@@ -679,7 +765,7 @@ let betaseries_api_user_key = '';
         return null;
     }
 
-    /*
+    /**
      * Ajoute le nombre de votes à la note de la ressource
      */
     function addNumberVoters() {
@@ -709,9 +795,9 @@ let betaseries_api_user_key = '';
      * Ajoute le nombre de votes à la note dans l'attribut title de la balise
      * contenant la représentation de la note de la ressource
      *
-     * @param Object $elt    Le DOMElement jQuery à modifier
-     * @param Number note    La note de la ressource
-     * @param Number total   Le nombre de votants
+     * @param {Object} $elt    Le DOMElement jQuery à modifier
+     * @param {Number} note    La note de la ressource
+     * @param {Number} total   Le nombre de votants
      * @return void
      */
     function changeTitleNote($elt, note, total) {
@@ -736,9 +822,10 @@ let betaseries_api_user_key = '';
     /**
      * Crée les étoiles pour le rendu de la note
      *
-     * @param Object $elt     Objet JQuery
-     * @param number note     La note de la ressource
-     * @param number total    Le nombre de votes
+     * @param {Object} $elt     Objet JQuery
+     * @param {Number} note     La note de la ressource
+     * @param {Number} total    Le nombre de votes
+     * @return void
      */
     function usRenderStars($elt, note, total) {
         changeTitleNote($elt.parent('.stars-outer'), note, total);
@@ -746,7 +833,7 @@ let betaseries_api_user_key = '';
         $elt.css('width', starPercentageRounded);
     }
 
-    /*
+    /**
      * Ajoute un bouton Vu sur la vignette d'un épisode
      */
     function addBtnWatchedToEpisode() {
@@ -942,7 +1029,7 @@ let betaseries_api_user_key = '';
         }
     }
 
-    /*
+    /**
      * Vérifie si les séries/films similaires ont été vues
      * Nécessite que l'utilisateur soit connecté et que la clé d'API soit renseignée
      */
@@ -1003,9 +1090,9 @@ let betaseries_api_user_key = '';
          * Fonction d'ajout du bandeau "Viewed" sur les images des similaires
          * si la série a été vue totalement/partiellement
          *
-         * @param object elt      Objet jQuery du Noeud HTML contenant le titre du similaire
-         * @param number status   Le statut de vu de la serie pour l'utilisateur courant
-         * @param object objNote  Objet note contenant la note moyenne et le nombre total de votes
+         * @param {Object} elt      Objet jQuery du Noeud HTML contenant le titre du similaire
+         * @param {Number} status   Le statut de vu de la serie pour l'utilisateur courant
+         * @param {Object} objNote  Objet note contenant la note moyenne et le nombre total de votes
          * @return void
          */
         function addBandeau(elt, status, objNote) {
@@ -1028,7 +1115,7 @@ let betaseries_api_user_key = '';
         }
     }
 
-    /*
+    /**
      * Ajoute le statut de la série sur la page de gestion des séries de l'utilisateur
      */
     function addStatusToGestionSeries() {
@@ -1052,7 +1139,7 @@ let betaseries_api_user_key = '';
     /**
      * Fonction d'authentification sur l'API BetaSeries
      *
-     * @return Promise
+     * @return {Promise}
      */
     function authenticate() {
         if (debug) console.log('authenticate');
@@ -1094,14 +1181,14 @@ let betaseries_api_user_key = '';
     /**
      * Fonction servant à appeler l'API de BetaSeries
      *
-     * @param string   type     Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-     * @param string   methode  La ressource de l'API (ex: shows, seasons, episodes...)
-     * @param string   fonction La fonction à appliquer sur la ressource (ex: search, list...)
-     * @param object   args     Un objet (clef, valeur) à transmettre dans la requête
-     * @param bool     nocache  Indique si on doit utiliser le cache ou non (Par défaut: false)
-     * @return   Promise
+     * @param {String}   type             Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
+     * @param {String}   methode          La ressource de l'API (ex: shows, seasons, episodes...)
+     * @param {String}   fonction         La fonction à appliquer sur la ressource (ex: search, list...)
+     * @param {Object}   args             Un objet (clef, valeur) à transmettre dans la requête
+     * @param {bool}     [nocache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
+     * @return   {Promise}
      */
-    function callBetaSeries(type, methode, fonction, args = {}, nocache = false) {
+    function callBetaSeries(type, methode, fonction, args, nocache = false) {
         let urlAPI = 'https://api.betaseries.com/' + methode + '/' + fonction,
             headers = {
                 'Accept': 'application/json',
@@ -1150,10 +1237,18 @@ let betaseries_api_user_key = '';
         });
     }
 
+    /**
+     * Create a new Cache
+     * @class
+     */
     function Cache() {
 
-        var data = {shows: {}, episodes: {}, movies: {}, members: {}};
-        var self = this;
+        /**
+         * Objet contenant les données
+         * @type {Object}
+         */
+        let data = {shows: {}, episodes: {}, movies: {}, members: {}};
+        let self = this;
 
         /**
          * Returns an Array of all currently set keys.
@@ -1166,7 +1261,8 @@ let betaseries_api_user_key = '';
 
         /**
          * Checks if a key is currently set in the cache.
-         * @param key the key to look for
+         * @param {String} type Le type de ressource
+         * @param {String} key  the key to look for
          * @returns {boolean} true if set, false otherwise
          */
         this.has = function(type, key) {
@@ -1175,6 +1271,7 @@ let betaseries_api_user_key = '';
 
         /**
          * Clears all cache entries.
+         * @param {String} [type=null] Le type de ressource à nettoyer
          */
         this.clear = function(type = null) {
             if (debug) console.log('Nettoyage du cache', type);
@@ -1192,7 +1289,8 @@ let betaseries_api_user_key = '';
 
         /**
          * Gets the cache entry for the given key.
-         * @param key the cache key
+         * @param {String} type Le type de ressource
+         * @param {String} key  the cache key
          * @returns {*} the cache entry if set, or undefined otherwise
          */
         this.get = function(type, key) {
@@ -1205,8 +1303,9 @@ let betaseries_api_user_key = '';
 
         /**
          * Returns the cache entry if set, or a default value otherwise.
-         * @param key the key to retrieve
-         * @param def the default value to return if unset
+         * @param {String} type Le type de ressource
+         * @param {String} key  the key to retrieve
+         * @param {*}      def  the default value to return if unset
          * @returns {*} the cache entry if set, or the default value provided.
          */
         this.getOrDefault = function(type, key, def) {
@@ -1216,8 +1315,9 @@ let betaseries_api_user_key = '';
 
         /**
          * Sets a cache entry with the provided key and value.
-         * @param key the key to set
-         * @param value the value to set
+         * @param {String} type  Le type de ressource
+         * @param {String} key   the key to set
+         * @param {*}      value the value to set
          */
         this.set = function(type, key, value) {
             if (debug) console.log('Ajout de la ressource (%s: %d) en cache', type, key, value);
@@ -1228,7 +1328,8 @@ let betaseries_api_user_key = '';
 
         /**
          * Removes the cache entry for the given key.
-         * @param key the key to remove
+         * @param {String} type  Le type de ressource
+         * @param {String} key the key to remove
          */
         this.remove = function(type, key) {
             if (debug) console.log('Suppression de la ressource[%s]: %d du cache', type, key);
@@ -1238,348 +1339,4 @@ let betaseries_api_user_key = '';
         };
     }
 
-    const tableCSS = `
-.table {
-  width: 100%;
-  margin-bottom: 1rem;
-  color: #212529;
-}
-
-.table th,
-.table td {
-  padding: 0.75rem;
-  vertical-align: top;
-  border-top: 1px solid #dee2e6;
-}
-
-.table thead th {
-  vertical-align: bottom;
-  border-bottom: 2px solid #dee2e6;
-}
-
-.table tbody + tbody {
-  border-top: 2px solid #dee2e6;
-}
-
-.table-sm th,
-.table-sm td {
-  padding: 0.3rem;
-}
-
-.table-bordered {
-  border: 1px solid #dee2e6;
-}
-
-.table-bordered th,
-.table-bordered td {
-  border: 1px solid #dee2e6;
-}
-
-.table-bordered thead th,
-.table-bordered thead td {
-  border-bottom-width: 2px;
-}
-
-.table-borderless th,
-.table-borderless td,
-.table-borderless thead th,
-.table-borderless tbody + tbody {
-  border: 0;
-}
-
-.table-striped tbody tr:nth-of-type(odd) {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.table-hover tbody tr:hover {
-  color: #212529;
-  background-color: rgba(0, 0, 0, 0.075);
-}
-
-.table-primary,
-.table-primary > th,
-.table-primary > td {
-  background-color: #b8daff;
-}
-
-.table-primary th,
-.table-primary td,
-.table-primary thead th,
-.table-primary tbody + tbody {
-  border-color: #7abaff;
-}
-
-.table-hover .table-primary:hover {
-  background-color: #9fcdff;
-}
-
-.table-hover .table-primary:hover > td,
-.table-hover .table-primary:hover > th {
-  background-color: #9fcdff;
-}
-
-.table-secondary,
-.table-secondary > th,
-.table-secondary > td {
-  background-color: #d6d8db;
-}
-
-.table-secondary th,
-.table-secondary td,
-.table-secondary thead th,
-.table-secondary tbody + tbody {
-  border-color: #b3b7bb;
-}
-
-.table-hover .table-secondary:hover {
-  background-color: #c8cbcf;
-}
-
-.table-hover .table-secondary:hover > td,
-.table-hover .table-secondary:hover > th {
-  background-color: #c8cbcf;
-}
-
-.table-success,
-.table-success > th,
-.table-success > td {
-  background-color: #c3e6cb;
-}
-
-.table-success th,
-.table-success td,
-.table-success thead th,
-.table-success tbody + tbody {
-  border-color: #8fd19e;
-}
-
-.table-hover .table-success:hover {
-  background-color: #b1dfbb;
-}
-
-.table-hover .table-success:hover > td,
-.table-hover .table-success:hover > th {
-  background-color: #b1dfbb;
-}
-
-.table-info,
-.table-info > th,
-.table-info > td {
-  background-color: #bee5eb;
-}
-
-.table-info th,
-.table-info td,
-.table-info thead th,
-.table-info tbody + tbody {
-  border-color: #86cfda;
-}
-
-.table-hover .table-info:hover {
-  background-color: #abdde5;
-}
-
-.table-hover .table-info:hover > td,
-.table-hover .table-info:hover > th {
-  background-color: #abdde5;
-}
-
-.table-warning,
-.table-warning > th,
-.table-warning > td {
-  background-color: #ffeeba;
-}
-
-.table-warning th,
-.table-warning td,
-.table-warning thead th,
-.table-warning tbody + tbody {
-  border-color: #ffdf7e;
-}
-
-.table-hover .table-warning:hover {
-  background-color: #ffe8a1;
-}
-
-.table-hover .table-warning:hover > td,
-.table-hover .table-warning:hover > th {
-  background-color: #ffe8a1;
-}
-
-.table-danger,
-.table-danger > th,
-.table-danger > td {
-  background-color: #f5c6cb;
-}
-
-.table-danger th,
-.table-danger td,
-.table-danger thead th,
-.table-danger tbody + tbody {
-  border-color: #ed969e;
-}
-
-.table-hover .table-danger:hover {
-  background-color: #f1b0b7;
-}
-
-.table-hover .table-danger:hover > td,
-.table-hover .table-danger:hover > th {
-  background-color: #f1b0b7;
-}
-
-.table-light,
-.table-light > th,
-.table-light > td {
-  background-color: #fdfdfe;
-}
-
-.table-light th,
-.table-light td,
-.table-light thead th,
-.table-light tbody + tbody {
-  border-color: #fbfcfc;
-}
-
-.table-hover .table-light:hover {
-  background-color: #ececf6;
-}
-
-.table-hover .table-light:hover > td,
-.table-hover .table-light:hover > th {
-  background-color: #ececf6;
-}
-
-.table-dark,
-.table-dark > th,
-.table-dark > td {
-  background-color: #c6c8ca;
-}
-
-.table-dark th,
-.table-dark td,
-.table-dark thead th,
-.table-dark tbody + tbody {
-  border-color: #95999c;
-}
-
-.table-hover .table-dark:hover {
-  background-color: #b9bbbe;
-}
-
-.table-hover .table-dark:hover > td,
-.table-hover .table-dark:hover > th {
-  background-color: #b9bbbe;
-}
-
-.table-active,
-.table-active > th,
-.table-active > td {
-  background-color: rgba(0, 0, 0, 0.075);
-}
-
-.table-hover .table-active:hover {
-  background-color: rgba(0, 0, 0, 0.075);
-}
-
-.table-hover .table-active:hover > td,
-.table-hover .table-active:hover > th {
-  background-color: rgba(0, 0, 0, 0.075);
-}
-
-.table .thead-dark th {
-  color: #fff;
-  background-color: #343a40;
-  border-color: #454d55;
-}
-
-.table .thead-light th {
-  color: #495057;
-  background-color: #e9ecef;
-  border-color: #dee2e6;
-}
-
-.table-dark {
-  color: #fff;
-  background-color: #343a40;
-}
-
-.table-dark th,
-.table-dark td,
-.table-dark thead th {
-  border-color: #454d55;
-}
-
-.table-dark.table-bordered {
-  border: 0;
-}
-
-.table-dark.table-striped tbody tr:nth-of-type(odd) {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.table-dark.table-hover tbody tr:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.075);
-}
-
-@media (max-width: 575.98px) {
-  .table-responsive-sm {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .table-responsive-sm > .table-bordered {
-    border: 0;
-  }
-}
-
-@media (max-width: 767.98px) {
-  .table-responsive-md {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .table-responsive-md > .table-bordered {
-    border: 0;
-  }
-}
-
-@media (max-width: 991.98px) {
-  .table-responsive-lg {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .table-responsive-lg > .table-bordered {
-    border: 0;
-  }
-}
-
-@media (max-width: 1199.98px) {
-  .table-responsive-xl {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .table-responsive-xl > .table-bordered {
-    border: 0;
-  }
-}
-
-.table-responsive {
-  display: block;
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.table-responsive > .table-bordered {
-  border: 0;
-}
-`;
 })(jQuery);
