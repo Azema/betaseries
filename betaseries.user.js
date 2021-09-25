@@ -1,18 +1,22 @@
 // ==UserScript==
 // @name         betaseries
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/Azema/betaseries
 // @version      0.13.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
+// @updateURL    https://github.com/Azema/betaseries
+// @downloadURL  https://github.com/Azema/betaseries/raw/main/betaseries.user.js
+// @supportURL   https://github.com/Azema/betaseries/issues
+// @licence      Apache License 2.0
 // @match        https://www.betaseries.com/serie/*
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
 // @match        https://www.betaseries.com/membre/*
 // @match        https://www.betaseries.com/api/*
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
-// @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js
-// @require      https://cdn.jsdelivr.net/npm/renderjson@1.4.0/renderjson.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js#sha512-C6XM91cD52KknT8jaQF1P2PrIRTrbMzq6hzFkc22Pionu774sZwVPJInNxfHNwPvPne3AMtnRWKunr9+/gQR5g==
+// @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
 // @grant        GM_addStyle
