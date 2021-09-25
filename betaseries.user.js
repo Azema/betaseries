@@ -1206,7 +1206,7 @@ let betaseries_api_user_key = '';
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
             <div id="updateSimilarsBlock">
-              <img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/>
+              <img src="https://betaseries.aufilelec.fr/img/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/>
             </div>`);
             // Si le bouton d'ajout de similaire est présent, on ajoute une marge
             if ($('#similars button.blockTitle-subtitle').length == 1) {
@@ -1263,7 +1263,7 @@ let betaseries_api_user_key = '';
             if (status && status > 0) {
                 // On ajoute le bandeau "Viewed"
                 elt.siblings('a').prepend(
-                    '<img src="//www.aufilelec.fr/static/viewed.png" class="bandViewed"/>'
+                    '<img src="https://betaseries.aufilelec.fr/img/viewed.png" class="bandViewed"/>'
                 );
             }
             // On ajoute le code HTML pour le rendu de la note
