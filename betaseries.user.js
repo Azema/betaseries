@@ -366,15 +366,15 @@ let betaseries_api_user_key = '';
         $('.fa-wrench').parent().click((e) => {
             e.stopPropagation();
             e.preventDefault();
-            let type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
-                eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
+            let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
+                eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
                 $dataRes = $('#dialog-resource .data-resource'), // DOMElement contenant le rendu JSON de la ressource
-                fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+                fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
-            callBetaSeries('GET', type + 's', fonction, {'id': eltId})
+            callBetaSeries('GET', type.plural, fonction, {'id': eltId})
             .then(function(data) {
                 if (! $dataRes.is(':empty')) $dataRes.empty();
-                $dataRes.append(renderjson.set_show_to_level(2)(data[type]));
+                $dataRes.append(renderjson.set_show_to_level(2)(data[type.singular]));
                 $('#dialog-resource-title span').empty().text('(' + counter + ' appels API)');
                 dialog.show();
             });
@@ -396,11 +396,11 @@ let betaseries_api_user_key = '';
      */
     function getCurrentResource() {
         if (debug) console.log('getCurrentResource');
-        let type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
-            eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
-            fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
+            eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
-        return callBetaSeries('GET', type + 's', fonction, {'id': eltId});
+        return callBetaSeries('GET', type.plural, fonction, {'id': eltId});
     }
 
     /**
@@ -408,14 +408,14 @@ let betaseries_api_user_key = '';
      */
     function addRating() {
         if (debug) console.log('addRating');
-        let type = getApiResource(url.split('/')[1], true), // Indique de quel type de ressource il s'agit
-            eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
-            fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        let type = getApiResource(url.split('/')[1]), // Indique de quel type de ressource il s'agit
+            eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
-        callBetaSeries('GET', type + 's', fonction, {'id': eltId})
+        callBetaSeries('GET', type.plural, fonction, {'id': eltId})
         .then(function(data) {
             if (data[type].hasOwnProperty('rating')) {
-                let imgRating = ratingImg(equivRating(data[type].rating));
+                let imgRating = ratingImg(equivRating(data[type.singular].rating));
                 if (imgRating != '') {
                     // On ajoute la classification
                     $('.blockInformations__details')
@@ -910,18 +910,17 @@ let betaseries_api_user_key = '';
     /**
      * Retourne la ressource associée au type de page
      *
-     * @param  {String} pageType           Le type de page consultée
-     * @param  {bool}   [singulier=false]  Retourne la methode au singulier (par défaut: false)
-     * @return {String} Retourne le nom de la ressource API
+     * @param  {String} pageType    Le type de page consultée
+     * @return {Object} Retourne le nom de la ressource API au singulier et au pluriel
      */
-    function getApiResource(pageType, singulier = false) {
+    function getApiResource(pageType) {
         let methods = {
             'serie': 'show',
             'film': 'movie',
             'episode': 'episode'
         };
         if (pageType in methods) {
-            return (! singulier) ? methods[pageType] + 's' : methods[pageType];
+            return {singular: methods[pageType], plural: methods[pageType] + 's'};
         }
         return null;
     }
@@ -934,19 +933,19 @@ let betaseries_api_user_key = '';
         if (betaseries_api_user_key == '') return;
 
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
-            type = getApiResource(location.pathname.split('/')[1], true), // Indique de quel type de ressource il s'agit
-            eltId = $('#reactjs-'+type+'-actions').data(type+'-id'), // Identifiant de la ressource
-            fonction = type == 'show' || type == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+            type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
+            eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
-        if (debug) console.log('votes %d, showId: %d, type: %s', votes.length, eltId, type);
+        if (debug) console.log('votes %d, eltId: %d, type: %s', votes.length, eltId, type.singular);
 
         // On recupère les détails de la ressource
-        callBetaSeries('GET', type + 's', fonction, {'id': eltId})
+        callBetaSeries('GET', type.plural, fonction, {'id': eltId})
         .then((data) => {
             //if (debug) console.log('addNumberVoters callBetaSeries', data);
             let note;
-            if (type == 'show' || type == 'movie') note = data[type].notes;
-            else note = data[type].note;
+            if (type.singular == 'show' || type.singular == 'movie') note = data[type.singular].notes;
+            else note = data[type.singular].note;
             // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
             changeTitleNote(votes, note.mean, note.total);
         });
@@ -1004,14 +1003,13 @@ let betaseries_api_user_key = '';
 
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '') return;
-        // On sort si il ne s'agit pas d'une série
-        if (location.pathname.split('/')[1] != 'serie') return;
 
         let seasons = $('#seasons div[role="button"]'),
+            len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
             vignettes = $('#episodes .slide__image');
 
         // On vérifie que les saisons et les episodes soient chargés sur la page
-        if (vignettes.length > 0) {
+        if (vignettes.length > 0 && vignettes.length >= len) {
             // On supprime le timer Interval
             clearInterval(timer);
             // On ajoute les cases à cocher sur les vignettes courantes
@@ -1038,6 +1036,7 @@ let betaseries_api_user_key = '';
                     // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
                     $vignette.append('<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>');
                 }
+
                 // On ajoute un event click sur la case 'checkSeen'
                 $('#episode-' + id).click(function(e) {
                     e.stopPropagation();
@@ -1047,61 +1046,58 @@ let betaseries_api_user_key = '';
                     // On vérifie si l'épisode a déjà été vu
                     if ($elt.hasClass('seen')) {
                         // On demande à l'enlever des épisodes vus
-                        callBetaSeries('DELETE', 'episodes', 'watched', {'id': episodeId})
-                        .then(function(data) {
-                            if (debug) console.log('callBetaSeries DELETE episodes/watched', data);
-                            changeStatus($elt, 'notSeen');
-                        },
-                        function(err) {
-                            if (err && err == 'changeStatus') {
-                                changeStatus($elt, 'notSeen');
-                            } else if (err && err == 'accessToken') {
-                                if (debug) console.log('similars error DELETE accessToken');
-                                authenticate().then(function() {
-                                    callBetaSeries('DELETE', 'episodes', 'watched', {'id': episodeId})
-                                    .then(function(data) {
-                                        if (debug) console.log('callBetaSeries DELETE episodes/watched', data);
-                                        changeStatus($elt, 'notSeen');
-                                    },
-                                    function(err) {
-                                        if (err && err == 'changeStatus') {
-                                            changeStatus($elt, 'notSeen');
-                                        }
-                                    });
-                                });
-                            }
-                        });
+                        changeStatusVignette($elt, 'notSeen', 'DELETE', episodeId);
                     }
                     // Sinon, on l'ajoute aux épisodes vus
                     else {
-                        callBetaSeries('POST', 'episodes', 'watched', {'id': episodeId, 'bulk': false})
-                        .then(function(data) {
-                            if (debug) console.log('callBetaSeries POST episodes/watched', data);
-                            changeStatus($elt, 'seen');
-                        },
-                        function(err) {
-                            if (err && err == 'changeStatus') {
-                                changeStatus($elt, 'seen');
-                            } else if (err && err == 'accessToken') {
-                                if (debug) console.log('similars error POST accessToken');
-                                authenticate().then(function() {
-                                    callBetaSeries('POST', 'episodes', 'watched', {'id': episodeId, 'bulk': false})
-                                    .then(function(data) {
-                                        if (debug) console.log('callBetaSeries POST episodes/watched', data);
-                                        changeStatus($elt, 'seen');
-                                    },
-                                    function(err) {
-                                        if (err && err == 'changeStatus') {
-                                            changeStatus($elt, 'seen');
-                                        }
-                                    });
-                                });
-                            }
-                        });
+                        changeStatusVignette($elt, 'seen', 'POST', episodeId);
                     }
                 });
             });
-            // Change le statut de la vignette
+            /**
+             * Modifie le statut d'un épisode sur l'API
+             * @param  {Object} $elt      L'objet jQuery correspondant à l'épisode
+             * @param  {String} status    Le nouveau statut de l'épisode
+             * @param  {String} method    Verbe HTTP utilisé pour la requête à l'API
+             * @param  {Number} episodeId L'ID de l'épisode
+             * @return {void}
+             */
+            function changeStatusVignette($elt, status, method, episodeId) {
+                let args = {'id': episodeId};
+                if (method == 'POST')
+                    args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
+
+                callBetaSeries(method, 'episodes', 'watched', args)
+                .then(function(data) {
+                    if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
+                    changeStatus($elt, status);
+                },
+                function(err) {
+                    if (err && err == 'changeStatus') {
+                        changeStatus($elt, status);
+                    } else if (err && err == 'accessToken') {
+                        if (debug) console.log('similars error %s accessToken', method);
+                        authenticate().then(function() {
+                            callBetaSeries(method, 'episodes', 'watched', {'id': episodeId})
+                            .then(function(data) {
+                                if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
+                                changeStatus($elt, status);
+                            },
+                            function(err) {
+                                if (err && err == 'changeStatus') {
+                                    changeStatus($elt, status);
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+            /**
+             * Change le statut visuel de la vignette sur le site
+             * @param  {Object} $elt      L'objet jQuery de l'épisode
+             * @param  {String} newStatus Le nouveau statut de l'épisode
+             * @return {void}
+             */
             function changeStatus($elt, newStatus) {
                 if (newStatus == 'seen') {
                     let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
@@ -1136,6 +1132,11 @@ let betaseries_api_user_key = '';
                     }
                 }
             }
+            /**
+             * Met à jour la barre de progression de visionnage de la série
+             * @param  {Number} i Entier positif ou négatif (1 ou -1)
+             * @return {void}
+             */
             function updateProgressBar(i) {
                 let showId = $('#reactjs-show-actions').data('show-id'),
                     progBar = $('.progressBarShow'),
@@ -1228,23 +1229,23 @@ let betaseries_api_user_key = '';
 
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
-            type = getApiResource(url.split('/')[1], true), // Le type de ressource
-            resId = $('#reactjs-' + type + '-actions').data(type + '-id'), // Identifiant de la ressource
-            show = cache.get(type + 's', resId).show;
+            type = getApiResource(url.split('/')[1]), // Le type de ressource
+            resId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            show = cache.get(type.plural, resId).show;
 
         if (debug) console.log('nb similars: %d', parseInt(show.similars, 10));
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
 
-        callBetaSeries('GET', type + 's', 'similars', {'thetvdb_id': show.thetvdb_id, 'details': true})
+        callBetaSeries('GET', type.plural, 'similars', {'thetvdb_id': show.thetvdb_id, 'details': true})
         .then(function(data) {
             for (let s = 0; s < data.similars.length; s++) {
                 let $elt = $($('#similars .slide__title').get(s)),
-                    resource = data.similars[s][type];
+                    resource = data.similars[s][type.singular];
                 decodeTitle($elt);
                 addBandeau($elt, resource.user.status, resource.notes);
-                cache.set(type, resource.id, {'show': resource});
+                cache.set(type.plural, resource.id, {'show': resource});
                 $('.updateSimilars').addClass('finish');
             }
         });
