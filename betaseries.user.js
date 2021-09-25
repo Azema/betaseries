@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    http://tampermonkey.net/
-// @version      0.12.5
+// @version      0.12.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -65,9 +65,9 @@ let betaseries_api_user_key = '';
         getCurrentResource().then(function() {
             removeAds();  // On retire les pubs
             addStylesheet();  // On ajoute le CSS
+            similarsViewed();  // On s'occupe des ressources similaires
             decodeTitle();  // On décode le titre de la ressource
             addRating();  // On ajoute la classification TV de la ressource courante
-            similarsViewed();  // On s'occupe des ressources similaires
             if (debug) addBtnDev();  // On ajoute le bouton de Dev
             addNumberVoters();  // On ajoute le nombre de votes à la note
             // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
@@ -726,6 +726,79 @@ let betaseries_api_user_key = '';
               text-align: center;
               z-index: 1000;
             }
+
+            .updateSimilars:not(.finish) {
+              -webkit-animation: spinner 1500ms infinite linear;
+              -moz-animation: spinner 1500ms infinite linear;
+              -ms-animation: spinner 1500ms infinite linear;
+              -o-animation: spinner 1500ms infinite linear;
+              animation: spinner 1500ms infinite linear;
+            }
+            /* Animation */
+            @-webkit-keyframes spinner {
+              0% {
+                -webkit-transform: rotate(0deg);
+                -moz-transform: rotate(0deg);
+                -ms-transform: rotate(0deg);
+                -o-transform: rotate(0deg);
+                transform: rotate(0deg);
+              }
+              100% {
+                -webkit-transform: rotate(360deg);
+                -moz-transform: rotate(360deg);
+                -ms-transform: rotate(360deg);
+                -o-transform: rotate(360deg);
+                transform: rotate(360deg);
+              }
+            }
+            @-moz-keyframes spinner {
+              0% {
+                -webkit-transform: rotate(0deg);
+                -moz-transform: rotate(0deg);
+                -ms-transform: rotate(0deg);
+                -o-transform: rotate(0deg);
+                transform: rotate(0deg);
+              }
+              100% {
+                -webkit-transform: rotate(360deg);
+                -moz-transform: rotate(360deg);
+                -ms-transform: rotate(360deg);
+                -o-transform: rotate(360deg);
+                transform: rotate(360deg);
+              }
+            }
+            @-o-keyframes spinner {
+              0% {
+                -webkit-transform: rotate(0deg);
+                -moz-transform: rotate(0deg);
+                -ms-transform: rotate(0deg);
+                -o-transform: rotate(0deg);
+                transform: rotate(0deg);
+              }
+              100% {
+                -webkit-transform: rotate(360deg);
+                -moz-transform: rotate(360deg);
+                -ms-transform: rotate(360deg);
+                -o-transform: rotate(360deg);
+                transform: rotate(360deg);
+              }
+            }
+            @keyframes spinner {
+              0% {
+                -webkit-transform: rotate(0deg);
+                -moz-transform: rotate(0deg);
+                -ms-transform: rotate(0deg);
+                -o-transform: rotate(0deg);
+                transform: rotate(0deg);
+              }
+              100% {
+                -webkit-transform: rotate(360deg);
+                -moz-transform: rotate(360deg);
+                -ms-transform: rotate(360deg);
+                -o-transform: rotate(360deg);
+                transform: rotate(360deg);
+              }
+            }
         ]]></>).toString());
         /* jshint ignore:end */
         // Fin
@@ -1037,6 +1110,34 @@ let betaseries_api_user_key = '';
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '' || ! /(serie|film)/.test(url)) return;
 
+        /*
+         * On ajoute un bouton de mise à jour des series vues
+         * et on vérifie qu'il n'existe pas déjà
+         */
+        if ($('#updateSimilarsBlock').length < 1) {
+            // On ajoute le bouton de mise à jour des similaires
+            $('#similars .blockTitles').append(`
+            <div id="updateSimilarsBlock">
+              <img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/>
+            </div>`);
+            // Si le bouton d'ajout de similaire est présent, on ajoute une marge
+            if ($('#similars button.blockTitle-subtitle').length == 1) {
+                $('#updateSimilarsBlock').css('margin-left', '10px');
+            }
+            // On ajoute la gestion de l'event click sur le bouton
+            $('.updateSimilars').click(function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                $(this).removeClass('finish');
+                // On supprime les bandeaux Viewed
+                $('.bandViewed').remove();
+                // On supprime les notes
+                $('.stars-outer').remove();
+                // On met à jour les series similaires
+                similarsViewed();
+            });
+        }
+
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
             type = getApiResource(url.split('/')[1], true), // Le type de ressource
@@ -1056,35 +1157,9 @@ let betaseries_api_user_key = '';
                 decodeTitle($elt);
                 addBandeau($elt, resource.user.status, resource.notes);
                 cache.set(type, resource.id, {'show': resource});
+                $('.updateSimilars').addClass('finish');
             }
         });
-
-        /*
-         * On ajoute un bouton de mise à jour des series vues
-         * et on vérifie qu'il n'existe pas déjà
-         */
-        if ($('#updateSimilarsBlock').length < 1) {
-            // On ajoute le bouton de mise à jour des similaires
-            $('#similars .blockTitles').append(`
-            <div id="updateSimilarsBlock">
-              <img src="https://www.aufilelec.fr/static/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/>
-            </div>`);
-            // Si le bouton d'ajout de similaire est présent, on ajoute une marge
-            if ($('#similars button.blockTitle-subtitle').length == 1) {
-                $('#updateSimilarsBlock').css('margin-left', '10px');
-            }
-            // On ajoute la gestion de l'event click sur le bouton
-            $('.updateSimilars').click(function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                // On supprime les bandeaux Viewed
-                $('.bandViewed').remove();
-                // On supprime les notes
-                $('.stars-outer').remove();
-                // On met à jour les series similaires
-                similarsViewed();
-            });
-        }
 
         /**
          * Fonction d'ajout du bandeau "Viewed" sur les images des similaires
