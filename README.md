@@ -1,5 +1,5 @@
 # betaseries
-UserScript pour le site BetaSeries testé avec Tampermonkey sur Chrome
+UserScript pour le site [BetaSeries](https://www.betaseries.com/) testé avec Tampermonkey sur Chrome
 
 ## Description
 Ce UserScript permet d'ajouter plusieurs améliorations et corrections au site BetaSeries.
