@@ -27,8 +27,8 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Sommaire des méthodes de l'API](/img/sommaireMethodes.png "Sommaire des méthodes de l'API")
 * Ajout d'améliorations sur la page de la console de l'API
-  - Un bouton pour supprimer la ligne de paramètre
-  - Un bouton pour vérouiller la ligne de paramètre
+  - Un bouton pour supprimer la ligne de paramètre (le paramètre _version_ ne peut être supprimé)
+  - Un bouton pour vérouiller la ligne de paramètre (le paramètre _version_ est vérouillé)
   - La suppression des paramètres, hors ceux vérouillés, lors du changement de méthode
   - Un bouton pour afficher/masquer le résultat de la requête
   - Un clic sur un paramètre, dans la section __documentation__, permet d'ajouter ce paramètre directement
