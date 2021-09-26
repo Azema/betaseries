@@ -48,12 +48,18 @@ let betaseries_api_user_key = '';
         counter = 0,
         // Equivalences des classifications TV
         ratings = {
+            'G': '',
             'TV-Y': '',
             'TV-Y7': 'D-10',
             'TV-G': '',
-            'TV-PG': 'D-12',
-            'TV-14': 'D-16',
-            'TV-MA': 'D-18'
+            'PG': 'D-10',
+            'TV-PG': 'D-10',
+            'TV-14': 'D-12',
+            'PG-13': 'D-12',
+            'TV-MA': 'D-18',
+            'NC-17': 'D-18',
+            'NR': 'D-18',
+            'R': 'D-18'
         },
         // URI des images de classifications TV
         ratingImgs = {
