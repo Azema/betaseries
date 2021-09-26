@@ -1,12 +1,10 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.13.3
+// @version      0.14.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
-// @updateURL    https://github.com/Azema/betaseries
-// @downloadURL  https://github.com/Azema/betaseries/raw/main/betaseries.user.js
 // @supportURL   https://github.com/Azema/betaseries/issues
 // @licence      Apache License 2.0
 // @match        https://www.betaseries.com/serie/*
@@ -404,13 +402,13 @@ let betaseries_api_user_key = '';
      * dans le cache, pour être utilisé par les autres fonctions
      * @return {Promise}
      */
-    function getCurrentResource() {
+    function getCurrentResource(nocache=false) {
         if (debug) console.log('getCurrentResource');
         let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
             eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
             fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
-        return callBetaSeries('GET', type.plural, fonction, {'id': eltId});
+        return callBetaSeries('GET', type.plural, fonction, {'id': eltId}, nocache);
     }
 
     /**
@@ -976,7 +974,8 @@ let betaseries_api_user_key = '';
             return;
         }
 
-        let title = $elt.attr('title');
+        let title = $elt.attr('title'),
+            votes = ' vote' + (parseInt(total, 10) > 1 ? 's' : '');
         // On met en forme le nombre de votes
         total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(total);
         // On limite le nombre de chiffre après la virgule
@@ -986,7 +985,7 @@ let betaseries_api_user_key = '';
             title = note + ' / 5';
         }
         // On modifie l'attribut title pour y ajouter le nombre de votes
-        $elt.attr('title', total + ' vote' + (total > 1 ? 's' : '') + ': ' + title);
+        $elt.attr('title', total + votes + ': ' + title);
     }
 
     /**
@@ -1116,7 +1115,6 @@ let betaseries_api_user_key = '';
                     // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
                     $elt.parent('div.slide__image').find('img').removeAttr('style');
                     $elt.parent('div.slide_flex').removeClass('slide--notSeen');
-                    updateProgressBar(-1);
 
                     if ($('#episodes .seen').length == len) {
                         $('div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
@@ -1133,7 +1131,6 @@ let betaseries_api_user_key = '';
                     if (!contVignette.hasClass('slide--notSeen')) {
                         contVignette.addClass('slide--notSeen');
                     }
-                    updateProgressBar(1);
 
                     if ($('#episodes .seen').length < len) {
                         $('div.slide--current .checkSeen').remove();
@@ -1141,26 +1138,51 @@ let betaseries_api_user_key = '';
                         $('div.slide--current').addClass('slide--notSeen');
                     }
                 }
+                getCurrentResource(true).then(() => {
+                    updateProgressBar();
+                    updateNextEpisode();
+                });
             }
             /**
              * Met à jour la barre de progression de visionnage de la série
-             * @param  {Number} i Entier positif ou négatif (1 ou -1)
              * @return {void}
              */
-            function updateProgressBar(i) {
+            function updateProgressBar() {
                 let showId = $('#reactjs-show-actions').data('show-id'),
                     progBar = $('.progressBarShow'),
-                    show = cache.get('shows', showId).show,
-                    nbEpisodes = parseInt(show.episodes, 10),
-                    remaining = i + show.user.remaining,
-                    nbSeen = nbEpisodes - remaining,
-                    status = (nbSeen * 100) / nbEpisodes;
-                // On met à jour les infos dans l'objet ressource
-                show.user.remaining = remaining;
-                show.user.status = parseFloat(status.toFixed(1));
-                cache.set('shows', showId, {'show': show});
+                    show = cache.get('shows', showId).show;
                 // On met à jour la barre de progression
-                progBar.css('width', status.toFixed(1) + '%');
+                progBar.css('width', show.user.status.toFixed(1) + '%');
+            }
+            /**
+             * Met à jour le bloc du prochain épisode à voir
+             * @return void
+             */
+            function updateNextEpisode() {
+                if (debug) console.log('updateNextEpisode');
+                let showId = $('#reactjs-show-actions').data('show-id'),
+                    nextEpisode = $('a.blockNextEpisode'),
+                    show = cache.get('shows', showId).show;
+
+                if (nextEpisode.length > 0 && 'next' in show.user) {
+                    if (debug) console.log('nextEpisode et show.user.next OK', show.user);
+                    // Modifier l'image
+                    let img = nextEpisode.find('img'),
+                        parent = img.parent('div'),
+                        height = img.attr('height'),
+                        width = img.attr('width'),
+                        src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${show.user.next.id}&width=${width}&height=${height}`;
+                    img.remove();
+                    parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
+                    // Modifier le titre
+                    nextEpisode.find('.titleEpisode').text(show.user.next.code.toUpperCase() + ' - ' + show.user.next.title);
+                    // Modifier le lien
+                    nextEpisode.attr('href', nextEpisode.attr('href').replace(/s\d{2}e\d{2}/, show.user.next.code.toLowerCase()));
+                    // Modifier le nombre d'épisodes restants
+                    let remaining = nextEpisode.find('.remaining div'),
+                        txt = remaining.text().trim();
+                    remaining.text(txt.replace(/^\d+/, show.user.remaining));
+                }
             }
         }
 
@@ -1386,7 +1408,7 @@ let betaseries_api_user_key = '';
                 crossDomain: true
             }).done(function(data) {
                 // Mise en cache de la ressource
-                if (!nocache && args && 'id' in args && type == 'GET') {
+                if (args && 'id' in args && type == 'GET') {
                     cache.set(methode, args.id, data);
                 }
                 resolve(data);
