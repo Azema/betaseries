@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.13.1
+// @version      0.13.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -127,7 +127,7 @@ let betaseries_api_user_key = '';
             addRemoveParamToConsole();
         });
         // Listener sur la liste des méthodes
-        $('#method').on('change', (e) => {
+        $('#method').on('change', () => {
             // On supprime tous les paramètres existants
             $('#api-params .remove').remove();
             // En attente de la documentation de l'API
@@ -167,7 +167,7 @@ let betaseries_api_user_key = '';
                     self.removeClass('fa-unlock').addClass('fa-lock');
                     self.parent('.api-params').removeClass('remove');
                 } else {
-                    self.removeClass('fa-lock').addClass('fa-unlock')
+                    self.removeClass('fa-lock').addClass('fa-unlock');
                     self.parent('.api-params').addClass('remove');
                 }
             });
@@ -176,7 +176,7 @@ let betaseries_api_user_key = '';
             let result = $('#result');
             // On ajoute un titre pour la section de résultat de la requête
             result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa fa-chevron-circle-down" aria-hidden="true"></i></span></h2>');
-            $('.toggle').click((e) => {
+            $('.toggle').click(() => {
                 // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
                 result.toggle('400', () => {
                     if (result.is(':hidden'))
@@ -186,7 +186,7 @@ let betaseries_api_user_key = '';
                 });
             });
             // On modifie le sens du chevron lors du lancement d'une requête
-            $('button.is-full').click((e) => {
+            $('button.is-full').click(() => {
                 $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
             });
         }
@@ -338,7 +338,7 @@ let betaseries_api_user_key = '';
      * dans une modal
      */
     function addBtnDev() {
-        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button"><i class="fa fa-2x fa-wrench" aria-hidden="true"></i></button><div class="label">Favoris</div></div>',
+        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button"><i class="fa fa-2x fa-wrench" aria-hidden="true"></i></button><div class="label">Dev</div></div>',
               dialogHTML = `
                 <div
                   class="dialog dialog-container table-dark"
