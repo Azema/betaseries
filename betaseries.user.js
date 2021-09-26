@@ -338,7 +338,7 @@ let betaseries_api_user_key = '';
      * dans une modal
      */
     function addBtnDev() {
-        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button"><i class="fa fa-2x fa-wrench" aria-hidden="true"></i></button><div class="label">Dev</div></div>',
+        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;"><i class="fa fa-2x fa-wrench" aria-hidden="true"></i></button><div class="label">Dev</div></div>',
               dialogHTML = `
                 <div
                   class="dialog dialog-container table-dark"
@@ -418,7 +418,7 @@ let betaseries_api_user_key = '';
 
         callBetaSeries('GET', type.plural, fonction, {'id': eltId})
         .then(function(data) {
-            if (data[type].hasOwnProperty('rating')) {
+            if (data[type.singular].hasOwnProperty('rating')) {
                 let imgRating = ratingImg(equivRating(data[type.singular].rating));
                 if (imgRating != '') {
                     // On ajoute la classification
