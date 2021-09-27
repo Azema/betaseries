@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.14.0
+// @version      0.15.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -895,6 +895,92 @@ let betaseries_api_user_key = '';
                 transform: rotate(360deg);
               }
             }
+            :root {
+                --size: 75px;
+                --clr-bg: #272324;
+                --clr1: #bbbb88;
+                --clr2: #ccc68d;
+                --clr3: #eedd99;
+                --clr4: #eec290;
+                --clr5: #eeaa88;
+            }
+            .spinner {
+                --animation-duration: 5000ms;
+                position: absolute;
+                width: var(--size);
+                height: var(--size);
+                transform: rotate(45deg);
+                top: 50px;
+                left: 70px;
+                z-index: 1;
+            }
+            .spinner .spinner-item {
+                --item-size: calc(var(--size) / 2.5);
+                position: absolute;
+                width: var(--item-size);
+                height: var(--item-size);
+                border: 4px solid var(--clr-spinner);
+            }
+            .spinner .spinner-item:nth-child(1) {
+                --clr-spinner: var(--clr1);
+                top: 0;
+                left: 0;
+                animation: spinner3A var(--animation-duration) linear infinite;
+            }
+            @keyframes spinner3A {
+                0%, 8.33%, 16.66%, 100% {
+                    transform: translate(0%, 0%);
+                }
+                24.99%, 33.32%, 41.65% {
+                    transform: translate(100%, 0%);
+                }
+                49.98%, 58.31%, 66.64% {
+                    transform: translate(100%, 100%);
+                }
+                74.97%, 83.3%, 91.63% {
+                    transform: translate(0%, 100%);
+                }
+            }
+            .spinner .spinner-item:nth-child(2) {
+                --clr-spinner: var(--clr3);
+                top: 0;
+                left: var(--item-size);
+                animation: spinner3B var(--animation-duration) linear infinite;
+            }
+            @keyframes spinner3B {
+                0%, 8.33%, 91.63%, 100% {
+                    transform: translate(0%, 0%);
+                }
+                16.66%, 24.99%, 33.32% {
+                    transform: translate(0%, 100%);
+                }
+                41.65%, 49.98%, 58.31% {
+                    transform: translate(-100%, 100%);
+                }
+                66.64%, 74.97%, 83.3% {
+                    transform: translate(-100%, 0%);
+                }
+            }
+            .spinner .spinner-item {
+                --clr-spinner: var(--clr5);
+                top: var(--item-size);
+                left: var(--item-size);
+                animation: spinner3C var(--animation-duration) linear infinite;
+            }
+            @keyframes spinner3C {
+                0%, 83.3%, 91.63%, 100% {
+                    transform: translate(0, 0);
+                }
+                8.33%, 16.66%, 24.99% {
+                    transform: translate(-100%, 0);
+                }
+                33.32%, 41.65%, 49.98% {
+                    transform: translate(-100%, -100%);
+                }
+                58.31%, 66.64%, 74.97% {
+                    transform: translate(0, -100%);
+                }
+            }
         ]]></>).toString());
         /* jshint ignore:end */
         // Fin
@@ -1064,6 +1150,28 @@ let betaseries_api_user_key = '';
                 });
             });
             /**
+             * Affiche/masque le spinner de modification des épisodes
+             *
+             * @param {Object} $elt     L'objet jQuery correspondant à l'épisode
+             * @param {bool}   display  Le flag indiquant si afficher ou masquer
+             * @return {void}
+             */
+            function toggleSpinner($elt, display) {
+                let container = $elt.parent(),
+                    html = '<div class="spinner">' +
+                             '<div class="spinner-item"></div>' +
+                             '<div class="spinner-item"></div>' +
+                             '<div class="spinner-item"></div>' +
+                           '</div>';
+                if (debug) console.log('toggleSpinner');
+                if (! display) {
+                    $('.spinner').remove();
+                } else {
+                    container.prepend(html);
+                }
+            }
+
+            /**
              * Modifie le statut d'un épisode sur l'API
              * @param  {Object} $elt      L'objet jQuery correspondant à l'épisode
              * @param  {String} status    Le nouveau statut de l'épisode
@@ -1076,6 +1184,7 @@ let betaseries_api_user_key = '';
                 if (method == 'POST')
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
 
+                toggleSpinner($elt, true);
                 callBetaSeries(method, 'episodes', 'watched', args)
                 .then(function(data) {
                     if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
@@ -1141,6 +1250,7 @@ let betaseries_api_user_key = '';
                 getCurrentResource(true).then(() => {
                     updateProgressBar();
                     updateNextEpisode();
+                    toggleSpinner($elt, false);
                 });
             }
             /**
