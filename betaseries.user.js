@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.15.0
+// @version      0.15.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -17,6 +17,7 @@
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
+// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-8nnxe+ns8riAumYSHJjs35LA95wg4y8OUiCN/HoV86JyQTHnqUwjDxJR9wSHpSdf
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
@@ -615,375 +616,10 @@ let betaseries_api_user_key = '';
      * Ajout d'une feuille de style
      */
     function addStylesheet() {
-        /* jshint ignore:start */
-        GM_addStyle((<><![CDATA[
-            #updateSimilarsBlock {vertical-align: middle;}
-            .updateSimilars {
-                cursor:pointer;
-                -webkit-transform: rotate(-45deg) scale(1);
-                transform: rotate(-45deg) scale(1);
-                -webkit-transition: .3s ease-in-out;
-                transition: .3s ease-in-out;
-            }
-            .updateSimilars:hover {
-                -webkit-transform: rotate(0) scale(1.2);
-                transform: rotate(0) scale(1.2);
-            }
-            .bandViewed {
-                position:absolute;
-                top:0;
-                left:-64px;
-                z-index:1;
-            }
-            button.button.blue {
-                padding: 5px 10px;
-                background-color: #556fa3;
-                color: white;
-                border-radius: 4px;
-                font-family: Muli,"Lucida Grande","Trebuchet MS",sans-serif;
-                letter-spacing: .5px;
-                font-size: 12px;
-                line-height: 1.2;
-            }
-            .stars-outer {
-              display: inline-block;
-              position: relative;
-              font-family: FontAwesome;
-            }
-
-            .stars-outer::before {
-              content: "\f006 \f006 \f006 \f006 \f006";
-            }
-
-            .stars-inner {
-              position: absolute;
-              top: 0;
-              left: 0;
-              white-space: nowrap;
-              overflow: hidden;
-              width: 0;
-            }
-
-            .stars-inner::before {
-              content: "\f005 \f005 \f005 \f005 \f005";
-              color: #f8ce0b;
-            }
-
-            .checkSeen:hover {
-                opacity: 0.5;
-            }
-
-            /* -------------------------------------------------------------------------- *\
-             * Styling to make the dialog look like a dialog
-             * -------------------------------------------------------------------------- */
-
-            [data-a11y-dialog-native] .dialog-overlay {
-              display: none;
-            }
-
-            /**
-             * When <dialog> is not supported, its default display is inline which can
-             * cause layout issues.
-             */
-            dialog[open] {
-              display: block;
-            }
-
-            .dialog[aria-hidden='true'] {
-              display: none;
-            }
-
-            .dialog:not([data-a11y-dialog-native]),
-            .dialog-overlay {
-              position: fixed;
-              top: 0;
-              left: 0;
-              bottom: 0;
-              right: 0;
-            }
-
-            .dialog {
-              display: flex;
-            }
-
-            .dialog-overlay {
-              background-color: rgba(43, 46, 56, 0.9);
-            }
-
-            dialog::backdrop {
-              background-color: rgba(43, 46, 56, 0.9);
-            }
-
-            .dialog-content {
-              margin: auto;
-              z-index: 20;
-              position: relative;
-            }
-
-            dialog.dialog-content {
-              position: fixed;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              margin: 0;
-              color: white;
-            }
-
-            /* -------------------------------------------------------------------------- *\
-             * Extra dialog styling to make it shiny
-             * -------------------------------------------------------------------------- */
-
-            @keyframes fade-in {
-              from {
-                opacity: 0;
-              }
-            }
-
-            @keyframes slide-up {
-              from {
-                transform: translateY(10%);
-              }
-            }
-
-            .dialog-overlay {
-              animation: fade-in 200ms both;
-            }
-
-            .dialog-content {
-              animation: fade-in 400ms 200ms both, slide-up 400ms 200ms both;
-            }
-
-            dialog.dialog-content {
-              animation: fade-in 400ms 200ms both;
-            }
-
-            .dialog-content {
-              padding: 1em;
-              max-width: 90%;
-              width: 600px;
-              border-radius: 2px;
-            }
-
-            @media screen and (min-width: 700px) {
-              .dialog-content {
-                padding: 2em;
-                font-size: 1.2em;
-              }
-            }
-
-            .dialog h1 {
-              margin: 0;
-              font-size: 1.25em;
-              padding-left: 20px;
-            }
-
-            .dialog-close {
-              position: absolute;
-              top: 0.5em;
-              right: 0.5em;
-              border: 0;
-              padding: 0;
-              background-color: transparent;
-              font-weight: bold;
-              font-size: 1.25em;
-              width: 1.2em;
-              height: 1.2em;
-              text-align: center;
-              cursor: pointer;
-              transition: 0.15s;
-              color: white;
-            }
-
-            @media screen and (min-width: 700px) {
-              .dialog-close {
-                top: 2em;
-                right: 3em;
-              }
-            }
-            .renderjson a              { text-decoration: none; }
-            .renderjson .disclosure    { color: crimson;
-                                         font-size: 150%; }
-            .renderjson .syntax        { color: grey; }
-            .renderjson .string        { color: red; }
-            .renderjson .number        { color: cyan; }
-            .renderjson .boolean       { color: plum; }
-            .renderjson .key           { color: lightblue; }
-            .renderjson .keyword       { color: lightgoldenrodyellow; }
-            .renderjson .object.syntax { color: lightseagreen; }
-            .renderjson .array.syntax  { color: lightsalmon; }
-
-            #containerIframe {
-              position: fixed;
-              top: 80px;
-              left: 0;
-              width: 100%;
-              height: 400px;
-              margin: auto;
-              text-align: center;
-              z-index: 1000;
-            }
-
-            .updateSimilars:not(.finish) {
-              -webkit-animation: spinner 1500ms infinite linear;
-              -moz-animation: spinner 1500ms infinite linear;
-              -ms-animation: spinner 1500ms infinite linear;
-              -o-animation: spinner 1500ms infinite linear;
-              animation: spinner 1500ms infinite linear;
-            }
-            /* Animation */
-            @-webkit-keyframes spinner {
-              0% {
-                -webkit-transform: rotate(0deg);
-                -moz-transform: rotate(0deg);
-                -ms-transform: rotate(0deg);
-                -o-transform: rotate(0deg);
-                transform: rotate(0deg);
-              }
-              100% {
-                -webkit-transform: rotate(360deg);
-                -moz-transform: rotate(360deg);
-                -ms-transform: rotate(360deg);
-                -o-transform: rotate(360deg);
-                transform: rotate(360deg);
-              }
-            }
-            @-moz-keyframes spinner {
-              0% {
-                -webkit-transform: rotate(0deg);
-                -moz-transform: rotate(0deg);
-                -ms-transform: rotate(0deg);
-                -o-transform: rotate(0deg);
-                transform: rotate(0deg);
-              }
-              100% {
-                -webkit-transform: rotate(360deg);
-                -moz-transform: rotate(360deg);
-                -ms-transform: rotate(360deg);
-                -o-transform: rotate(360deg);
-                transform: rotate(360deg);
-              }
-            }
-            @-o-keyframes spinner {
-              0% {
-                -webkit-transform: rotate(0deg);
-                -moz-transform: rotate(0deg);
-                -ms-transform: rotate(0deg);
-                -o-transform: rotate(0deg);
-                transform: rotate(0deg);
-              }
-              100% {
-                -webkit-transform: rotate(360deg);
-                -moz-transform: rotate(360deg);
-                -ms-transform: rotate(360deg);
-                -o-transform: rotate(360deg);
-                transform: rotate(360deg);
-              }
-            }
-            @keyframes spinner {
-              0% {
-                -webkit-transform: rotate(0deg);
-                -moz-transform: rotate(0deg);
-                -ms-transform: rotate(0deg);
-                -o-transform: rotate(0deg);
-                transform: rotate(0deg);
-              }
-              100% {
-                -webkit-transform: rotate(360deg);
-                -moz-transform: rotate(360deg);
-                -ms-transform: rotate(360deg);
-                -o-transform: rotate(360deg);
-                transform: rotate(360deg);
-              }
-            }
-            :root {
-                --size: 75px;
-                --clr-bg: #272324;
-                --clr1: #bbbb88;
-                --clr2: #ccc68d;
-                --clr3: #eedd99;
-                --clr4: #eec290;
-                --clr5: #eeaa88;
-            }
-            .spinner {
-                --animation-duration: 5000ms;
-                position: absolute;
-                width: var(--size);
-                height: var(--size);
-                transform: rotate(45deg);
-                top: 50px;
-                left: 70px;
-                z-index: 1;
-            }
-            .spinner .spinner-item {
-                --item-size: calc(var(--size) / 2.5);
-                position: absolute;
-                width: var(--item-size);
-                height: var(--item-size);
-                border: 4px solid var(--clr-spinner);
-            }
-            .spinner .spinner-item:nth-child(1) {
-                --clr-spinner: var(--clr1);
-                top: 0;
-                left: 0;
-                animation: spinner3A var(--animation-duration) linear infinite;
-            }
-            @keyframes spinner3A {
-                0%, 8.33%, 16.66%, 100% {
-                    transform: translate(0%, 0%);
-                }
-                24.99%, 33.32%, 41.65% {
-                    transform: translate(100%, 0%);
-                }
-                49.98%, 58.31%, 66.64% {
-                    transform: translate(100%, 100%);
-                }
-                74.97%, 83.3%, 91.63% {
-                    transform: translate(0%, 100%);
-                }
-            }
-            .spinner .spinner-item:nth-child(2) {
-                --clr-spinner: var(--clr3);
-                top: 0;
-                left: var(--item-size);
-                animation: spinner3B var(--animation-duration) linear infinite;
-            }
-            @keyframes spinner3B {
-                0%, 8.33%, 91.63%, 100% {
-                    transform: translate(0%, 0%);
-                }
-                16.66%, 24.99%, 33.32% {
-                    transform: translate(0%, 100%);
-                }
-                41.65%, 49.98%, 58.31% {
-                    transform: translate(-100%, 100%);
-                }
-                66.64%, 74.97%, 83.3% {
-                    transform: translate(-100%, 0%);
-                }
-            }
-            .spinner .spinner-item {
-                --clr-spinner: var(--clr5);
-                top: var(--item-size);
-                left: var(--item-size);
-                animation: spinner3C var(--animation-duration) linear infinite;
-            }
-            @keyframes spinner3C {
-                0%, 83.3%, 91.63%, 100% {
-                    transform: translate(0, 0);
-                }
-                8.33%, 16.66%, 24.99% {
-                    transform: translate(-100%, 0);
-                }
-                33.32%, 41.65%, 49.98% {
-                    transform: translate(-100%, -100%);
-                }
-                58.31%, 66.64%, 74.97% {
-                    transform: translate(0, -100%);
-                }
-            }
-        ]]></>).toString());
-        /* jshint ignore:end */
-        // Fin
+        $('head').append('<link rel="stylesheet" ' +
+                         'href="https://betaseries.aufilelec.fr/css/style.min.css" ' +
+                         'integrity="sha384-8nnxe+ns8riAumYSHJjs35LA95wg4y8OUiCN/HoV86JyQTHnqUwjDxJR9wSHpSdf" ' +
+                         'crossorigin="anonymous" referrerpolicy="no-referrer" />');
     }
 
     /**
@@ -1181,8 +817,9 @@ let betaseries_api_user_key = '';
              */
             function changeStatusVignette($elt, status, method, episodeId) {
                 let args = {'id': episodeId};
-                if (method == 'POST')
+                if (method == 'POST') {
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
+                }
 
                 toggleSpinner($elt, true);
                 callBetaSeries(method, 'episodes', 'watched', args)
@@ -1204,9 +841,12 @@ let betaseries_api_user_key = '';
                             function(err) {
                                 if (err && err == 'changeStatus') {
                                     changeStatus($elt, status);
+                                    return;
                                 }
+                                // TODO: Afficher le message d'erreur
+                                toggleSpinner(false);
                             });
-                        });
+                        }); // TODO: Afficher le message d'erreur
                     }
                 });
             }
@@ -1225,10 +865,19 @@ let betaseries_api_user_key = '';
                     $elt.parent('div.slide__image').find('img').removeAttr('style');
                     $elt.parent('div.slide_flex').removeClass('slide--notSeen');
 
+                    // Si tous les épisodes de la saison ont été vus
                     if ($('#episodes .seen').length == len) {
+                        // On check la saison
                         $('div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
                         $('div.slide--current').removeClass('slide--notSeen');
                         $('div.slide--current').addClass('slide--seen');
+                        // Si il y a une saison suivante, on la sélectionne
+                        if ($('div.slide--current').next().length > 0) {
+                            let oldCurrent = $('div.slide--current'),
+                                newCurrent = oldCurrent.next();
+                            oldCurrent.removeClass('slide--current');
+                            newCurrent.trigger('click');
+                        }
                     }
                 } else {
                     $elt.css('background', 'none'); // On enlève le check dans la case à cocher
@@ -1496,11 +1145,17 @@ let betaseries_api_user_key = '';
      */
     function callBetaSeries(type, methode, fonction, args, nocache = false) {
         let urlAPI = 'https://api.betaseries.com/' + methode + '/' + fonction,
-            headers = {
-                'Accept': 'application/json',
-                'X-BetaSeries-Version': '3.0',
-                'x-betaseries-token': betaseries_api_user_token,
-                'x-betaseries-key': betaseries_api_user_key
+            params = {
+                method: type,
+                data: args,
+                dataType: 'json',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-BetaSeries-Version': '3.0',
+                    'x-betaseries-token': betaseries_api_user_token,
+                    'x-betaseries-key': betaseries_api_user_key
+                },
+                crossDomain: true
             };
 
         // On retourne la ressource en cache si elle y est présente
@@ -1510,13 +1165,7 @@ let betaseries_api_user_key = '';
             });
         }
         return new Promise((resolve, reject) => {
-            $.ajax(urlAPI, {
-                method: type,
-                data: args,
-                dataType: 'json',
-                headers: headers,
-                crossDomain: true
-            }).done(function(data) {
+            $.ajax(urlAPI, params).done(function(data) {
                 // Mise en cache de la ressource
                 if (args && 'id' in args && type == 'GET') {
                     cache.set(methode, args.id, data);
@@ -1524,7 +1173,7 @@ let betaseries_api_user_key = '';
                 resolve(data);
             })
             .fail(function(jqXHR, textStatus) {
-                console.error('callBetaSeries error: ', textStatus, type, urlAPI);
+                console.error('callBetaSeries error: ', textStatus, type, urlAPI, params);
                 if (! jqXHR.responseJSON) {
                     reject(textStatus);
                 }
