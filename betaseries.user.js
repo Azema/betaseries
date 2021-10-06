@@ -17,7 +17,7 @@
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
-// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-8nnxe+ns8riAumYSHJjs35LA95wg4y8OUiCN/HoV86JyQTHnqUwjDxJR9wSHpSdf
+// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-Ceodb3Z4ORjcdVVWireCUfCFn4Zq2HpYqJVGW0ol7n2nyWRDeD3KPsTyADzRy4kQ
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
@@ -618,7 +618,7 @@ let betaseries_api_user_key = '';
     function addStylesheet() {
         $('head').append('<link rel="stylesheet" ' +
                          'href="https://betaseries.aufilelec.fr/css/style.min.css" ' +
-                         'integrity="sha384-8nnxe+ns8riAumYSHJjs35LA95wg4y8OUiCN/HoV86JyQTHnqUwjDxJR9wSHpSdf" ' +
+                         'integrity="sha384-Ceodb3Z4ORjcdVVWireCUfCFn4Zq2HpYqJVGW0ol7n2nyWRDeD3KPsTyADzRy4kQ" ' +
                          'crossorigin="anonymous" referrerpolicy="no-referrer" />');
     }
 
