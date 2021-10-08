@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.15.1
+// @version      0.16.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -22,7 +22,7 @@
 // @grant        GM_getResourceText
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token */
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter */
 /* jslint unparam: true */
 
 
@@ -53,8 +53,8 @@ let betaseries_api_user_key = '';
             'TV-G': '',
             'PG': 'D-10',
             'TV-PG': 'D-10',
-            'TV-14': 'D-12',
-            'PG-13': 'D-12',
+            'TV-14': 'D-16',
+            'PG-13': 'D-16',
             'TV-MA': 'D-18',
             'NC-17': 'D-18',
             'NR': 'D-18',
@@ -72,13 +72,13 @@ let betaseries_api_user_key = '';
     if (regexSerieOrMovie.test(url)) {
         // On récupère d'abord la ressource courante pour la mettre en cache
         getCurrentResource().then(function() {
-            removeAds();  // On retire les pubs
-            addStylesheet();  // On ajoute le CSS
-            similarsViewed();  // On s'occupe des ressources similaires
-            decodeTitle();  // On décode le titre de la ressource
-            addRating();  // On ajoute la classification TV de la ressource courante
-            if (debug) addBtnDev();  // On ajoute le bouton de Dev
-            addNumberVoters();  // On ajoute le nombre de votes à la note
+            removeAds(); // On retire les pubs
+            addStylesheet(); // On ajoute le CSS
+            similarsViewed(); // On s'occupe des ressources similaires
+            decodeTitle(); // On décode le titre de la ressource
+            addRating(); // On ajoute la classification TV de la ressource courante
+            if (debug) addBtnDev(); // On ajoute le bouton de Dev
+            addNumberVoters(); // On ajoute le nombre de votes à la note
             // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
             timer = setInterval(function() {
                 addBtnWatchedToEpisode();
@@ -106,9 +106,9 @@ let betaseries_api_user_key = '';
     }
     // Fonctions appeler sur les pages des méthodes de l'API
     else if (/^\/api/.test(url)) {
-        if (/\/methodes/.test(url))
+        if (/\/methodes/.test(url)) {
             sommaireDevApi();
-        else if (/\/console/.test(url)) {
+        } else if (/\/console/.test(url)) {
             updateApiConsole();
         }
     }
@@ -258,9 +258,10 @@ let betaseries_api_user_key = '';
          */
         function buildCell(verb, key) {
             let cell = '<td>';
-            if (verb in methods[key])
+            if (verb in methods[key]) {
                 cell += '<i data-id="' + methods[key][verb].id + '" class="linkSommaire fa fa-check fa-2x" title="' +
                         methods[key][verb].title + '"></i>';
+            }
             return cell + '</td>';
         }
         /**
@@ -828,10 +829,12 @@ let betaseries_api_user_key = '';
                     changeStatus($elt, status);
                 },
                 function(err) {
+                    if (debug) console.log('changeStatusVignette error %s', err);
                     if (err && err == 'changeStatus') {
+                        if (debug) console.log('changeStatusVignette error %s changeStatus', method);
                         changeStatus($elt, status);
                     } else if (err && err == 'accessToken') {
-                        if (debug) console.log('similars error %s accessToken', method);
+                        if (debug) console.log('changeStatusVignette error %s accessToken', method);
                         authenticate().then(function() {
                             callBetaSeries(method, 'episodes', 'watched', {'id': episodeId})
                             .then(function(data) {
@@ -923,7 +926,7 @@ let betaseries_api_user_key = '';
                     nextEpisode = $('a.blockNextEpisode'),
                     show = cache.get('shows', showId).show;
 
-                if (nextEpisode.length > 0 && 'next' in show.user) {
+                if (nextEpisode.length > 0 && 'next' in show.user && show.user.next.id != null) {
                     if (debug) console.log('nextEpisode et show.user.next OK', show.user);
                     // Modifier l'image
                     let img = nextEpisode.find('img'),
@@ -941,6 +944,9 @@ let betaseries_api_user_key = '';
                     let remaining = nextEpisode.find('.remaining div'),
                         txt = remaining.text().trim();
                     remaining.text(txt.replace(/^\d+/, show.user.remaining));
+                }
+                else if (!('next' in show.user) || show.user.next.id == null) {
+                    nextEpisode.remove();
                 }
             }
         }
@@ -995,6 +1001,8 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
+            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-XAV5x6B+4iOOciHox8Vw6b6Fy1/zAdayPeUTv4V+OZ3YkKPftGWz978PjSVY8qU2" crossorigin="anonymous">');
+            $('head').append('<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>');
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
             <div id="updateSimilarsBlock">
@@ -1032,13 +1040,31 @@ let betaseries_api_user_key = '';
         callBetaSeries('GET', type.plural, 'similars', {'thetvdb_id': show.thetvdb_id, 'details': true})
         .then(function(data) {
             for (let s = 0; s < data.similars.length; s++) {
-                let $elt = $($('#similars .slide__title').get(s)),
-                    resource = data.similars[s][type.singular];
+                let $elt = $(similars.get(s)),
+                    $link = $elt.siblings('a'),
+                    resource = data.similars[s][type.singular],
+                    genres = Object.values(resource.genres).join(', '),
+                    status = resource.status == 'Ended' ? 'Terminée' : 'En cours';
+
                 decodeTitle($elt);
                 addBandeau($elt, resource.user.status, resource.notes);
                 cache.set(type.plural, resource.id, {'show': resource});
-                $('.updateSimilars').addClass('finish');
+                $link.popover({
+                    container: $link,
+                    html: true,
+                    content: `<div>
+                      <p>${resource.seasons} saison${resource.seasons > 1 ? 's':''}, ${resource.episodes} épisodes</p>
+                      <p><u>Genres:</u> ${genres}</p>
+                      <p><u>Création:</u> ${resource.creation}, <u>Pays:</u> ${resource.country}</p>
+                      <p><u>Statut:</u> ${status}</p>
+                      <p>${resource.description.substring(0, 200)}...</p>
+                    </div>`,
+                    placement: 'right',
+                    title: resource.title,
+                    trigger: 'hover'
+                });
             }
+            $('.updateSimilars').addClass('finish');
         });
 
         /**
