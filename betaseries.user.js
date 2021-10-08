@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.16.0
+// @version      0.16.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1001,7 +1001,7 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-XAV5x6B+4iOOciHox8Vw6b6Fy1/zAdayPeUTv4V+OZ3YkKPftGWz978PjSVY8qU2" crossorigin="anonymous">');
+            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-+6Cn3crkSB2bcRwXiuYFqcwrcn+RlW9lYvV/YsqIt9GqI7fKdYNYTTEePoeGRX9n" crossorigin="anonymous">');
             $('head').append('<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>');
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
@@ -1059,7 +1059,7 @@ let betaseries_api_user_key = '';
                       <p><u>Statut:</u> ${status}</p>
                       <p>${resource.description.substring(0, 200)}...</p>
                     </div>`,
-                    placement: 'right',
+                    placement: 'auto',
                     title: resource.title,
                     trigger: 'hover'
                 });
