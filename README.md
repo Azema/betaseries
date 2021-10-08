@@ -11,6 +11,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajoute un bandeau d'angle "Viewed" sur les séries similaires déjà vues (Nécessite d'être connecté à votre compte utilisateur)
 
 ![Séries similaires avec le bandeau vues](/img/similarsViewed.jpg "Séries similaires avec le bandeau vues")
+* Ajout d'une popup avec les détails d'une série similaire lors du survol de l'image
 * Ajout du statut des séries sur la page de gestion des séries de l'utilisateur connecté
 * Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode
 
