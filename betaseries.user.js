@@ -17,12 +17,12 @@
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
-// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-Ceodb3Z4ORjcdVVWireCUfCFn4Zq2HpYqJVGW0ol7n2nyWRDeD3KPsTyADzRy4kQ
+// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-iVMVdTzkMqotYu7K7ZZIfOL4dr1t9s/W7iOerJwOGLwZYxabDf6QYwA/1pZKbzSU
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter */
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends */
 /* jslint unparam: true */
 
 
@@ -46,7 +46,7 @@ let betaseries_api_user_key = '';
         timer, currentUser, cache = new Cache(),
         counter = 0,
         // Equivalences des classifications TV
-        ratings = {
+        /*ratings = {
             'G': '',
             'TV-Y': '',
             'TV-Y7': 'D-10',
@@ -59,13 +59,24 @@ let betaseries_api_user_key = '';
             'NC-17': 'D-18',
             'NR': 'D-18',
             'R': 'D-18'
-        },
+        },*/
         // URI des images de classifications TV
         ratingImgs = {
             'D-10': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
             'D-12': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
             'D-16': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
-            'D-18': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png'
+            'D-18': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
+            'TV-Y':  'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
+            'TV-Y7': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
+            'TV-G':  'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
+            'TV-PG': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
+            'TV-14': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
+            'TV-MA': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
+            'G': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
+            'PG': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
+            'PG-13': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
+            'R': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
+            'NC-17': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png'
         };
 
     // Fonctions appeler pour les pages des series, des films et des episodes
@@ -425,7 +436,7 @@ let betaseries_api_user_key = '';
         callBetaSeries('GET', type.plural, fonction, {'id': eltId})
         .then(function(data) {
             if (data[type.singular].hasOwnProperty('rating')) {
-                let imgRating = ratingImg(equivRating(data[type.singular].rating));
+                let imgRating = ratingImg(data[type.singular].rating);
                 if (imgRating != '') {
                     // On ajoute la classification
                     $('.blockInformations__details')
@@ -443,9 +454,9 @@ let betaseries_api_user_key = '';
          * @param {String} ratingUS Le code de classification US
          * @return {String|null}
          */
-        function equivRating(ratingUS) {
+        /*function equivRating(ratingUS) {
             return ratings.hasOwnProperty(ratingUS) ? ratings[ratingUS] : null;
-        }
+        }*/
         /**
          * Retourne l'URI de l'image de classification TV
          *
@@ -619,7 +630,7 @@ let betaseries_api_user_key = '';
     function addStylesheet() {
         $('head').append('<link rel="stylesheet" ' +
                          'href="https://betaseries.aufilelec.fr/css/style.min.css" ' +
-                         'integrity="sha384-Ceodb3Z4ORjcdVVWireCUfCFn4Zq2HpYqJVGW0ol7n2nyWRDeD3KPsTyADzRy4kQ" ' +
+                         'integrity="sha384-iVMVdTzkMqotYu7K7ZZIfOL4dr1t9s/W7iOerJwOGLwZYxabDf6QYwA/1pZKbzSU" ' +
                          'crossorigin="anonymous" referrerpolicy="no-referrer" />');
     }
 
@@ -1001,7 +1012,7 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-+6Cn3crkSB2bcRwXiuYFqcwrcn+RlW9lYvV/YsqIt9GqI7fKdYNYTTEePoeGRX9n" crossorigin="anonymous">');
+            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-1ttRrcUc1EYn6RI2dTN9lGGKM7bdcTcljuaq782+hiZhtqJJC7QcJZgfA7QNjW9D" crossorigin="anonymous">');
             $('head').append('<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>');
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
@@ -1039,31 +1050,43 @@ let betaseries_api_user_key = '';
 
         callBetaSeries('GET', type.plural, 'similars', {'thetvdb_id': show.thetvdb_id, 'details': true})
         .then(function(data) {
-            for (let s = 0; s < data.similars.length; s++) {
-                let $elt = $(similars.get(s)),
-                    $link = $elt.siblings('a'),
-                    resource = data.similars[s][type.singular],
-                    genres = Object.values(resource.genres).join(', '),
-                    status = resource.status == 'Ended' ? 'Terminée' : 'En cours';
+            let intTime = setInterval(function() {
+                if (typeof bootstrap.Popover != 'function') return;
+                else clearInterval(intTime);
 
-                decodeTitle($elt);
-                addBandeau($elt, resource.user.status, resource.notes);
-                cache.set(type.plural, resource.id, {'show': resource});
-                $link.popover({
-                    container: $link,
-                    html: true,
-                    content: `<div>
-                      <p>${resource.seasons} saison${resource.seasons > 1 ? 's':''}, ${resource.episodes} épisodes</p>
+                for (let s = 0; s < data.similars.length; s++) {
+                    let $elt = $(similars.get(s)),
+                        $link = $elt.siblings('a'),
+                        resource = data.similars[s][type.singular],
+                        genres = Object.values(resource.genres).join(', '),
+                        status = resource.status == 'Ended' ? 'Terminée' : 'En cours',
+                        seen = (resource.user.status > 0) ? 'Vu à ' + resource.user.status + '%' : 'Pas vu',
+                        archived = '';
+                    if (resource.user.status > 0 && resource.user.archived == true) {
+                        archived = ', Archivée: <i class="fa fa-check-circle-o" aria-hidden="true"></i>';
+                    } else if (resource.user.status > 0) {
+                        archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
+                    }
+
+                    decodeTitle($elt);
+                    addBandeau($elt, resource.user.status, resource.notes);
+                    cache.set(type.plural, resource.id, {'show': resource});
+                    $link.popover({
+                        container: $link,
+                        html: true,
+                        content: `<div>
+                      <p><strong>${resource.seasons}</strong> saison${resource.seasons > 1 ? 's':''}, <strong>${resource.episodes}</strong> épisodes, <strong>${resource.notes.total}</strong> votes</p>
                       <p><u>Genres:</u> ${genres}</p>
-                      <p><u>Création:</u> ${resource.creation}, <u>Pays:</u> ${resource.country}</p>
-                      <p><u>Statut:</u> ${status}</p>
+                      <p><u>Création:</u> <strong>${resource.creation}</strong>, <u>Pays:</u> <strong>${resource.country}</strong></p>
+                      <p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>
                       <p>${resource.description.substring(0, 200)}...</p>
                     </div>`,
-                    placement: 'auto',
-                    title: resource.title,
-                    trigger: 'hover'
-                });
-            }
+                        placement: 'auto',
+                        title: resource.title + ' <span style="font-size: 0.8em;color:#000;">' + parseFloat(resource.notes.mean).toFixed(2) + ' / 5</span>',
+                        trigger: 'hover'
+                    });
+                }
+            }, 500);
             $('.updateSimilars').addClass('finish');
         });
 
