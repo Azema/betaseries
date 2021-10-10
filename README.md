@@ -6,12 +6,12 @@ Ce UserScript permet d'ajouter plusieurs améliorations et corrections au site B
 
 Différentes améliorations seront ajoutées au fur et à mesure, mais vos idées (réalistes) sont les bienvenues.
 
-### Améliorations
-#### Générales
+## Améliorations
+### Générales
 * Masque les emplacements de pub
 * Ajout d'une fonction d'authentification sur le site API BetaSeries, en cas de perte du token sur le site
 
-#### Séries, Films et épisodes
+### Séries, Films et épisodes
 * Ajoute un bandeau d'angle "Viewed" sur les séries similaires déjà vues (Nécessite d'être connecté à votre compte utilisateur)
 * Ajout d'une popup avec les détails d'une série similaire lors du survol de l'image
 
@@ -27,11 +27,11 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout du logo de classification TV dans les infos de la ressource (série et film)
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
 
-#### Membres
+### Membres
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
 * Ajout d'un champ de recherche sur la page des amis d'un membre
 
-#### API
+### API
 * Ajout d'un sommaire, sur les pages des méthodes de l'[API](https://www.betaseries.com/api/), avec les liens des différentes fonctions. Ce qui permet de voir toutes les fonctions liées aux méthodes, en début de page.
 
 ![Sommaire des méthodes de l'API](/img/sommaireMethodes.png "Sommaire des méthodes de l'API")
@@ -44,7 +44,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Console de l'API](/img/console.png "Console de l'API")
 
-### Corrections
+## Corrections
 * Décode les HTMLEntities dans le titre de la série
 
 ![HTMLEntities](/img/HTMLEntities-title.png "HTMLEntities dans le titre")
