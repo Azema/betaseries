@@ -20,6 +20,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Case à cocher VU d'un épisode](/img/checkSeen.jpg "Case à cocher VU d'un épisode")
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
+* Ajout d'un champ de recherche sur la page des amis d'un membre
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource (série et film)
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
