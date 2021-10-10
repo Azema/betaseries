@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.17.1
+// @version      0.17.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -46,36 +46,68 @@ let betaseries_api_user_key = '';
         userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, currentUser, cache = new Cache(),
         counter = 0,
-        // URI des images de classifications TV et films
-        ratingImgs = {
-            'D-10': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
-            'D-12': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
-            'D-16': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
-            'D-18': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
-            'TV-Y':  'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
-            'TV-Y7': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
-            'TV-G':  'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
-            'TV-PG': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
-            'TV-14': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
-            'TV-MA': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
-            'G': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
-            'PG': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
-            'PG-13': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
-            'R': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
-            'NC-17': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png'
-        },
-        ratingTitles = {
-            'TV-Y':  'Ce programme est évalué comme étant approprié aux enfants',
-            'TV-Y7': 'Ce programme est désigné pour les enfants âgés de 7 ans et plus',
-            'TV-G':  'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants',
-            'TV-PG': 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants',
-            'TV-14': 'Ce programme est déconseillé aux enfants de moins de 14 ans',
-            'TV-MA': 'Ce programme est uniquement réservé aux adultes',
-            'G': 'Tous publics',
-            'PG': 'Accord parental souhaitable',
-            'PG-13': 'Accord parental recommandé, film déconseillé aux moins de 13 ans',
-            'R': 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte',
-            'NC-17': 'Interdit aux enfants de 17 ans et moins'
+        // URI des images et description des classifications TV et films
+        ratings = {
+            'D-10': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
+                title: "Déconseillé au moins de 10 ans"
+            },
+            'D-12': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
+                title: 'Déconseillé au moins de 12 ans'
+            },
+            'D-16': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
+                title: 'Déconseillé au moins de 16 ans'
+            },
+            'D-18': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
+                title: 'Ce programme est uniquement réservé aux adultes'
+            },
+            'TV-Y': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
+                title: 'Ce programme est évalué comme étant approprié aux enfants'
+            },
+            'TV-Y7': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
+                title: 'Ce programme est désigné pour les enfants âgés de 7 ans et plus'
+            },
+            'TV-G': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
+                title: 'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants'
+            },
+            'TV-PG': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
+                title: 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants'
+            },
+            'TV-14': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
+                title: 'Ce programme est déconseillé aux enfants de moins de 14 ans'
+            },
+            'TV-MA': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
+                title: 'Ce programme est uniquement réservé aux adultes'
+            },
+            'G': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
+                title: 'Tous publics'
+            },
+            'PG': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
+                title: 'Accord parental souhaitable'
+            },
+            'PG-13': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
+                title: 'Accord parental recommandé, film déconseillé aux moins de 13 ans'
+            },
+            'R': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
+                title: 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte'
+            },
+            'NC-17': {
+                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
+                title: 'Interdit aux enfants de 17 ans et moins'
+            }
         };
 
     // Fonctions appeler pour les pages des series, des films et des episodes
@@ -438,36 +470,17 @@ let betaseries_api_user_key = '';
         callBetaSeries('GET', type.plural, fonction, {'id': eltId})
         .then(function(data) {
             if (data[type.singular].hasOwnProperty('rating')) {
-                let imgRating = ratingImg(data[type.singular].rating);
-                if (imgRating != '') {
+                let rating = ratings.hasOwnProperty(data[type.singular].rating) ? ratings[data[type.singular].rating] : '';
+                if (rating != '') {
                     // On ajoute la classification
                     $('.blockInformations__details')
                     .append(
                         '<li id="rating"><strong>Classification</strong><img src="' +
-                        imgRating + '" title="' + ratingTitle(data[type.singular].rating) + '"/></li>'
+                        rating.img + '" title="' + rating.title + '"/></li>'
                     );
                 }
             }
         });
-
-        /**
-         * Retourne le titre de classification
-         *
-         * @param {String} rating Le code de classification US
-         * @return {String|null}
-         */
-        function ratingTitle(rating) {
-            return ratingTitles.hasOwnProperty(rating) ? ratingTitles[rating] : '';
-        }
-        /**
-         * Retourne l'URI de l'image de classification TV
-         *
-         * @param {String} rating Le code de classification FR
-         * @return {String}
-         */
-        function ratingImg(rating) {
-            return (ratingImgs.hasOwnProperty(rating)) ? ratingImgs[rating] : '';
-        }
     }
 
     /**
