@@ -1,6 +1,19 @@
 # betaseries
 UserScript pour le site [BetaSeries](https://www.betaseries.com/) testé avec Tampermonkey sur Chrome
 
+## Sommaire
+1. [Description](#description)
+2. [Améliorations](#améliorations)
+   - [Générales](#générales)
+   - [Séries, Films et épisodes](#séries-films-et-épisodes)
+   - [Membres](#membres)
+   - [API](#api)
+3. [Corrections](#corrections)
+4. [Futures améliorations possibles](#futures-améliorations-possibles)
+5. [Développement](#développement)
+
+
+
 ## Description
 Ce UserScript permet d'ajouter plusieurs améliorations et corrections au site BetaSeries.
 
@@ -52,6 +65,6 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ## Futures améliorations possibles
 * ~~Afficher les infos de la ressource dans une popup, lors du survol d'un similar~~
 
-## Dévelopement
+## Développement
 * Utilisation des [Promise](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 * Mise en cache des ressources, pour limiter les appels à l'API
