@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.16.1
+// @version      0.17.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -38,6 +38,7 @@ let betaseries_api_user_key = '';
 
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
+          regexUserFriends = new RegExp('^/membre/[A-Za-z0-9]*/amis$'),
           regexSerieOrMovie = new RegExp('^/(serie|film|episode)/*'),
           tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css';
     let debug = false,
@@ -101,19 +102,22 @@ let betaseries_api_user_key = '';
         addStatusToGestionSeries();
     }
     // Fonctions appeler sur la page des membres
-    else if (regexUser.test(url) && userIdentified) {
-        removeAds();
+    else if ((regexUser.test(url) || regexUserFriends.test(url)) && userIdentified) {
         addStylesheet();
-        // On récupère les infos du membre connecté
-        getMember()
-        .then(function(member) {
-            currentUser = member;
-            let login = url.split('/')[2];
-            // On ajoute la fonction de comparaison des membres
-            if (currentUser && login != currentUser.login) {
-                compareMembers();
-            }
-        });
+        if (regexUser.test(url)) {
+            // On récupère les infos du membre connecté
+            getMember()
+            .then(function(member) {
+                currentUser = member;
+                let login = url.split('/')[2];
+                // On ajoute la fonction de comparaison des membres
+                if (currentUser && login != currentUser.login) {
+                    compareMembers();
+                }
+            });
+        } else {
+            searchFriends();
+        }
     }
     // Fonctions appeler sur les pages des méthodes de l'API
     else if (/^\/api/.test(url)) {
@@ -466,6 +470,60 @@ let betaseries_api_user_key = '';
         function ratingImg(rating) {
             return (ratingImgs.hasOwnProperty(rating)) ? ratingImgs[rating] : '';
         }
+    }
+
+    /**
+     * Ajoute un champ de recherche sur la page des amis d'un membre
+     * @return {void}
+     */
+    function searchFriends() {
+        // Ajouter un champ de recherche
+        $('.maincontent h1').append('<input id="searchFriends" placeholder="Recherche d\'amis" list="friendsdata" autocomplete="off" style="margin-left: 20px;width:200px;"/><i class="fa fa-times clearSearch" aria-hidden="true" style="margin-left:10px;display:none;cursor:pointer;" title="Effacer la recherche"></i>');
+        // Recuperer les identifiants et liens des membres
+        let links = $('.timeline-item .infos a'),
+            objFriends = {},
+            idFriends = [],
+            datalist = '<datalist id="friendsdata">';
+        // On recupere les infos des amis
+        for (let i = 0; i < links.length; i++) {
+            let elt = links.get(i);
+            objFriends[elt.innerHTML.trim().toLowerCase()] = {link: $(elt).attr('href'), name: elt.innerHTML.trim()};
+        }
+        // On stocke les identifiants dans un tableau que l'on tri
+        idFriends = Object.keys(objFriends);
+        idFriends.sort();
+        // On build la liste des amis pour alimenter le champ de recherche
+        for (let i = 0; i < idFriends.length; i++) {
+            datalist += '<option data-val="' + idFriends[i] + '">' + objFriends[idFriends[i]].name + '</option>';
+        }
+        $('.maincontent').append(datalist + '</datalist>');
+        // On affiche toute la liste des amis
+        viewMoreFriends();
+        $('#searchFriends').on('keypress', () => {
+            if ($('#searchFriends').val().trim().length > 0) {
+                $('.clearSearch').show();
+            }
+        });
+        $('#searchFriends').on('input', () => {
+            let val = $('#searchFriends').val().trim().toLowerCase();
+            if (debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
+            if (val == '' || idFriends.indexOf(val) == -1) {
+                $('.timeline-item').show();
+                if (val == '') {
+                    $('.clearSearch').hide();
+                }
+                return;
+            }
+            $('.clearSearch').show();
+            $('.timeline-item').hide();
+            if (debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
+            $('.timeline-item .infos a[href="' + objFriends[val].link + '"]').parents('.timeline-item').show();
+        });
+        $('.clearSearch').click(() => {
+            $('#searchFriends').val('');
+            $('.timeline-item').show();
+            $('.clearSearch').hide();
+        });
     }
 
     /**

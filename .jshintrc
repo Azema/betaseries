@@ -14,7 +14,9 @@
   "globals" : {
     "GM_addStyle": true,
     "betaseries_api_user_token": true,
-    "newApiParameter": true
+    "newApiParameter": true,
+    "viewMoreFriends": true,
+    "bootstrap": true
   },
   "indent"        : 4         // Specify indentation spacing
 }
