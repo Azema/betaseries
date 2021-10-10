@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.17.0
+// @version      0.17.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -17,7 +17,7 @@
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
-// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-iVMVdTzkMqotYu7K7ZZIfOL4dr1t9s/W7iOerJwOGLwZYxabDf6QYwA/1pZKbzSU
+// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-eAe68WiqTlhNH3L0/6viPSFJrtdukjD3k6bepT0Pvjkmb+IaEVof8HRq+NL+ywNY
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
@@ -46,22 +46,7 @@ let betaseries_api_user_key = '';
         userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, currentUser, cache = new Cache(),
         counter = 0,
-        // Equivalences des classifications TV
-        /*ratings = {
-            'G': '',
-            'TV-Y': '',
-            'TV-Y7': 'D-10',
-            'TV-G': '',
-            'PG': 'D-10',
-            'TV-PG': 'D-10',
-            'TV-14': 'D-16',
-            'PG-13': 'D-16',
-            'TV-MA': 'D-18',
-            'NC-17': 'D-18',
-            'NR': 'D-18',
-            'R': 'D-18'
-        },*/
-        // URI des images de classifications TV
+        // URI des images de classifications TV et films
         ratingImgs = {
             'D-10': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
             'D-12': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
@@ -78,6 +63,19 @@ let betaseries_api_user_key = '';
             'PG-13': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
             'R': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
             'NC-17': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png'
+        },
+        ratingTitles = {
+            'TV-Y':  'Ce programme est évalué comme étant approprié aux enfants',
+            'TV-Y7': 'Ce programme est désigné pour les enfants âgés de 7 ans et plus',
+            'TV-G':  'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants',
+            'TV-PG': 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants',
+            'TV-14': 'Ce programme est déconseillé aux enfants de moins de 14 ans',
+            'TV-MA': 'Ce programme est uniquement réservé aux adultes',
+            'G': 'Tous publics',
+            'PG': 'Accord parental souhaitable',
+            'PG-13': 'Accord parental recommandé, film déconseillé aux moins de 13 ans',
+            'R': 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte',
+            'NC-17': 'Interdit aux enfants de 17 ans et moins'
         };
 
     // Fonctions appeler pour les pages des series, des films et des episodes
@@ -446,21 +444,21 @@ let betaseries_api_user_key = '';
                     $('.blockInformations__details')
                     .append(
                         '<li id="rating"><strong>Classification</strong><img src="' +
-                        imgRating + '"/></li>'
+                        imgRating + '" title="' + ratingTitle(data[type.singular].rating) + '"/></li>'
                     );
                 }
             }
         });
 
         /**
-         * Retourne l'equivalent de classification US en FR
+         * Retourne le titre de classification
          *
-         * @param {String} ratingUS Le code de classification US
+         * @param {String} rating Le code de classification US
          * @return {String|null}
          */
-        /*function equivRating(ratingUS) {
-            return ratings.hasOwnProperty(ratingUS) ? ratings[ratingUS] : null;
-        }*/
+        function ratingTitle(rating) {
+            return ratingTitles.hasOwnProperty(rating) ? ratingTitles[rating] : '';
+        }
         /**
          * Retourne l'URI de l'image de classification TV
          *
@@ -470,60 +468,6 @@ let betaseries_api_user_key = '';
         function ratingImg(rating) {
             return (ratingImgs.hasOwnProperty(rating)) ? ratingImgs[rating] : '';
         }
-    }
-
-    /**
-     * Ajoute un champ de recherche sur la page des amis d'un membre
-     * @return {void}
-     */
-    function searchFriends() {
-        // Ajouter un champ de recherche
-        $('.maincontent h1').append('<input id="searchFriends" placeholder="Recherche d\'amis" list="friendsdata" autocomplete="off" style="margin-left: 20px;width:200px;"/><i class="fa fa-times clearSearch" aria-hidden="true" style="margin-left:10px;display:none;cursor:pointer;" title="Effacer la recherche"></i>');
-        // Recuperer les identifiants et liens des membres
-        let links = $('.timeline-item .infos a'),
-            objFriends = {},
-            idFriends = [],
-            datalist = '<datalist id="friendsdata">';
-        // On recupere les infos des amis
-        for (let i = 0; i < links.length; i++) {
-            let elt = links.get(i);
-            objFriends[elt.innerHTML.trim().toLowerCase()] = {link: $(elt).attr('href'), name: elt.innerHTML.trim()};
-        }
-        // On stocke les identifiants dans un tableau que l'on tri
-        idFriends = Object.keys(objFriends);
-        idFriends.sort();
-        // On build la liste des amis pour alimenter le champ de recherche
-        for (let i = 0; i < idFriends.length; i++) {
-            datalist += '<option data-val="' + idFriends[i] + '">' + objFriends[idFriends[i]].name + '</option>';
-        }
-        $('.maincontent').append(datalist + '</datalist>');
-        // On affiche toute la liste des amis
-        viewMoreFriends();
-        $('#searchFriends').on('keypress', () => {
-            if ($('#searchFriends').val().trim().length > 0) {
-                $('.clearSearch').show();
-            }
-        });
-        $('#searchFriends').on('input', () => {
-            let val = $('#searchFriends').val().trim().toLowerCase();
-            if (debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
-            if (val == '' || idFriends.indexOf(val) == -1) {
-                $('.timeline-item').show();
-                if (val == '') {
-                    $('.clearSearch').hide();
-                }
-                return;
-            }
-            $('.clearSearch').show();
-            $('.timeline-item').hide();
-            if (debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
-            $('.timeline-item .infos a[href="' + objFriends[val].link + '"]').parents('.timeline-item').show();
-        });
-        $('.clearSearch').click(() => {
-            $('#searchFriends').val('');
-            $('.timeline-item').show();
-            $('.clearSearch').hide();
-        });
     }
 
     /**
@@ -668,6 +612,64 @@ let betaseries_api_user_key = '';
     }
 
     /**
+     * Ajoute un champ de recherche sur la page des amis d'un membre
+     * @return {void}
+     */
+    function searchFriends() {
+        // Ajouter un champ de recherche
+        $('.maincontent h1').append(
+            '<input id="searchFriends" placeholder="Recherche d\'amis" list="friendsdata" autocomplete="off"/>' +
+            '<i class="fa fa-times clearSearch" aria-hidden="true" style="display:none;" title="Effacer la recherche"></i>'
+        );
+        // Recuperer les identifiants et liens des membres
+        let links = $('.timeline-item .infos a'),
+            objFriends = {},
+            idFriends = [],
+            datalist = '<datalist id="friendsdata">';
+        // On recupere les infos des amis
+        for (let i = 0; i < links.length; i++) {
+            let elt = $(links.get(i)),
+                text = elt.text().trim();
+            objFriends[text.toLowerCase()] = {link: elt.attr('href'), name: text};
+        }
+        // On stocke les identifiants dans un tableau que l'on tri
+        idFriends = Object.keys(objFriends);
+        idFriends.sort();
+        // On build la liste des amis pour alimenter le champ de recherche
+        for (let i = 0; i < idFriends.length; i++) {
+            datalist += '<option value="' + objFriends[idFriends[i]].name + '"/>';
+        }
+        $('.maincontent').append(datalist + '</datalist>');
+        // On affiche toute la liste des amis
+        viewMoreFriends();
+        $('#searchFriends').on('keypress', () => {
+            if ($('#searchFriends').val().trim().length > 0) {
+                $('.clearSearch').show();
+            }
+        });
+        $('#searchFriends').on('input', () => {
+            let val = $('#searchFriends').val().trim().toLowerCase();
+            if (debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
+            if (val == '' || idFriends.indexOf(val) == -1) {
+                $('.timeline-item').show();
+                if (val == '') {
+                    $('.clearSearch').hide();
+                }
+                return;
+            }
+            $('.clearSearch').show();
+            $('.timeline-item').hide();
+            if (debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
+            $('.timeline-item .infos a[href="' + objFriends[val].link + '"]').parents('.timeline-item').show();
+        });
+        $('.clearSearch').click(() => {
+            $('#searchFriends').val('');
+            $('.timeline-item').show();
+            $('.clearSearch').hide();
+        });
+    }
+
+    /**
      * Masque les pubs
      */
     function removeAds() {
@@ -688,7 +690,7 @@ let betaseries_api_user_key = '';
     function addStylesheet() {
         $('head').append('<link rel="stylesheet" ' +
                          'href="https://betaseries.aufilelec.fr/css/style.min.css" ' +
-                         'integrity="sha384-iVMVdTzkMqotYu7K7ZZIfOL4dr1t9s/W7iOerJwOGLwZYxabDf6QYwA/1pZKbzSU" ' +
+                         'integrity="sha384-eAe68WiqTlhNH3L0/6viPSFJrtdukjD3k6bepT0Pvjkmb+IaEVof8HRq+NL+ywNY" ' +
                          'crossorigin="anonymous" referrerpolicy="no-referrer" />');
     }
 
