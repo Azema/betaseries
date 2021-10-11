@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.17.2
+// @version      0.18.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
 // @supportURL   https://github.com/Azema/betaseries/issues
 // @licence      Apache License 2.0
 // @match        https://www.betaseries.com/serie/*
+// @match        https://www.betaseries.com/series/*
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
 // @match        https://www.betaseries.com/membre/*
@@ -22,7 +23,7 @@
 // @grant        GM_getResourceText
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends */
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends bootstrap */
 /* jslint unparam: true */
 
 
@@ -39,7 +40,7 @@ let betaseries_api_user_key = '';
     const regexGestionSeries = new RegExp('^/membre/.*/series$'),
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           regexUserFriends = new RegExp('^/membre/[A-Za-z0-9]*/amis$'),
-          regexSerieOrMovie = new RegExp('^/(serie|film|episode)/*'),
+          regexSerieOrMovie = new RegExp('^/(serie|film|episode)/.*'),
           tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css';
     let debug = false,
         url = location.pathname,
@@ -156,6 +157,26 @@ let betaseries_api_user_key = '';
         } else if (/\/console/.test(url)) {
             updateApiConsole();
         }
+    } else if (/^\/series\//.test(url)) {
+        if (debug) console.log('Page des séries');
+        waitPagination();
+    }
+
+    function waitPagination() {
+        let loaded = false;
+        // On copie colle le paginateur en haut de la liste des séries
+        let timerSeries = setInterval(() => {
+            if ($('#pagination-shows').length < 1) return;
+            clearInterval(timerSeries);
+            $('#results-shows').prepend($('#pagination-shows').clone(true, true));
+            $('#results-shows').on('DOMSubtreeModified', '#pagination-shows', function(){
+                console.log('changed');
+                if (!loaded) {
+                    waitPagination();
+                    loaded = true;
+                }
+            });
+        }, 500);
     }
 
     /**
@@ -1080,6 +1101,20 @@ let betaseries_api_user_key = '';
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '' || ! /(serie|film)/.test(url)) return;
 
+        let similars = $('#similars .slide__title'), // Les titres des ressources similaires
+            len = similars.length, // Le nombre de similaires
+            type = getApiResource(url.split('/')[1]), // Le type de ressource
+            resId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            show = cache.get(type.plural, resId).show;
+
+        if (debug) console.log('nb similars: %d', parseInt(show.similars, 10));
+
+        // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
+        if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) {
+            $('.updateSimilars').addClass('finish');
+            return;
+        }
+
         /*
          * On ajoute un bouton de mise à jour des series vues
          * et on vérifie qu'il n'existe pas déjà
@@ -1110,21 +1145,10 @@ let betaseries_api_user_key = '';
             });
         }
 
-        let similars = $('#similars .slide__title'), // Les titres des ressources similaires
-            len = similars.length, // Le nombre de similaires
-            type = getApiResource(url.split('/')[1]), // Le type de ressource
-            resId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
-            show = cache.get(type.plural, resId).show;
-
-        if (debug) console.log('nb similars: %d', parseInt(show.similars, 10));
-
-        // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
-        if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) return;
-
         callBetaSeries('GET', type.plural, 'similars', {'thetvdb_id': show.thetvdb_id, 'details': true})
         .then(function(data) {
             let intTime = setInterval(function() {
-                if (typeof bootstrap.Popover != 'function') return;
+                if (typeof bootstrap.Popover != 'function') { return; }
                 else clearInterval(intTime);
 
                 for (let s = 0; s < data.similars.length; s++) {
@@ -1159,8 +1183,8 @@ let betaseries_api_user_key = '';
                         trigger: 'hover'
                     });
                 }
+                $('.updateSimilars').addClass('finish');
             }, 500);
-            $('.updateSimilars').addClass('finish');
         });
 
         /**
