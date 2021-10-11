@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.18.0
+// @version      0.18.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1152,6 +1152,7 @@ let betaseries_api_user_key = '';
                 else clearInterval(intTime);
 
                 for (let s = 0; s < data.similars.length; s++) {
+                    cache.set(type.plural, data.similars[s][type.singular].id, {'show': data.similars[s][type.singular]});
                     let $elt = $(similars.get(s)),
                         $link = $elt.siblings('a'),
                         resource = data.similars[s][type.singular],
@@ -1167,7 +1168,6 @@ let betaseries_api_user_key = '';
 
                     decodeTitle($elt);
                     addBandeau($elt, resource.user.status, resource.notes);
-                    cache.set(type.plural, resource.id, {'show': resource});
                     $link.popover({
                         container: $link,
                         html: true,
