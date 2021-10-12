@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.18.2
+// @version      0.18.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -162,15 +162,20 @@ let betaseries_api_user_key = '';
         waitPagination();
     }
 
+    /**
+     * Fonction d'ajout d'un paginateur en haut de liste des séries
+     * @return {void}
+     */
     function waitPagination() {
         let loaded = false;
-        // On copie colle le paginateur en haut de la liste des séries
+        // On attend la présence du paginateur
         let timerSeries = setInterval(() => {
             if ($('#pagination-shows').length < 1) return;
             clearInterval(timerSeries);
+            // On copie colle le paginateur en haut de la liste des séries
             $('#results-shows').prepend($('#pagination-shows').clone(true, true));
+            // On observe les modifications dans le noeud du paginateur
             $('#results-shows').on('DOMSubtreeModified', '#pagination-shows', function(){
-                console.log('changed');
                 if (!loaded) {
                     waitPagination();
                     loaded = true;
