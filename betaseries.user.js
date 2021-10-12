@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.18.1
+// @version      0.18.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1120,7 +1120,7 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-1ttRrcUc1EYn6RI2dTN9lGGKM7bdcTcljuaq782+hiZhtqJJC7QcJZgfA7QNjW9D" crossorigin="anonymous">');
+            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-q3mqjVgXXPBGRY4xLs2gx2GtsJyvWMv+Sd3p1HBRXfRVcGcQUanUbqbm+iku0wmJ" crossorigin="anonymous">');
             $('head').append('<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>');
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
@@ -1140,6 +1140,10 @@ let betaseries_api_user_key = '';
                 $('.bandViewed').remove();
                 // On supprime les notes
                 $('.stars-outer').remove();
+                // On supprime les popovers
+                $('#similars a.slide__image').each((i, elt) => {
+                    $(elt).popover('dispose');
+                });
                 // On met à jour les series similaires
                 similarsViewed();
             });
@@ -1150,6 +1154,13 @@ let betaseries_api_user_key = '';
             let intTime = setInterval(function() {
                 if (typeof bootstrap.Popover != 'function') { return; }
                 else clearInterval(intTime);
+                let funcPlacement = (tip, elt) => {
+                    //if (debug) console.log('Popover placement', tip, elt);
+                    let rect = elt.getBoundingClientRect(),
+                        width = $(window).width(),
+                        sizePopover = 320;
+                    return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
+                };
 
                 for (let s = 0; s < data.similars.length; s++) {
                     cache.set(type.plural, data.similars[s][type.singular].id, {'show': data.similars[s][type.singular]});
@@ -1178,9 +1189,10 @@ let betaseries_api_user_key = '';
                       <p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>
                       <p>${resource.description.substring(0, 200)}...</p>
                     </div>`,
-                        placement: 'auto',
+                        placement: funcPlacement,
                         title: resource.title + ' <span style="font-size: 0.8em;color:#000;">' + parseFloat(resource.notes.mean).toFixed(2) + ' / 5</span>',
-                        trigger: 'hover'
+                        trigger: 'hover',
+                        fallbackPlacement: ['left', 'right']
                     });
                 }
                 $('.updateSimilars').addClass('finish');
