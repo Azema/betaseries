@@ -40,6 +40,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout du logo de classification TV dans les infos de la ressource (série et film)
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
 * Ajout d'un paginateur en haut de la liste des séries
+* Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays.
 
 ### Membres
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.

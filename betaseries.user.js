@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.18.3
+// @version      0.19.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -23,7 +23,8 @@
 // @grant        GM_getResourceText
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends bootstrap */
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends
+   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset */
 /* jslint unparam: true */
 
 
@@ -157,9 +158,74 @@ let betaseries_api_user_key = '';
         } else if (/\/console/.test(url)) {
             updateApiConsole();
         }
-    } else if (/^\/series\//.test(url)) {
+    }
+    else if (/^\/series\//.test(url)) {
         if (debug) console.log('Page des séries');
         waitPagination();
+        seriesFilterPays();
+    }
+
+    /**
+     * Fonction modifiant le fonctionnement du filtre pays
+     * pour permettre d'ajouter plusieurs pays sur la page des séries
+     * @return {void}
+     */
+    function seriesFilterPays() {
+        let $input = $('.filter-container-others-countries input');
+        // Supprimer l'attribut onclick de l'input other-countries
+        $input.removeAttr('onchange');
+        $input.on('change', function() {
+            let hasSelect = $('option[value="' + $input.val() + '"]'),
+                btnTemp = '<button type="button" class="btn-reset btn-btn filter-btn active" id="' +
+                           hasSelect.attr("id") + '" onclick="searchOption(this);">' +
+                           hasSelect.attr("value") + '</button>';
+            $('#pays > button').last().after(btnTemp);
+            deleteFilterOthersCountries();
+            countFilter("pays");
+        });
+        let hash = url.substr(baseUrl.length);
+        if (hash.length === 0) {
+            return;
+        }
+        const data = hash.split('/');
+        if (!data.find((el)=>el.match(/^tri-|sort-/g))) {
+            data.push(CONSTANTE_FILTER.tri + "-" + CONSTANTE_SORT.popularite);
+        }
+        for (let i in data) {
+            const splitData = data[i].split('-'),
+                  filter = splitData.shift(),
+                  dataFilter = decodeURIComponent(splitData.join('-'));
+            if (filter && dataFilter &&
+                (filter === CONSTANTE_FILTER.paspays || filter === CONSTANTE_FILTER.pays))
+            {
+                const hasActive = filter === CONSTANTE_FILTER.pays,
+                      hasButton = $("#left #pays > button#" + dataFilter.toUpperCase()),
+                      optionExist = $('datalist[id="other-countries"] option[id="' + dataFilter.toUpperCase() + '"]');
+                if (hasButton.length <= 0 && optionExist) {
+                    let btnTemp = '<button type="button" class="btn-reset btn-btn filter-btn' + (hasActive ? ' active' : ' hactive') +
+                                   '" id="' + dataFilter.toUpperCase() + '" onclick="searchOption(this);">' +
+                                   optionExist.attr('value') + '</button>';
+                    $('#pays > button').last().after(btnTemp);
+                    optionExist.remove();
+                    deleteFilterOthersCountries();
+                    countFilter("pays");
+                }
+            }
+        }
+        function countFilter(target) {
+            const current = $('#count_' + target);
+            if (current.length > 0) {
+                let len = $('#pays > button').length,
+                    display = 'none';
+                current.text(len);
+
+                if (len >= 1) {
+                    display = 'block';
+                }
+                current.css('display', display);
+                hideButtonReset();
+            }
+        }
     }
 
     /**

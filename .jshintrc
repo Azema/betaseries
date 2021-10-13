@@ -16,7 +16,12 @@
     "betaseries_api_user_token": true,
     "newApiParameter": true,
     "viewMoreFriends": true,
-    "bootstrap": true
+    "bootstrap": true,
+    "deleteFilterOthersCountries": true,
+    "baseUrl": true,
+    "CONSTANTE_FILTER": true,
+    "CONSTANTE_SORT": true,
+    "hideButtonReset": true
   },
   "indent"        : 4         // Specify indentation spacing
 }
