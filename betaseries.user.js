@@ -38,14 +38,11 @@ let betaseries_api_user_key = '';
 
     $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />');
 
-    const regexGestionSeries = new RegExp('^/membre/.*/series$'),
-          regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
-          regexUserFriends = new RegExp('^/membre/[A-Za-z0-9]*/amis$'),
-          regexSerieOrMovie = new RegExp('^/(serie|film|episode)/.*'),
+    const regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css';
     let debug = false,
         url = location.pathname,
-        userIdentified = typeof betaseries_api_user_token != 'undefined',
+        userIdentified = typeof betaseries_api_user_token !== 'undefined',
         timer, currentUser, cache = new Cache(),
         counter = 0,
         // URI des images et description des classifications TV et films
@@ -113,7 +110,7 @@ let betaseries_api_user_key = '';
         };
 
     // Fonctions appeler pour les pages des series, des films et des episodes
-    if (regexSerieOrMovie.test(url)) {
+    if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour la mettre en cache
         getCurrentResource().then(function() {
             removeAds(); // On retire les pubs
@@ -130,20 +127,19 @@ let betaseries_api_user_key = '';
         });
     }
     // Fonctions appeler pour la page de gestion des series
-    else if (regexGestionSeries.test(url)) {
+    else if (/^\/membre\/.*\/series$/.test(url)) {
         addStatusToGestionSeries();
     }
     // Fonctions appeler sur la page des membres
-    else if ((regexUser.test(url) || regexUserFriends.test(url)) && userIdentified) {
+    else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && userIdentified) {
         addStylesheet();
         if (regexUser.test(url)) {
             // On récupère les infos du membre connecté
             getMember()
             .then(function(member) {
                 currentUser = member;
-                let login = url.split('/')[2];
                 // On ajoute la fonction de comparaison des membres
-                if (currentUser && login != currentUser.login) {
+                if (currentUser && url.split('/')[2] != currentUser.login) {
                     compareMembers();
                 }
             });
@@ -1026,6 +1022,8 @@ let betaseries_api_user_key = '';
                                 toggleSpinner(false);
                             });
                         }); // TODO: Afficher le message d'erreur
+                    } else {
+                        toggleSpinner(false);
                     }
                 });
             }
@@ -1187,7 +1185,7 @@ let betaseries_api_user_key = '';
         }
 
         /*
-         * On ajoute un bouton de mise à jour des series vues
+         * On ajoute un bouton de mise à jour des similars
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
@@ -1403,8 +1401,9 @@ let betaseries_api_user_key = '';
             })
             .fail(function(jqXHR, textStatus) {
                 console.error('callBetaSeries error: ', textStatus, type, urlAPI, params);
-                if (! jqXHR.responseJSON) {
+                if (typeof jqXHR.responseJSON == 'undefined') {
                     reject(textStatus);
+                    return;
                 }
 
                 let code = jqXHR.responseJSON.errors[0].code,
