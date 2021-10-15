@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.0
+// @version      0.19.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1168,7 +1168,11 @@ let betaseries_api_user_key = '';
      */
     function similarsViewed() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key == '' || ! /(serie|film)/.test(url)) return;
+        if (! userIdentified || betaseries_api_user_key == '' ||
+            ! /\/^(serie|film)\//.test(url))
+        {
+            return;
+        }
 
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
@@ -1189,8 +1193,15 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            $('head').append('<link rel="stylesheet" href="https://betaseries.aufilelec.fr/css/popover.min.css" integrity="sha384-q3mqjVgXXPBGRY4xLs2gx2GtsJyvWMv+Sd3p1HBRXfRVcGcQUanUbqbm+iku0wmJ" crossorigin="anonymous">');
-            $('head').append('<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>');
+            $('head').append('<link ' +
+                'rel="stylesheet" ' +
+                'href="https://betaseries.aufilelec.fr/css/popover.min.css" ' +
+                'integrity="sha384-q3mqjVgXXPBGRY4xLs2gx2GtsJyvWMv+Sd3p1HBRXfRVcGcQUanUbqbm+iku0wmJ" ' +
+                'crossorigin="anonymous">');
+            $('head').append('<script ' +
+                'src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" ' +
+                'integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" ' +
+                'crossorigin="anonymous"></script>');
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
             <div id="updateSimilarsBlock">
@@ -1218,25 +1229,25 @@ let betaseries_api_user_key = '';
             });
         }
 
-        callBetaSeries('GET', type.plural, 'similars', {'thetvdb_id': show.thetvdb_id, 'details': true})
+        callBetaSeries('GET', type.plural, 'similars',
+            {'thetvdb_id': show.thetvdb_id, 'details': true})
         .then(function(data) {
             let intTime = setInterval(function() {
                 if (typeof bootstrap.Popover != 'function') { return; }
                 else clearInterval(intTime);
                 let funcPlacement = (tip, elt) => {
-                    //if (debug) console.log('Popover placement', tip, elt);
                     let rect = elt.getBoundingClientRect(),
-                        width = $(window).width(),
+                        width = window.getWidth(),
                         sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
-
-                for (let s = 0; s < data.similars.length; s++) {
-                    cache.set(type.plural, data.similars[s][type.singular].id, {'show': data.similars[s][type.singular]});
-                    let $elt = $(similars.get(s)),
-                        $link = $elt.siblings('a'),
-                        resource = data.similars[s][type.singular],
-                        genres = Object.values(resource.genres).join(', '),
+                /**
+                 * Retourne le contenu de la Popup de présentation du similar
+                 * @param {Object} resource L'objet de la série
+                 * @return {String} La présentation de la série
+                 */
+                function tempContentPopup(resource) {
+                    let genres = Object.values(resource.genres).join(', '),
                         status = resource.status == 'Ended' ? 'Terminée' : 'En cours',
                         seen = (resource.user.status > 0) ? 'Vu à ' + resource.user.status + '%' : 'Pas vu',
                         archived = '';
@@ -1245,19 +1256,37 @@ let betaseries_api_user_key = '';
                     } else if (resource.user.status > 0) {
                         archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
                     }
+                    let template = '<div>' +
+                      '<p><strong>' + resource.seasons + '</strong> saison' + (resource.seasons > 1 ? 's':'') + ', ' +
+                          '<strong>' + resource.episodes + '</strong> épisodes, <strong>' + resource.notes.total || 0 + '</strong> votes</p>' +
+                      '<p><u>Genres:</u> ' + genres + '</p>';
+                    if (resource.hasOwnProperty('creation') || resource.hasOwnProperty('country')) {
+                        template += '<p>';
+                        if (resource.hasOwnProperty('creation')) {
+                            template += '<u>Création:</u> <strong>' + resource.creation + '</strong>';
+                        }
+                        if (resource.hasOwnProperty('country')) {
+                            template += ', <u>Pays:</u> <strong>' + resource.country + '</strong>';
+                        }
+                        template += '</p>';
+                    }
+                    template += '<p><u>Statut:</u> <strong>' + status + '</strong>, ' + seen + archived + '</p>' +
+                        '<p>' + resource.description.substring(0, 200) + '...</p></div>';
+                    return template;
+                }
+
+                for (let s = 0; s < data.similars.length; s++) {
+                    cache.set(type.plural, data.similars[s][type.singular].id, {'show': data.similars[s][type.singular]});
+                    let $elt = $(similars.get(s)),
+                        $link = $elt.siblings('a'),
+                        resource = data.similars[s][type.singular];
 
                     decodeTitle($elt);
                     addBandeau($elt, resource.user.status, resource.notes);
                     $link.popover({
                         container: $link,
                         html: true,
-                        content: `<div>
-                      <p><strong>${resource.seasons}</strong> saison${resource.seasons > 1 ? 's':''}, <strong>${resource.episodes}</strong> épisodes, <strong>${resource.notes.total}</strong> votes</p>
-                      <p><u>Genres:</u> ${genres}</p>
-                      <p><u>Création:</u> <strong>${resource.creation}</strong>, <u>Pays:</u> <strong>${resource.country}</strong></p>
-                      <p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>
-                      <p>${resource.description.substring(0, 200)}...</p>
-                    </div>`,
+                        content: tempContentPopup(resource),
                         placement: funcPlacement,
                         title: resource.title + ' <span style="font-size: 0.8em;color:#000;">' + parseFloat(resource.notes.mean).toFixed(2) + ' / 5</span>',
                         trigger: 'hover',
@@ -1325,8 +1354,8 @@ let betaseries_api_user_key = '';
      */
     function authenticate() {
         if (debug) console.log('authenticate');
-        $('body').append(`
-            <div id="containerIframe">
+        $('body').append(
+            `<div id="containerIframe">
               <iframe id="userscript"
                       name="userscript"
                       title="Connexion à BetaSeries"
@@ -1335,25 +1364,23 @@ let betaseries_api_user_key = '';
                       src="https://betaseries.aufilelec.fr/"
                       style="background:white;margin:auto;">
               </iframe>
-            </div>'
-        `);
+            </div>`
+        );
         return new Promise((resolve, reject) => {
             window.addEventListener("message", receiveMessage, false);
             function receiveMessage(event) {
                 if (debug) console.log('receiveMessage', event);
-                if (event.origin !== "https://betaseries.aufilelec.fr") {
+                if (event.origin !== 'https://betaseries.aufilelec.fr') {
                     if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
                     reject('event.origin is not betaseries.aufilelec.fr');
                     return;
                 }
-                let msg = event.data.message;
-                if (msg == 'access_token') {
+                if (event.data.message == 'access_token') {
                     betaseries_api_user_token = event.data.value;
                     $('#containerIframe').remove();
-                    //cb(msg);
-                    resolve(msg);
+                    resolve(event.data.message);
                 } else {
-                    if (debug) console.error('Erreur de récuperation du token', event);
+                    if (debug) console.error('Erreur de récupération du token', event);
                     reject(event.data);
                 }
             }
@@ -1408,7 +1435,10 @@ let betaseries_api_user_key = '';
 
                 let code = jqXHR.responseJSON.errors[0].code,
                     text = jqXHR.responseJSON.errors[0].text;
-                if (code == 2005 || (jqXHR.status == 400 && code == 0 && text == "L'utilisateur a déjà marqué cet épisode comme vu.")) {
+                if (code == 2005 ||
+                    (jqXHR.status == 400 && code == 0 &&
+                        text == "L'utilisateur a déjà marqué cet épisode comme vu."))
+                {
                     reject('changeStatus');
                 } else if (code == 2001) {
                     reject('accessToken');
