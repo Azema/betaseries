@@ -1235,6 +1235,13 @@ let betaseries_api_user_key = '';
             let intTime = setInterval(function() {
                 if (typeof bootstrap.Popover != 'function') { return; }
                 else clearInterval(intTime);
+
+                /**
+                 * Retourne la position de la popup par rapport à l'image du similar
+                 * @param  {Object} tip Unknown
+                 * @param  {Object} elt Le DOM Element du lien du similar
+                 * @return {String}     La position de la popup
+                 */
                 let funcPlacement = (tip, elt) => {
                     let rect = elt.getBoundingClientRect(),
                         width = window.getWidth(),
@@ -1244,22 +1251,27 @@ let betaseries_api_user_key = '';
                 /**
                  * Retourne le contenu de la Popup de présentation du similar
                  * @param {Object} resource L'objet de la série
-                 * @return {String} La présentation de la série
+                 * @return {String} La présentation du similar
                  */
                 function tempContentPopup(resource) {
-                    let genres = Object.values(resource.genres).join(', '),
-                        status = resource.status == 'Ended' ? 'Terminée' : 'En cours',
-                        seen = (resource.user.status > 0) ? 'Vu à ' + resource.user.status + '%' : 'Pas vu',
-                        archived = '';
+                    const genres = Object.values(resource.genres).join(', '),
+                          status = resource.status == 'Ended' ? 'Terminée' : 'En cours',
+                          seen = (resource.user.status > 0) ? 'Vu à ' + resource.user.status + '%' : 'Pas vu';
+                    let archived = '', template = '';
                     if (resource.user.status > 0 && resource.user.archived == true) {
                         archived = ', Archivée: <i class="fa fa-check-circle-o" aria-hidden="true"></i>';
                     } else if (resource.user.status > 0) {
                         archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
                     }
-                    let template = '<div>' +
+                    template = '<div>' +
                       '<p><strong>' + resource.seasons + '</strong> saison' + (resource.seasons > 1 ? 's':'') + ', ' +
-                          '<strong>' + resource.episodes + '</strong> épisodes, <strong>' + resource.notes.total || 0 + '</strong> votes</p>' +
-                      '<p><u>Genres:</u> ' + genres + '</p>';
+                          '<strong>' + resource.episodes + '</strong> épisodes, ';
+                    if (resource.notes.total > 0) {
+                        template += '<strong>' + resource.notes.total || 0 + '</strong> votes</p>';
+                    } else {
+                        template += 'Aucun vote';
+                    }
+                    template += '<p><u>Genres:</u> ' + genres + '</p>';
                     if (resource.hasOwnProperty('creation') || resource.hasOwnProperty('country')) {
                         template += '<p>';
                         if (resource.hasOwnProperty('creation')) {
@@ -1270,9 +1282,22 @@ let betaseries_api_user_key = '';
                         }
                         template += '</p>';
                     }
-                    template += '<p><u>Statut:</u> <strong>' + status + '</strong>, ' + seen + archived + '</p>' +
-                        '<p>' + resource.description.substring(0, 200) + '...</p></div>';
+                    template += '<p><u>Statut:</u> <strong>' + status + '</strong>, ' + seen +
+                        archived + '</p><p>' + resource.description.substring(0, 200) + '...</p></div>';
                     return template;
+                }
+                /**
+                 * Retourne le titre de la Popup de présentation du similar
+                 * @param  {Object} resource L'objet de la série
+                 * @return {String}          Le titre du similar
+                 */
+                function titlePopup(resource) {
+                    let title = resource.title;
+                    if (resource.notes.total > 0) {
+                        title += ' <span style="font-size: 0.8em;color:#000;">' +
+                                parseFloat(resource.notes.mean).toFixed(2) + ' / 5</span>';
+                    }
+                    return title;
                 }
 
                 for (let s = 0; s < data.similars.length; s++) {
@@ -1288,7 +1313,7 @@ let betaseries_api_user_key = '';
                         html: true,
                         content: tempContentPopup(resource),
                         placement: funcPlacement,
-                        title: resource.title + ' <span style="font-size: 0.8em;color:#000;">' + parseFloat(resource.notes.mean).toFixed(2) + ' / 5</span>',
+                        title: titlePopup(resource),
                         trigger: 'hover',
                         fallbackPlacement: ['left', 'right']
                     });
@@ -1343,7 +1368,7 @@ let betaseries_api_user_key = '';
             .then(function(data) {
                 let statut = (data.show.status == 'Continuing') ? 'En cours' : 'Terminée';
                 infos.append(`<br>Statut: ${statut}`);
-            });
+            }); // TODO: Gérer les retours d'erreur
         });
     }
 
