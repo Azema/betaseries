@@ -162,6 +162,24 @@ let betaseries_api_user_key = '';
     }
 
     /**
+     * Permet d'afficher les messages d'erreur liés au script
+     *
+     * @param {String} title Le titre du message
+     * @param {String} text  Le texte du message
+     * @return {void}
+     */
+    function notification(title, text) {
+        // On ajoute notre zone de notifications
+        if ($('.userscript-notifications').length <= 0) {
+            const width = window.getWidth() / 2;
+            $('#fb-root').after('<div class="userscript-notifications alert alert-danger" style="position:fixed;top:85px;z-index:1250;padding:5px;font-size:1.2em;background-color:var(--danger);color:white;"></div>');
+            $('.userscript-notifications').css('left', (width/2) + 'px');
+            $('.userscript-notifications').css('width', width);
+        }
+        $('.userscript-notifications').html('<h3 style="font-weight:bold;">' + title + '</h3><p>' + text + '</p>').delay(2000).slideUp();
+    }
+
+    /**
      * Fonction modifiant le fonctionnement du filtre pays
      * pour permettre d'ajouter plusieurs pays sur la page des séries
      * @return {void}
@@ -330,9 +348,10 @@ let betaseries_api_user_key = '';
         }
     }
 
-    /*
+    /**
      * Ajoute un sommaire sur les pages de documentation des méthodes de l'API
      * Le sommaire est constitué des liens vers les fonctions des méthodes.
+     * @return {void}
      */
     function sommaireDevApi() {
         let titles = $('.maincontent h2'),
@@ -520,6 +539,8 @@ let betaseries_api_user_key = '';
                 $dataRes.append(renderjson.set_show_to_level(2)(data[type.singular]));
                 $('#dialog-resource-title span').empty().text('(' + counter + ' appels API)');
                 dialog.show();
+            }, (err) => {
+                notification('Erreur de récupération de ' + type.singular, 'addBtnDev: ' + err);
             });
         });
         $('.dialog-close').click(function(e) {
@@ -568,6 +589,8 @@ let betaseries_api_user_key = '';
                     );
                 }
             }
+        }, (err) => {
+            notification('Erreur de récupération de ' + type.singular, 'addRating: ' + err);
         });
     }
 
@@ -588,6 +611,8 @@ let betaseries_api_user_key = '';
             .then(function(data) {
                 // On retourne les infos du membre
                 resolve(data.member);
+            }, (err) => {
+                notification('Erreur de récupération d\'un membre', 'getMember: ' + err);
             });
         });
     }
@@ -817,7 +842,7 @@ let betaseries_api_user_key = '';
      * @return {Object} Retourne le nom de la ressource API au singulier et au pluriel
      */
     function getApiResource(pageType) {
-        let methods = {
+        const methods = {
             'serie': 'show',
             'film': 'movie',
             'episode': 'episode'
@@ -851,6 +876,8 @@ let betaseries_api_user_key = '';
             else note = data[type.singular].note;
             // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
             changeTitleNote(votes, note.mean, note.total);
+        }, (err) => {
+            notification('Erreur de récupération de ' + type.singular, 'addNumberVoters: ' + err);
         });
     }
 
@@ -1020,10 +1047,12 @@ let betaseries_api_user_key = '';
                                 }
                                 // TODO: Afficher le message d'erreur
                                 toggleSpinner(false);
+                                notification('Erreur de modification d\'un épisode', 'changeStatusVignette in authenticate: ' + err);
                             });
                         }); // TODO: Afficher le message d'erreur
                     } else {
                         toggleSpinner(false);
+                        notification('Erreur de modification d\'un épisode', 'changeStatusVignette: ' + err);
                     }
                 });
             }
@@ -1193,11 +1222,13 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
+            // Ajout du style des Popovers
             $('head').append('<link ' +
                 'rel="stylesheet" ' +
                 'href="https://betaseries.aufilelec.fr/css/popover.min.css" ' +
                 'integrity="sha384-q3mqjVgXXPBGRY4xLs2gx2GtsJyvWMv+Sd3p1HBRXfRVcGcQUanUbqbm+iku0wmJ" ' +
                 'crossorigin="anonymous">');
+            // Ajout du script JS de Bootstrap
             $('head').append('<script ' +
                 'src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" ' +
                 'integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" ' +
@@ -1224,7 +1255,7 @@ let betaseries_api_user_key = '';
                 $('#similars a.slide__image').each((i, elt) => {
                     $(elt).popover('dispose');
                 });
-                // On met à jour les series similaires
+                // On met à jour les similars
                 similarsViewed();
             });
         }
@@ -1243,9 +1274,9 @@ let betaseries_api_user_key = '';
                  * @return {String}     La position de la popup
                  */
                 let funcPlacement = (tip, elt) => {
-                    let rect = elt.getBoundingClientRect(),
-                        width = window.getWidth(),
-                        sizePopover = 320;
+                    const rect = elt.getBoundingClientRect(),
+                          width = window.getWidth(),
+                          sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
                 /**
@@ -1302,9 +1333,9 @@ let betaseries_api_user_key = '';
 
                 for (let s = 0; s < data.similars.length; s++) {
                     cache.set(type.plural, data.similars[s][type.singular].id, {'show': data.similars[s][type.singular]});
-                    let $elt = $(similars.get(s)),
-                        $link = $elt.siblings('a'),
-                        resource = data.similars[s][type.singular];
+                    const $elt = $(similars.get(s)),
+                          $link = $elt.siblings('a'),
+                          resource = data.similars[s][type.singular];
 
                     decodeTitle($elt);
                     addBandeau($elt, resource.user.status, resource.notes);
@@ -1320,6 +1351,8 @@ let betaseries_api_user_key = '';
                 }
                 $('.updateSimilars').addClass('finish');
             }, 500);
+        }, (err) => {
+            notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
         });
 
         /**
@@ -1368,7 +1401,9 @@ let betaseries_api_user_key = '';
             .then(function(data) {
                 let statut = (data.show.status == 'Continuing') ? 'En cours' : 'Terminée';
                 infos.append(`<br>Statut: ${statut}`);
-            }); // TODO: Gérer les retours d'erreur
+            }, (err) => {
+                notification('Erreur de modification d\'une série', 'addStatusToGestionSeries: ' + err);
+            });
         });
     }
 
@@ -1407,6 +1442,7 @@ let betaseries_api_user_key = '';
                 } else {
                     if (debug) console.error('Erreur de récupération du token', event);
                     reject(event.data);
+                    notification('Erreur de récupération du token', 'Pas de message');
                 }
             }
         });
