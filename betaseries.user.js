@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.2
+// @version      0.19.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1342,7 +1342,7 @@ let betaseries_api_user_key = '';
                  * @return {String}     La position de la popup
                  */
                 let funcPlacement = (tip, elt) => {
-                    if (debug) console.log('funcPlacement', tip, $(tip).width());
+                    //if (debug) console.log('funcPlacement', tip, $(tip).width());
                     let rect = elt.getBoundingClientRect(),
                         width = $(window).width(),
                         sizePopover = 320;
