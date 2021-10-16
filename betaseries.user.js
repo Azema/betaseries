@@ -173,7 +173,7 @@ let betaseries_api_user_key = '';
         let notifContainer = $('.userscript-notifications');
         // On ajoute notre zone de notifications
         if ($('.userscript-notifications').length <= 0) {
-            const width = $(window).width / 2;
+            const width = $(window).width() / 2;
             $('#fb-root').after(
                 '<div class="userscript-notifications"><h3><span class="title"></span><i class="fa fa-times" aria-hidden="true"></i></h3><p class="text"></p></div>'
             );
@@ -209,7 +209,7 @@ let betaseries_api_user_key = '';
         notifContainer.hide();
         $('.userscript-notifications .title').html(title);
         $('.userscript-notifications .text').html(text);
-        notifContainer.delay(5000).slideUp();
+        notifContainer.slideDown().delay(5000).slideUp();
     }
 
     /**
@@ -1595,7 +1595,7 @@ let betaseries_api_user_key = '';
                 } else if (code == 2001) {
                     reject('accessToken');
                 } else {
-                    reject(textStatus);
+                    reject(JSON.stringify(jqXHR.responseJSON.errors[0]));
                 }
             })
             .always(function() {counter++;});
