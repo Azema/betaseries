@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.1
+// @version      0.19.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -42,7 +42,7 @@ let betaseries_api_user_key = '';
           tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css';
     let debug = false,
         url = location.pathname,
-        userIdentified = typeof betaseries_api_user_token !== 'undefined',
+        userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, currentUser, cache = new Cache(),
         counter = 0,
         // URI des images et description des classifications TV et films
@@ -138,8 +138,9 @@ let betaseries_api_user_key = '';
             getMember()
             .then(function(member) {
                 currentUser = member;
+                let login = url.split('/')[2];
                 // On ajoute la fonction de comparaison des membres
-                if (currentUser && url.split('/')[2] != currentUser.login) {
+                if (currentUser && login != currentUser.login) {
                     compareMembers();
                 }
             });
@@ -169,14 +170,46 @@ let betaseries_api_user_key = '';
      * @return {void}
      */
     function notification(title, text) {
+        let notifContainer = $('.userscript-notifications');
         // On ajoute notre zone de notifications
         if ($('.userscript-notifications').length <= 0) {
-            const width = window.getWidth() / 2;
-            $('#fb-root').after('<div class="userscript-notifications alert alert-danger" style="position:fixed;top:85px;z-index:1250;padding:5px;font-size:1.2em;background-color:var(--danger);color:white;"></div>');
-            $('.userscript-notifications').css('left', (width/2) + 'px');
-            $('.userscript-notifications').css('width', width);
+            const width = $(window).width / 2;
+            $('#fb-root').after(
+                '<div class="userscript-notifications"><h3><span class="title"></span><i class="fa fa-times" aria-hidden="true"></i></h3><p class="text"></p></div>'
+            );
+            GM_addStyle(`
+                .userscript-notifications {
+                  position: fixed;
+                  top: 85px;
+                  z-index: 1250;
+                  padding: 5px;
+                  font-size: 1.2em;
+                  background-color: var(--danger);
+                  color: white;
+                  left: ${width / 2}px;
+                  width: ${width}px;
+                  border-radius: 5px;
+                  display: none;
+                }
+                .userscript-notifications h3 {
+                  font-weight: bold;
+                }
+                .userscript-notifications .fa-times {
+                  position: relative;
+                  display: inline-block;
+                  float: right;
+                  cursor: pointer;
+                }
+            `);
+            notifContainer = $('.userscript-notifications');
+            $('.userscript-notifications .fa-times').click(() => {
+                $('.userscript-notifications').slideUp();
+            });
         }
-        $('.userscript-notifications').html('<h3 style="font-weight:bold;">' + title + '</h3><p>' + text + '</p>').delay(2000).slideUp();
+        notifContainer.hide();
+        $('.userscript-notifications .title').html(title);
+        $('.userscript-notifications .text').html(text);
+        notifContainer.delay(5000).slideUp();
     }
 
     /**
@@ -310,7 +343,7 @@ let betaseries_api_user_key = '';
          * On ajoute un bouton pour supprimer la ligne d'un paramètre
          */
         function addRemoveParamToConsole() {
-            $('.api-params:not(.remove):not(:first)')
+            $('.api-params:not(.remove):not(.lock):not(:first)')
                 .append('<i class="remove-input fa fa-minus-circle fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
                 .append('<i class="lock-param fa fa-unlock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
                 .addClass('remove');
@@ -321,10 +354,10 @@ let betaseries_api_user_key = '';
                 let self = $(e.currentTarget);
                 if (self.hasClass('fa-unlock')) {
                     self.removeClass('fa-unlock').addClass('fa-lock');
-                    self.parent('.api-params').removeClass('remove');
+                    self.parent('.api-params').removeClass('remove').addClass('lock');
                 } else {
                     self.removeClass('fa-lock').addClass('fa-unlock');
-                    self.parent('.api-params').addClass('remove');
+                    self.parent('.api-params').addClass('remove').removeClass('lock');
                 }
             });
         }
@@ -335,10 +368,11 @@ let betaseries_api_user_key = '';
             $('.toggle').click(() => {
                 // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
                 result.toggle('400', () => {
-                    if (result.is(':hidden'))
+                    if (result.is(':hidden')) {
                         $('.toggle i').removeClass('fa-chevron-circle-up').addClass('fa-chevron-circle-down');
-                    else
+                    } else {
                         $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
+                    }
                 });
             });
             // On modifie le sens du chevron lors du lancement d'une requête
@@ -348,10 +382,9 @@ let betaseries_api_user_key = '';
         }
     }
 
-    /**
+    /*
      * Ajoute un sommaire sur les pages de documentation des méthodes de l'API
      * Le sommaire est constitué des liens vers les fonctions des méthodes.
-     * @return {void}
      */
     function sommaireDevApi() {
         let titles = $('.maincontent h2'),
@@ -399,7 +432,14 @@ let betaseries_api_user_key = '';
                   vertical-align: middle;
                 }
                 `;
-        $('head').append(`<link rel="stylesheet" href="${tableCSS}" integrity="sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm" crossorigin="anonymous" referrerpolicy="no-referrer" />`);
+        // Ajout du style CSS pour les tables
+        $('head').append(`<link
+                            rel="stylesheet"
+                            href="${tableCSS}"
+                            integrity="sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm"
+                            crossorigin="anonymous"
+                            referrerpolicy="no-referrer" />`
+                        );
         GM_addStyle(style);
         /**
          * Construit une cellule de table HTML pour une methode
@@ -560,9 +600,9 @@ let betaseries_api_user_key = '';
      */
     function getCurrentResource(nocache=false) {
         if (debug) console.log('getCurrentResource');
-        let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-            eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
-            fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
+              eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+              fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
         return callBetaSeries('GET', type.plural, fonction, {'id': eltId}, nocache);
     }
@@ -842,7 +882,7 @@ let betaseries_api_user_key = '';
      * @return {Object} Retourne le nom de la ressource API au singulier et au pluriel
      */
     function getApiResource(pageType) {
-        const methods = {
+        let methods = {
             'serie': 'show',
             'film': 'movie',
             'episode': 'episode'
@@ -1148,8 +1188,38 @@ let betaseries_api_user_key = '';
                         txt = remaining.text().trim();
                     remaining.text(txt.replace(/^\d+/, show.user.remaining));
                 }
+                else if (nextEpisode.length <= 0 && 'next' in show.user && show.user.next.id != null) {
+                    if (debug) console.log('No nextEpisode et show.user.next OK', show.user);
+                    buildNextEpisode(show);
+                }
                 else if (!('next' in show.user) || show.user.next.id == null) {
                     nextEpisode.remove();
+                }
+                function buildNextEpisode(res) {
+                    let height = 70,
+                        width = 124,
+                        src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${res.user.next.id}&width=${width}&height=${height}`,
+                        serieTitle = res.resource_url.split('/').pop(),
+                        template = `
+                        <a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
+                          <div class="media-left">
+                            <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
+                              <img src="${src}" width="${width}" height="${height}">
+                            </div>
+                          </div>
+                          <div class="media-body">
+                            <div class="title">
+                              <strong>Prochain épisode à regarder</strong>
+                            </div>
+                            <div class="titleEpisode">
+                              ${res.user.next.code.toUpperCase()} - ${res.user.next.title}
+                            </div>
+                            <div class="remaining">
+                              <div class="u-colorWhiteOpacity05">${res.user.remaining} épisode${(show.user.remaining > 1) ? 's' : ''} à regarder</div>
+                            </div>
+                          </div>
+                        </a>`;
+                    $('.blockInformations__actions').after(template);
                 }
             }
         }
@@ -1197,19 +1267,15 @@ let betaseries_api_user_key = '';
      */
     function similarsViewed() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key == '' ||
-            ! /\/^(serie|film)\//.test(url))
-        {
-            return;
-        }
+        if (! userIdentified || betaseries_api_user_key == '' || ! /(serie|film)/.test(url)) return;
 
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
             type = getApiResource(url.split('/')[1]), // Le type de ressource
             resId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
-            show = cache.get(type.plural, resId).show;
+            res = cache.get(type.plural, resId)[type.singular];
 
-        if (debug) console.log('nb similars: %d', parseInt(show.similars, 10));
+        if (debug) console.log('nb similars: %d', 1, res/* parseInt(res.similars, 10)*/);
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) {
@@ -1222,13 +1288,11 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            // Ajout du style des Popovers
             $('head').append('<link ' +
                 'rel="stylesheet" ' +
                 'href="https://betaseries.aufilelec.fr/css/popover.min.css" ' +
-                'integrity="sha384-q3mqjVgXXPBGRY4xLs2gx2GtsJyvWMv+Sd3p1HBRXfRVcGcQUanUbqbm+iku0wmJ" ' +
+                'integrity="sha384-kGggcgLy0UJsztKjHmQEv63KDqJgtP86DrDgfgsDuJMQ7ks/CR9aRIetsCbz7xgG" ' +
                 'crossorigin="anonymous">');
-            // Ajout du script JS de Bootstrap
             $('head').append('<script ' +
                 'src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" ' +
                 'integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" ' +
@@ -1255,18 +1319,22 @@ let betaseries_api_user_key = '';
                 $('#similars a.slide__image').each((i, elt) => {
                     $(elt).popover('dispose');
                 });
-                // On met à jour les similars
+                // On met à jour les series similaires
                 similarsViewed();
             });
         }
 
-        callBetaSeries('GET', type.plural, 'similars',
-            {'thetvdb_id': show.thetvdb_id, 'details': true})
+        let params = {'details': true};
+        if (type.singular == 'show') {
+            params.thetvdb_id = res.thetvdb_id;
+        } else if (type.singular == 'movie') {
+            params.id = res.id;
+        }
+        callBetaSeries('GET', type.plural, 'similars', params, true)
         .then(function(data) {
             let intTime = setInterval(function() {
                 if (typeof bootstrap.Popover != 'function') { return; }
                 else clearInterval(intTime);
-
                 /**
                  * Retourne la position de la popup par rapport à l'image du similar
                  * @param  {Object} tip Unknown
@@ -1274,81 +1342,106 @@ let betaseries_api_user_key = '';
                  * @return {String}     La position de la popup
                  */
                 let funcPlacement = (tip, elt) => {
-                    const rect = elt.getBoundingClientRect(),
-                          width = window.getWidth(),
-                          sizePopover = 320;
+                    if (debug) console.log('funcPlacement', tip, $(tip).width());
+                    let rect = elt.getBoundingClientRect(),
+                        width = $(window).width(),
+                        sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
                 /**
                  * Retourne le contenu de la Popup de présentation du similar
-                 * @param {Object} resource L'objet de la série
-                 * @return {String} La présentation du similar
+                 * @param {Object} objRes L'objet de la série
+                 * @return {String}       La présentation du similar
                  */
-                function tempContentPopup(resource) {
-                    const genres = Object.values(resource.genres).join(', '),
-                          status = resource.status == 'Ended' ? 'Terminée' : 'En cours',
-                          seen = (resource.user.status > 0) ? 'Vu à ' + resource.user.status + '%' : 'Pas vu';
-                    let archived = '', template = '';
-                    if (resource.user.status > 0 && resource.user.archived == true) {
-                        archived = ', Archivée: <i class="fa fa-check-circle-o" aria-hidden="true"></i>';
-                    } else if (resource.user.status > 0) {
-                        archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
+                function tempContentPopup(objRes) {
+                    const genres = Object.values(objRes.genres).join(', '),
+                          status = objRes.status == 'Ended' ? 'Terminée' : 'En cours',
+                          seen = (objRes.user.status > 0) ? 'Vu à ' + objRes.user.status + '%' : 'Pas vu',
+                          description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
+                    let template = '<div>';
+                    if (type.singular == 'show') {
+                        template += `<p><strong>${objRes.seasons}</strong> saison${(objRes.seasons > 1 ? 's':'')}, <strong>${objRes.episodes}</strong> épisodes, `;
+                    } else if (type.singular == 'movie') {
+                        template += '<p>';
                     }
-                    template = '<div>' +
-                      '<p><strong>' + resource.seasons + '</strong> saison' + (resource.seasons > 1 ? 's':'') + ', ' +
-                          '<strong>' + resource.episodes + '</strong> épisodes, ';
-                    if (resource.notes.total > 0) {
-                        template += '<strong>' + resource.notes.total || 0 + '</strong> votes</p>';
+                    if (objRes.notes.total > 0) {
+                        template += `<strong>${objRes.notes.total}</strong> votes</p>`;
                     } else {
-                        template += 'Aucun vote';
+                        template += 'Aucun vote</p>';
                     }
                     template += '<p><u>Genres:</u> ' + genres + '</p>';
-                    if (resource.hasOwnProperty('creation') || resource.hasOwnProperty('country')) {
+                    if (objRes.hasOwnProperty('creation') || objRes.hasOwnProperty('country') || objRes.hasOwnProperty('production_year')) {
                         template += '<p>';
-                        if (resource.hasOwnProperty('creation')) {
-                            template += '<u>Création:</u> <strong>' + resource.creation + '</strong>';
+                        if (objRes.hasOwnProperty('creation')) {
+                            template += `<u>Création:</u> <strong>${objRes.creation}</strong>`;
                         }
-                        if (resource.hasOwnProperty('country')) {
-                            template += ', <u>Pays:</u> <strong>' + resource.country + '</strong>';
+                        if (objRes.hasOwnProperty('production_year')) {
+                            template += `<u>Production:</u> <strong>${objRes.production_year}</strong>`;
+                        }
+                        if (objRes.hasOwnProperty('country')) {
+                            template += `, <u>Pays:</u> <strong>${objRes.country}</strong>`;
                         }
                         template += '</p>';
                     }
-                    template += '<p><u>Statut:</u> <strong>' + status + '</strong>, ' + seen +
-                        archived + '</p><p>' + resource.description.substring(0, 200) + '...</p></div>';
+                    if (type.singular == 'show') {
+                        let archived = '';
+                        if (objRes.user.status > 0 && objRes.user.archived == true) {
+                            archived = ', Archivée: <i class="fa fa-check-circle-o" aria-hidden="true"></i>';
+                        } else if (objRes.user.status > 0) {
+                            archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
+                        }
+                        template += `<p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>`;
+                    } else if (type.singular == 'movie') {
+                        template += `<p><u>Réalisateur:</u> <strong>${objRes.director}</strong></p>`;
+                    }
+                    template += `<p>${description.substring(0, 200)}...</p></div>`;
                     return template;
                 }
                 /**
                  * Retourne le titre de la Popup de présentation du similar
-                 * @param  {Object} resource L'objet de la série
-                 * @return {String}          Le titre du similar
+                 * @param  {Object} objRes L'objet de la série
+                 * @return {String}        Le titre du similar
                  */
-                function titlePopup(resource) {
-                    let title = resource.title;
-                    if (resource.notes.total > 0) {
+                function titlePopup(objRes) {
+                    let title = objRes.title;
+                    if (objRes.notes.total > 0) {
                         title += ' <span style="font-size: 0.8em;color:#000;">' +
-                                parseFloat(resource.notes.mean).toFixed(2) + ' / 5</span>';
+                                parseFloat(objRes.notes.mean).toFixed(2) + ' / 5</span>';
                     }
                     return title;
                 }
 
+                let obj = {};
                 for (let s = 0; s < data.similars.length; s++) {
-                    cache.set(type.plural, data.similars[s][type.singular].id, {'show': data.similars[s][type.singular]});
-                    const $elt = $(similars.get(s)),
-                          $link = $elt.siblings('a'),
-                          resource = data.similars[s][type.singular];
+                    obj = {};
+                    obj[type.singular] = data.similars[s][type.singular];
+                    cache.set(type.plural, data.similars[s][type.singular].id, obj);
+                    let $elt = $(similars.get(s)),
+                        $link = $elt.siblings('a'),
+                        resource = data.similars[s][type.singular];
 
                     decodeTitle($elt);
                     addBandeau($elt, resource.user.status, resource.notes);
                     $link.popover({
                         container: $link,
                         html: true,
-                        content: tempContentPopup(resource),
+                        content: tempContentPopup(data.similars[s][type.singular]),
                         placement: funcPlacement,
-                        title: titlePopup(resource),
+                        title: titlePopup(data.similars[s][type.singular]),
                         trigger: 'hover',
                         fallbackPlacement: ['left', 'right']
                     });
                 }
+                $('#similars a.slide__image').on('shown.bs.popover', function () {
+                    let popover = $('.popover'),
+                        img = popover.siblings('img.js-lazy-image'),
+                        placement = $('.popover').attr('x-placement'),
+                        space = 0;
+                    if (placement == 'left') {
+                        space = popover.width() + (img.width()/2) + 5;
+                        popover.css('left', `-${space}px`);
+                    }
+                });
                 $('.updateSimilars').addClass('finish');
             }, 500);
         }, (err) => {
@@ -1414,8 +1507,8 @@ let betaseries_api_user_key = '';
      */
     function authenticate() {
         if (debug) console.log('authenticate');
-        $('body').append(
-            `<div id="containerIframe">
+        $('body').append(`
+            <div id="containerIframe">
               <iframe id="userscript"
                       name="userscript"
                       title="Connexion à BetaSeries"
@@ -1424,23 +1517,24 @@ let betaseries_api_user_key = '';
                       src="https://betaseries.aufilelec.fr/"
                       style="background:white;margin:auto;">
               </iframe>
-            </div>`
-        );
+            </div>'
+        `);
         return new Promise((resolve, reject) => {
             window.addEventListener("message", receiveMessage, false);
             function receiveMessage(event) {
                 if (debug) console.log('receiveMessage', event);
-                if (event.origin !== 'https://betaseries.aufilelec.fr') {
+                if (event.origin !== "https://betaseries.aufilelec.fr") {
                     if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
                     reject('event.origin is not betaseries.aufilelec.fr');
                     return;
                 }
-                if (event.data.message == 'access_token') {
+                let msg = event.data.message;
+                if (msg == 'access_token') {
                     betaseries_api_user_token = event.data.value;
                     $('#containerIframe').remove();
-                    resolve(event.data.message);
+                    resolve(msg);
                 } else {
-                    if (debug) console.error('Erreur de récupération du token', event);
+                    if (debug) console.error('Erreur de récuperation du token', event);
                     reject(event.data);
                     notification('Erreur de récupération du token', 'Pas de message');
                 }
@@ -1496,10 +1590,7 @@ let betaseries_api_user_key = '';
 
                 let code = jqXHR.responseJSON.errors[0].code,
                     text = jqXHR.responseJSON.errors[0].text;
-                if (code == 2005 ||
-                    (jqXHR.status == 400 && code == 0 &&
-                        text == "L'utilisateur a déjà marqué cet épisode comme vu."))
-                {
+                if (code == 2005 || (jqXHR.status == 400 && code == 0 && text == "L'utilisateur a déjà marqué cet épisode comme vu.")) {
                     reject('changeStatus');
                 } else if (code == 2001) {
                     reject('accessToken');
