@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.3
+// @version      0.19.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -343,14 +343,15 @@ let betaseries_api_user_key = '';
          * On ajoute un bouton pour supprimer la ligne d'un paramètre
          */
         function addRemoveParamToConsole() {
-            $('.api-params:not(.remove):not(.lock):not(:first)')
+            let elts = $('.api-params:not(.remove):not(.lock):not(:first)');
+            elts
                 .append('<i class="remove-input fa fa-minus-circle fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
                 .append('<i class="lock-param fa fa-unlock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
                 .addClass('remove');
             $('.remove-input').click((e) => {
                 $(e.currentTarget).parent('.api-params').remove();
             });
-            $('.lock-param').click((e) => {
+            $('.lock-param', elts).click((e) => {
                 let self = $(e.currentTarget);
                 if (self.hasClass('fa-unlock')) {
                     self.removeClass('fa-unlock').addClass('fa-lock');
@@ -1372,14 +1373,14 @@ let betaseries_api_user_key = '';
                     template += '<p><u>Genres:</u> ' + genres + '</p>';
                     if (objRes.hasOwnProperty('creation') || objRes.hasOwnProperty('country') || objRes.hasOwnProperty('production_year')) {
                         template += '<p>';
-                        if (objRes.hasOwnProperty('creation')) {
+                        if (objRes.hasOwnProperty('creation') && objRes.creation != null) {
                             template += `<u>Création:</u> <strong>${objRes.creation}</strong>`;
                         }
-                        if (objRes.hasOwnProperty('production_year')) {
-                            template += `<u>Production:</u> <strong>${objRes.production_year}</strong>`;
-                        }
-                        if (objRes.hasOwnProperty('country')) {
+                        if (objRes.hasOwnProperty('country') && objRes.country != null) {
                             template += `, <u>Pays:</u> <strong>${objRes.country}</strong>`;
+                        }
+                        if (objRes.hasOwnProperty('production_year') && objRes.production_year != null) {
+                            template += `<u>Production:</u> <strong>${objRes.production_year}</strong>`;
                         }
                         template += '</p>';
                     }
