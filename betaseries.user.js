@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.4
+// @version      0.19.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -18,12 +18,12 @@
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
-// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-eAe68WiqTlhNH3L0/6viPSFJrtdukjD3k6bepT0Pvjkmb+IaEVof8HRq+NL+ywNY
+// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-MBVQ2DLStz40xSnwFC3dzDJ76nT6y5ok041WDxpD2tIPh9CMLnWvlNudlNketTVz
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends generate_route
    bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset */
 /* jslint unparam: true */
 
@@ -218,6 +218,7 @@ let betaseries_api_user_key = '';
      * @return {void}
      */
     function seriesFilterPays() {
+        if (url.split('/').pop() == 'agenda') return;
         let $input = $('.filter-container-others-countries input');
         // Supprimer l'attribut onclick de l'input other-countries
         $input.removeAttr('onchange');
@@ -230,6 +231,7 @@ let betaseries_api_user_key = '';
             deleteFilterOthersCountries();
             countFilter("pays");
         });
+        const baseUrl = generate_route("shows");
         let hash = url.substr(baseUrl.length);
         if (hash.length === 0) {
             return;
@@ -352,7 +354,10 @@ let betaseries_api_user_key = '';
                 $(e.currentTarget).parent('.api-params').remove();
             });
             $('.lock-param', elts).click((e) => {
+                e.stopPropagation();
+                e.preventDefault();
                 let self = $(e.currentTarget);
+                if (debug) console.log('lock-param', self, self.hasClass('fa-unlock'));
                 if (self.hasClass('fa-unlock')) {
                     self.removeClass('fa-unlock').addClass('fa-lock');
                     self.parent('.api-params').removeClass('remove').addClass('lock');
@@ -857,7 +862,7 @@ let betaseries_api_user_key = '';
     function addStylesheet() {
         $('head').append('<link rel="stylesheet" ' +
                          'href="https://betaseries.aufilelec.fr/css/style.min.css" ' +
-                         'integrity="sha384-eAe68WiqTlhNH3L0/6viPSFJrtdukjD3k6bepT0Pvjkmb+IaEVof8HRq+NL+ywNY" ' +
+                         'integrity="sha384-MBVQ2DLStz40xSnwFC3dzDJ76nT6y5ok041WDxpD2tIPh9CMLnWvlNudlNketTVz" ' +
                          'crossorigin="anonymous" referrerpolicy="no-referrer" />');
     }
 
@@ -969,7 +974,7 @@ let betaseries_api_user_key = '';
      * Ajoute un bouton Vu sur la vignette d'un épisode
      */
     function addBtnWatchedToEpisode() {
-        if (! /serie/.test(url)) return;
+        if (! /^\/serie\//.test(url)) return;
 
         if (debug) console.log('addBtnWatchedToEpisode');
 
@@ -996,8 +1001,8 @@ let betaseries_api_user_key = '';
         function addCheckbox() {
             vignettes = getVignettes();
             let len = parseInt($('div.slide--current .slide__infos').text(), 10);
-            vignettes.each(function(index, elt) {
-                let $vignette = $(elt),
+            for (let v = 0; v < len; v++) {
+                let $vignette = $(vignettes.get(v)),
                     id = getEpisodeId($vignette);
                 if (checkSeenPresent($vignette)) {
                     // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
@@ -1008,24 +1013,25 @@ let betaseries_api_user_key = '';
                     // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
                     $vignette.append('<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>');
                 }
-
-                // On ajoute un event click sur la case 'checkSeen'
-                $('#episode-' + id).click(function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    let $elt = $(e.currentTarget),
-                        episodeId = getEpisodeId($elt);
-                    // On vérifie si l'épisode a déjà été vu
-                    if ($elt.hasClass('seen')) {
-                        // On demande à l'enlever des épisodes vus
-                        changeStatusVignette($elt, 'notSeen', 'DELETE', episodeId);
-                    }
-                    // Sinon, on l'ajoute aux épisodes vus
-                    else {
-                        changeStatusVignette($elt, 'seen', 'POST', episodeId);
-                    }
-                });
+            }
+            // On ajoute un event click sur la case 'checkSeen'
+            $('#episodes .checkSeen').click(function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                let $elt = $(e.currentTarget),
+                    episodeId = getEpisodeId($elt);
+                // On vérifie si l'épisode a déjà été vu
+                if ($elt.hasClass('seen')) {
+                    // On demande à l'enlever des épisodes vus
+                    changeStatusVignette($elt, 'notSeen', 'DELETE', episodeId);
+                }
+                // Sinon, on l'ajoute aux épisodes vus
+                else {
+                    changeStatusVignette($elt, 'seen', 'POST', episodeId);
+                }
             });
+            addBtnUpdateEpisodeList();
+
             /**
              * Affiche/masque le spinner de modification des épisodes
              *
@@ -1223,6 +1229,53 @@ let betaseries_api_user_key = '';
                     $('.blockInformations__actions').after(template);
                 }
             }
+
+            /**
+             * Ajoute un bouton de mise à jour des épisodes de la saison courante
+             */
+            function addBtnUpdateEpisodeList() {
+                // Ajouter un bouton de mise à jour des épisodes de la saison courante
+                if ($('#updateEpisodeList').length < 1) {
+                    $('#episodes .blockTitles').append(`
+                    <div id="updateEpisodeList" class="updateElements">
+                      <img src="https://betaseries.aufilelec.fr/img/update.png" class="updateEpisodes updateElement finish" title="Mise à jour des épisodes" style="margin-left:10px;"/>
+                    </div>`);
+                    // On ajoute la gestion de l'event click sur le bouton
+                    $('.updateEpisodes').click((e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const self = $(this);
+                        self.removeClass('finish');
+                        // Recuperer la liste des épisodes de la saison
+                        let season = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
+                            showId = getResourceId();
+                        callBetaSeries('GET', 'shows', 'episodes', {id: showId, season: parseInt(season, 10)}, true)
+                            .then(function(data) {
+                            if (debug) console.log('callBetaSeries GET shows/episodes', data);
+                            vignettes = getVignettes();
+                            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
+                            for (let v = 0; v < len; v++) {
+                                let $vignette = $(vignettes.get(v)),
+                                    episode = data.episodes[v],
+                                    id = getEpisodeId($vignette);
+                                if (checkSeenPresent($vignette)) {
+                                    // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
+                                    let checkbox = $vignette.find('.checkSeen');
+                                    checkbox.attr('id', 'episode-' + id);
+                                }
+                                if (episode.user.seen) {
+                                    let $elt = $vignette.find('.checkSeen');
+                                    changeStatus($elt, 'seen');
+                                }
+                            }
+                            self.addClass('finish');
+                        },
+                                  function(err) {
+                            notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
+                        });
+                    });
+                }
+            }
         }
 
         // On ajoute un event sur le changement de saison
@@ -1244,6 +1297,7 @@ let betaseries_api_user_key = '';
                 }
             }, 500);
         });
+
         // Retourne la saison courante
         /*function getCurrentSeason() {
             return $('#seasons div[role="button"].slide--current');
@@ -1260,6 +1314,11 @@ let betaseries_api_user_key = '';
         function getEpisodeId(episode) {
             return episode.parents('div.slide_flex').find('button').first().attr('id').split('-')[1];
         }
+    }
+
+    function getResourceId() {
+        let type = getApiResource(url.split('/')[1]); // Le type de ressource
+        return $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id');
     }
 
     /**
@@ -1300,8 +1359,8 @@ let betaseries_api_user_key = '';
                 'crossorigin="anonymous"></script>');
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
-            <div id="updateSimilarsBlock">
-              <img src="https://betaseries.aufilelec.fr/img/update.png" class="updateSimilars" title="Mise à jour des similaires vus"/>
+            <div id="updateSimilarsBlock" class="updateElements">
+              <img src="https://betaseries.aufilelec.fr/img/update.png" class="updateSimilars updateElement" title="Mise à jour des similaires vus"/>
             </div>`);
             // Si le bouton d'ajout de similaire est présent, on ajoute une marge
             if ($('#similars button.blockTitle-subtitle').length == 1) {
@@ -1357,7 +1416,7 @@ let betaseries_api_user_key = '';
                 function tempContentPopup(objRes) {
                     const genres = Object.values(objRes.genres).join(', '),
                           status = objRes.status == 'Ended' ? 'Terminée' : 'En cours',
-                          seen = (objRes.user.status > 0) ? 'Vu à ' + objRes.user.status + '%' : 'Pas vu',
+                          seen = (objRes.user.status > 0) ? 'Vu à <strong>' + objRes.user.status + '%</strong>' : 'Pas vu',
                           description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
                     let template = '<div>';
                     if (type.singular == 'show') {
@@ -1376,11 +1435,11 @@ let betaseries_api_user_key = '';
                         if (objRes.hasOwnProperty('creation') && objRes.creation != null) {
                             template += `<u>Création:</u> <strong>${objRes.creation}</strong>`;
                         }
-                        if (objRes.hasOwnProperty('country') && objRes.country != null) {
-                            template += `, <u>Pays:</u> <strong>${objRes.country}</strong>`;
-                        }
                         if (objRes.hasOwnProperty('production_year') && objRes.production_year != null) {
                             template += `<u>Production:</u> <strong>${objRes.production_year}</strong>`;
+                        }
+                        if (objRes.hasOwnProperty('country') && objRes.country != null) {
+                            template += `, <u>Pays:</u> <strong>${objRes.country}</strong>`;
                         }
                         template += '</p>';
                     }

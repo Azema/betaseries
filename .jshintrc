@@ -21,7 +21,8 @@
     "baseUrl": true,
     "CONSTANTE_FILTER": true,
     "CONSTANTE_SORT": true,
-    "hideButtonReset": true
+    "hideButtonReset": true,
+    "generate_route": true
   },
   "indent"        : 4         // Specify indentation spacing
 }
