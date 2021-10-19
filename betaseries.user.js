@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.7
+// @version      0.19.8
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -613,7 +613,7 @@ let betaseries_api_user_key = '';
     function getCurrentResource(nocache=false) {
         if (debug) console.log('getCurrentResource');
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-              eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+              eltId = getResourceId(), // Identifiant de la ressource
               fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
         return callBetaSeries('GET', type.plural, fonction, {'id': eltId}, nocache);
@@ -625,7 +625,7 @@ let betaseries_api_user_key = '';
     function addRating() {
         if (debug) console.log('addRating');
         let type = getApiResource(url.split('/')[1]), // Indique de quel type de ressource il s'agit
-            eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            eltId = getResourceId(), // Identifiant de la ressource
             fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
         callBetaSeries('GET', type.plural, fonction, {'id': eltId})
@@ -914,7 +914,7 @@ let betaseries_api_user_key = '';
 
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
             type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-            eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            eltId = getResourceId(), // Identifiant de la ressource
             fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
         if (debug) console.log('votes %d, eltId: %d, type: %s', votes.length, eltId, type.singular);
@@ -1151,7 +1151,7 @@ let betaseries_api_user_key = '';
              * @return {void}
              */
             function updateProgressBar() {
-                let showId = $('#reactjs-show-actions').data('show-id'),
+                let showId = getResourceId(),
                     progBar = $('.progressBarShow'),
                     show = cache.get('shows', showId).show;
                 // On met à jour la barre de progression
@@ -1163,7 +1163,7 @@ let betaseries_api_user_key = '';
              */
             function updateNextEpisode() {
                 if (debug) console.log('updateNextEpisode');
-                let showId = $('#reactjs-show-actions').data('show-id'),
+                let showId = getResourceId(),
                     nextEpisode = $('a.blockNextEpisode'),
                     show = cache.get('shows', showId).show;
 
@@ -1276,8 +1276,8 @@ let betaseries_api_user_key = '';
             if (debug) console.log('season click');
             // On attend que les vignettes de la saison choisie soient chargées
             timer = setInterval(function() {
-                let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
-                    vigns = getVignettes();
+                const len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
+                      vigns = getVignettes();
                 // On vérifie qu'il y a des vignettes et que leur nombre soit égale
                 // ou supérieur au nombre d'épisodes indiqués dans la saison
                 if (vigns.length > 0 && vigns.length >= len) {
@@ -1307,9 +1307,14 @@ let betaseries_api_user_key = '';
         }
     }
 
+    /**
+     * Retourne l'identifiant de la ressource de la page
+     * @return {Number} L'identifiant de la ressource
+     */
     function getResourceId() {
-        let type = getApiResource(url.split('/')[1]); // Le type de ressource
-        return $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id');
+        const type = getApiResource(url.split('/')[1]), // Le type de ressource
+              eltActions = $(`#reactjs-${type.singular}-actions`); // Le noeud contenant l'ID
+        return (eltActions.length == 1) ? eltActions.data(`${type.singular}-id`) : null;
     }
 
     /**
@@ -1323,7 +1328,7 @@ let betaseries_api_user_key = '';
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
             type = getApiResource(url.split('/')[1]), // Le type de ressource
-            resId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+            resId = getResourceId(), // Identifiant de la ressource
             res = cache.get(type.plural, resId)[type.singular];
 
         if (debug) console.log('nb similars: %d', 1, res/* parseInt(res.similars, 10)*/);
@@ -1528,6 +1533,11 @@ let betaseries_api_user_key = '';
         }
     }
 
+    /**
+     * Permet de mettre à jour la liste des épisodes à voir
+     * sur la page de l'agenda
+     * @return {void}
+     */
     function updateAgenda() {
         // $('div.m_s > div:nth-child(1) > div.media-body > a:nth-child(1)')
         // Identifier les informations des épisodes à voir
@@ -1731,7 +1741,7 @@ let betaseries_api_user_key = '';
                 if (code == 2005 || (jqXHR.status == 400 && code == 0 && text == "L'utilisateur a déjà marqué cet épisode comme vu.")) {
                     reject('changeStatus');
                 } else if (code == 2001) {
-                    //reject('accessToken');
+                    // Appel de l'authentification pour obtenir un token valide
                     authenticate().then(() => {
                         callBetaSeries(type, methode, fonction, args, nocache)
                         .then((data) => {
