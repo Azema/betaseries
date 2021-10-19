@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.6
+// @version      0.19.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -18,7 +18,7 @@
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
-// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-MBVQ2DLStz40xSnwFC3dzDJ76nT6y5ok041WDxpD2tIPh9CMLnWvlNudlNketTVz
+// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-GxwntnuTNi5BTaMEMin+8kr4TYGqmuoyWhlfWcb6VY4bzKe6GFbC9VMCH70aRpFv
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
@@ -868,7 +868,7 @@ let betaseries_api_user_key = '';
     function addStylesheet() {
         $('head').append('<link rel="stylesheet" ' +
                          'href="https://betaseries.aufilelec.fr/css/style.min.css" ' +
-                         'integrity="sha384-MBVQ2DLStz40xSnwFC3dzDJ76nT6y5ok041WDxpD2tIPh9CMLnWvlNudlNketTVz" ' +
+                         'integrity="sha384-nTsRjc/iDBUURSqvwrlrxi8S0mxsS9Pdzoo2g+78xH3Qy9jD8zALTcVYjpNAMV3g" ' +
                          'crossorigin="anonymous" referrerpolicy="no-referrer" />');
     }
 
@@ -928,6 +928,9 @@ let betaseries_api_user_key = '';
             else note = data[type.singular].note;
             // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
             changeTitleNote(votes, note.mean, note.total);
+            if (note.user > 0) {
+                votes.attr('title', votes.attr('title') + `, votre note: ${note.user} / 5`);
+            }
         }, (err) => {
             notification('Erreur de récupération de ' + type.singular, 'addNumberVoters: ' + err);
         });
@@ -1006,28 +1009,26 @@ let betaseries_api_user_key = '';
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckbox() {
             vignettes = getVignettes();
-            const len = parseInt($('#seasons .slide--current .slide__infos').text(), 10);
+            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
             for (let v = 0; v < len; v++) {
-                const $vignette = $(vignettes.get(v)),
-                      id = getEpisodeId($vignette);
+                let $vignette = $(vignettes.get(v)),
+                    id = getEpisodeId($vignette);
                 if (checkSeenPresent($vignette)) {
                     // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
-                    const checkbox = $vignette.find('.checkSeen');
+                    let checkbox = $vignette.find('.checkSeen');
                     checkbox.attr('id', 'episode-' + id);
                     checkbox.addClass('seen');
                 } else {
                     // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
-                    $vignette.append(
-                        '<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>'
-                    );
+                    $vignette.append('<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>');
                 }
             }
             // On ajoute un event click sur la case 'checkSeen'
             $('#episodes .checkSeen').click(function(e) {
                 e.stopPropagation();
                 e.preventDefault();
-                const $elt = $(e.currentTarget),
-                      episodeId = getEpisodeId($elt);
+                let $elt = $(e.currentTarget),
+                    episodeId = getEpisodeId($elt);
                 // On vérifie si l'épisode a déjà été vu
                 if ($elt.hasClass('seen')) {
                     // On demande à l'enlever des épisodes vus
@@ -1071,8 +1072,8 @@ let betaseries_api_user_key = '';
              * @return {void}
              */
             function changeStatusVignette($elt, status, method, episodeId) {
-                let args = {id: episodeId};
-                if (method === 'POST') {
+                let args = {'id': episodeId};
+                if (method == 'POST') {
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
                 }
 
@@ -1087,24 +1088,6 @@ let betaseries_api_user_key = '';
                     if (err && err == 'changeStatus') {
                         if (debug) console.log('changeStatusVignette error %s changeStatus', method);
                         changeStatus($elt, status);
-                    } else if (err && err == 'accessToken') {
-                        if (debug) console.log('changeStatusVignette error %s accessToken', method);
-                        authenticate().then(function() {
-                            callBetaSeries(method, 'episodes', 'watched', {'id': episodeId})
-                            .then(function(data) {
-                                if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
-                                changeStatus($elt, status);
-                            },
-                            function(err) {
-                                if (err && err == 'changeStatus') {
-                                    changeStatus($elt, status);
-                                    return;
-                                }
-                                // TODO: Afficher le message d'erreur
-                                toggleSpinner(false);
-                                notification('Erreur de modification d\'un épisode', 'changeStatusVignette in authenticate: ' + err);
-                            });
-                        }); // TODO: Afficher le message d'erreur
                     } else {
                         toggleSpinner(false);
                         notification('Erreur de modification d\'un épisode', 'changeStatusVignette: ' + err);
@@ -1258,10 +1241,10 @@ let betaseries_api_user_key = '';
                         let season = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
                             showId = getResourceId();
                         callBetaSeries('GET', 'shows', 'episodes', {id: showId, season: parseInt(season, 10)}, true)
-                        .then(function(data) {
+                            .then(function(data) {
                             if (debug) console.log('callBetaSeries GET shows/episodes', data);
                             vignettes = getVignettes();
-                            let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10);
+                            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
                             for (let v = 0; v < len; v++) {
                                 let $vignette = $(vignettes.get(v)),
                                     episode = data.episodes[v],
@@ -1277,7 +1260,8 @@ let betaseries_api_user_key = '';
                                 }
                             }
                             self.addClass('finish');
-                        }, function(err) {
+                        },
+                                  function(err) {
                             notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                         });
                     });
@@ -1544,11 +1528,8 @@ let betaseries_api_user_key = '';
         }
     }
 
-    /**
-     * Met à jour les épisodes sur l'agenda
-     * @return {void}
-     */
     function updateAgenda() {
+        // $('div.m_s > div:nth-child(1) > div.media-body > a:nth-child(1)')
         // Identifier les informations des épisodes à voir
         // Les containers
         let containersEpisode = $('#reactjs-episodes-to-watch > div.mainBlock > div > div'),
@@ -1563,9 +1544,9 @@ let betaseries_api_user_key = '';
             return;
         }
         for (let t = 0; t < linksTitle.length; t++) {
-            let title = $(linksTitle.get(t)).text().trim(),
-                episode = $(linksEpisode.get(t)).attr('href').split('/').pop().toLowerCase(),
-                container = $(containersEpisode.get(t));
+            const title = $(linksTitle.get(t)).text().trim(),
+                  episode = $(linksEpisode.get(t)).attr('href').split('/').pop().toLowerCase(),
+                  container = $(containersEpisode.get(t));
             container
                 .data('title', title)
                 .data('code', episode);
@@ -1585,11 +1566,12 @@ let betaseries_api_user_key = '';
             $('head').append('<script ' +
                 'src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js" ' +
                 'integrity="sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw==" ' +
-                'crossorigin="anonymous" referrerpolicy="no-referrer"></script>');
+                'crossorigin="anonymous" referrerpolicy="no-referrer" async="true" defer="true"></script>');
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                const self = $(this);
+                if (debug) console.log('updateAgenda click');
+                const self = $(e.currentTarget);
                 self.removeClass('finish');
                 const len = $('#reactjs-episodes-to-watch > div.mainBlock > div > div').length;
                 callBetaSeries('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len})
@@ -1598,21 +1580,30 @@ let betaseries_api_user_key = '';
                         if (typeof moment != 'function') { return; }
                         else clearInterval(intTime);
                         moment.locale('fr');
+                        if (debug) console.log('updateAgenda callBetaSeries.then', data);
+                        let titles = []; // Liste des titres de series à voir
+                        for (let t = 0; t < data.shows.length; t++) {
+                            titles.push(data.shows[t].title);
+                        }
                         for (let e = 0; e < len; e++) {
-                            const container = $(containersEpisode.get(e)),
-                                  unseen = data.shows[e].unseen[0];
-                            if (container.data('title') == data.shows[e].title) {
-                                if (container.data('code') != unseen.code.toLowerCase()) {
-                                    if (debug) console.log('data episode', data.shows[e]);
-                                    // Mettre à jour l'épisode
-                                    let mainLink = $('a.mainLink', container),
-                                        text = unseen.code + ' - ' + unseen.title;
-                                    mainLink.attr('href', mainLink.attr('href').replace(/s\d{2}e\d{2}/, unseen.code.toLowerCase()));
-                                    mainLink.attr('title', `Accéder à la fiche de l'épisode ${text}`);
-                                    mainLink.text(text);
-                                    $('.date .mainTime', container).text(moment(unseen.date).format('D MMMM YYYY'));
-                                    $('.m_s p.m_ay', container).html(unseen.description);
-                                }
+                            let container = $(containersEpisode.get(e)),
+                                unseen = data.shows[e].unseen[0],
+                                indexTitle = titles.indexOf(container.data('title'));
+                            // Si la serie n'est plus dans la liste, on la supprime
+                            if (indexTitle == -1) {
+                                container.remove();
+                                continue;
+                            }
+                            if (container.data('title') == data.shows[e].title && container.data('code') != unseen.code.toLowerCase()) {
+                                if (debug) console.log('data episode', data.shows[e]);
+                                // Mettre à jour l'épisode
+                                let mainLink = $('a.mainLink', container),
+                                    text = unseen.code + ' - ' + unseen.title;
+                                mainLink.attr('href', mainLink.attr('href').replace(/s\d{2}e\d{2}/, unseen.code.toLowerCase()));
+                                mainLink.attr('title', `Accéder à la fiche de l'épisode ${text}`);
+                                mainLink.text(text);
+                                $('.date .mainTime', container).text(moment(unseen.date).format('D MMMM YYYY'));
+                                $('.m_s p.m_ay', container).html(unseen.description);
                             }
                         }
                         self.addClass('finish');
@@ -1740,7 +1731,17 @@ let betaseries_api_user_key = '';
                 if (code == 2005 || (jqXHR.status == 400 && code == 0 && text == "L'utilisateur a déjà marqué cet épisode comme vu.")) {
                     reject('changeStatus');
                 } else if (code == 2001) {
-                    reject('accessToken');
+                    //reject('accessToken');
+                    authenticate().then(() => {
+                        callBetaSeries(type, methode, fonction, args, nocache)
+                        .then((data) => {
+                            resolve(data);
+                        }, (err) => {
+                            reject(err);
+                        });
+                    }, (err) => {
+                        reject(err);
+                    });
                 } else {
                     reject(JSON.stringify(jqXHR.responseJSON.errors[0]));
                 }
