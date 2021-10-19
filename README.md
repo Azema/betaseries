@@ -34,6 +34,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Nombre de votants](/img/nbVotants.jpg "Nombre de votants")
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus et met à jour la barre de progression de la série
+* Ajout d'un bouton de mise à jour des épisodes de la saison courante
 
 ![Case à cocher VU d'un épisode](/img/checkSeen.jpg "Case à cocher VU d'un épisode")
 * Ajout des notes sous les titres des similaires

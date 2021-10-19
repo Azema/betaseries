@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.5
+// @version      0.19.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -24,7 +24,7 @@
 // ==/UserScript==
 
 /* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends generate_route
-   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset */
+   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment */
 /* jslint unparam: true */
 
 
@@ -43,7 +43,7 @@ let betaseries_api_user_key = '';
     let debug = false,
         url = location.pathname,
         userIdentified = typeof betaseries_api_user_token != 'undefined',
-        timer, currentUser, cache = new Cache(),
+        timer, timerUA, currentUser, cache = new Cache(),
         counter = 0,
         // URI des images et description des classifications TV et films
         ratings = {
@@ -160,6 +160,12 @@ let betaseries_api_user_key = '';
         if (debug) console.log('Page des séries');
         waitPagination();
         seriesFilterPays();
+        if (/agenda/.test(url)) {
+            addStylesheet(); // On ajoute le CSS
+            timerUA = setInterval(function() {
+                updateAgenda();
+            }, 1000);
+        }
     }
 
     /**
@@ -1000,26 +1006,28 @@ let betaseries_api_user_key = '';
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckbox() {
             vignettes = getVignettes();
-            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
+            const len = parseInt($('#seasons .slide--current .slide__infos').text(), 10);
             for (let v = 0; v < len; v++) {
-                let $vignette = $(vignettes.get(v)),
-                    id = getEpisodeId($vignette);
+                const $vignette = $(vignettes.get(v)),
+                      id = getEpisodeId($vignette);
                 if (checkSeenPresent($vignette)) {
                     // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
-                    let checkbox = $vignette.find('.checkSeen');
+                    const checkbox = $vignette.find('.checkSeen');
                     checkbox.attr('id', 'episode-' + id);
                     checkbox.addClass('seen');
                 } else {
                     // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
-                    $vignette.append('<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>');
+                    $vignette.append(
+                        '<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>'
+                    );
                 }
             }
             // On ajoute un event click sur la case 'checkSeen'
             $('#episodes .checkSeen').click(function(e) {
                 e.stopPropagation();
                 e.preventDefault();
-                let $elt = $(e.currentTarget),
-                    episodeId = getEpisodeId($elt);
+                const $elt = $(e.currentTarget),
+                      episodeId = getEpisodeId($elt);
                 // On vérifie si l'épisode a déjà été vu
                 if ($elt.hasClass('seen')) {
                     // On demande à l'enlever des épisodes vus
@@ -1063,8 +1071,8 @@ let betaseries_api_user_key = '';
              * @return {void}
              */
             function changeStatusVignette($elt, status, method, episodeId) {
-                let args = {'id': episodeId};
-                if (method == 'POST') {
+                let args = {id: episodeId};
+                if (method === 'POST') {
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
                 }
 
@@ -1250,10 +1258,10 @@ let betaseries_api_user_key = '';
                         let season = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
                             showId = getResourceId();
                         callBetaSeries('GET', 'shows', 'episodes', {id: showId, season: parseInt(season, 10)}, true)
-                            .then(function(data) {
+                        .then(function(data) {
                             if (debug) console.log('callBetaSeries GET shows/episodes', data);
                             vignettes = getVignettes();
-                            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
+                            let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10);
                             for (let v = 0; v < len; v++) {
                                 let $vignette = $(vignettes.get(v)),
                                     episode = data.episodes[v],
@@ -1269,8 +1277,7 @@ let betaseries_api_user_key = '';
                                 }
                             }
                             self.addClass('finish');
-                        },
-                                  function(err) {
+                        }, function(err) {
                             notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                         });
                     });
@@ -1534,6 +1541,86 @@ let betaseries_api_user_key = '';
                 parseFloat(objNote.mean).toFixed(2),
                 objNote.total
             );
+        }
+    }
+
+    /**
+     * Met à jour les épisodes sur l'agenda
+     * @return {void}
+     */
+    function updateAgenda() {
+        // Identifier les informations des épisodes à voir
+        // Les containers
+        let containersEpisode = $('#reactjs-episodes-to-watch > div.mainBlock > div > div'),
+            linksTitle = $('div.m_s > div:nth-child(1) > div.media-body > a:nth-child(1)'),
+            linksEpisode = $('div > div.m_s > div:nth-child(1) > div.media-body > a.mainLink');
+
+        if (linksTitle.length > 0) {
+            if (debug) console.log('updateAgenda - nb titles: %d', linksTitle.length);
+            clearInterval(timerUA);
+        } else {
+            if (debug) console.log('updateAgenda en attente');
+            return;
+        }
+        for (let t = 0; t < linksTitle.length; t++) {
+            let title = $(linksTitle.get(t)).text().trim(),
+                episode = $(linksEpisode.get(t)).attr('href').split('/').pop().toLowerCase(),
+                container = $(containersEpisode.get(t));
+            container
+                .data('title', title)
+                .data('code', episode);
+            //if (debug) console.log('title: %s - code: %s', title, episode);
+        }
+        if ($('.updateElements').length == 0) {
+            // On ajoute le bouton de mise à jour des similaires
+            $('.maintitle > div:nth-child(1)').after(`
+                <div class="updateElements">
+                  <img src="https://betaseries.aufilelec.fr/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
+                </div>
+            `);
+            $('head').append('<script ' +
+                'src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" ' +
+                'integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" ' +
+                'crossorigin="anonymous" referrerpolicy="no-referrer"></script>');
+            $('head').append('<script ' +
+                'src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js" ' +
+                'integrity="sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw==" ' +
+                'crossorigin="anonymous" referrerpolicy="no-referrer"></script>');
+            $('.updateEpisodes').click((e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const self = $(this);
+                self.removeClass('finish');
+                const len = $('#reactjs-episodes-to-watch > div.mainBlock > div > div').length;
+                callBetaSeries('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len})
+                .then((data) => {
+                    let intTime = setInterval(function() {
+                        if (typeof moment != 'function') { return; }
+                        else clearInterval(intTime);
+                        moment.locale('fr');
+                        for (let e = 0; e < len; e++) {
+                            const container = $(containersEpisode.get(e)),
+                                  unseen = data.shows[e].unseen[0];
+                            if (container.data('title') == data.shows[e].title) {
+                                if (container.data('code') != unseen.code.toLowerCase()) {
+                                    if (debug) console.log('data episode', data.shows[e]);
+                                    // Mettre à jour l'épisode
+                                    let mainLink = $('a.mainLink', container),
+                                        text = unseen.code + ' - ' + unseen.title;
+                                    mainLink.attr('href', mainLink.attr('href').replace(/s\d{2}e\d{2}/, unseen.code.toLowerCase()));
+                                    mainLink.attr('title', `Accéder à la fiche de l'épisode ${text}`);
+                                    mainLink.text(text);
+                                    $('.date .mainTime', container).text(moment(unseen.date).format('D MMMM YYYY'));
+                                    $('.m_s p.m_ay', container).html(unseen.description);
+                                }
+                            }
+                        }
+                        self.addClass('finish');
+                    }, 500);
+                }, (err) => {
+                    notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
+                });
+            });
         }
     }
 

@@ -22,7 +22,8 @@
     "CONSTANTE_FILTER": true,
     "CONSTANTE_SORT": true,
     "hideButtonReset": true,
-    "generate_route": true
+    "generate_route": true,
+    "moment": true
   },
   "indent"        : 4         // Specify indentation spacing
 }
