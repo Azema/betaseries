@@ -53,7 +53,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 #### Liste des séries
 * Ajout d'un paginateur en haut de la liste des séries
-* Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays.
+* Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays __(Seul un pays ajouté sera retenu, si vous rafraîchissez la page)__.
 
 #### Gestion des séries
 
