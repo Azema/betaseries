@@ -6,6 +6,10 @@ UserScript pour le site [BetaSeries](https://www.betaseries.com/) testé avec Ta
 2. [Améliorations](#améliorations)
    - [Générales](#générales)
    - [Séries, Films et épisodes](#séries-films-et-épisodes)
+       - [Séries et Films](#séries-et-films)
+       - [Séries](#séries)
+       - [Liste des séries](#liste-des-séries)
+       - [Gestion des séries](#gestion-des-séries)
    - [Membres](#membres)
    - [API](#api)
 3. [Corrections](#corrections)
@@ -25,23 +29,35 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout d'une fonction d'authentification sur le site API BetaSeries, en cas de perte du token sur le site
 
 ### Séries, Films et épisodes
+
+* Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode
+* Ajout du vote du membre connecté à la note globale de la ressource
+* En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
+
+#### Séries et Films
+
 * Ajoute un bandeau d'angle "Viewed" sur les séries similaires déjà vues (Nécessite d'être connecté à votre compte utilisateur)
-* Ajout d'une popup avec les détails d'une série similaire lors du survol de l'image
 
 ![Séries similaires avec le bandeau vues](/screenshots/similarsViewed.jpg "Séries similaires avec le bandeau vues")
-* Ajout du statut des séries sur la page de gestion des séries de l'utilisateur connecté
-* Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode
+* Ajout d'une popup avec les détails d'une série/film similaire lors du survol de l'image d'un similaire
+* Ajout des notes sous les titres des similaires
+* Ajout du logo de classification TV dans les infos de la ressource (série et film)
+
+#### Séries
 
 ![Nombre de votants](/screenshots/nbVotants.jpg "Nombre de votants")
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus et met à jour la barre de progression de la série
-* Ajout d'un bouton de mise à jour des épisodes de la saison courante
+* Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante
 
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
-* Ajout des notes sous les titres des similaires
-* Ajout du logo de classification TV dans les infos de la ressource (série et film)
-* En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
+
+#### Liste des séries
 * Ajout d'un paginateur en haut de la liste des séries
 * Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays.
+
+#### Gestion des séries
+
+* Ajout du statut des séries sur la page de gestion des séries de l'utilisateur connecté
 
 ### Membres
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
