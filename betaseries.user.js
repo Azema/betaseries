@@ -29,9 +29,15 @@
 
 
 /************************************************************************************************/
-/* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
+/*                               PARAMETRES A MODIFIER                                          */
 /************************************************************************************************/
+
+/* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
 let betaseries_api_user_key = '';
+/* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
+const serverBaseUrl = 'https://betaseries.aufilelec.fr';
+
+/************************************************************************************************/
 
 (function($) {
     'use strict';
@@ -39,7 +45,7 @@ let betaseries_api_user_key = '';
     const debug = false,
           url = location.pathname,
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
-          tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css',
+          tableCSS = serverBaseUrl + '/css/table.min.css',
           integrityStyle = 'sha384-lfts4avnKs+mze5ou8aht9AU5kEIY1KcTUzxY+32D5bGG9B0d2bZsiznL1eDiV8U',
           integrityPopover = 'sha384-kGggcgLy0UJsztKjHmQEv63KDqJgtP86DrDgfgsDuJMQ7ks/CR9aRIetsCbz7xgG',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p';
@@ -50,7 +56,7 @@ let betaseries_api_user_key = '';
               integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=="
               crossorigin="anonymous" referrerpolicy="no-referrer" />
         <link rel="stylesheet"
-              href="https://betaseries.aufilelec.fr/css/style.min.css"
+              href="${serverBaseUrl}/css/style.min.css"
               integrity="${integrityStyle}"
               crossorigin="anonymous" referrerpolicy="no-referrer" />
     `);
@@ -1180,7 +1186,7 @@ let betaseries_api_user_key = '';
                 if ($('#updateEpisodeList').length < 1) {
                     $('#episodes .blockTitles').append(`
                     <div id="updateEpisodeList" class="updateElements">
-                      <img src="https://betaseries.aufilelec.fr/img/update.png" class="updateEpisodes updateElement finish" title="Mise à jour des épisodes" style="margin-left:10px;"/>
+                      <img src="${serverBaseUrl}/img/update.png" class="updateEpisodes updateElement finish" title="Mise à jour des épisodes" style="margin-left:10px;"/>
                     </div>`);
                     // On ajoute la gestion de l'event click sur le bouton
                     $('.updateEpisodes').click((e) => {
@@ -1310,7 +1316,7 @@ let betaseries_api_user_key = '';
         if ($('#updateSimilarsBlock').length < 1) {
             $('head').append(`
                 <link rel="stylesheet"
-                      href="https://betaseries.aufilelec.fr/css/popover.min.css"
+                      href="${serverBaseUrl}/css/popover.min.css"
                       integrity="${integrityPopover}"
                       crossorigin="anonymous" \>
                 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
@@ -1320,7 +1326,7 @@ let betaseries_api_user_key = '';
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
                 <div id="updateSimilarsBlock" class="updateElements">
-                  <img src="https://betaseries.aufilelec.fr/img/update.png"
+                  <img src="${serverBaseUrl}/img/update.png"
                        class="updateSimilars updateElement"
                        title="Mise à jour des similaires vus"/>
                 </div>
@@ -1486,7 +1492,7 @@ let betaseries_api_user_key = '';
             if (status && status > 0) {
                 // On ajoute le bandeau "Viewed"
                 elt.siblings('a').prepend(
-                    '<img src="https://betaseries.aufilelec.fr/img/viewed.png" class="bandViewed"/>'
+                    `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
                 );
             }
             // On ajoute le code HTML pour le rendu de la note
@@ -1535,7 +1541,7 @@ let betaseries_api_user_key = '';
             // On ajoute le bouton de mise à jour des similaires
             $('.maintitle > div:nth-child(1)').after(`
                 <div class="updateElements">
-                  <img src="https://betaseries.aufilelec.fr/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
+                  <img src="${serverBaseUrl}/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
                 </div>
             `);
             $('head').append(`
@@ -1670,7 +1676,7 @@ let betaseries_api_user_key = '';
                       title="Connexion à BetaSeries"
                       width="50%"
                       height="400"
-                      src="https://betaseries.aufilelec.fr/"
+                      src="${serverBaseUrl}/"
                       style="background:white;margin:auto;">
               </iframe>
             </div>'
@@ -1679,7 +1685,7 @@ let betaseries_api_user_key = '';
             window.addEventListener("message", receiveMessage, false);
             function receiveMessage(event) {
                 if (debug) console.log('receiveMessage', event);
-                if (event.origin !== "https://betaseries.aufilelec.fr") {
+                if (event.origin !== serverBaseUrl) {
                     if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
                     reject('event.origin is not betaseries.aufilelec.fr');
                     return;
@@ -1809,13 +1815,15 @@ let betaseries_api_user_key = '';
             if (debug) console.log('Nettoyage du cache', type);
             // On nettoie juste un type de ressource
             if (type) {
-                for (let key in data[type])
+                for (let key in data[type]) {
                     delete data[type][key];
+                }
             }
             // On nettoie l'ensemble du cache
             else {
-                for (type in data)
+                for (type in data) {
                     self.clear(type);
+                }
             }
         };
 

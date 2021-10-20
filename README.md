@@ -15,6 +15,7 @@ UserScript pour le site [BetaSeries](https://www.betaseries.com/) testé avec Ta
 3. [Corrections](#corrections)
 4. [Futures améliorations possibles](#futures-améliorations-possibles)
 5. [Développement](#développement)
+6. [Ressources](#ressources)
 
 
 
@@ -87,3 +88,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ## Développement
 * Utilisation des [Promise](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 * Mise en cache des ressources, pour limiter les appels à l'API
+
+## Ressources
+
+Les feuilles de style, les images et le javascript sont disponibles dans le répertoire [resources](/tree/main/resources)
