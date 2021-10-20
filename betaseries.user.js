@@ -112,7 +112,7 @@ let betaseries_api_user_key = '';
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour la mettre en cache
-        getCurrentResource().then(function() {
+        getResource().then(function() {
             removeAds(); // On retire les pubs
             addStylesheet(); // On ajoute le CSS
             similarsViewed(); // On s'occupe des ressources similaires
@@ -610,13 +610,41 @@ let betaseries_api_user_key = '';
      * dans le cache, pour être utilisé par les autres fonctions
      * @return {Promise}
      */
-    function getCurrentResource(nocache=false) {
-        if (debug) console.log('getCurrentResource');
+    function getResource(nocache = false, id = null) {
+        if (debug) console.log('getResource');
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-              eltId = getResourceId(), // Identifiant de la ressource
               fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        id = (id == null) ? getResourceId() : id;
 
-        return callBetaSeries('GET', type.plural, fonction, {'id': eltId}, nocache);
+        return callBetaSeries('GET', type.plural, fonction, {'id': id}, nocache);
+    }
+
+    /**
+     * Retourne la ressource associée au type de page
+     *
+     * @param  {String} pageType    Le type de page consultée
+     * @return {Object} Retourne le nom de la ressource API au singulier et au pluriel
+     */
+    function getApiResource(pageType) {
+        let methods = {
+            'serie': 'show',
+            'film': 'movie',
+            'episode': 'episode'
+        };
+        if (pageType in methods) {
+            return {singular: methods[pageType], plural: methods[pageType] + 's'};
+        }
+        return null;
+    }
+
+    /**
+     * Retourne l'identifiant de la ressource de la page
+     * @return {Number} L'identifiant de la ressource
+     */
+    function getResourceId() {
+        const type = getApiResource(url.split('/')[1]), // Le type de ressource
+              eltActions = $(`#reactjs-${type.singular}-actions`); // Le noeud contenant l'ID
+        return (eltActions.length == 1) ? eltActions.data(`${type.singular}-id`) : null;
     }
 
     /**
@@ -888,24 +916,6 @@ let betaseries_api_user_key = '';
     }
 
     /**
-     * Retourne la ressource associée au type de page
-     *
-     * @param  {String} pageType    Le type de page consultée
-     * @return {Object} Retourne le nom de la ressource API au singulier et au pluriel
-     */
-    function getApiResource(pageType) {
-        let methods = {
-            'serie': 'show',
-            'film': 'movie',
-            'episode': 'episode'
-        };
-        if (pageType in methods) {
-            return {singular: methods[pageType], plural: methods[pageType] + 's'};
-        }
-        return null;
-    }
-
-    /**
      * Ajoute le nombre de votes à la note de la ressource
      */
     function addNumberVoters() {
@@ -985,8 +995,6 @@ let betaseries_api_user_key = '';
     function addBtnWatchedToEpisode() {
         if (! /^\/serie\//.test(url)) return;
 
-        if (debug) console.log('addBtnWatchedToEpisode');
-
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '') return;
 
@@ -1004,6 +1012,8 @@ let betaseries_api_user_key = '';
             if (debug) console.log('En attente du chargement des vignettes');
             return;
         }
+
+        if (debug) console.group('addBtnWatchedToEpisode');
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
 
         // Ajoute les cases à cocher sur les vignettes des épisodes
@@ -1029,6 +1039,7 @@ let betaseries_api_user_key = '';
                 e.preventDefault();
                 let $elt = $(e.currentTarget),
                     episodeId = getEpisodeId($elt);
+                toggleSpinner($elt, true);
                 // On vérifie si l'épisode a déjà été vu
                 if ($elt.hasClass('seen')) {
                     // On demande à l'enlever des épisodes vus
@@ -1055,10 +1066,13 @@ let betaseries_api_user_key = '';
                              '<div class="spinner-item"></div>' +
                              '<div class="spinner-item"></div>' +
                            '</div>';
-                if (debug) console.log('toggleSpinner');
                 if (! display) {
                     $('.spinner').remove();
+                    if (debug) console.log('toggleSpinner');
+                    if (debug) console.groupEnd('episode checkSeen');
                 } else {
+                    if (debug) console.group('episode checkSeen');
+                    if (debug) console.log('toggleSpinner');
                     container.prepend(html);
                 }
             }
@@ -1077,7 +1091,6 @@ let betaseries_api_user_key = '';
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
                 }
 
-                toggleSpinner($elt, true);
                 callBetaSeries(method, 'episodes', 'watched', args)
                 .then(function(data) {
                     if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
@@ -1140,7 +1153,7 @@ let betaseries_api_user_key = '';
                         $('div.slide--current').addClass('slide--notSeen');
                     }
                 }
-                getCurrentResource(true).then(() => {
+                getResource(true).then(() => {
                     updateProgressBar();
                     updateNextEpisode();
                     toggleSpinner($elt, false);
@@ -1241,7 +1254,7 @@ let betaseries_api_user_key = '';
                         let season = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
                             showId = getResourceId();
                         callBetaSeries('GET', 'shows', 'episodes', {id: showId, season: parseInt(season, 10)}, true)
-                            .then(function(data) {
+                        .then((data) => {
                             if (debug) console.log('callBetaSeries GET shows/episodes', data);
                             vignettes = getVignettes();
                             let len = parseInt($('div.slide--current .slide__infos').text(), 10);
@@ -1260,12 +1273,12 @@ let betaseries_api_user_key = '';
                                 }
                             }
                             self.addClass('finish');
-                        },
-                                  function(err) {
+                        }, (err) => {
                             notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                         });
                     });
                 }
+                if (debug) console.groupEnd('addBtnWatchedToEpisode');
             }
         }
 
@@ -1308,16 +1321,6 @@ let betaseries_api_user_key = '';
     }
 
     /**
-     * Retourne l'identifiant de la ressource de la page
-     * @return {Number} L'identifiant de la ressource
-     */
-    function getResourceId() {
-        const type = getApiResource(url.split('/')[1]), // Le type de ressource
-              eltActions = $(`#reactjs-${type.singular}-actions`); // Le noeud contenant l'ID
-        return (eltActions.length == 1) ? eltActions.data(`${type.singular}-id`) : null;
-    }
-
-    /**
      * Vérifie si les séries/films similaires ont été vues
      * Nécessite que l'utilisateur soit connecté et que la clé d'API soit renseignée
      */
@@ -1325,6 +1328,7 @@ let betaseries_api_user_key = '';
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key == '' || ! /(serie|film)/.test(url)) return;
 
+        console.group('similarsViewed');
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
             type = getApiResource(url.split('/')[1]), // Le type de ressource
@@ -1336,6 +1340,7 @@ let betaseries_api_user_key = '';
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) {
             $('.updateSimilars').addClass('finish');
+            console.groupEnd('similarsViewed');
             return;
         }
 
@@ -1499,6 +1504,7 @@ let betaseries_api_user_key = '';
                     }
                 });
                 $('.updateSimilars').addClass('finish');
+                console.groupEnd('similarsViewed');
             }, 500);
         }, (err) => {
             notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
@@ -1539,13 +1545,13 @@ let betaseries_api_user_key = '';
      * @return {void}
      */
     function updateAgenda() {
-        // $('div.m_s > div:nth-child(1) > div.media-body > a:nth-child(1)')
         // Identifier les informations des épisodes à voir
         // Les containers
         let containersEpisode = $('#reactjs-episodes-to-watch > div.mainBlock > div > div'),
             linksTitle = $('div.m_s > div:nth-child(1) > div.media-body > a:nth-child(1)'),
             linksEpisode = $('div > div.m_s > div:nth-child(1) > div.media-body > a.mainLink');
 
+        // En attente du chargement des épisodes
         if (linksTitle.length > 0) {
             if (debug) console.log('updateAgenda - nb titles: %d', linksTitle.length);
             clearInterval(timerUA);
@@ -1553,6 +1559,7 @@ let betaseries_api_user_key = '';
             if (debug) console.log('updateAgenda en attente');
             return;
         }
+
         for (let t = 0; t < linksTitle.length; t++) {
             const title = $(linksTitle.get(t)).text().trim(),
                   episode = $(linksEpisode.get(t)).attr('href').split('/').pop().toLowerCase(),
@@ -1580,6 +1587,7 @@ let betaseries_api_user_key = '';
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                if (debug) console.group('updateAgenda');
                 if (debug) console.log('updateAgenda click');
                 const self = $(e.currentTarget);
                 self.removeClass('finish');
@@ -1605,22 +1613,51 @@ let betaseries_api_user_key = '';
                                 continue;
                             }
                             if (container.data('title') == data.shows[e].title && container.data('code') != unseen.code.toLowerCase()) {
-                                if (debug) console.log('data episode', data.shows[e]);
+                                if (debug) console.log('Episode à mettre à jour', data.shows[e]);
                                 // Mettre à jour l'épisode
                                 let mainLink = $('a.mainLink', container),
                                     text = unseen.code + ' - ' + unseen.title;
+                                // On met à jour le titre et le lien de l'épisode
                                 mainLink.attr('href', mainLink.attr('href').replace(/s\d{2}e\d{2}/, unseen.code.toLowerCase()));
                                 mainLink.attr('title', `Accéder à la fiche de l'épisode ${text}`);
                                 mainLink.text(text);
+                                // On met à jour la date de sortie
                                 $('.date .mainTime', container).text(moment(unseen.date).format('D MMMM YYYY'));
+                                // On met à jour la synopsis
                                 $('.m_s p.m_ay', container).html(unseen.description);
+                                // On met à jour la barre de progression
+                                $('.media-left > .m_ab > .m_ag', container).css('width', String(unseen.show.progress) + '%');
+                                // On met à jour la note
+                                renderNote(unseen.note.mean, container);
                             }
                         }
                         self.addClass('finish');
+                        if (debug) console.groupEnd('updateAgenda');
                     }, 500);
                 }, (err) => {
                     notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
+                    if (debug) console.groupEnd('updateAgenda');
                 });
+            });
+        }
+        /**
+         * Permet de créer un rendu d'une note avec des étoiles
+         * @param  {Number} note      La note moyenne de l'épisode
+         * @param  {Object} container Le DOMElement qui contient l'épisode
+         * @return {void}
+         */
+        function renderNote(note, container) {
+            const renderStars = $('.date .stars', container);
+            if (renderStars.length <= 0) {
+                return;
+            }
+            renderStars.empty();
+            renderStars.attr("title", `${parseFloat(note).toFixed(1)} / 5`);
+            let typeSvg;
+            Array.from({length: 5}, (index, number) => {
+                typeSvg = note <= number ? "empty" : (note < number+1) ? 'half' : "full";
+                renderStars
+                    .append(`<svg viewBox="0 0 100 100" class="star-svg"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-star-${typeSvg}"></use></svg>`);
             });
         }
     }
