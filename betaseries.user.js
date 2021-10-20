@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.8
+// @version      0.19.9
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -611,10 +611,10 @@ let betaseries_api_user_key = '';
      * @return {Promise}
      */
     function getResource(nocache = false, id = null) {
-        if (debug) console.log('getResource');
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
               fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
         id = (id == null) ? getResourceId() : id;
+        if (debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
 
         return callBetaSeries('GET', type.plural, fonction, {'id': id}, nocache);
     }
@@ -1006,14 +1006,14 @@ let betaseries_api_user_key = '';
         if (vignettes.length > 0 && vignettes.length >= len) {
             // On supprime le timer Interval
             clearInterval(timer);
+            if (debug) console.group('addBtnWatchedToEpisode');
             // On ajoute les cases à cocher sur les vignettes courantes
             addCheckbox();
         } else {
-            if (debug) console.log('En attente du chargement des vignettes');
+            if (debug) console.log('addBtnWatchedToEpisode: En attente du chargement des vignettes');
             return;
         }
 
-        if (debug) console.group('addBtnWatchedToEpisode');
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
 
         // Ajoute les cases à cocher sur les vignettes des épisodes
@@ -1248,6 +1248,7 @@ let betaseries_api_user_key = '';
                     $('.updateEpisodes').click((e) => {
                         e.stopPropagation();
                         e.preventDefault();
+                        if (debug) console.group('updateEpisodes');
                         const self = $(this);
                         self.removeClass('finish');
                         // Recuperer la liste des épisodes de la saison
@@ -1255,7 +1256,7 @@ let betaseries_api_user_key = '';
                             showId = getResourceId();
                         callBetaSeries('GET', 'shows', 'episodes', {id: showId, season: parseInt(season, 10)}, true)
                         .then((data) => {
-                            if (debug) console.log('callBetaSeries GET shows/episodes', data);
+                            if (debug) console.log('callBetaSeries GET shows/episodes', {id: showId, season: parseInt(season, 10)}, data);
                             vignettes = getVignettes();
                             let len = parseInt($('div.slide--current .slide__infos').text(), 10);
                             for (let v = 0; v < len; v++) {
@@ -1273,6 +1274,7 @@ let betaseries_api_user_key = '';
                                 }
                             }
                             self.addClass('finish');
+                            if (debug) console.groupEnd('updateEpisodes');
                         }, (err) => {
                             notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                         });
@@ -1318,6 +1320,7 @@ let betaseries_api_user_key = '';
         function getEpisodeId(episode) {
             return episode.parents('div.slide_flex').find('button').first().attr('id').split('-')[1];
         }
+        if (debug) console.groupEnd('addBtnWatchedToEpisode');
     }
 
     /**
@@ -1394,7 +1397,7 @@ let betaseries_api_user_key = '';
         callBetaSeries('GET', type.plural, 'similars', params, true)
         .then(function(data) {
             let intTime = setInterval(function() {
-                if (typeof bootstrap.Popover != 'function') { return; }
+                if (typeof bootstrap == 'undefined' || typeof bootstrap.Popover != 'function') { return; }
                 else clearInterval(intTime);
                 /**
                  * Retourne la position de la popup par rapport à l'image du similar
@@ -1584,11 +1587,11 @@ let betaseries_api_user_key = '';
                 'src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js" ' +
                 'integrity="sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw==" ' +
                 'crossorigin="anonymous" referrerpolicy="no-referrer" async="true" defer="true"></script>');
+
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (debug) console.group('updateAgenda');
-                if (debug) console.log('updateAgenda click');
+                if (debug) console.group('Agenda updateEpisodes');
                 const self = $(e.currentTarget);
                 self.removeClass('finish');
                 const len = $('#reactjs-episodes-to-watch > div.mainBlock > div > div').length;
@@ -1632,33 +1635,40 @@ let betaseries_api_user_key = '';
                             }
                         }
                         self.addClass('finish');
-                        if (debug) console.groupEnd('updateAgenda');
+                        if (debug) console.groupEnd('Agenda updateEpisodes');
                     }, 500);
                 }, (err) => {
                     notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
-                    if (debug) console.groupEnd('updateAgenda');
+                    if (debug) console.groupEnd('Agenda updateEpisodes');
                 });
             });
-        }
-        /**
-         * Permet de créer un rendu d'une note avec des étoiles
-         * @param  {Number} note      La note moyenne de l'épisode
-         * @param  {Object} container Le DOMElement qui contient l'épisode
-         * @return {void}
-         */
-        function renderNote(note, container) {
-            const renderStars = $('.date .stars', container);
-            if (renderStars.length <= 0) {
-                return;
+            /**
+             * Permet d'afficher une note avec des étoiles
+             * @param  {Number} note      La note à afficher
+             * @param  {Object} container DOMElement contenant la note à afficher
+             * @return {void}
+             */
+            function renderNote(note, container) {
+                const renderStars = $('.date .stars', container);
+                if (renderStars.length <= 0) {
+                    return;
+                }
+                renderStars.empty();
+                renderStars.attr('title', `${parseFloat(note).toFixed(1)} / 5`);
+                let typeSvg;
+                Array.from({
+                    length: 5
+                }, (index, number) => {
+                    typeSvg = note <= number ? "empty" : (note < number+1) ? 'half' : "full";
+                    renderStars.append(`
+                        <svg viewBox="0 0 100 100" class="star-svg">
+                          <use xmlns:xlink="http://www.w3.org/1999/xlink"
+                               xlink:href="#icon-star-${typeSvg}">
+                          </use>
+                        </svg>
+                    `);
+                });
             }
-            renderStars.empty();
-            renderStars.attr("title", `${parseFloat(note).toFixed(1)} / 5`);
-            let typeSvg;
-            Array.from({length: 5}, (index, number) => {
-                typeSvg = note <= number ? "empty" : (note < number+1) ? 'half' : "full";
-                renderStars
-                    .append(`<svg viewBox="0 0 100 100" class="star-svg"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-star-${typeSvg}"></use></svg>`);
-            });
         }
     }
 
