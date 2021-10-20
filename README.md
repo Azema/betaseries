@@ -91,11 +91,11 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ## Ressources
 
-Les feuilles de style, les images et le scripts JS sont disponibles dans le répertoire [resources](/tree/main/resources)
+Les feuilles de style, les images et le scripts JS sont disponibles dans le répertoire `resources`.
 Vous pouvez définir votre propre serveur en modifiant la constante `serverBaseUrl` en début de script.
 ```JavaScript
 const serverBaseUrl = 'https://betaseries.aufilelec.fr';
 
 ```
 
-N'oubliez pas que votre serveur doit être sécurisé, sinon les appels ne passeront pas entre le site [betaseries](https://www.betaseries.com) et votre serveur.
+:warning: N'oubliez pas que votre serveur doit être sécurisé, sinon les appels ne passeront pas entre le site [betaseries](https://www.betaseries.com) et votre serveur. :warning:
