@@ -60,6 +60,77 @@ button.button.blue {
 }
 
 /* -------------------------------------------------------------------------- *\
+ * Style notification
+ * -------------------------------------------------------------------------- */
+.userscript-notifications {
+  position: fixed;
+  top: 85px;
+  z-index: 1250;
+  padding: 5px;
+  font-size: 1.2em;
+  background-color: var(--danger);
+  color: white;
+  left: 25%;
+  width: 50%;
+  border-radius: 5px;
+  display: none;
+}
+.userscript-notifications h3 {
+  font-weight: bold;
+}
+.userscript-notifications .fa-times {
+  position: relative;
+  display: inline-block;
+  float: right;
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------------------------- *\
+ * Style table API methodes
+ * -------------------------------------------------------------------------- */
+
+.fa-chevron-circle-up {
+  cursor: pointer;
+  margin-left: 10px;
+}
+#sommaire {
+  text-align: center;
+  display: none;
+}
+#sommaire .table {
+  display: inline-table;
+}
+@media screen and (min-width: 700px) {
+    #sommaire .table {
+      width: 50%;
+      display: inline-table;
+    }
+}
+.liTitle {
+  margin-bottom: 15px;
+  color: var(--top_color);
+  list-style: none;
+  font-size: 1.3em;
+}
+.linkSommaire {
+  color: var(--link_color);
+  text-decoration: none;
+  cursor: pointer;
+}
+table.table thead tr th {
+  text-align: center;
+}
+table.table tbody tr td {
+  text-align: center;
+}
+table.table tbody tr th.fonction {
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* -------------------------------------------------------------------------- *\
  * Styling to make the dialog look like a dialog
  * -------------------------------------------------------------------------- */
 

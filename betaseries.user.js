@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.9
+// @version      0.19.10
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -18,7 +18,7 @@
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
 // @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
-// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#sha384-GxwntnuTNi5BTaMEMin+8kr4TYGqmuoyWhlfWcb6VY4bzKe6GFbC9VMCH70aRpFv
+// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#ssha384-IERml31c2WrKPyJvZ/eVkaCR3L1w4xOd4gEcNNdsSkComIm0x7GM7gO6XGgB3ENk
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // ==/UserScript==
@@ -36,13 +36,25 @@ let betaseries_api_user_key = '';
 (function($) {
     'use strict';
 
-    $('head').append('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />');
-
-    const regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
-          tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css';
-    let debug = false,
-        url = location.pathname,
-        userIdentified = typeof betaseries_api_user_token != 'undefined',
+    const debug = false,
+          url = location.pathname,
+          regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
+          tableCSS = 'https://betaseries.aufilelec.fr/css/table.min.css',
+          integrityStyle = 'sha384-lfts4avnKs+mze5ou8aht9AU5kEIY1KcTUzxY+32D5bGG9B0d2bZsiznL1eDiV8U',
+          integrityPopover = 'sha384-kGggcgLy0UJsztKjHmQEv63KDqJgtP86DrDgfgsDuJMQ7ks/CR9aRIetsCbz7xgG',
+          integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p';
+    // Ajout des feuilles de styles pour le userscript
+    $('head').append(`
+        <link rel="stylesheet"
+              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+              integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=="
+              crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="stylesheet"
+              href="https://betaseries.aufilelec.fr/css/style.min.css"
+              integrity="${integrityStyle}"
+              crossorigin="anonymous" referrerpolicy="no-referrer" />
+    `);
+    let userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, timerUA, currentUser, cache = new Cache(),
         counter = 0,
         // URI des images et description des classifications TV et films
@@ -114,7 +126,6 @@ let betaseries_api_user_key = '';
         // On récupère d'abord la ressource courante pour la mettre en cache
         getResource().then(function() {
             removeAds(); // On retire les pubs
-            addStylesheet(); // On ajoute le CSS
             similarsViewed(); // On s'occupe des ressources similaires
             decodeTitle(); // On décode le titre de la ressource
             addRating(); // On ajoute la classification TV de la ressource courante
@@ -132,7 +143,6 @@ let betaseries_api_user_key = '';
     }
     // Fonctions appeler sur la page des membres
     else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && userIdentified) {
-        addStylesheet();
         if (regexUser.test(url)) {
             // On récupère les infos du membre connecté
             getMember()
@@ -161,7 +171,6 @@ let betaseries_api_user_key = '';
         waitPagination();
         seriesFilterPays();
         if (/agenda/.test(url)) {
-            addStylesheet(); // On ajoute le CSS
             timerUA = setInterval(function() {
                 updateAgenda();
             }, 1000);
@@ -179,34 +188,9 @@ let betaseries_api_user_key = '';
         let notifContainer = $('.userscript-notifications');
         // On ajoute notre zone de notifications
         if ($('.userscript-notifications').length <= 0) {
-            const width = $(window).width() / 2;
             $('#fb-root').after(
                 '<div class="userscript-notifications"><h3><span class="title"></span><i class="fa fa-times" aria-hidden="true"></i></h3><p class="text"></p></div>'
             );
-            GM_addStyle(`
-                .userscript-notifications {
-                  position: fixed;
-                  top: 85px;
-                  z-index: 1250;
-                  padding: 5px;
-                  font-size: 1.2em;
-                  background-color: var(--danger);
-                  color: white;
-                  left: ${width / 2}px;
-                  width: ${width}px;
-                  border-radius: 5px;
-                  display: none;
-                }
-                .userscript-notifications h3 {
-                  font-weight: bold;
-                }
-                .userscript-notifications .fa-times {
-                  position: relative;
-                  display: inline-block;
-                  float: right;
-                  cursor: pointer;
-                }
-            `);
             notifContainer = $('.userscript-notifications');
             $('.userscript-notifications .fa-times').click(() => {
                 $('.userscript-notifications').slideUp();
@@ -401,58 +385,15 @@ let betaseries_api_user_key = '';
     function sommaireDevApi() {
         let titles = $('.maincontent h2'),
             len = titles.length,
-            methods = {},
-            style = `
-                .fa-chevron-circle-up {
-                  cursor: pointer;
-                  margin-left: 10px;
-                }
-                #sommaire {
-                  text-align: center;
-                  display: none;
-                }
-                #sommaire .table {
-                  display: inline-table;
-                }
-                @media screen and (min-width: 700px) {
-                    #sommaire .table {
-                      width: 50%;
-                      display: inline-table;
-                    }
-                }
-                .liTitle {
-                  margin-bottom: 15px;
-                  color: var(--top_color);
-                  list-style: none;
-                  font-size: 1.3em;
-                }
-                .linkSommaire {
-                  color: var(--link_color);
-                  text-decoration: none;
-                  cursor: pointer;
-                }
-                table.table thead tr th {
-                  text-align: center;
-                }
-                table.table tbody tr td {
-                  text-align: center;
-                }
-                table.table tbody tr th.fonction {
-                  font-weight: bold;
-                  font-size: 1.1em;
-                  text-align: left;
-                  vertical-align: middle;
-                }
-                `;
+            methods = {};
         // Ajout du style CSS pour les tables
-        $('head').append(`<link
-                            rel="stylesheet"
-                            href="${tableCSS}"
-                            integrity="sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm"
-                            crossorigin="anonymous"
-                            referrerpolicy="no-referrer" />`
-                        );
-        GM_addStyle(style);
+        $('head').append(`
+            <link rel="stylesheet"
+                  href="${tableCSS}"
+                  integrity="${integrityTable}"
+                  crossorigin="anonymous"
+                  referrerpolicy="no-referrer" />
+        `);
         /**
          * Construit une cellule de table HTML pour une methode
          *
@@ -775,7 +716,12 @@ let betaseries_api_user_key = '';
                         "time_to_spend_movies": 'Temps restant devant les films à regarder'
                     }
                 };
-            $('head').append(`<link rel="stylesheet" href="${tableCSS}" integrity="sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm" crossorigin="anonymous" referrerpolicy="no-referrer" />`);
+            $('head').append(`
+                <link rel="stylesheet"
+                      href="${tableCSS}"
+                      integrity="${integrityTable}"
+                      crossorigin="anonymous" referrerpolicy="no-referrer" />
+            `);
             $('body').append(dialogHTML);
             //if (debug) console.log(currentUser, otherMember, trads);
             for (const [key, value] of Object.entries(trads)) {
@@ -888,16 +834,6 @@ let betaseries_api_user_key = '';
         $('.parent-ad-desktop').attr('style', 'display: none !important');
         setInterval(function() {$('iframe[name!="userscript"]').remove();}, 1000);
         $('.blockPartner').attr('style', 'display: none !important');
-    }
-
-    /**
-     * Ajout d'une feuille de style
-     */
-    function addStylesheet() {
-        $('head').append('<link rel="stylesheet" ' +
-                         'href="https://betaseries.aufilelec.fr/css/style.min.css" ' +
-                         'integrity="sha384-nTsRjc/iDBUURSqvwrlrxi8S0mxsS9Pdzoo2g+78xH3Qy9jD8zALTcVYjpNAMV3g" ' +
-                         'crossorigin="anonymous" referrerpolicy="no-referrer" />');
     }
 
     /**
@@ -1113,7 +1049,7 @@ let betaseries_api_user_key = '';
              * @param  {String} newStatus Le nouveau statut de l'épisode
              * @return {void}
              */
-            function changeStatus($elt, newStatus) {
+            function changeStatus($elt, newStatus, update = true) {
                 if (newStatus == 'seen') {
                     let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
                     $elt.css('background', background); // On ajoute le check dans la case à cocher
@@ -1153,11 +1089,13 @@ let betaseries_api_user_key = '';
                         $('div.slide--current').addClass('slide--notSeen');
                     }
                 }
-                getResource(true).then(() => {
-                    updateProgressBar();
-                    updateNextEpisode();
-                    toggleSpinner($elt, false);
-                });
+                if (update) {
+                    getResource(true).then(() => {
+                        updateProgressBar();
+                        updateNextEpisode();
+                        toggleSpinner($elt, false);
+                    });
+                }
             }
             /**
              * Met à jour la barre de progression de visionnage de la série
@@ -1249,7 +1187,7 @@ let betaseries_api_user_key = '';
                         e.stopPropagation();
                         e.preventDefault();
                         if (debug) console.group('updateEpisodes');
-                        const self = $(this);
+                        const self = $(e.currentTarget);
                         self.removeClass('finish');
                         // Recuperer la liste des épisodes de la saison
                         let season = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
@@ -1258,20 +1196,38 @@ let betaseries_api_user_key = '';
                         .then((data) => {
                             if (debug) console.log('callBetaSeries GET shows/episodes', {id: showId, season: parseInt(season, 10)}, data);
                             vignettes = getVignettes();
-                            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
+                            let len = parseInt($('div.slide--current .slide__infos').text(), 10),
+                                $vignette, episode, id, checkSeen, changed = false;
                             for (let v = 0; v < len; v++) {
-                                let $vignette = $(vignettes.get(v)),
-                                    episode = data.episodes[v],
-                                    id = getEpisodeId($vignette);
-                                if (checkSeenPresent($vignette)) {
+                                $vignette = $(vignettes.get(v));
+                                episode = data.episodes[v];
+                                id = getEpisodeId($vignette);
+                                checkSeen = $vignette.find('.checkSeen');
+                                if (debug) console.log('Episode ID', id);
+                                if (checkSeen.length > 0 && checkSeen.attr('id') == undefined) {
+                                    if (debug) console.log('ajout de l\'attribut ID à checkSeen');
                                     // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
-                                    let checkbox = $vignette.find('.checkSeen');
-                                    checkbox.attr('id', 'episode-' + id);
+                                    checkSeen.attr('id', 'episode-' + id);
                                 }
-                                if (episode.user.seen) {
-                                    let $elt = $vignette.find('.checkSeen');
-                                    changeStatus($elt, 'seen');
+                                // Si le membre a vu l'épisode, on change le statut
+                                if (episode.user.seen && checkSeen.length > 0 && !checkSeen.hasClass('seen')) {
+                                    if (debug) console.log('Changement du statut (seen) de l\'épisode');
+                                    changeStatus(checkSeen, 'seen', false);
+                                    changed = true;
                                 }
+                                // Si le membre n'a pas vu l'épisode, on change le statut
+                                else if (!episode.user.seen && checkSeen.length > 0 && checkSeen.hasClass('seen')) {
+                                    if (debug) console.log('Changement du statut (notSeen) de l\'épisode');
+                                    changeStatus(checkSeen, 'notSeen', false);
+                                    changed = true;
+                                }
+                            }
+                            // On met à jour les éléments, seulement si il y a eu des modifications
+                            if (changed) {
+                                getResource(true).then(() => {
+                                    updateProgressBar();
+                                    updateNextEpisode();
+                                });
                             }
                             self.addClass('finish');
                             if (debug) console.groupEnd('updateEpisodes');
@@ -1352,20 +1308,23 @@ let betaseries_api_user_key = '';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            $('head').append('<link ' +
-                'rel="stylesheet" ' +
-                'href="https://betaseries.aufilelec.fr/css/popover.min.css" ' +
-                'integrity="sha384-kGggcgLy0UJsztKjHmQEv63KDqJgtP86DrDgfgsDuJMQ7ks/CR9aRIetsCbz7xgG" ' +
-                'crossorigin="anonymous">');
-            $('head').append('<script ' +
-                'src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" ' +
-                'integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" ' +
-                'crossorigin="anonymous"></script>');
+            $('head').append(`
+                <link rel="stylesheet"
+                      href="https://betaseries.aufilelec.fr/css/popover.min.css"
+                      integrity="${integrityPopover}"
+                      crossorigin="anonymous" \>
+                <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                        crossorigin="anonymous"></script>
+            `);
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
-            <div id="updateSimilarsBlock" class="updateElements">
-              <img src="https://betaseries.aufilelec.fr/img/update.png" class="updateSimilars updateElement" title="Mise à jour des similaires vus"/>
-            </div>`);
+                <div id="updateSimilarsBlock" class="updateElements">
+                  <img src="https://betaseries.aufilelec.fr/img/update.png"
+                       class="updateSimilars updateElement"
+                       title="Mise à jour des similaires vus"/>
+                </div>
+            `);
             // Si le bouton d'ajout de similaire est présent, on ajoute une marge
             if ($('#similars button.blockTitle-subtitle').length == 1) {
                 $('#updateSimilarsBlock').css('margin-left', '10px');
@@ -1579,14 +1538,16 @@ let betaseries_api_user_key = '';
                   <img src="https://betaseries.aufilelec.fr/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
                 </div>
             `);
-            $('head').append('<script ' +
-                'src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" ' +
-                'integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" ' +
-                'crossorigin="anonymous" referrerpolicy="no-referrer"></script>');
-            $('head').append('<script ' +
-                'src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js" ' +
-                'integrity="sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw==" ' +
-                'crossorigin="anonymous" referrerpolicy="no-referrer" async="true" defer="true"></script>');
+            $('head').append(`
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"
+                        integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=="
+                        crossorigin="anonymous" referrerpolicy="no-referrer">
+                </script>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js"
+                        integrity="sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw=="
+                        crossorigin="anonymous" referrerpolicy="no-referrer" async="true" defer="true">
+                </script>
+            `);
 
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
@@ -1642,33 +1603,33 @@ let betaseries_api_user_key = '';
                     if (debug) console.groupEnd('Agenda updateEpisodes');
                 });
             });
-            /**
-             * Permet d'afficher une note avec des étoiles
-             * @param  {Number} note      La note à afficher
-             * @param  {Object} container DOMElement contenant la note à afficher
-             * @return {void}
-             */
-            function renderNote(note, container) {
-                const renderStars = $('.date .stars', container);
-                if (renderStars.length <= 0) {
-                    return;
-                }
-                renderStars.empty();
-                renderStars.attr('title', `${parseFloat(note).toFixed(1)} / 5`);
-                let typeSvg;
-                Array.from({
-                    length: 5
-                }, (index, number) => {
-                    typeSvg = note <= number ? "empty" : (note < number+1) ? 'half' : "full";
-                    renderStars.append(`
-                        <svg viewBox="0 0 100 100" class="star-svg">
-                          <use xmlns:xlink="http://www.w3.org/1999/xlink"
-                               xlink:href="#icon-star-${typeSvg}">
-                          </use>
-                        </svg>
-                    `);
-                });
+        }
+        /**
+         * Permet d'afficher une note avec des étoiles
+         * @param  {Number} note      La note à afficher
+         * @param  {Object} container DOMElement contenant la note à afficher
+         * @return {void}
+         */
+        function renderNote(note, container) {
+            const renderStars = $('.date .stars', container);
+            if (renderStars.length <= 0) {
+                return;
             }
+            renderStars.empty();
+            renderStars.attr('title', `${parseFloat(note).toFixed(1)} / 5`);
+            let typeSvg;
+            Array.from({
+                length: 5
+            }, (index, number) => {
+                typeSvg = note <= number ? "empty" : (note < number+1) ? 'half' : "full";
+                renderStars.append(`
+                    <svg viewBox="0 0 100 100" class="star-svg">
+                      <use xmlns:xlink="http://www.w3.org/1999/xlink"
+                           xlink:href="#icon-star-${typeSvg}">
+                      </use>
+                    </svg>
+                `);
+            });
         }
     }
 
@@ -1762,6 +1723,7 @@ let betaseries_api_user_key = '';
                 crossDomain: true
             };
 
+        if (debug) console.log('callBetaSeries', {type: type, methode: methode, fonction: fonction, args: args, nocache: nocache});
         // On retourne la ressource en cache si elle y est présente
         if (! nocache && type == 'GET' && args && 'id' in args && cache.has(methode, args.id)) {
             return new Promise((resolve) => {
