@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.10
+// @version      0.19.11
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -48,7 +48,70 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
           tableCSS = serverBaseUrl + '/css/table.min.css',
           integrityStyle = 'sha384-lfts4avnKs+mze5ou8aht9AU5kEIY1KcTUzxY+32D5bGG9B0d2bZsiznL1eDiV8U',
           integrityPopover = 'sha384-kGggcgLy0UJsztKjHmQEv63KDqJgtP86DrDgfgsDuJMQ7ks/CR9aRIetsCbz7xgG',
-          integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p';
+          integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
+          // URI des images et description des classifications TV et films
+          ratings = {
+              'D-10': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
+                  title: "Déconseillé au moins de 10 ans"
+              },
+              'D-12': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
+                  title: 'Déconseillé au moins de 12 ans'
+              },
+              'D-16': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
+                  title: 'Déconseillé au moins de 16 ans'
+              },
+              'D-18': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
+                  title: 'Ce programme est uniquement réservé aux adultes'
+              },
+              'TV-Y': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
+                  title: 'Ce programme est évalué comme étant approprié aux enfants'
+              },
+              'TV-Y7': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
+                  title: 'Ce programme est désigné pour les enfants âgés de 7 ans et plus'
+              },
+              'TV-G': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
+                  title: 'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants'
+              },
+              'TV-PG': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
+                  title: 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants'
+              },
+              'TV-14': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
+                  title: 'Ce programme est déconseillé aux enfants de moins de 14 ans'
+              },
+              'TV-MA': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
+                  title: 'Ce programme est uniquement réservé aux adultes'
+              },
+              'G': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
+                  title: 'Tous publics'
+              },
+              'PG': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
+                  title: 'Accord parental souhaitable'
+              },
+              'PG-13': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
+                  title: 'Accord parental recommandé, film déconseillé aux moins de 13 ans'
+              },
+              'R': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
+                  title: 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte'
+              },
+              'NC-17': {
+                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
+                  title: 'Interdit aux enfants de 17 ans et moins'
+              }
+          };
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
         <link rel="stylesheet"
@@ -62,70 +125,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
     `);
     let userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, timerUA, currentUser, cache = new Cache(),
-        counter = 0,
-        // URI des images et description des classifications TV et films
-        ratings = {
-            'D-10': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
-                title: "Déconseillé au moins de 10 ans"
-            },
-            'D-12': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
-                title: 'Déconseillé au moins de 12 ans'
-            },
-            'D-16': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
-                title: 'Déconseillé au moins de 16 ans'
-            },
-            'D-18': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
-                title: 'Ce programme est uniquement réservé aux adultes'
-            },
-            'TV-Y': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
-                title: 'Ce programme est évalué comme étant approprié aux enfants'
-            },
-            'TV-Y7': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
-                title: 'Ce programme est désigné pour les enfants âgés de 7 ans et plus'
-            },
-            'TV-G': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
-                title: 'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants'
-            },
-            'TV-PG': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
-                title: 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants'
-            },
-            'TV-14': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
-                title: 'Ce programme est déconseillé aux enfants de moins de 14 ans'
-            },
-            'TV-MA': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
-                title: 'Ce programme est uniquement réservé aux adultes'
-            },
-            'G': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
-                title: 'Tous publics'
-            },
-            'PG': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
-                title: 'Accord parental souhaitable'
-            },
-            'PG-13': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
-                title: 'Accord parental recommandé, film déconseillé aux moins de 13 ans'
-            },
-            'R': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
-                title: 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte'
-            },
-            'NC-17': {
-                img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
-                title: 'Interdit aux enfants de 17 ans et moins'
-            }
-        };
+        counter = 0;
 
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
@@ -560,7 +560,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
     function getResource(nocache = false, id = null) {
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
               fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
-        id = (id == null) ? getResourceId() : id;
+        id = (id === null) ? getResourceId() : id;
         if (debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
 
         return callBetaSeries('GET', type.plural, fonction, {'id': id}, nocache);
@@ -607,7 +607,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         .then(function(data) {
             if (data[type.singular].hasOwnProperty('rating')) {
                 let rating = ratings.hasOwnProperty(data[type.singular].rating) ? ratings[data[type.singular].rating] : '';
-                if (rating != '') {
+                if (rating !== '') {
                     // On ajoute la classification
                     $('.blockInformations__details')
                     .append(
@@ -629,7 +629,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      */
     function getMember(id = null) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key == '') return;
+        if (! userIdentified || betaseries_api_user_key === '') return;
 
         let args = {};
         if (id) args.id = id;
@@ -808,9 +808,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         $('#searchFriends').on('input', () => {
             let val = $('#searchFriends').val().trim().toLowerCase();
             if (debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
-            if (val == '' || idFriends.indexOf(val) == -1) {
+            if (val === '' || idFriends.indexOf(val) === -1) {
                 $('.timeline-item').show();
-                if (val == '') {
+                if (val === '') {
                     $('.clearSearch').hide();
                 }
                 return;
@@ -862,7 +862,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      */
     function addNumberVoters() {
         // On sort si la clé d'API n'est pas renseignée
-        if (betaseries_api_user_key == '') return;
+        if (betaseries_api_user_key === '') return;
 
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
             type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
@@ -938,7 +938,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         if (! /^\/serie\//.test(url)) return;
 
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key == '') return;
+        if (! userIdentified || betaseries_api_user_key === '') return;
 
         let seasons = $('#seasons div[role="button"]'),
             len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
@@ -1044,7 +1044,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                         if (debug) console.log('changeStatusVignette error %s changeStatus', method);
                         changeStatus($elt, status);
                     } else {
-                        toggleSpinner(false);
+                        toggleSpinner($elt, false);
                         notification('Erreur de modification d\'un épisode', 'changeStatusVignette: ' + err);
                     }
                 });
@@ -1057,7 +1057,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
              */
             function changeStatus($elt, newStatus, update = true) {
                 if (newStatus == 'seen') {
-                    let background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
+                    const background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
                     $elt.css('background', background); // On ajoute le check dans la case à cocher
                     $elt.addClass('seen'); // On ajoute la classe 'seen'
                     // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
@@ -1072,9 +1072,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                         $('div.slide--current').addClass('slide--seen');
                         // Si il y a une saison suivante, on la sélectionne
                         if ($('div.slide--current').next().length > 0) {
-                            let oldCurrent = $('div.slide--current'),
-                                newCurrent = oldCurrent.next();
-                            oldCurrent.removeClass('slide--current');
+                            const oldCurrent = $('div.slide--current'),
+                                  newCurrent = oldCurrent.next();
+                            oldCurrent.removeClass('slide--current').removeClass('slide--notSeen');
                             newCurrent.trigger('click');
                         }
                     }
@@ -1084,15 +1084,15 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     // On remet le voile masquant sur la vignette de l'épisode
                     $elt.parent('div.slide__image').find('img').attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
 
-                    let contVignette = $elt.parent('div.slide_flex');
+                    const contVignette = $elt.parent('div.slide_flex');
                     if (!contVignette.hasClass('slide--notSeen')) {
                         contVignette.addClass('slide--notSeen');
                     }
 
                     if ($('#episodes .seen').length < len) {
-                        $('div.slide--current .checkSeen').remove();
-                        $('div.slide--current').addClass('slide--seen');
-                        $('div.slide--current').addClass('slide--notSeen');
+                        $('#seasons div.slide--current .checkSeen').remove();
+                        //$('div.slide--current').addClass('slide--seen');
+                        $('#seasons div.slide--current').addClass('slide--notSeen');
                     }
                 }
                 if (update) {
@@ -1100,6 +1100,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                         updateProgressBar();
                         updateNextEpisode();
                         toggleSpinner($elt, false);
+                    }, (err) => {
+                        toggleSpinner($elt, false);
+                        notification('Erreur de récupération de la ressource principale', 'changeStatus: ' + err);
                     });
                 }
             }
@@ -1124,7 +1127,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     nextEpisode = $('a.blockNextEpisode'),
                     show = cache.get('shows', showId).show;
 
-                if (nextEpisode.length > 0 && 'next' in show.user && show.user.next.id != null) {
+                if (nextEpisode.length > 0 && 'next' in show.user && show.user.next.id !== null) {
                     if (debug) console.log('nextEpisode et show.user.next OK', show.user);
                     // Modifier l'image
                     let img = nextEpisode.find('img'),
@@ -1143,11 +1146,11 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                         txt = remaining.text().trim();
                     remaining.text(txt.replace(/^\d+/, show.user.remaining));
                 }
-                else if (nextEpisode.length <= 0 && 'next' in show.user && show.user.next.id != null) {
+                else if (nextEpisode.length <= 0 && 'next' in show.user && show.user.next.id !== null) {
                     if (debug) console.log('No nextEpisode et show.user.next OK', show.user);
                     buildNextEpisode(show);
                 }
-                else if (!('next' in show.user) || show.user.next.id == null) {
+                else if (!('next' in show.user) || show.user.next.id === null) {
                     nextEpisode.remove();
                 }
                 function buildNextEpisode(res) {
@@ -1210,7 +1213,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                                 id = getEpisodeId($vignette);
                                 checkSeen = $vignette.find('.checkSeen');
                                 if (debug) console.log('Episode ID', id);
-                                if (checkSeen.length > 0 && checkSeen.attr('id') == undefined) {
+                                if (checkSeen.length > 0 && checkSeen.attr('id') === undefined) {
                                     if (debug) console.log('ajout de l\'attribut ID à checkSeen');
                                     // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
                                     checkSeen.attr('id', 'episode-' + id);
@@ -1291,7 +1294,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      */
     function similarsViewed() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key == '' || ! /(serie|film)/.test(url)) return;
+        if (! userIdentified || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
 
         console.group('similarsViewed');
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
@@ -1401,20 +1404,20 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     template += '<p><u>Genres:</u> ' + genres + '</p>';
                     if (objRes.hasOwnProperty('creation') || objRes.hasOwnProperty('country') || objRes.hasOwnProperty('production_year')) {
                         template += '<p>';
-                        if (objRes.hasOwnProperty('creation') && objRes.creation != null) {
+                        if (objRes.hasOwnProperty('creation') && objRes.creation !== null) {
                             template += `<u>Création:</u> <strong>${objRes.creation}</strong>`;
                         }
-                        if (objRes.hasOwnProperty('production_year') && objRes.production_year != null) {
+                        if (objRes.hasOwnProperty('production_year') && objRes.production_year !== null) {
                             template += `<u>Production:</u> <strong>${objRes.production_year}</strong>`;
                         }
-                        if (objRes.hasOwnProperty('country') && objRes.country != null) {
+                        if (objRes.hasOwnProperty('country') && objRes.country !== null) {
                             template += `, <u>Pays:</u> <strong>${objRes.country}</strong>`;
                         }
                         template += '</p>';
                     }
                     if (type.singular == 'show') {
                         let archived = '';
-                        if (objRes.user.status > 0 && objRes.user.archived == true) {
+                        if (objRes.user.status > 0 && objRes.user.archived === true) {
                             archived = ', Archivée: <i class="fa fa-check-circle-o" aria-hidden="true"></i>';
                         } else if (objRes.user.status > 0) {
                             archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
@@ -1537,7 +1540,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                 .data('code', episode);
             //if (debug) console.log('title: %s - code: %s', title, episode);
         }
-        if ($('.updateElements').length == 0) {
+        if ($('.updateElements').length === 0) {
             // On ajoute le bouton de mise à jour des similaires
             $('.maintitle > div:nth-child(1)').after(`
                 <div class="updateElements">
@@ -1644,7 +1647,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      */
     function addStatusToGestionSeries() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key == '') return;
+        if (! userIdentified || betaseries_api_user_key === '') return;
 
         let series = $('#member_shows div.showItem.cf');
         if (series.length < 1) return;
@@ -1753,7 +1756,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
 
                 let code = jqXHR.responseJSON.errors[0].code,
                     text = jqXHR.responseJSON.errors[0].text;
-                if (code == 2005 || (jqXHR.status == 400 && code == 0 && text == "L'utilisateur a déjà marqué cet épisode comme vu.")) {
+                if (code === 2005 || (jqXHR.status === 400 && code === 0 && text === "L'utilisateur a déjà marqué cet épisode comme vu.")) {
                     reject('changeStatus');
                 } else if (code == 2001) {
                     // Appel de l'authentification pour obtenir un token valide
