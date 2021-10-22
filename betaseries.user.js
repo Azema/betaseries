@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.12
+// @version      0.19.13
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -16,11 +16,7 @@
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
 // @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js#sha512-C6XM91cD52KknT8jaQF1P2PrIRTrbMzq6hzFkc22Pionu774sZwVPJInNxfHNwPvPne3AMtnRWKunr9+/gQR5g==
 // @require      https://betaseries.aufilelec.fr/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
-// @resource     FontAwesome  https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css#sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=
-// @resource     TableCSS https://betaseries.aufilelec.fr/css/table.min.css#sha384-Gi9pTl7apLpUEntAQPQ3PJWt6Es9SdtquwVZSgrheEoFdsSQA5me0PeVuZFSJszm
-// @resource     StyleCSS https://betaseries.aufilelec.fr/css/style.min.css#ssha384-IERml31c2WrKPyJvZ/eVkaCR3L1w4xOd4gEcNNdsSkComIm0x7GM7gO6XGgB3ENk
 // @grant        GM_addStyle
-// @grant        GM_getResourceText
 // ==/UserScript==
 
 /* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends generate_route
@@ -46,7 +42,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
           url = location.pathname,
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
-          integrityStyle = 'sha384-lfts4avnKs+mze5ou8aht9AU5kEIY1KcTUzxY+32D5bGG9B0d2bZsiznL1eDiV8U',
+          integrityStyle = 'sha384-Pa7Ap5STuXNRqzHdArnBJqsxuwGEXO7ERfQkZSL/GQSdpA1IAj1Hh1pXYyorLmBX',
           integrityPopover = 'sha384-4ypvRw5lbeuC9BjCt95Vm2vhzXpnUWqFxUBf1SYr2AzF6s6e+BMCcaw8mZbXBLgf',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
           // URI des images et description des classifications TV et films
@@ -391,7 +387,6 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      */
     function sommaireDevApi() {
         let titles = $('.maincontent h2'),
-            len = titles.length,
             methods = {};
         // Ajout du style CSS pour les tables
         $('head').append(`
@@ -435,7 +430,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @return {Object} L'objet jQuery de la table HTML
          */
         function buildTable() {
-            let $table = $('<div id="sommaire" class="table-responsive">' +
+            let $table = $('<div id="sommaire" class="table-responsive" style="display:none;">' +
                             '<table class="table table-dark table-striped table-bordered">' +
                                 '<thead class="thead-dark">' +
                                     '<tr>' +
@@ -458,9 +453,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             return $table;
         }
 
-        titles.each((i, title) => {
+        for (let t = 0; t < titles.length; t++) {
             // ajouter les ID aux titres des methodes, ainsi qu'un chevron pour renvoyer au sommaire
-            let $title = $(title),
+            let $title = $(titles.get(t)),
                 id = $title.text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-'),
                 txt = $title.text().trim().split(' ')[1],
                 desc = $title.next('p').text(),
@@ -471,23 +466,22 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             if (! (key in methods)) methods[key] = {title: txt};
             methods[key][verb] = {id: id, title: desc};
 
-            // Construire un sommaire des fonctions
-            if (i == len-1) {
-                //if (debug) console.log('methods', methods);
-                $('.maincontent h1').after(buildTable());
-                $('#sommaire').slideDown();
+        }
+        // Construire un sommaire des fonctions
+        //if (debug) console.log('methods', methods);
+        $('.maincontent h1').after(buildTable());
+        if (debug) console.log('build sommaire', $('#sommaire'));
+        $('#sommaire').show('fast');
 
-                $('.linkSommaire').click(function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    $('#' + $(e.currentTarget).data('id')).get(0).scrollIntoView(true);
-                });
-                $('.fa-chevron-circle-up').click(function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    document.getElementById('sommaire').scrollIntoView(true);
-                });
-            }
+        $('.linkSommaire').click(function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            $('#' + $(e.currentTarget).data('id')).get(0).scrollIntoView(true);
+        });
+        $('.fa-chevron-circle-up').click(function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            document.getElementById('sommaire').scrollIntoView(true);
         });
     }
 
@@ -941,8 +935,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key === '') return;
 
-        const seasons = $('#seasons div[role="button"]');
-        let len = getNbVignettes(),
+        const seasons = $('#seasons div[role="button"]'),
+              type = getApiResource(url.split('/')[1]); // Le type de ressource
+        let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
             vignettes = getVignettes();
 
         // On vérifie que les saisons et les episodes soient chargés sur la page
@@ -962,6 +957,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         function addCheckbox() {
             vignettes = getVignettes();
             len = getNbVignettes();
+
             for (let v = 0; v < len; v++) {
                 let $vignette = $(vignettes.get(v)),
                     id = getEpisodeId($vignette);
@@ -1012,10 +1008,24 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     // Le numéro de la saison courante
                     const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
                           showId = getResourceId(), // Identifiant de la ressource principale
-                          params = {id: showId, season: parseInt(seasonNum, 10)};
-                    callBetaSeries('GET', 'shows', 'episodes', params, true)
-                        .then((data) => {
-                        if (debug) console.log('callBetaSeries GET shows/episodes', params, data);
+                          key = `show-${showId}-${seasonNum}`;
+                    let promise;
+                    if (cache.has('episodes', key)) {
+                        promise = new Promise((resolve) => {
+                            resolve(cache.get('episodes', key));
+                        });
+                    } else {
+                        const res = cache.get('shows', showId).show,
+                              params = {thetvdb_id: res.thetvdb_id, season: parseInt(seasonNum, 10)};
+                        promise = callBetaSeries('GET', 'shows', 'episodes', params, true);
+                        // On stocke le résultat en cache
+                        promise.then((data) => {
+                            cache.set('episodes', key, data);
+                        });
+                    }
+
+                    promise.then((data) => {
+                        if (debug) console.log('callBetaSeries GET shows/episodes', data);
                         vignettes = getVignettes();
                         len = getNbVignettes();
                         let $vignette, episode, id, checkSeen, changed = false;
@@ -1063,6 +1073,91 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                 });
             }
 
+            /**
+             * Retourne la position de la popup par rapport à l'image du similar
+             * @param  {Object} tip Unknown
+             * @param  {Object} elt Le DOM Element du lien du similar
+             * @return {String}     La position de la popup
+             */
+            let funcPlacement = (tip, elt) => {
+                //if (debug) console.log('funcPlacement', tip, $(tip).width());
+                let rect = elt.getBoundingClientRect(),
+                    width = $(window).width(),
+                    sizePopover = 320;
+                return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
+            };
+            function tempTitle(objRes) {
+                return `<span style="color: var(--link_color);">Synopsis épisode ${objRes.code}</span>`;
+            }
+            const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
+                  showId = getResourceId(), // Identifiant de la ressource principale
+                  key = `show-${showId}-${seasonNum}`,
+                  res = cache.get('shows', showId).show;
+            let promise;
+            if (cache.has('episodes', key)) {
+                promise = new Promise((resolve) => {
+                    resolve(cache.get('episodes', key));
+                });
+            } else {
+                promise = callBetaSeries('GET', 'shows', 'episodes', {thetvdb_id: res.thetvdb_id, season: parseInt(seasonNum, 10)}, true);
+                // On stocke le résultat en cache
+                promise.then(
+                    (data) => { cache.set('episodes', key, data); },
+                    (err) => { notification('Erreur de récupération des épisodes', 'addCheckbox: ' + err); }
+                );
+            }
+            // On ajoute le CSS et le Javascript pour les popup
+            if ($('#csspopover').length === 0 && $('#jsbootstrap').length === 0) {
+                $('head').append(`
+                    <link rel="stylesheet"
+                          id="csspopover"
+                          href="${serverBaseUrl}/css/popover.min.css"
+                          integrity="${integrityPopover}"
+                          crossorigin="anonymous" \>
+                    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                            id="jsbootstrap"
+                            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                            crossorigin="anonymous"></script>
+                `);
+            }
+            promise.then((data) => {
+                let intTime = setInterval(function() {
+                    if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
+                    else clearInterval(intTime);
+
+                    if (debug) console.log('Add synopsis episode');
+                    for (let v = 0; v < len; v++) {
+                        const $vignette = $(vignettes.get(v)),
+                              objRes = data.episodes[v],
+                              description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
+                        // Ajoute la synopsis de l'épisode au survol de la vignette
+                        $vignette.popover({
+                            container: $vignette,
+                            html: true,
+                            content: `<p>${description}</p>`,
+                            placement: funcPlacement,
+                            title: tempTitle(objRes),
+                            trigger: 'hover',
+                            fallbackPlacement: ['left', 'right']
+                        });
+                    }
+                    $('#episodes .slide__image').on('shown.bs.popover', function () {
+                        let popover = $('#episodes .popover'),
+                            img = popover.parent().find('img.js-lazy-image'),
+                            placement = popover.attr('x-placement'),
+                            space = 0;
+
+                        if (placement === 'left') {
+                            space = popover.width() + 5;
+                            popover.css('left', `-${space}px`);
+                        }
+                        else if (placement === 'right') {
+                            space = img.width();
+                            popover.css('left', `${space}px`);
+                        }
+                    });
+                }, 500);
+            });
             /**
              * Affiche/masque le spinner de modification des épisodes
              *
@@ -1321,7 +1416,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             resId = getResourceId(), // Identifiant de la ressource
             res = cache.get(type.plural, resId)[type.singular];
 
-        if (debug) console.log('nb similars: %d', 1, res/* parseInt(res.similars, 10)*/);
+        if (debug) console.log('nb similars: %d', len, res/* parseInt(res.similars, 10)*/);
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) {
@@ -1335,15 +1430,19 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * et on vérifie qu'il n'existe pas déjà
          */
         if ($('#updateSimilarsBlock').length < 1) {
-            $('head').append(`
-                <link rel="stylesheet"
-                      href="${serverBaseUrl}/css/popover.min.css"
-                      integrity="${integrityPopover}"
-                      crossorigin="anonymous" \>
-                <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
-                        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
-                        crossorigin="anonymous"></script>
-            `);
+            if ($('#csspopover').length <= 0 && $('#jsbootstrap').length <= 0) {
+                $('head').append(`
+                    <link rel="stylesheet"
+                          id="csspopover"
+                          href="${serverBaseUrl}/css/popover.min.css"
+                          integrity="${integrityPopover}"
+                          crossorigin="anonymous" \>
+                    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                            id="jsbootstrap"
+                            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                            crossorigin="anonymous"></script>
+                `);
+            }
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
                 <div id="updateSimilarsBlock" class="updateElements">
@@ -1383,7 +1482,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         callBetaSeries('GET', type.plural, 'similars', params, true)
         .then(function(data) {
             let intTime = setInterval(function() {
-                if (typeof bootstrap == 'undefined' || typeof bootstrap.Popover != 'function') { return; }
+                if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
                 else clearInterval(intTime);
                 /**
                  * Retourne la position de la popup par rapport à l'image du similar
@@ -1886,7 +1985,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.get = function(type, key) {
             if (self.has(type, key)) {
-                if (debug) console.log('Retourne la ressource (%s: %d) du cache', type, key);
+                if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
                 return data[type][key];
             }
             return null;
@@ -1900,7 +1999,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @returns {*} the cache entry if set, or the default value provided.
          */
         this.getOrDefault = function(type, key, def) {
-            if (debug) console.log('Retourne la ressource (%s: %d) du cache ou valeur par défaut', type, key, def);
+            if (debug) console.log('Retourne la ressource (%s) du cache ou valeur par défaut', type, {key: key, default: def});
             return self.has(type, key) ? self.get(type, key) : def;
         };
 
@@ -1911,7 +2010,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @param {*}      value the value to set
          */
         this.set = function(type, key, value) {
-            if (debug) console.log('Ajout de la ressource (%s: %d) en cache', type, key, value);
+            if (debug) console.log('Ajout de la ressource (%s) en cache', type, {key: key, val: value});
             if (data.hasOwnProperty(type)) {
                 data[type][key] = value;
             }
@@ -1923,7 +2022,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @param {String} key the key to remove
          */
         this.remove = function(type, key) {
-            if (debug) console.log('Suppression de la ressource[%s]: %d du cache', type, key);
+            if (debug) console.log('Suppression de la ressource (%s) du cache', type, {key: key});
             if (self.has(type, key)) {
                 delete data[type][key];
             }
