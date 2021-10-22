@@ -37,6 +37,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 #### Séries et Films
 
+* En mode DEV, ajout d'un bouton à côté du titre d'un similar, pour visualiser ses données JSON.
 * Ajoute un bandeau d'angle "Viewed" sur les séries similaires déjà vues (Nécessite d'être connecté à votre compte utilisateur)
 
 ![Séries similaires avec le bandeau vues](/screenshots/similarsViewed.jpg "Séries similaires avec le bandeau vues")
