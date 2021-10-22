@@ -32,6 +32,8 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ### Séries, Films et épisodes
 
 * Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode
+
+![Nombre de votants](/screenshots/nbVotants.jpg "Nombre de votants")
 * Ajout du vote du membre connecté à la note globale de la ressource
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
 
@@ -47,8 +49,8 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 #### Séries
 
-![Nombre de votants](/screenshots/nbVotants.jpg "Nombre de votants")
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus et met à jour la barre de progression de la série
+* Ajout d'une popup, au survol d'une vignette d'un épisode, pour afficher le synopsis
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante
 
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
