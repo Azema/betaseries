@@ -47,7 +47,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
           integrityStyle = 'sha384-lfts4avnKs+mze5ou8aht9AU5kEIY1KcTUzxY+32D5bGG9B0d2bZsiznL1eDiV8U',
-          integrityPopover = 'sha384-kGggcgLy0UJsztKjHmQEv63KDqJgtP86DrDgfgsDuJMQ7ks/CR9aRIetsCbz7xgG',
+          integrityPopover = 'sha384-4ypvRw5lbeuC9BjCt95Vm2vhzXpnUWqFxUBf1SYr2AzF6s6e+BMCcaw8mZbXBLgf',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
           // URI des images et description des classifications TV et films
           ratings = {
@@ -125,17 +125,17 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
     `);
     let userIdentified = typeof betaseries_api_user_token != 'undefined',
         timer, timerUA, currentUser, cache = new Cache(),
-        counter = 0;
+        counter = 0, dialog;
 
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour la mettre en cache
         getResource().then(function() {
+            if (debug) addBtnDev(); // On ajoute le bouton de Dev
             removeAds(); // On retire les pubs
             similarsViewed(); // On s'occupe des ressources similaires
             decodeTitle(); // On décode le titre de la ressource
             addRating(); // On ajoute la classification TV de la ressource courante
-            if (debug) addBtnDev(); // On ajoute le bouton de Dev
             addNumberVoters(); // On ajoute le nombre de votes à la note
             // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
             timer = setInterval(function() {
@@ -172,6 +172,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             updateApiConsole();
         }
     }
+    // Fonctions appeler sur les pages des séries
     else if (/^\/series\//.test(url)) {
         if (debug) console.log('Page des séries');
         waitPagination();
@@ -521,14 +522,14 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                 </div>`;
         $('.blockInformations__actions').append(btnHTML);
         $('body').append(dialogHTML);
-        const dialog = new A11yDialog(document.querySelector('#dialog-resource')),
-              html = document.documentElement;
+        dialog = new A11yDialog(document.querySelector('#dialog-resource'));
+        const html = document.documentElement;
 
-        $('.fa-wrench').parent().click((e) => {
+        $('.blockInformations__actions .fa-wrench').parent().click((e) => {
             e.stopPropagation();
             e.preventDefault();
             let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-                eltId = $('#reactjs-' + type.singular + '-actions').data(type.singular + '-id'), // Identifiant de la ressource
+                eltId = getResourceId(), // Identifiant de la ressource
                 $dataRes = $('#dialog-resource .data-resource'), // DOMElement contenant le rendu JSON de la ressource
                 fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
@@ -940,15 +941,14 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified || betaseries_api_user_key === '') return;
 
-        let seasons = $('#seasons div[role="button"]'),
-            len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
-            vignettes = $('#episodes .slide__image');
+        const seasons = $('#seasons div[role="button"]');
+        let len = getNbVignettes(),
+            vignettes = getVignettes();
 
         // On vérifie que les saisons et les episodes soient chargés sur la page
         if (vignettes.length > 0 && vignettes.length >= len) {
             // On supprime le timer Interval
             clearInterval(timer);
-            if (debug) console.group('addBtnWatchedToEpisode');
             // On ajoute les cases à cocher sur les vignettes courantes
             addCheckbox();
         } else {
@@ -961,7 +961,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckbox() {
             vignettes = getVignettes();
-            let len = parseInt($('div.slide--current .slide__infos').text(), 10);
+            len = getNbVignettes();
             for (let v = 0; v < len; v++) {
                 let $vignette = $(vignettes.get(v)),
                     id = getEpisodeId($vignette);
@@ -979,8 +979,8 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             $('#episodes .checkSeen').click(function(e) {
                 e.stopPropagation();
                 e.preventDefault();
-                let $elt = $(e.currentTarget),
-                    episodeId = getEpisodeId($elt);
+                const $elt = $(e.currentTarget),
+                      episodeId = getEpisodeId($elt);
                 toggleSpinner($elt, true);
                 // On vérifie si l'épisode a déjà été vu
                 if ($elt.hasClass('seen')) {
@@ -992,7 +992,76 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     changeStatusVignette($elt, 'seen', 'POST', episodeId);
                 }
             });
-            addBtnUpdateEpisodeList();
+
+            // Ajouter un bouton de mise à jour des épisodes de la saison courante
+            if ($('#updateEpisodeList').length < 1) {
+                $('#episodes .blockTitles').prepend(`
+                    <div id="updateEpisodeList" class="updateElements">
+                      <img src="${serverBaseUrl}/img/update.png"
+                           class="updateEpisodes updateElement finish"
+                           title="Mise à jour les épisodes de la saison"
+                           style="margin-right:10px;"/>
+                    </div>`);
+                // On ajoute la gestion de l'event click sur le bouton
+                $('.updateEpisodes').click((e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (debug) console.group('updateEpisodes');
+                    const self = $(e.currentTarget);
+                    self.removeClass('finish');
+                    // Le numéro de la saison courante
+                    const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
+                          showId = getResourceId(), // Identifiant de la ressource principale
+                          params = {id: showId, season: parseInt(seasonNum, 10)};
+                    callBetaSeries('GET', 'shows', 'episodes', params, true)
+                        .then((data) => {
+                        if (debug) console.log('callBetaSeries GET shows/episodes', params, data);
+                        vignettes = getVignettes();
+                        len = getNbVignettes();
+                        let $vignette, episode, id, checkSeen, changed = false;
+
+                        for (let v = 0; v < len; v++) {
+                            $vignette = $(vignettes.get(v)); // DOMElement jQuery de l'image de l'épisode
+                            episode = data.episodes[v]; // Données de l'épisode
+                            id = getEpisodeId($vignette); // Identifiant de l'épisode
+                            checkSeen = $vignette.find('.checkSeen'); // DOMElement jQuery de la checkbox vu de l'épisode
+                            if (debug) console.log('Episode ID', id);
+                            // On vérifie que l'attribut ID est bien définit
+                            if (checkSeen.length > 0 && checkSeen.attr('id') === undefined) {
+                                if (debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
+                                // On ajoute l'attribut ID
+                                checkSeen.attr('id', 'episode-' + id);
+                            }
+                            // Si le membre a vu l'épisode et qu'il n'est pas indiqué, on change le statut
+                            if (episode.user.seen && checkSeen.length > 0 && !checkSeen.hasClass('seen')) {
+                                if (debug) console.log('Changement du statut (seen) de l\'épisode');
+                                changeStatus(checkSeen, 'seen', false);
+                                changed = true;
+                            }
+                            // Si le membre n'a pas vu l'épisode et qu'il n'est pas indiqué, on change le statut
+                            else if (!episode.user.seen && checkSeen.length > 0 && checkSeen.hasClass('seen')) {
+                                if (debug) console.log('Changement du statut (notSeen) de l\'épisode');
+                                changeStatus(checkSeen, 'notSeen', false);
+                                changed = true;
+                            }
+                        }
+                        // On met à jour les éléments, seulement si il y a eu des modifications
+                        if (changed) {
+                            // On récupère la ressource principale sur l'API
+                            getResource(true).then(() => {
+                                updateProgressBar();
+                                updateNextEpisode();
+                            });
+                        }
+                        self.addClass('finish'); // On arrete l'animation de mise à jour
+                        if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
+                    }, (err) => {
+                        self.addClass('finish');
+                        if (debug) console.groupEnd('updateEpisodes');
+                        notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
+                    });
+                });
+            }
 
             /**
              * Affiche/masque le spinner de modification des épisodes
@@ -1051,8 +1120,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             }
             /**
              * Change le statut visuel de la vignette sur le site
-             * @param  {Object} $elt      L'objet jQuery de l'épisode
-             * @param  {String} newStatus Le nouveau statut de l'épisode
+             * @param  {Object} $elt          L'objet jQuery de l'épisode
+             * @param  {String} newStatus     Le nouveau statut de l'épisode
+             * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
              * @return {void}
              */
             function changeStatus($elt, newStatus, update = true) {
@@ -1066,15 +1136,20 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
 
                     // Si tous les épisodes de la saison ont été vus
                     if ($('#episodes .seen').length == len) {
+                        const slideCurrent = $('#seasons div.slide--current');
+                        if (debug) console.log('Tous les épisodes ont été vus', slideCurrent);
                         // On check la saison
-                        $('div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
-                        $('div.slide--current').removeClass('slide--notSeen');
-                        $('div.slide--current').addClass('slide--seen');
+                        $('#seasons div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
+                        slideCurrent
+                            .removeClass('slide--notSeen')
+                            .addClass('slide--seen');
                         // Si il y a une saison suivante, on la sélectionne
-                        if ($('div.slide--current').next().length > 0) {
-                            const oldCurrent = $('div.slide--current'),
-                                  newCurrent = oldCurrent.next();
-                            oldCurrent.removeClass('slide--current').removeClass('slide--notSeen');
+                        if (slideCurrent.next().length > 0) {
+                            if (debug) console.log('Il y a une autre saison');
+                            const newCurrent = slideCurrent.next();
+                            slideCurrent
+                                .removeClass('slide--current')
+                                .removeClass('slide--notSeen');
                             newCurrent.trigger('click');
                         }
                     }
@@ -1082,7 +1157,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     $elt.css('background', 'none'); // On enlève le check dans la case à cocher
                     $elt.removeClass('seen'); // On supprime la classe 'seen'
                     // On remet le voile masquant sur la vignette de l'épisode
-                    $elt.parent('div.slide__image').find('img').attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                    $elt.parent('div.slide__image')
+                        .find('img')
+                            .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
 
                     const contVignette = $elt.parent('div.slide_flex');
                     if (!contVignette.hasClass('slide--notSeen')) {
@@ -1119,7 +1196,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             }
             /**
              * Met à jour le bloc du prochain épisode à voir
-             * @return void
+             * @return {void}
              */
             function updateNextEpisode() {
                 if (debug) console.log('updateNextEpisode');
@@ -1153,6 +1230,11 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                 else if (!('next' in show.user) || show.user.next.id === null) {
                     nextEpisode.remove();
                 }
+                /**
+                 * Construit une vignette pour le prochain épisode à voir
+                 * @param  {Object} res Objet ressource de la page
+                 * @return {void}
+                 */
                 function buildNextEpisode(res) {
                     let height = 70,
                         width = 124,
@@ -1180,73 +1262,6 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     $('.blockInformations__actions').after(template);
                 }
             }
-
-            /**
-             * Ajoute un bouton de mise à jour des épisodes de la saison courante
-             */
-            function addBtnUpdateEpisodeList() {
-                // Ajouter un bouton de mise à jour des épisodes de la saison courante
-                if ($('#updateEpisodeList').length < 1) {
-                    $('#episodes .blockTitles').append(`
-                    <div id="updateEpisodeList" class="updateElements">
-                      <img src="${serverBaseUrl}/img/update.png" class="updateEpisodes updateElement finish" title="Mise à jour des épisodes" style="margin-left:10px;"/>
-                    </div>`);
-                    // On ajoute la gestion de l'event click sur le bouton
-                    $('.updateEpisodes').click((e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (debug) console.group('updateEpisodes');
-                        const self = $(e.currentTarget);
-                        self.removeClass('finish');
-                        // Recuperer la liste des épisodes de la saison
-                        let season = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
-                            showId = getResourceId();
-                        callBetaSeries('GET', 'shows', 'episodes', {id: showId, season: parseInt(season, 10)}, true)
-                        .then((data) => {
-                            if (debug) console.log('callBetaSeries GET shows/episodes', {id: showId, season: parseInt(season, 10)}, data);
-                            vignettes = getVignettes();
-                            let len = parseInt($('div.slide--current .slide__infos').text(), 10),
-                                $vignette, episode, id, checkSeen, changed = false;
-                            for (let v = 0; v < len; v++) {
-                                $vignette = $(vignettes.get(v));
-                                episode = data.episodes[v];
-                                id = getEpisodeId($vignette);
-                                checkSeen = $vignette.find('.checkSeen');
-                                if (debug) console.log('Episode ID', id);
-                                if (checkSeen.length > 0 && checkSeen.attr('id') === undefined) {
-                                    if (debug) console.log('ajout de l\'attribut ID à checkSeen');
-                                    // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
-                                    checkSeen.attr('id', 'episode-' + id);
-                                }
-                                // Si le membre a vu l'épisode, on change le statut
-                                if (episode.user.seen && checkSeen.length > 0 && !checkSeen.hasClass('seen')) {
-                                    if (debug) console.log('Changement du statut (seen) de l\'épisode');
-                                    changeStatus(checkSeen, 'seen', false);
-                                    changed = true;
-                                }
-                                // Si le membre n'a pas vu l'épisode, on change le statut
-                                else if (!episode.user.seen && checkSeen.length > 0 && checkSeen.hasClass('seen')) {
-                                    if (debug) console.log('Changement du statut (notSeen) de l\'épisode');
-                                    changeStatus(checkSeen, 'notSeen', false);
-                                    changed = true;
-                                }
-                            }
-                            // On met à jour les éléments, seulement si il y a eu des modifications
-                            if (changed) {
-                                getResource(true).then(() => {
-                                    updateProgressBar();
-                                    updateNextEpisode();
-                                });
-                            }
-                            self.addClass('finish');
-                            if (debug) console.groupEnd('updateEpisodes');
-                        }, (err) => {
-                            notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
-                        });
-                    });
-                }
-                if (debug) console.groupEnd('addBtnWatchedToEpisode');
-            }
         }
 
         // On ajoute un event sur le changement de saison
@@ -1256,12 +1271,12 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             if (debug) console.log('season click');
             // On attend que les vignettes de la saison choisie soient chargées
             timer = setInterval(function() {
-                const len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
+                const len = getNbVignettes(),
                       vigns = getVignettes();
                 // On vérifie qu'il y a des vignettes et que leur nombre soit égale
                 // ou supérieur au nombre d'épisodes indiqués dans la saison
                 if (vigns.length > 0 && vigns.length >= len) {
-                    if (debug) console.log('Season click clear timer', vigns.length, len);
+                    if (debug) console.log('Season click clear timer, nbVignettes (%d, %d)', vigns.length, len);
                     // On supprime le timer Interval
                     clearInterval(timer);
                     addCheckbox();
@@ -1273,6 +1288,10 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         /*function getCurrentSeason() {
             return $('#seasons div[role="button"].slide--current');
         }*/
+        // Retourne le nombre de vignettes
+        function getNbVignettes() {
+            return parseInt($('#seasons .slide--current .slide__infos').text().match(/\d+/).shift(), 10);
+        }
         // On récupère les vignettes des épisodes
         function getVignettes() {
             return $('#episodes .slide__image');
@@ -1285,7 +1304,6 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         function getEpisodeId(episode) {
             return episode.parents('div.slide_flex').find('button').first().attr('id').split('-')[1];
         }
-        if (debug) console.groupEnd('addBtnWatchedToEpisode');
     }
 
     /**
@@ -1422,6 +1440,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                         } else if (objRes.user.status > 0) {
                             archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
                         }
+                        if (objRes.hasOwnProperty('showrunner') && objRes.showrunner !== null) {
+                            template += `<p><u>Show Runner:</u> <strong>${objRes.showrunner.name}</strong></p>`;
+                        }
                         template += `<p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>`;
                     } else if (type.singular == 'movie') {
                         template += `<p><u>Réalisateur:</u> <strong>${objRes.director}</strong></p>`;
@@ -1453,17 +1474,44 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                         resource = data.similars[s][type.singular];
 
                     decodeTitle($elt);
+                    $elt.html($elt.html() +
+                              `<i class="fa fa-wrench popover-wrench"
+                                  aria-hidden="true"
+                                  style="margin-left:5px;cursor:pointer;"
+                                  data-id="${resource.id}">
+                               </i>`
+                             );
                     addBandeau($elt, resource.user.status, resource.notes);
                     $link.popover({
                         container: $link,
                         html: true,
-                        content: tempContentPopup(data.similars[s][type.singular]),
+                        content: tempContentPopup(resource),
                         placement: funcPlacement,
-                        title: titlePopup(data.similars[s][type.singular]),
+                        title: titlePopup(resource),
                         trigger: 'hover',
                         fallbackPlacement: ['left', 'right']
                     });
                 }
+                $('.popover-wrench').click((e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const self = $(e.currentTarget),
+                          type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
+                          eltId = self.data('id'), // Identifiant de la ressource
+                          $dataRes = $('#dialog-resource .data-resource'), // DOMElement contenant le rendu JSON de la ressource
+                          fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+
+                    if (debug) console.log('Popover Wrench', eltId, self);
+                    callBetaSeries('GET', type.plural, fonction, {'id': eltId})
+                    .then(function(data) {
+                        if (! $dataRes.is(':empty')) $dataRes.empty();
+                        $dataRes.append(renderjson.set_show_to_level(2)(data[type.singular]));
+                        $('#dialog-resource-title span').empty().text('(' + counter + ' appels API)');
+                        dialog.show();
+                    }, (err) => {
+                        notification('Erreur de récupération de ' + type.singular, 'popover wrench: ' + err);
+                    });
+                });
                 $('#similars a.slide__image').on('shown.bs.popover', function () {
                     let popover = $('.popover'),
                         img = popover.siblings('img.js-lazy-image'),
