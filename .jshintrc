@@ -10,7 +10,8 @@
   "predef"        : [         // Extra globals.
     "A11yDialog",
     "humanizeDuration",
-    "renderjson"
+    "renderjson",
+    "PopupAlert"
   ],
   "globals" : {
     "GM_addStyle": true,

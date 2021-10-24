@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.13
+// @version      0.19.14
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -20,7 +20,7 @@
 // ==/UserScript==
 
 /* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends generate_route
-   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment */
+   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert */
 /* jslint unparam: true */
 
 
@@ -126,7 +126,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour la mettre en cache
-        getResource().then(function() {
+        getResource(true).then(function() {
             if (debug) addBtnDev(); // On ajoute le bouton de Dev
             removeAds(); // On retire les pubs
             similarsViewed(); // On s'occupe des ressources similaires
@@ -1128,11 +1128,15 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     if (debug) console.log('Add synopsis episode');
                     for (let v = 0; v < len; v++) {
                         const $vignette = $(vignettes.get(v)),
-                              objRes = data.episodes[v],
-                              description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
+                              objRes = data.episodes[v];
+                        let description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
+                        if (description.length > 350) {
+                            description = description.substring(0, 350) + '...';
+                        }
                         // Ajoute la synopsis de l'épisode au survol de la vignette
                         $vignette.popover({
                             container: $vignette,
+                            delay: { "show": 500, "hide": 100 },
                             html: true,
                             content: `<p>${description}</p>`,
                             placement: funcPlacement,
@@ -1232,20 +1236,20 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     // Si tous les épisodes de la saison ont été vus
                     if ($('#episodes .seen').length == len) {
                         const slideCurrent = $('#seasons div.slide--current');
-                        if (debug) console.log('Tous les épisodes ont été vus', slideCurrent);
                         // On check la saison
                         $('#seasons div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
                         slideCurrent
                             .removeClass('slide--notSeen')
                             .addClass('slide--seen');
+                        if (debug) console.log('Tous les épisodes ont été vus', slideCurrent);
                         // Si il y a une saison suivante, on la sélectionne
                         if (slideCurrent.next().length > 0) {
                             if (debug) console.log('Il y a une autre saison');
-                            const newCurrent = slideCurrent.next();
+                            slideCurrent.next().trigger('click');
                             slideCurrent
                                 .removeClass('slide--current')
-                                .removeClass('slide--notSeen');
-                            newCurrent.trigger('click');
+                                .removeClass('slide--notSeen')
+                                .addClass('slide--seen');
                         }
                     }
                 } else {
@@ -1268,9 +1272,26 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     }
                 }
                 if (update) {
-                    getResource(true).then(() => {
+                    getResource(true).then((data) => {
                         updateProgressBar();
                         updateNextEpisode();
+                        if (debug) console.log('Update status episode', {next: data.show.user.next.id, status: data.show.status, archived: data.show.user.archived});
+                        if (data.show.user.next.id === null && data.show.status === 'Ended' && data.show.user.archived === false) {
+                            if (debug) console.log('Série terminée, popup confirmation');
+                            new PopupAlert({
+                                title: 'Archivage de la série',
+                                text: 'Voulez-vous archiver cette série terminée ?',
+                                callback_yes: function() {
+                                    // On déclenche l'archivage de la série
+                                    $('#reactjs-show-actions > div:nth-child(1) > button').trigger('click');
+                                    // On supprime la série du cache
+                                    cache.remove('shows', data.show.id);
+                                },
+                                callback_no: function() {
+                                    return true;
+                                }
+                            });
+                        }
                         toggleSpinner($elt, false);
                     }, (err) => {
                         toggleSpinner($elt, false);
@@ -1583,6 +1604,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     addBandeau($elt, resource.user.status, resource.notes);
                     $link.popover({
                         container: $link,
+                        delay: { "show": 250, "hide": 100 },
                         html: true,
                         content: tempContentPopup(resource),
                         placement: funcPlacement,
