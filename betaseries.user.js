@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.16
+// @version      0.19.17
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1958,7 +1958,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         config.ttl = config.ttl || 600;
 
         const self = this;
-        const ss = window.sessionStorage;
+        const ss = window.localStorage;
         let timerCache;
 
         let now = function() {
@@ -1968,21 +1968,24 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         /**
          * Object for holding a value and an expiration time
          * @param {Number} expires the expiry time as a UNIX timestamp
+         * @param {string} type    the type of the cache entry
          * @param {Number} value   the value of the cache entry
          * @constructor ¯\(°_o)/¯
          */
-        let CacheEntry = function(expires, value) {
+        let CacheEntry = function(expires, type, value) {
             this.expires = expires;
             this.value = value;
+            this.type = type;
         };
 
         /**
          * Creates a new cache entry with the current time + ttl as the expiry.
-         * @param  {*} value     the value to set in the entry
-         * @return {CacheEntry}  the cache entry object
+         * @param  {string} type   the type of the cache entry
+         * @param  {*}      value  the value to set in the entry
+         * @return {CacheEntry}    the cache entry object
          */
-        CacheEntry.create = function(value) {
-            return new CacheEntry(now() + config.ttl, value);
+        CacheEntry.create = function(type, value) {
+            return new CacheEntry(now() + config.ttl, type, value);
         };
 
         /**
@@ -1993,10 +1996,10 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         this.keys = function(type = null) {
             let keys = [],
                 reg = null,
-                regKeys = new RegExp('^(show|episode|movie|member)+'),
+                regKeys = new RegExp('^usbs-'),
                 key;
             if (type !== null && type.length > 0) {
-                reg = new RegExp('^' + type);
+                reg = new RegExp('^usbs-' + type);
             }
             for (let k = 0; k < ss.length; k++) {
                 key = ss.key(k);
@@ -2020,7 +2023,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @return {boolean} true if set, false otherwise
          */
         this.has = function(type, key) {
-            const data = ss.getItem(`${type}-${key}`);
+            const data = ss.getItem(`usbs-${type}-${key}`);
             if (data !== null && self.expired(data)) {
                 self.remove(type, key);
                 return false;
@@ -2055,7 +2058,8 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.get = function(type, key) {
             if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
-            let data = ss.getItem(`${type}-${key}`);
+            let data = ss.getItem(`usbs-${type}-${key}`);
+            if (data === null) return null;
             try {
                 data = JSON.parse(data).value;
             } catch (e) {
@@ -2088,12 +2092,12 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.set = function(type, key, value) {
             if (debug) console.log('Ajout de la ressource (%s) en cache', type, {key: key, val: value});
-            let val = CacheEntry.create(value);
+            let val = CacheEntry.create(type, value);
             try {
                 val = JSON.stringify(val);
             } catch (e) {
             }
-            ss.setItem(`${type}-${key}`, val);
+            ss.setItem(`usbs-${type}-${key}`, val);
         };
 
         /**
@@ -2103,7 +2107,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.remove = function(type, key) {
             if (debug) console.log('Suppression de la ressource (%s) du cache', type, {key: key});
-            ss.removeItem(`${type}-${key}`);
+            ss.removeItem(`usbs-${type}-${key}`);
         };
 
         /**
@@ -2120,7 +2124,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     return true;
                 }
             }
-            if (debug) console.log('Expired', {cacheEntry: cacheEntry, curr: curr, expired: cacheEntry.expires < curr});
+            if (debug) console.log('Expired', {cacheEntry: cacheEntry.type, curr: curr, expired: cacheEntry.expires < curr});
             return cacheEntry.expires < curr;
         };
 
@@ -2131,8 +2135,8 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             const keys = self.keys();
             let type, key;
             for (let k = 0; k < keys.length; k++) {
-                type = keys[k].split('-')[0];
-                key = keys[k].substring(type.length + 1);
+                type = keys[k].split('-')[1];
+                key = keys[k].substring(type.length + 6);
                 // La fonction "get" vérifie l'expiration des données
                 self.get(type, key);
             }
