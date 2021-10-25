@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.15
+// @version      0.19.16
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1995,7 +1995,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                 reg = null,
                 regKeys = new RegExp('^(show|episode|movie|member)+'),
                 key;
-            if (type !== null) {
+            if (type !== null && type.length > 0) {
                 reg = new RegExp('^' + type);
             }
             for (let k = 0; k < ss.length; k++) {
@@ -2003,13 +2003,13 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                 // On verifie que la clé correspond au type donné
                 if (type !== null && reg.test(key)) {
                     keys.push(key);
-                    continue;
                 }
                 // On vérifie que la clé correspond aux types connus
                 else if (regKeys.test(key)) {
                     keys.push(key);
                 }
             }
+            if (debug) console.log('Cache keys', keys);
             return keys;
         };
 
@@ -2055,16 +2055,17 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.get = function(type, key) {
             if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
-            const data = ss.getItem(`${type}-${key}`);
+            let data = ss.getItem(`${type}-${key}`);
+            try {
+                data = JSON.parse(data).value;
+            } catch (e) {
+                return null;
+            }
             if (data !== null && self.expired(data)) {
                 self.remove(type, key);
                 return null;
             }
-            try {
-                return JSON.parse(data).value;
-            } catch (e) {
-                return null;
-            }
+            return data;
         };
 
         /**
@@ -2112,6 +2113,14 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @return {boolean}               true if expired, false otherwise
          */
         this.expired = function(cacheEntry, curr = now()) {
+            if (typeof cacheEntry !== 'object') {
+                try {
+                    cacheEntry = JSON.parse(cacheEntry);
+                } catch (e) {
+                    return true;
+                }
+            }
+            if (debug) console.log('Expired', {cacheEntry: cacheEntry, curr: curr, expired: cacheEntry.expires < curr});
             return cacheEntry.expires < curr;
         };
 
@@ -2119,15 +2128,13 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * Trims the cache of expired keys. This function is run periodically (see config.ttl).
          */
         this.trim = function() {
-            const curr = now();
-            let type, key, data;
-            for (let k in self.keys()) {
-                type = k.split('-')[0];
-                key = k.substring(type.length + 1);
-                data = self.get(type, key);
-                if (data !== null && self.expired(data, curr)) {
-                    self.remove(type, key);
-                }
+            const keys = self.keys();
+            let type, key;
+            for (let k = 0; k < keys.length; k++) {
+                type = keys[k].split('-')[0];
+                key = keys[k].substring(type.length + 1);
+                // La fonction "get" vérifie l'expiration des données
+                self.get(type, key);
             }
         };
 
