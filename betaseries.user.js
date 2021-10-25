@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.14
+// @version      0.19.15
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1275,7 +1275,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     getResource(true).then((data) => {
                         updateProgressBar();
                         updateNextEpisode();
-                        if (debug) console.log('Update status episode', {next: data.show.user.next.id, status: data.show.status, archived: data.show.user.archived});
+                        if (debug) console.log('Next ID et status', {next: data.show.user.next.id, status: data.show.status, archived: data.show.user.archived});
                         if (data.show.user.next.id === null && data.show.status === 'Ended' && data.show.user.archived === false) {
                             if (debug) console.log('Série terminée, popup confirmation');
                             new PopupAlert({
@@ -1951,51 +1951,99 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      * Create a new Cache
      * @class
      */
-    function Cache() {
+    function Cache(config) {
+
+        config = config || {};
+        config.trim = config.trim || 500;
+        config.ttl = config.ttl || 600;
+
+        const self = this;
+        const ss = window.sessionStorage;
+        let timerCache;
+
+        let now = function() {
+            return parseInt(Date.now() / 1000);
+        };
 
         /**
-         * Objet contenant les données
-         * @type {Object}
+         * Object for holding a value and an expiration time
+         * @param {Number} expires the expiry time as a UNIX timestamp
+         * @param {Number} value   the value of the cache entry
+         * @constructor ¯\(°_o)/¯
          */
-        let data = {shows: {}, episodes: {}, movies: {}, members: {}};
-        let self = this;
+        let CacheEntry = function(expires, value) {
+            this.expires = expires;
+            this.value = value;
+        };
+
+        /**
+         * Creates a new cache entry with the current time + ttl as the expiry.
+         * @param  {*} value     the value to set in the entry
+         * @return {CacheEntry}  the cache entry object
+         */
+        CacheEntry.create = function(value) {
+            return new CacheEntry(now() + config.ttl, value);
+        };
 
         /**
          * Returns an Array of all currently set keys.
-         * @returns {Array} cache keys
+         * @param  {String} [type=null] Le type de clés
+         * @return {Array} cache keys
          */
         this.keys = function(type = null) {
-            if (! type) return Object.keys(data);
-            return Object.keys(data[type]);
+            let keys = [],
+                reg = null,
+                regKeys = new RegExp('^(show|episode|movie|member)+'),
+                key;
+            if (type !== null) {
+                reg = new RegExp('^' + type);
+            }
+            for (let k = 0; k < ss.length; k++) {
+                key = ss.key(k);
+                // On verifie que la clé correspond au type donné
+                if (type !== null && reg.test(key)) {
+                    keys.push(key);
+                    continue;
+                }
+                // On vérifie que la clé correspond aux types connus
+                else if (regKeys.test(key)) {
+                    keys.push(key);
+                }
+            }
+            return keys;
         };
 
         /**
          * Checks if a key is currently set in the cache.
-         * @param {String} type Le type de ressource
-         * @param {String} key  the key to look for
-         * @returns {boolean} true if set, false otherwise
+         * @param  {String} type  Le type de ressource
+         * @param  {String} key   La clé de la ressource
+         * @return {boolean} true if set, false otherwise
          */
         this.has = function(type, key) {
-            return (data.hasOwnProperty(type) && data[type].hasOwnProperty(key));
+            const data = ss.getItem(`${type}-${key}`);
+            if (data !== null && self.expired(data)) {
+                self.remove(type, key);
+                return false;
+            }
+            return (data === null) ? false : true;
         };
 
         /**
          * Clears all cache entries.
-         * @param {String} [type=null] Le type de ressource à nettoyer
+         * @param  {String} [type=null] Le type de ressource à nettoyer
+         * @return {void}
          */
         this.clear = function(type = null) {
             if (debug) console.log('Nettoyage du cache', type);
             // On nettoie juste un type de ressource
-            if (type) {
-                for (let key in data[type]) {
-                    delete data[type][key];
+            if (type !== null) {
+                for (let key in self.keys(type)) {
+                    ss.removeItem(key);
                 }
             }
             // On nettoie l'ensemble du cache
             else {
-                for (type in data) {
-                    self.clear(type);
-                }
+                ss.clear();
             }
         };
 
@@ -2006,11 +2054,17 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @returns {*} the cache entry if set, or undefined otherwise
          */
         this.get = function(type, key) {
-            if (self.has(type, key)) {
-                if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
-                return data[type][key];
+            if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
+            const data = ss.getItem(`${type}-${key}`);
+            if (data !== null && self.expired(data)) {
+                self.remove(type, key);
+                return null;
             }
-            return null;
+            try {
+                return JSON.parse(data).value;
+            } catch (e) {
+                return null;
+            }
         };
 
         /**
@@ -2033,9 +2087,12 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.set = function(type, key, value) {
             if (debug) console.log('Ajout de la ressource (%s) en cache', type, {key: key, val: value});
-            if (data.hasOwnProperty(type)) {
-                data[type][key] = value;
+            let val = CacheEntry.create(value);
+            try {
+                val = JSON.stringify(val);
+            } catch (e) {
             }
+            ss.setItem(`${type}-${key}`, val);
         };
 
         /**
@@ -2045,10 +2102,45 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.remove = function(type, key) {
             if (debug) console.log('Suppression de la ressource (%s) du cache', type, {key: key});
-            if (self.has(type, key)) {
-                delete data[type][key];
+            ss.removeItem(`${type}-${key}`);
+        };
+
+        /**
+         * Checks if the cache entry has expired.
+         * @param  {Number}  cacheEntry    the cache entry
+         * @param  {Number}  [curr=now()]  the current time
+         * @return {boolean}               true if expired, false otherwise
+         */
+        this.expired = function(cacheEntry, curr = now()) {
+            return cacheEntry.expires < curr;
+        };
+
+        /**
+         * Trims the cache of expired keys. This function is run periodically (see config.ttl).
+         */
+        this.trim = function() {
+            const curr = now();
+            let type, key, data;
+            for (let k in self.keys()) {
+                type = k.split('-')[0];
+                key = k.substring(type.length + 1);
+                data = self.get(type, key);
+                if (data !== null && self.expired(data, curr)) {
+                    self.remove(type, key);
+                }
             }
         };
+
+        /**
+         * Arrête le timer interval de nettoyage du cache
+         * @return {void}
+         */
+        this.stopCleaner = function() {
+            clearInterval(timerCache);
+        };
+
+        // Periodical cleanup
+        timerCache = setInterval(this.trim, config.trim * 1000);
     }
 
 })(jQuery);
