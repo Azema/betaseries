@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.18
+// @version      0.19.19
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -490,7 +490,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      * dans une modal
      */
     function addBtnDev() {
-        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;"><i class="fa fa-2x fa-wrench" aria-hidden="true"></i></button><div class="label">Dev</div></div>',
+        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>',
               dialogHTML = `
                 <div
                   class="dialog dialog-container table-dark"
@@ -956,7 +956,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckbox() {
             vignettes = getVignettes();
-            len = getNbVignettes();
+            len = $('#episodes .slide__image').length;
 
             for (let v = 0; v < len; v++) {
                 let $vignette = $(vignettes.get(v)),
@@ -1094,6 +1094,91 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                   key = `show-${showId}-${seasonNum}`,
                   res = cache.get('shows', showId).show;
             let promise;
+            // Vérifier si le membre a ajouter la série à son compte
+            if (res.in_account === false) {
+                // On ajoute un event click pour masquer les vignettes
+                $('#reactjs-show-actions > div > button').click(() => {
+                    for (let v = 0; v < len; v++) {
+                        $(vignettes.get(v))
+                            .find('img')
+                            .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                    }
+                    let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
+                        urlShow = res.resource_url.substring(location.origin.length),
+                        title = res.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
+                        template = `
+                      <a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>
+                      <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
+                        showClose: true,
+                        type: "popin-subtitles",
+                        reactModuleId: "reactjs-subtitles",
+                        params: {
+                          mediaId: "${showId}",
+                          type: "show",
+                          titlePopin: "${title}";
+                        },
+                        callback: function() {
+                          addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
+                        },
+                      });">Sous-titres</button>
+                      <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${showId}, 'show');">Signaler un problème</a>
+                      <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${showId}, '0')">Demander une mise à jour</a>
+                      <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
+
+                      <form class="autocomplete js-autocomplete-form header-navigation-item">
+                        <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
+                        <div class="autocomplete__toShow" hidden="">
+                          <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
+                          <div class="autocomplete__response js-display-response"></div>
+                        </div>
+                      </form>
+                      <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>
+                        `;
+                    $('div.blockInformations__actions .dropdown-menu').append(template);
+                    deleteShowClick();
+                });
+            }
+
+            function deleteShowClick() {
+                // Gestion de la suppression de la série du compte utilisateur
+                $('.blockInformations__actions .dropdown-menu a:last-child').removeAttr('onclick').click((e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // Supprimer la série du compte utilisateur
+                    new PopupAlert({
+                        title: trans("popup.delete_show.title", { "%title%": res.title }),
+                        text: trans("popup.delete_show.text", { "%title%": res.title }),
+                        callback_yes: function() {
+                            callBetaSeries('DELETE', 'shows', 'show', {id: res.id})
+                                .then((data) => {
+                                new PopupAlert({
+                                    title: trans("popup.delete_show_success.title"),
+                                    text: trans("popup.delete_show_success.text", { "%title%": res.title }),
+                                    yes: trans("popup.delete_show_success.yes"),
+                                });
+                                cache.set('shows', showId, data);
+                                $('#reactjs-show-actions').empty().append(`
+                                <div class="blockInformations__action">
+                                  <button class="btn-reset btn-transparent" type="button">
+                                    <span class="svgContainer">
+                                      <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                                      </svg>
+                                    </span>
+                                  </button>
+                                  <div class="label">Ajouter</div>
+                                </div>`);
+                                $('.blockInformations__actions .dropdown-menu a:first-child').siblings().each((i, e) => { $(e).remove(); });
+                            }, (err) => {
+                                notification('Erreur de suppression de la série', err);
+                            });
+                        },
+                        callback_no: function() {}
+                    });
+                });
+            }
+            deleteShowClick();
+
             if (cache.has('episodes', key)) {
                 promise = new Promise((resolve) => {
                     resolve(cache.get('episodes', key));
@@ -1283,7 +1368,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                                 text: 'Voulez-vous archiver cette série terminée ?',
                                 callback_yes: function() {
                                     $('#reactjs-show-actions > div:nth-child(1) > button').trigger('click');
-                                    cache.remove('shows', data.show.id);
+                                    //cache.remove('shows', data.show.id);
                                 },
                                 callback_no: function() {
                                     return true;
@@ -1436,7 +1521,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
             resId = getResourceId(), // Identifiant de la ressource
             res = cache.get(type.plural, resId)[type.singular];
 
-        if (debug) console.log('nb similars: %d', len, res/* parseInt(res.similars, 10)*/);
+        if (debug) console.log('nb similars: %d', len, parseInt(res.similars, 10));
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) {
@@ -1920,7 +2005,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                 resolve(data);
             })
             .fail(function(jqXHR, textStatus) {
-                console.error('callBetaSeries error: ', textStatus, type, urlAPI, params);
+                console.error('callBetaSeries error: ', textStatus, type, urlAPI, params, jqXHR);
                 if (typeof jqXHR.responseJSON == 'undefined') {
                     reject(textStatus);
                     return;
