@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.17
+// @version      0.19.18
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1241,7 +1241,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                         slideCurrent
                             .removeClass('slide--notSeen')
                             .addClass('slide--seen');
-                        if (debug) console.log('Tous les épisodes ont été vus', slideCurrent);
+                        if (debug) console.log('Tous les épisodes de la saison ont été vus', slideCurrent);
                         // Si il y a une saison suivante, on la sélectionne
                         if (slideCurrent.next().length > 0) {
                             if (debug) console.log('Il y a une autre saison');
@@ -1282,9 +1282,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                                 title: 'Archivage de la série',
                                 text: 'Voulez-vous archiver cette série terminée ?',
                                 callback_yes: function() {
-                                    // On déclenche l'archivage de la série
                                     $('#reactjs-show-actions > div:nth-child(1) > button').trigger('click');
-                                    // On supprime la série du cache
                                     cache.remove('shows', data.show.id);
                                 },
                                 callback_no: function() {
@@ -1304,6 +1302,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
              * @return {void}
              */
             function updateProgressBar() {
+                if (debug) console.log('updateProgressBar');
                 let showId = getResourceId(),
                     progBar = $('.progressBarShow'),
                     show = cache.get('shows', showId).show;
@@ -1584,34 +1583,38 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     return title;
                 }
 
-                let obj = {};
-                for (let s = 0; s < data.similars.length; s++) {
-                    obj = {};
-                    obj[type.singular] = data.similars[s][type.singular];
-                    cache.set(type.plural, data.similars[s][type.singular].id, obj);
-                    let $elt = $(similars.get(s)),
-                        $link = $elt.siblings('a'),
-                        resource = data.similars[s][type.singular];
+                // TODO: En attente de la résolution du bug (https://www.betaseries.com/bugs/api/459)
+                if (type.singular === 'show') {
+                    let obj = {};
+                    for (let s = 0; s < data.similars.length; s++) {
+                        obj = {};
+                        obj[type.singular] = data.similars[s][type.singular];
+                        cache.set(type.plural, data.similars[s][type.singular].id, obj);
 
-                    decodeTitle($elt);
-                    $elt.html($elt.html() +
-                              `<i class="fa fa-wrench popover-wrench"
+                        let $elt = $(similars.get(s)),
+                            $link = $elt.siblings('a'),
+                            resource = data.similars[s][type.singular];
+
+                        decodeTitle($elt);
+                        $elt.html($elt.html() +
+                                  `<i class="fa fa-wrench popover-wrench"
                                   aria-hidden="true"
                                   style="margin-left:5px;cursor:pointer;"
                                   data-id="${resource.id}">
                                </i>`
-                             );
-                    addBandeau($elt, resource.user.status, resource.notes);
-                    $link.popover({
-                        container: $link,
-                        delay: { "show": 250, "hide": 100 },
-                        html: true,
-                        content: tempContentPopup(resource),
-                        placement: funcPlacement,
-                        title: titlePopup(resource),
-                        trigger: 'hover',
-                        fallbackPlacement: ['left', 'right']
-                    });
+                                 );
+                        addBandeau($elt, resource.user.status, resource.notes);
+                        $link.popover({
+                            container: $link,
+                            delay: { "show": 250, "hide": 100 },
+                            html: true,
+                            content: tempContentPopup(resource),
+                            placement: funcPlacement,
+                            title: titlePopup(resource),
+                            trigger: 'hover',
+                            fallbackPlacement: ['left', 'right']
+                        });
+                    }
                 }
                 $('.popover-wrench').click((e) => {
                     e.stopPropagation();
@@ -1951,102 +1954,49 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      * Create a new Cache
      * @class
      */
-    function Cache(config) {
-
-        config = config || {};
-        config.trim = config.trim || 500;
-        config.ttl = config.ttl || 600;
-
-        const self = this;
-        const ss = window.localStorage;
-        let timerCache;
-
-        let now = function() {
-            return parseInt(Date.now() / 1000);
-        };
+    function Cache() {
 
         /**
-         * Object for holding a value and an expiration time
-         * @param {Number} expires the expiry time as a UNIX timestamp
-         * @param {string} type    the type of the cache entry
-         * @param {Number} value   the value of the cache entry
-         * @constructor ¯\(°_o)/¯
+         * Objet contenant les données
+         * @type {Object}
          */
-        let CacheEntry = function(expires, type, value) {
-            this.expires = expires;
-            this.value = value;
-            this.type = type;
-        };
-
-        /**
-         * Creates a new cache entry with the current time + ttl as the expiry.
-         * @param  {string} type   the type of the cache entry
-         * @param  {*}      value  the value to set in the entry
-         * @return {CacheEntry}    the cache entry object
-         */
-        CacheEntry.create = function(type, value) {
-            return new CacheEntry(now() + config.ttl, type, value);
-        };
+        let data = {shows: {}, episodes: {}, movies: {}, members: {}};
+        let self = this;
 
         /**
          * Returns an Array of all currently set keys.
-         * @param  {String} [type=null] Le type de clés
-         * @return {Array} cache keys
+         * @returns {Array} cache keys
          */
         this.keys = function(type = null) {
-            let keys = [],
-                reg = null,
-                regKeys = new RegExp('^usbs-'),
-                key;
-            if (type !== null && type.length > 0) {
-                reg = new RegExp('^usbs-' + type);
-            }
-            for (let k = 0; k < ss.length; k++) {
-                key = ss.key(k);
-                // On verifie que la clé correspond au type donné
-                if (type !== null && reg.test(key)) {
-                    keys.push(key);
-                }
-                // On vérifie que la clé correspond aux types connus
-                else if (regKeys.test(key)) {
-                    keys.push(key);
-                }
-            }
-            if (debug) console.log('Cache keys', keys);
-            return keys;
+            if (! type) return Object.keys(data);
+            return Object.keys(data[type]);
         };
 
         /**
          * Checks if a key is currently set in the cache.
-         * @param  {String} type  Le type de ressource
-         * @param  {String} key   La clé de la ressource
-         * @return {boolean} true if set, false otherwise
+         * @param {String} type Le type de ressource
+         * @param {String} key  the key to look for
+         * @returns {boolean} true if set, false otherwise
          */
         this.has = function(type, key) {
-            const data = ss.getItem(`usbs-${type}-${key}`);
-            if (data !== null && self.expired(data)) {
-                self.remove(type, key);
-                return false;
-            }
-            return (data === null) ? false : true;
+            return (data.hasOwnProperty(type) && data[type].hasOwnProperty(key));
         };
 
         /**
          * Clears all cache entries.
-         * @param  {String} [type=null] Le type de ressource à nettoyer
-         * @return {void}
+         * @param {String} [type=null] Le type de ressource à nettoyer
          */
         this.clear = function(type = null) {
             if (debug) console.log('Nettoyage du cache', type);
             // On nettoie juste un type de ressource
-            if (type !== null) {
-                for (let key in self.keys(type)) {
-                    ss.removeItem(key);
+            if (type && data.hasOwnProperty(type)) {
+                for (let key in data[type]) {
+                    delete data[type][key];
                 }
             }
             // On nettoie l'ensemble du cache
             else {
-                ss.clear();
+                data = {shows: {}, episodes: {}, movies: {}, members: {}};
             }
         };
 
@@ -2057,19 +2007,11 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          * @returns {*} the cache entry if set, or undefined otherwise
          */
         this.get = function(type, key) {
-            if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
-            let data = ss.getItem(`usbs-${type}-${key}`);
-            if (data === null) return null;
-            try {
-                data = JSON.parse(data).value;
-            } catch (e) {
-                return null;
+            if (self.has(type, key)) {
+                if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
+                return data[type][key];
             }
-            if (data !== null && self.expired(data)) {
-                self.remove(type, key);
-                return null;
-            }
-            return data;
+            return null;
         };
 
         /**
@@ -2092,12 +2034,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.set = function(type, key, value) {
             if (debug) console.log('Ajout de la ressource (%s) en cache', type, {key: key, val: value});
-            let val = CacheEntry.create(type, value);
-            try {
-                val = JSON.stringify(val);
-            } catch (e) {
+            if (data.hasOwnProperty(type)) {
+                data[type][key] = value;
             }
-            ss.setItem(`usbs-${type}-${key}`, val);
         };
 
         /**
@@ -2107,51 +2046,10 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
          */
         this.remove = function(type, key) {
             if (debug) console.log('Suppression de la ressource (%s) du cache', type, {key: key});
-            ss.removeItem(`usbs-${type}-${key}`);
-        };
-
-        /**
-         * Checks if the cache entry has expired.
-         * @param  {Number}  cacheEntry    the cache entry
-         * @param  {Number}  [curr=now()]  the current time
-         * @return {boolean}               true if expired, false otherwise
-         */
-        this.expired = function(cacheEntry, curr = now()) {
-            if (typeof cacheEntry !== 'object') {
-                try {
-                    cacheEntry = JSON.parse(cacheEntry);
-                } catch (e) {
-                    return true;
-                }
-            }
-            if (debug) console.log('Expired', {cacheEntry: cacheEntry.type, curr: curr, expired: cacheEntry.expires < curr});
-            return cacheEntry.expires < curr;
-        };
-
-        /**
-         * Trims the cache of expired keys. This function is run periodically (see config.ttl).
-         */
-        this.trim = function() {
-            const keys = self.keys();
-            let type, key;
-            for (let k = 0; k < keys.length; k++) {
-                type = keys[k].split('-')[1];
-                key = keys[k].substring(type.length + 6);
-                // La fonction "get" vérifie l'expiration des données
-                self.get(type, key);
+            if (self.has(type, key)) {
+                delete data[type][key];
             }
         };
-
-        /**
-         * Arrête le timer interval de nettoyage du cache
-         * @return {void}
-         */
-        this.stopCleaner = function() {
-            clearInterval(timerCache);
-        };
-
-        // Periodical cleanup
-        timerCache = setInterval(this.trim, config.trim * 1000);
     }
 
 })(jQuery);
