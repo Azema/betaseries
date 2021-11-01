@@ -1094,52 +1094,56 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                   key = `show-${showId}-${seasonNum}`,
                   res = cache.get('shows', showId).show;
             let promise;
-            // Vérifier si le membre a ajouter la série à son compte
-            if (res.in_account === false) {
-                // On ajoute un event click pour masquer les vignettes
-                $('#reactjs-show-actions > div > button').click(() => {
-                    for (let v = 0; v < len; v++) {
-                        $(vignettes.get(v))
-                            .find('img')
-                            .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
-                    }
-                    let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
-                        urlShow = res.resource_url.substring(location.origin.length),
-                        title = res.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
-                        template = `
-                      <a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>
-                      <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
-                        showClose: true,
-                        type: "popin-subtitles",
-                        reactModuleId: "reactjs-subtitles",
-                        params: {
-                          mediaId: "${showId}",
-                          type: "show",
-                          titlePopin: "${title}";
-                        },
-                        callback: function() {
-                          addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
-                        },
-                      });">Sous-titres</button>
-                      <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${showId}, 'show');">Signaler un problème</a>
-                      <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${showId}, '0')">Demander une mise à jour</a>
-                      <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
+            function addShowClick() {
+                const res = cache.get('shows', showId).show;
+                // Vérifier si le membre a ajouter la série à son compte
+                if (res.in_account === false) {
+                    // On ajoute un event click pour masquer les vignettes
+                    $('#reactjs-show-actions > div > button').click(() => {
+                        for (let v = 0; v < len; v++) {
+                            $(vignettes.get(v))
+                                .find('img')
+                                .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                        }
+                        let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
+                            urlShow = res.resource_url.substring(location.origin.length),
+                            title = res.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
+                            template = `
+                          <a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>
+                          <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
+                            showClose: true,
+                            type: "popin-subtitles",
+                            reactModuleId: "reactjs-subtitles",
+                            params: {
+                              mediaId: "${showId}",
+                              type: "show",
+                              titlePopin: "${title}";
+                            },
+                            callback: function() {
+                              addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
+                            },
+                          });">Sous-titres</button>
+                          <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${showId}, 'show');">Signaler un problème</a>
+                          <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${showId}, '0')">Demander une mise à jour</a>
+                          <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
 
-                      <form class="autocomplete js-autocomplete-form header-navigation-item">
-                        <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
-                        <div class="autocomplete__toShow" hidden="">
-                          <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
-                          <div class="autocomplete__response js-display-response"></div>
-                        </div>
-                      </form>
-                      <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>
-                        `;
-                    $('div.blockInformations__actions .dropdown-menu').append(template);
-                    deleteShowClick();
-                });
+                          <form class="autocomplete js-autocomplete-form header-navigation-item">
+                            <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
+                            <div class="autocomplete__toShow" hidden="">
+                              <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
+                              <div class="autocomplete__response js-display-response"></div>
+                            </div>
+                          </form>
+                          <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>
+                            `;
+                        $('div.blockInformations__actions .dropdown-menu').append(template);
+                        deleteShowClick();
+                    });
+                }
             }
 
             function deleteShowClick() {
+                const res = cache.get('shows', showId).show;
                 // Gestion de la suppression de la série du compte utilisateur
                 $('.blockInformations__actions .dropdown-menu a:last-child').removeAttr('onclick').click((e) => {
                     e.stopPropagation();
@@ -1169,6 +1173,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                                   <div class="label">Ajouter</div>
                                 </div>`);
                                 $('.blockInformations__actions .dropdown-menu a:first-child').siblings().each((i, e) => { $(e).remove(); });
+                                addShowClick();
                             }, (err) => {
                                 notification('Erreur de suppression de la série', err);
                             });
@@ -1737,6 +1742,119 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         }, (err) => {
             notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
         });
+
+        // Si le bouton d'ajout de similaire est présent, on ajoute une marge
+        if ($('#similars button.blockTitle-subtitle').length === 0) {
+            $('#similars .blockTitle')
+                .after(`<button type="button" class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05">Suggérer une série</button>`);
+        }
+
+        // Gestion d'ajout d'un similar
+        $('#similars button.blockTitle-subtitle').removeAttr('onclick')
+        .click(() => {
+            new PopupAlert({
+                showClose: true,
+                type: 'popin-suggestshow',
+                params: {
+                    id: res.id
+                },
+                callback: function() {
+                    $("#similaire_id_search").on("keyup", (e) => {
+                        let search = $(e.currentTarget).val();
+                        if (search.length > 0 && e.keyCode != 40 && e.keyCode != 38) {
+                            callBetaSeries('GET', 'search', 'shows', {autres: 'mine', text: search})
+                            .then((data) => {
+                                $("#search_results .title").remove();
+                                $("#search_results .item").remove();
+                                let show;
+                                for (let s = 0; s < data.shows.length; s++) {
+                                    show = data.shows[s];
+                                    $('#search_results').append(`
+                                        <div class="item">
+                                          <p><span data-id="${show.id}" style="cursor:pointer;">${show.title}</span></p>
+                                        </div>`
+                                    );
+                                }
+                                $('#search_results .item span').click((e) => {
+                                    autocompleteSimilar(e.currentTarget);
+                                });
+                                $("#similaire_id_search").off('keydown').on('keydown', (e) => {
+                                    const current_item = $("#search_results .item.hl");
+                                    /* Flèche du bas */
+                                    if (e.keyCode == 40) {
+                                        if (current_item.length === 0) {
+                                            $("#search_results .item:first").addClass("hl");
+                                        } else {
+                                            let next_item = $("#search_results .item.hl").next("div");
+                                            if (next_item.attr("class") == "title") {
+                                                next_item = next_item.next("div");
+                                            }
+                                            current_item.removeClass("hl");
+                                            next_item.addClass("hl");
+                                        }
+
+                                        return false;
+                                    }
+                                    /* Flèche du haut */
+
+                                    if (e.keyCode == 38) {
+                                        if (current_item.length !== 0) {
+                                            let prev_item = $("#search_results .item.hl").prev("div");
+                                            if (prev_item.attr("class") == "title") {
+                                                prev_item = prev_item.prev("div");
+                                            }
+                                            current_item.removeClass("hl");
+                                            prev_item.addClass("hl");
+                                        }
+
+                                        return false;
+                                    }
+
+                                    /* Entrée */
+
+                                    if (e.keyCode == 13) {
+                                        if (debug) console.log('current_item', current_item);
+                                        if (current_item.length !== 0) {
+                                            autocompleteSimilar(current_item.find("span"));
+                                        }
+
+                                        return false;
+                                    }
+
+                                    /* Echap */
+
+                                    if (e.keyCode == 27) {
+                                        $("#search_results").empty();
+                                        $("input[name=similaire_id_search]").val("").trigger("blur");
+
+                                        return false;
+                                    }
+                                });
+                            }, (err) => {
+                                notification('Ajout d\'un similar', 'Erreur requête Search: ' + err);
+                            });
+                        } else if (e.keyCode != 40 && e.keyCode != 38) {
+                            $("#search_results").empty();
+                            $("#similaire_id_search").off("keydown");
+                        }
+                    });
+                },
+            });
+
+            function autocompleteSimilar(el) {
+                let titre = $(el).html(),
+                    id = $(el).data("id");
+
+                titre = titre.replace(/&amp;/g, "&");
+                $("#search_results .item").remove();
+                $("#search_results .title").remove();
+                $("#similaire_id_search").val(titre).trigger("blur");
+                $("input[name=similaire_id]").val(id);
+                $('#popin-dialog .popin-content-html > form > div.button-set > button').focus();
+                //$("input[name=notes_url]").trigger("focus");
+            }
+        });
+
 
         /**
          * Fonction d'ajout du bandeau "Viewed" sur les images des similaires
