@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.0
+// @version      0.20.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -31,7 +31,7 @@
 /* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
 let betaseries_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
-const serverBaseUrl = 'https://betaseries.aufilelec.fr';
+const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
 /************************************************************************************************/
 
@@ -109,7 +109,8 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
               }
           },
           api = {
-            base: 'https://api.betaseries.com'
+            base: 'https://api.betaseries.com',
+            version: '3.0'
           };
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
@@ -2065,8 +2066,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         return new Promise((resolve, reject) => {
             window.addEventListener("message", receiveMessage, false);
             function receiveMessage(event) {
+                const origin = new URL(serverBaseUrl).origin;
                 if (debug) console.log('receiveMessage', event);
-                if (event.origin !== serverBaseUrl) {
+                if (event.origin !== origin) {
                     if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
                     reject('event.origin is not betaseries.aufilelec.fr');
                     return;
@@ -2097,25 +2099,34 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
      * @return {Promise}
      */
     function callBetaSeries(type, methode, fonction, args, nocache = false, setcache = true) {
-        let uri = 'https://api.betaseries.com/' + methode + '/' + fonction,
+        let uri = `api.base/${methode}/${fonction}`,
+            // Les en-têtes pour l'API
             myHeaders = new Headers({
                 'Accept'                : 'application/json',
-                'X-BetaSeries-Version'  : '3.0',
+                'X-BetaSeries-Version'  : api.version,
                 'X-BetaSeries-Token'    : betaseries_api_user_token,
                 'X-BetaSeries-Key'      : betaseries_api_user_key
             }),
+            // objet qui contient les paramètres de la requête
             initFetch = {
                 method: type,
                 headers: myHeaders,
                 mode: 'cors',
                 cache: 'no-cache'
             },
-            request, keys = Object.keys(args);
+            keys = Object.keys(args);
 
-        if (debug) console.log('callBetaSeries', {type: type, methode: methode, fonction: fonction, args: args, nocache: nocache});
+        if (debug) console.log('callBetaSeries', {
+            type: type,
+            methode: methode,
+            fonction: fonction,
+            args: args,
+            nocache: nocache,
+            setcache: setcache
+        });
 
         // On crée l'URL de la requête de type GET avec les paramètres
-        if (type === 'GET') {
+        if (type === 'GET' && keys.length > 0) {
             let params = [];
             for (let key of keys) {
                 params.push(key + '=' + args[key]);
@@ -2124,7 +2135,6 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         } else if (keys.length > 0) {
             initFetch.body = new URLSearchParams(args);
         }
-        request = new Request(uri);
         // On retourne la ressource en cache si elle y est présente
         if (! nocache && type === 'GET' && args && 'id' in args && cache.has(methode, args.id)) {
             return new Promise((resolve) => {
@@ -2133,22 +2143,25 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
         }
         return new Promise((resolve, reject) => {
             counter++; // Incrément du compteur de requêtes à l'API
-            fetch(request, initFetch).then(response => {
+            fetch(uri, initFetch).then(response => {
                 if (debug) console.log('fetch response', response);
                 // On récupère les données et les transforme en objet
                 response.json().then((data) => {
-                    if (debug) console.log('fetch data & status (%d)', response.status, data);
+                    if (debug) console.log('fetch status (%d) & data', response.status, data);
                     // On gère le retour d'erreurs de l'API
                     if (data.hasOwnProperty('errors') && data.errors.length > 0) {
-                        let code = data.errors[0].code,
-                            text = data.errors[0].text;
-                        if (code === 2005 || (response.status === 400 && code === 0 && text === "L'utilisateur a déjà marqué cet épisode comme vu.")) {
+                        const code = data.errors[0].code,
+                              text = data.errors[0].text;
+                        if (code === 2005 ||
+                            (response.status === 400 && code === 0 &&
+                                text === "L'utilisateur a déjà marqué cet épisode comme vu."))
+                        {
                             reject('changeStatus');
                         } else if (code == 2001) {
                             // Appel de l'authentification pour obtenir un token valide
                             authenticate().then(() => {
                                 callBetaSeries(type, methode, fonction, args, nocache, setcache)
-                                    .then((data) => {
+                                .then((data) => {
                                     resolve(data);
                                 }, (err) => {
                                     reject(err);
@@ -2163,6 +2176,7 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                     }
                     // On gère les erreurs réseau
                     if (!response.ok) {
+                        console.error('Fetch erreur network', response);
                         reject(response);
                         return;
                     }
