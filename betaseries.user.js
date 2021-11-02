@@ -1099,6 +1099,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   key = `show-${showId}-${seasonNum}`,
                   res = cache.get('shows', showId).show;
             let promise;
+
             function addShowClick() {
                 const res = cache.get('shows', showId).show;
                 // Vérifier si le membre a ajouter la série à son compte
@@ -1215,6 +1216,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             crossorigin="anonymous"></script>
                 `);
             }
+
             promise.then((data) => {
                 let intTime = setInterval(function() {
                     if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
@@ -1257,6 +1259,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 }, 500);
             });
+
             /**
              * Affiche/masque le spinner de modification des épisodes
              *
@@ -1312,6 +1315,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     }
                 });
             }
+
             /**
              * Change le statut visuel de la vignette sur le site
              * @param  {Object} $elt          L'objet jQuery de l'épisode
@@ -1392,6 +1396,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 }
             }
+
             /**
              * Met à jour la barre de progression de visionnage de la série
              * @return {void}
@@ -1404,6 +1409,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 // On met à jour la barre de progression
                 progBar.css('width', show.user.status.toFixed(1) + '%');
             }
+
             /**
              * Met à jour le bloc du prochain épisode à voir
              * @return {void}
@@ -1861,7 +1867,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
         });
 
-
         /**
          * Fonction d'ajout du bandeau "Viewed" sur les images des similaires
          * si la série a été vue totalement/partiellement
@@ -1994,6 +1999,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 });
             });
         }
+
         /**
          * Permet d'afficher une note avec des étoiles
          * @param  {Number} note      La note à afficher
@@ -2101,7 +2107,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @return {Promise}
      */
     function callBetaSeries(type, methode, fonction, args, nocache = false, setcache = true) {
-        let uri = `api.base/${methode}/${fonction}`,
+        let uri = `${api.base}/${methode}/${fonction}`,
             // Les en-têtes pour l'API
             myHeaders = new Headers({
                 'Accept'                : 'application/json',
@@ -2118,14 +2124,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             },
             keys = Object.keys(args);
 
-        if (debug) console.log('callBetaSeries', {
-            type: type,
-            methode: methode,
-            fonction: fonction,
-            args: args,
-            nocache: nocache,
-            setcache: setcache
-        });
+        if (debug) {
+            console.log('callBetaSeries', {
+                type: type,
+                methode: methode,
+                fonction: fonction,
+                args: args,
+                nocache: nocache,
+                setcache: setcache
+            });
+        }
 
         // On crée l'URL de la requête de type GET avec les paramètres
         if (type === 'GET' && keys.length > 0) {
