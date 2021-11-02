@@ -27,7 +27,10 @@
     "CONSTANTE_SORT": true,
     "hideButtonReset": true,
     "generate_route": true,
-    "trans": true
+    "trans": true,
+    "Headers": true,
+    "Request": true,
+    "URLSearchParams": true
   },
   "indent"        : 4         // Specify indentation spacing
 }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.19.19
+// @version      0.20.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -107,6 +107,9 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
                   img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
                   title: 'Interdit aux enfants de 17 ans et moins'
               }
+          },
+          api = {
+            base: 'https://api.betaseries.com'
           };
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
@@ -2085,71 +2088,95 @@ const serverBaseUrl = 'https://betaseries.aufilelec.fr';
     /**
      * Fonction servant à appeler l'API de BetaSeries
      *
-     * @param {String}   type             Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-     * @param {String}   methode          La ressource de l'API (ex: shows, seasons, episodes...)
-     * @param {String}   fonction         La fonction à appliquer sur la ressource (ex: search, list...)
-     * @param {Object}   args             Un objet (clef, valeur) à transmettre dans la requête
-     * @param {bool}     [nocache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
-     * @return   {Promise}
+     * @param  {String}   type             Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
+     * @param  {String}   methode          La ressource de l'API (ex: shows, seasons, episodes...)
+     * @param  {String}   fonction         La fonction à appliquer sur la ressource (ex: search, list...)
+     * @param  {Object}   args             Un objet (clef, valeur) à transmettre dans la requête
+     * @param  {bool}     [nocache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
+     * @param  {bool}     [setcache=true]  Indique si on doit ou pas enregistrer la réponse dans le cache (Par défaut: true)
+     * @return {Promise}
      */
-    function callBetaSeries(type, methode, fonction, args, nocache = false) {
-        let urlAPI = 'https://api.betaseries.com/' + methode + '/' + fonction,
-            params = {
+    function callBetaSeries(type, methode, fonction, args, nocache = false, setcache = true) {
+        let uri = 'https://api.betaseries.com/' + methode + '/' + fonction,
+            myHeaders = new Headers({
+                'Accept'                : 'application/json',
+                'X-BetaSeries-Version'  : '3.0',
+                'X-BetaSeries-Token'    : betaseries_api_user_token,
+                'X-BetaSeries-Key'      : betaseries_api_user_key
+            }),
+            initFetch = {
                 method: type,
-                data: args,
-                dataType: 'json',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-BetaSeries-Version': '3.0',
-                    'x-betaseries-token': betaseries_api_user_token,
-                    'x-betaseries-key': betaseries_api_user_key
-                },
-                crossDomain: true
-            };
+                headers: myHeaders,
+                mode: 'cors',
+                cache: 'no-cache'
+            },
+            request, keys = Object.keys(args);
 
         if (debug) console.log('callBetaSeries', {type: type, methode: methode, fonction: fonction, args: args, nocache: nocache});
+
+        // On crée l'URL de la requête de type GET avec les paramètres
+        if (type === 'GET') {
+            let params = [];
+            for (let key of keys) {
+                params.push(key + '=' + args[key]);
+            }
+            uri += '?' + params.join('&');
+        } else if (keys.length > 0) {
+            initFetch.body = new URLSearchParams(args);
+        }
+        request = new Request(uri);
         // On retourne la ressource en cache si elle y est présente
-        if (! nocache && type == 'GET' && args && 'id' in args && cache.has(methode, args.id)) {
+        if (! nocache && type === 'GET' && args && 'id' in args && cache.has(methode, args.id)) {
             return new Promise((resolve) => {
                 resolve(cache.get(methode, args.id));
             });
         }
         return new Promise((resolve, reject) => {
-            $.ajax(urlAPI, params).done(function(data) {
-                // Mise en cache de la ressource
-                if (args && 'id' in args && type == 'GET') {
-                    cache.set(methode, args.id, data);
-                }
-                resolve(data);
-            })
-            .fail(function(jqXHR, textStatus) {
-                console.error('callBetaSeries error: ', textStatus, type, urlAPI, params, jqXHR);
-                if (typeof jqXHR.responseJSON == 'undefined') {
-                    reject(textStatus);
-                    return;
-                }
-
-                let code = jqXHR.responseJSON.errors[0].code,
-                    text = jqXHR.responseJSON.errors[0].text;
-                if (code === 2005 || (jqXHR.status === 400 && code === 0 && text === "L'utilisateur a déjà marqué cet épisode comme vu.")) {
-                    reject('changeStatus');
-                } else if (code == 2001) {
-                    // Appel de l'authentification pour obtenir un token valide
-                    authenticate().then(() => {
-                        callBetaSeries(type, methode, fonction, args, nocache)
-                        .then((data) => {
-                            resolve(data);
-                        }, (err) => {
-                            reject(err);
-                        });
-                    }, (err) => {
-                        reject(err);
-                    });
-                } else {
-                    reject(JSON.stringify(jqXHR.responseJSON.errors[0]));
-                }
-            })
-            .always(function() {counter++;});
+            counter++; // Incrément du compteur de requêtes à l'API
+            fetch(request, initFetch).then(response => {
+                if (debug) console.log('fetch response', response);
+                // On récupère les données et les transforme en objet
+                response.json().then((data) => {
+                    if (debug) console.log('fetch data & status (%d)', response.status, data);
+                    // On gère le retour d'erreurs de l'API
+                    if (data.hasOwnProperty('errors') && data.errors.length > 0) {
+                        let code = data.errors[0].code,
+                            text = data.errors[0].text;
+                        if (code === 2005 || (response.status === 400 && code === 0 && text === "L'utilisateur a déjà marqué cet épisode comme vu.")) {
+                            reject('changeStatus');
+                        } else if (code == 2001) {
+                            // Appel de l'authentification pour obtenir un token valide
+                            authenticate().then(() => {
+                                callBetaSeries(type, methode, fonction, args, nocache, setcache)
+                                    .then((data) => {
+                                    resolve(data);
+                                }, (err) => {
+                                    reject(err);
+                                });
+                            }, (err) => {
+                                reject(err);
+                            });
+                        } else {
+                            reject(JSON.stringify(data.errors[0]));
+                        }
+                        return;
+                    }
+                    // On gère les erreurs réseau
+                    if (!response.ok) {
+                        reject(response);
+                        return;
+                    }
+                    // Retour sans erreur, on met la ressource en cache
+                    if (setcache && type == 'GET' && args && 'id' in args) {
+                        cache.set(methode, args.id, data);
+                    }
+                    resolve(data);
+                });
+            }).catch(error => {
+                if (debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                console.error(error);
+                reject(error.message);
+            });
         });
     }
 
