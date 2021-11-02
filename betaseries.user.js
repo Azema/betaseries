@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.2
+// @version      0.20.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -838,7 +838,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             $('script[src*="sddan.com"]').remove();
         }, 500);
         $('.parent-ad-desktop').attr('style', 'display: none !important');
-        setInterval(function() {$('iframe[name!="userscript"]').remove();}, 1000);
+        setInterval(function() {
+            let $frame;
+            // Supprime les iframes autres que celles des vidéos de bande annonce
+            $('iframe[name!="userscript"]').each((i, elt) => {
+                $frame = $(elt);
+                if (!$frame.hasClass('embed-responsive-item')) {
+                    $frame.remove();
+                }
+            });
+        }, 1000);
         $('.blockPartner').attr('style', 'display: none !important');
     }
 
@@ -1566,7 +1575,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
-                <div id="updateSimilarsBlock" class="updateElements">
+                <div id="updateSimilarsBlock" class="updateElements" style="margin-left:10px;">
                   <img src="${serverBaseUrl}/img/update.png"
                        class="updateSimilars updateElement"
                        title="Mise à jour des similaires vus"/>
