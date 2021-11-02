@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.1
+// @version      0.20.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -533,6 +533,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
             callBetaSeries('GET', type.plural, fonction, {'id': eltId})
             .then(function(data) {
+                if (debug) console.log('addBtnDev promise return', data);
                 if (! $dataRes.is(':empty')) $dataRes.empty();
                 $dataRes.append(renderjson.set_show_to_level(2)(data[type.singular]));
                 $('#dialog-resource-title span').empty().text('(' + counter + ' appels API)');
@@ -1565,9 +1566,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                        title="Mise à jour des similaires vus"/>
                 </div>
             `);
-            // Si le bouton d'ajout de similaire est présent, on ajoute une marge
-            if ($('#similars button.blockTitle-subtitle').length == 1) {
-                $('#updateSimilarsBlock').css('margin-left', '10px');
+            // Si le bouton d'ajout de similaire n'est pas présent et que la ressource est dans le compte de l'utilisateur, on ajoute le bouton
+            if ($('#similars button.blockTitle-subtitle').length === 0 && res.in_account === true) {
+                $('#similars .blockTitle')
+                    .after(`<button type="button" class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05">Suggérer une série</button>`);
             }
             // On ajoute la gestion de l'event click sur le bouton
             $('.updateSimilars').click(function(e) {
@@ -1587,13 +1589,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }
 
-        let params = {'details': true};
+        let params = {'details': true},
+            objSimilars = [],
+            setcache = true; // Indique si il faut enregistrer / pas la réponse dans le cache
         if (type.singular == 'show') {
             params.thetvdb_id = res.thetvdb_id;
         } else if (type.singular == 'movie') {
             params.id = res.id;
+            delete params.details;
+            setcache = false;
         }
-        callBetaSeries('GET', type.plural, 'similars', params, true)
+        callBetaSeries('GET', type.plural, 'similars', params, true, setcache)
         .then(function(data) {
             let intTime = setInterval(function() {
                 if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
@@ -1684,6 +1690,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         obj = {};
                         obj[type.singular] = data.similars[s][type.singular];
                         cache.set(type.plural, data.similars[s][type.singular].id, obj);
+                        objSimilars.push(data.similars[s][type.singular].id);
 
                         let $elt = $(similars.get(s)),
                             $link = $elt.siblings('a'),
@@ -1747,12 +1754,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
         });
 
-        // Si le bouton d'ajout de similaire est présent, on ajoute une marge
-        if ($('#similars button.blockTitle-subtitle').length === 0) {
-            $('#similars .blockTitle')
-                .after(`<button type="button" class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05">Suggérer une série</button>`);
-        }
-
         // Gestion d'ajout d'un similar
         $('#similars button.blockTitle-subtitle').removeAttr('onclick')
         .click(() => {
@@ -1763,7 +1764,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     id: res.id
                 },
                 callback: function() {
-                    $("#similaire_id_search").on("keyup", (e) => {
+                    $("#similaire_id_search").focus().on("keyup", (e) => {
                         let search = $(e.currentTarget).val();
                         if (search.length > 0 && e.keyCode != 40 && e.keyCode != 38) {
                             callBetaSeries('GET', 'search', 'shows', {autres: 'mine', text: search})
@@ -1773,6 +1774,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 let show;
                                 for (let s = 0; s < data.shows.length; s++) {
                                     show = data.shows[s];
+                                    if (objSimilars.indexOf(show.id) !== -1) { continue; }
                                     $('#search_results').append(`
                                         <div class="item">
                                           <p><span data-id="${show.id}" style="cursor:pointer;">${show.title}</span></p>
@@ -2058,7 +2060,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                       title="Connexion à BetaSeries"
                       width="50%"
                       height="400"
-                      src="${serverBaseUrl}/"
+                      src="${serverBaseUrl}/index.html"
                       style="background:white;margin:auto;">
               </iframe>
             </div>'
@@ -2070,7 +2072,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 if (debug) console.log('receiveMessage', event);
                 if (event.origin !== origin) {
                     if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
-                    reject('event.origin is not betaseries.aufilelec.fr');
+                    reject('event.origin is not %s', origin);
                     return;
                 }
                 let msg = event.data.message;
