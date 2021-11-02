@@ -91,6 +91,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ## Développement
 * Utilisation des [Promise](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 * Mise en cache des ressources, pour limiter les appels à l'API
+* Utilisation de [**Fetch**](https://developer.mozilla.org/fr/docs/Web/API/fetch) au lieu de jQuery.Ajax
 
 ## Ressources
 
