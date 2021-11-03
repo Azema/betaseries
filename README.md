@@ -44,6 +44,9 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ![Séries similaires avec le bandeau vues](/screenshots/similarsViewed.jpg "Séries similaires avec le bandeau vues")
 * Ajout d'une popup avec les détails d'une série/film similaire lors du survol de l'image d'un similaire
+* Dans la popup d'un similaire:
+  * Film: Possibilité d'indiquer l'état **Vu**, **A voir** ou **Ne veux pas voir**
+  * Série: Possibilité d'ajouter la série au compteur utilisateur connecté
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource (série et film)
 
@@ -56,6 +59,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
 
 #### Liste des séries
+
 * Ajout d'un paginateur en haut de la liste des séries
 * Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays __(Seul un pays ajouté sera retenu, si vous rafraîchissez la page)__.
 
@@ -64,10 +68,12 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout du statut des séries sur la page de gestion des séries de l'utilisateur connecté
 
 ### Membres
+
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
 * Ajout d'un champ de recherche sur la page des amis d'un membre
 
 ### API
+
 * Ajout d'un sommaire, sur les pages des méthodes de l'[API](https://www.betaseries.com/api/), avec les liens des différentes fonctions. Ce qui permet de voir toutes les fonctions liées aux méthodes, en début de page.
 
 ![Sommaire des méthodes de l'API](/screenshots/sommaireMethodes.png "Sommaire des méthodes de l'API")
@@ -81,14 +87,17 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ![Console de l'API](/screenshots/console.png "Console de l'API")
 
 ## Corrections
+
 * Décode les HTMLEntities dans le titre de la série
 
 ![HTMLEntities](/screenshots/HTMLEntities-title.png "HTMLEntities dans le titre")
 
 ## Futures améliorations possibles
+
 * ~~Afficher les infos de la ressource dans une popup, lors du survol d'un similar~~
 
 ## Développement
+
 * Utilisation des [Promise](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 * Mise en cache des ressources, pour limiter les appels à l'API
 * Utilisation de [**Fetch**](https://developer.mozilla.org/fr/docs/Web/API/fetch) au lieu de jQuery.Ajax

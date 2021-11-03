@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.3
+// @version      0.20.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -137,10 +137,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             decodeTitle(); // On décode le titre de la ressource
             addRating(); // On ajoute la classification TV de la ressource courante
             addNumberVoters(); // On ajoute le nombre de votes à la note
-            // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
-            timer = setInterval(function() {
-                addBtnWatchedToEpisode();
-            }, 500);
+            if (/^\/serie\//.test(url)) {
+                let waitEpisodes = 0;
+                // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
+                timer = setInterval(function() {
+                    addBtnWatchedToEpisode();
+                    if (++waitEpisodes >= 100) {
+                        clearInterval(timer);
+                        notification('Wait Episodes List', 'Les vignettes des saisons et des épisodes n\'ont pas été trouvées.');
+                    }
+                }, 500);
+            }
         });
     }
     // Fonctions appeler pour la page de gestion des series
@@ -1611,7 +1618,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             params.thetvdb_id = res.thetvdb_id;
         } else if (type.singular == 'movie') {
             params.id = res.id;
-            delete params.details;
             setcache = false;
         }
         callBetaSeries('GET', type.plural, 'similars', params, true, setcache)
@@ -1632,16 +1638,22 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
+
                 /**
                  * Retourne le contenu de la Popup de présentation du similar
-                 * @param {Object} objRes L'objet de la série
+                 * @param  {Number} objId L'identifiant de la ressource
                  * @return {String}       La présentation du similar
                  */
-                function tempContentPopup(objRes) {
-                    const genres = Object.values(objRes.genres).join(', '),
+                function tempContentPopup(objId) {
+                    const objRes = cache.get(type.plural, objId)[type.singular],
+                          genres = Object.values(objRes.genres).join(', '),
                           status = objRes.status == 'Ended' ? 'Terminée' : 'En cours',
-                          seen = (objRes.user.status > 0) ? 'Vu à <strong>' + objRes.user.status + '%</strong>' : 'Pas vu',
-                          description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
+                          seen = (objRes.user.status > 0) ? 'Vu à <strong>' + objRes.user.status + '%</strong>' : 'Pas vu';
+                    //if (debug) console.log('similars tempContentPopup', objRes);
+                    let description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
+                    if (description.length > 200) {
+                        description = description.substring(0, 200) + '...';
+                    }
                     let template = '<div>';
                     if (type.singular == 'show') {
                         template += `<p><strong>${objRes.seasons}</strong> saison${(objRes.seasons > 1 ? 's':'')}, <strong>${objRes.episodes}</strong> épisodes, `;
@@ -1652,6 +1664,23 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         template += `<strong>${objRes.notes.total}</strong> votes</p>`;
                     } else {
                         template += 'Aucun vote</p>';
+                    }
+                    // On ajoute les cases à cocher pour indiquer l'état d'un film (Vu, A voir, Ne veux pas voir)
+                    // pour l'utilisateur connecté
+                    if (type.singular == 'movie') {
+                        // Ajouter une case à cocher pour l'état "Vu"
+                        template += `<p><label for="seen">Vu</label>
+                            <input type="checkbox" class="movie movieSeen" name="seen" data-movie="${objRes.id}"  ${objRes.user.status === 1 ? 'checked' : ''} style="margin-right:5px;"></input>`;
+                        // Ajouter une case à cocher pour l'état "A voir"
+                        template += `<label for="mustSee">A voir</label>
+                            <input type="checkbox" class="movie movieMustSee" name="mustSee" data-movie="${objRes.id}" ${objRes.user.status === 0 ? 'checked' : ''} style="margin-right:5px;"></input>`;
+                        // Ajouter une case à cocher pour l'état "Ne pas voir"
+                        template += `<label for="notSee">Ne pas voir</label>
+                            <input type="checkbox" class="movie movieNotSee" name="notSee" data-movie="${objRes.id}"  ${objRes.user.status === 2 ? 'checked' : ''}></input></p>`;
+                    }
+                    // Ajoute la possibilité d'ajouter la série sur le compte de l'utilisateur connecté
+                    else if (type.singular === 'show' && objRes.in_account === false) {
+                        template += '<p><a href="javascript:;" class="addShow">Ajouter</a></p>';
                     }
                     template += '<p><u>Genres:</u> ' + genres + '</p>';
                     if (objRes.hasOwnProperty('creation') || objRes.hasOwnProperty('country') || objRes.hasOwnProperty('production_year')) {
@@ -1674,16 +1703,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         } else if (objRes.user.status > 0) {
                             archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
                         }
-                        if (objRes.hasOwnProperty('showrunner') && objRes.showrunner !== null) {
+                        if (objRes.hasOwnProperty('showrunner') && objRes.showrunner !== null && objRes.showrunner.length > 0) {
                             template += `<p><u>Show Runner:</u> <strong>${objRes.showrunner.name}</strong></p>`;
                         }
                         template += `<p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>`;
                     } else if (type.singular == 'movie') {
                         template += `<p><u>Réalisateur:</u> <strong>${objRes.director}</strong></p>`;
                     }
-                    template += `<p>${description.substring(0, 200)}...</p></div>`;
+                    template += `<p>${description}</p></div>`;
                     return template;
                 }
+
                 /**
                  * Retourne le titre de la Popup de présentation du similar
                  * @param  {Object} objRes L'objet de la série
@@ -1698,40 +1728,43 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     return title;
                 }
 
-                // TODO: En attente de la résolution du bug (https://www.betaseries.com/bugs/api/459)
-                if (type.singular === 'show') {
-                    let obj = {};
-                    for (let s = 0; s < data.similars.length; s++) {
-                        obj = {};
-                        obj[type.singular] = data.similars[s][type.singular];
-                        cache.set(type.plural, data.similars[s][type.singular].id, obj);
-                        objSimilars.push(data.similars[s][type.singular].id);
+                let obj = {}, resId;
+                for (let s = 0; s < data.similars.length; s++) {
+                    obj = {};
+                    resId = data.similars[s][type.singular].id;
+                    obj[type.singular] = data.similars[s][type.singular];
+                    cache.set(type.plural, resId, obj);
+                    objSimilars.push(resId);
 
-                        let $elt = $(similars.get(s)),
-                            $link = $elt.siblings('a'),
-                            resource = data.similars[s][type.singular];
+                    let $elt = $(similars.get(s)),
+                        $link = $elt.siblings('a'),
+                        resource = data.similars[s][type.singular];
 
-                        decodeTitle($elt);
-                        $elt.html($elt.html() +
-                                  `<i class="fa fa-wrench popover-wrench"
+                    decodeTitle($elt);
+                    // On ajoute l'icone pour visualiser les data JSON du similar
+                    $elt.html($elt.html() +
+                              `<i class="fa fa-wrench popover-wrench"
                                   aria-hidden="true"
                                   style="margin-left:5px;cursor:pointer;"
-                                  data-id="${resource.id}">
+                                  data-id="${resource.id}"
+                                  data-type="${type.singular}">
                                </i>`
-                                 );
-                        addBandeau($elt, resource.user.status, resource.notes);
-                        $link.popover({
-                            container: $link,
-                            delay: { "show": 250, "hide": 100 },
-                            html: true,
-                            content: tempContentPopup(resource),
-                            placement: funcPlacement,
-                            title: titlePopup(resource),
-                            trigger: 'hover',
-                            fallbackPlacement: ['left', 'right']
-                        });
-                    }
+                             );
+                    // On ajoute le bandeau viewed sur le similar
+                    addBandeau($elt, resource.user.status, resource.notes, type.singular);
+                    // On ajoute la popover sur le similar
+                    $link.popover({
+                        container: $link,
+                        delay: { "show": 250, "hide": 100 },
+                        html: true,
+                        content: tempContentPopup(resId),
+                        placement: funcPlacement,
+                        title: titlePopup(resource),
+                        trigger: 'hover',
+                        fallbackPlacement: ['left', 'right']
+                    });
                 }
+                // Event click sur l'icone de visualisation des data JSON d'un similar
                 $('.popover-wrench').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -1752,7 +1785,65 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         notification('Erreur de récupération de ' + type.singular, 'popover wrench: ' + err);
                     });
                 });
+                // Event à l'ouverture de la Popover
                 $('#similars a.slide__image').on('shown.bs.popover', function () {
+                    const resId = $(this).parent().find('.popover-wrench').data('id'),
+                          type = $(this).parent().find('.popover-wrench').data('type');
+                    // On met à jour les données du Popover
+                    $('.popover-body').html(tempContentPopup(resId));
+                    // On gère les modifs sur les cases à cocher de l'état d'un film similar
+                    if (type === 'movie') {
+                        $('input.movie').change(e => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const $elt = $(e.currentTarget);
+                            let params = {id: $elt.data('movie'), state: 0};
+                            if (debug) console.log('input.movie change', $elt, params);
+                            if ($elt.is(':checked') && $elt.hasClass('movieSeen')) {
+                                params.state = 1;
+                            } else if (($elt.is(':checked') && $elt.hasClass('movieMustSee')) ||
+                                       (! $elt.is(':checked') && $elt.hasClass('movieSeen')))
+                            {
+                                params.state = 0;
+                            } else if ($elt.is(':checked') && $elt.hasClass('movieNotSee')) {
+                                params.state = 2;
+                            }
+                            $('input.movie:not(.' + $elt.get(0).classList[1] + ')').each((i, e) => {
+                                $(e).prop( "checked", false );
+                            });
+                            callBetaSeries('POST', 'movies', 'movie', params)
+                                .then(data => {
+                                if (params.state === 1) {
+                                    $elt.parents('a').prepend(
+                                        `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
+                                    );
+                                } else if ($elt.parents('a').find('.bandViewed').length > 0) {
+                                    $elt.parents('a').find('.bandViewed').remove();
+                                }
+                                if (debug) console.log('movie mustSee/seen OK', data);
+                                cache.set('movies', params.id, data);
+                            }, err => {
+                                console.warn('movie mustSee/seen KO', err);
+                            });
+                        });
+                    }
+                    // On gère le click sur le lien d'ajout de la série similar sur le compte de l'utilisateur
+                    else if (type === 'show') {
+                        $('.popover .addShow').click((e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            callBetaSeries('POST', 'shows', 'show', {id: resId})
+                            .then(data => {
+                                const para = $(e.currentTarget).parent('p');
+                                $(e.currentTarget).remove();
+                                para.text('<span style="color:var(--link-color)">La série a bien été ajoutée à votre compte</span>').delay( 2000 ).fadeIn( 400 );
+                                cache.set('shows', resId, data);
+                            }, err => {
+                                console.error('Popover addShow error', err);
+                            });
+                        });
+                    }
+                    // On gère le placement de la Popover par rapport à l'image du similar
                     let popover = $('.popover'),
                         img = popover.siblings('img.js-lazy-image'),
                         placement = $('.popover').attr('x-placement'),
@@ -1770,8 +1861,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         });
 
         // Gestion d'ajout d'un similar
-        $('#similars button.blockTitle-subtitle').removeAttr('onclick')
-        .click(() => {
+        $('#similars button.blockTitle-subtitle').removeAttr('onclick').click(() => {
             new PopupAlert({
                 showClose: true,
                 type: 'popin-suggestshow',
@@ -1807,7 +1897,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                             $("#search_results .item:first").addClass("hl");
                                         } else {
                                             let next_item = $("#search_results .item.hl").next("div");
-                                            if (next_item.attr("class") == "title") {
+                                            if (next_item.attr("class") === "title") {
                                                 next_item = next_item.next("div");
                                             }
                                             current_item.removeClass("hl");
@@ -1817,7 +1907,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                         return false;
                                     }
                                     /* Flèche du haut */
-
                                     if (e.keyCode == 38) {
                                         if (current_item.length !== 0) {
                                             let prev_item = $("#search_results .item.hl").prev("div");
@@ -1827,27 +1916,22 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                             current_item.removeClass("hl");
                                             prev_item.addClass("hl");
                                         }
-
                                         return false;
                                     }
 
-                                    /* Entrée */
-
+                                    /* Touche Entrée */
                                     if (e.keyCode == 13) {
                                         if (debug) console.log('current_item', current_item);
                                         if (current_item.length !== 0) {
                                             autocompleteSimilar(current_item.find("span"));
                                         }
-
                                         return false;
                                     }
 
-                                    /* Echap */
-
+                                    /* Touche Echap */
                                     if (e.keyCode == 27) {
                                         $("#search_results").empty();
                                         $("input[name=similaire_id_search]").val("").trigger("blur");
-
                                         return false;
                                     }
                                 });
@@ -1885,9 +1969,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @param {Object} objNote  Objet note contenant la note moyenne et le nombre total de votes
          * @return void
          */
-        function addBandeau(elt, status, objNote) {
+        function addBandeau(elt, status, objNote, type) {
             // Si la série a été vue ou commencée
-            if (status && status > 0) {
+            if (status && ((type === 'movie' && status === 1) || (type === 'show' && status > 0))) {
                 // On ajoute le bandeau "Viewed"
                 elt.siblings('a').prepend(
                     `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
@@ -1895,7 +1979,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             // On ajoute le code HTML pour le rendu de la note
             elt.after(
-                `<div class="stars-outer"><div class="stars-inner"></div></div>`
+                '<div class="stars-outer"><div class="stars-inner"></div></div>'
             );
             usRenderStars(
                 $('.stars-inner', elt.parent()),
@@ -2160,6 +2244,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 resolve(cache.get(methode, args.id));
             });
         }
+
         return new Promise((resolve, reject) => {
             counter++; // Incrément du compteur de requêtes à l'API
             fetch(uri, initFetch).then(response => {
