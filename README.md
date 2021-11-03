@@ -45,8 +45,8 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ![Séries similaires avec le bandeau vues](/screenshots/similarsViewed.jpg "Séries similaires avec le bandeau vues")
 * Ajout d'une popup avec les détails d'une série/film similaire lors du survol de l'image d'un similaire
 * Dans la popup d'un similaire:
-  * Film: Possibilité d'indiquer l'état **Vu**, **A voir** ou **Ne veux pas voir**
-  * Série: Possibilité d'ajouter la série au compteur utilisateur connecté
+  * ***Film:*** Possibilité d'indiquer l'état _Vu_, _A voir_ ou _Ne veux pas voir_
+  * ***Série:*** Possibilité d'ajouter la série au compteur utilisateur connecté
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource (série et film)
 
