@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.5
+// @version      0.20.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -110,7 +110,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           },
           api = {
             base: 'https://api.betaseries.com',
-            version: '3.0'
+              versions: {current: '3.0', last: '3.0'},
+              categories: [
+                  'badges', 'comments', 'episodes', 'friends', 'members', 'messages',
+                  'movies', 'news', 'oauth', 'pictures', 'planning', 'platforms',
+                  'polls', 'reports', 'search', 'seasons', 'shows', 'subtitles',
+                  'timeline'
+              ]
           };
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
@@ -127,6 +133,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         timer, timerUA, currentUser, cache = new Cache(),
         counter = 0, dialog;
 
+    checkApiVersion();
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour la mettre en cache
@@ -190,6 +197,28 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 updateAgenda();
             }, 1000);
         }
+    }
+
+    /**
+     * Cette fonction vérifie la dernière version de l'API
+     */
+    function checkApiVersion() {
+        fetch(location.origin + '/api/versions').then(response => {
+            if (!response.ok) {
+                return false;
+            }
+            return response.text();
+        }).then(html => {
+            // Convert the HTML string into a document object
+            let parser = new DOMParser(),
+                doc = parser.parseFromString(html, 'text/html');
+            // $('.maincontent > ul > li > strong').last().text().trim().split(' ')[1]
+            const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(),
+                  lastF = parseFloat(latest);
+            if (!Number.isNaN(lastF) && lastF > parseFloat(api.versions.last)) {
+                window.alert("L'API possède une nouvelle version: " + latest);
+            }
+        });
     }
 
     /**
@@ -2214,7 +2243,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // Les en-têtes pour l'API
             myHeaders = new Headers({
                 'Accept'                : 'application/json',
-                'X-BetaSeries-Version'  : api.version,
+                'X-BetaSeries-Version'  : api.versions.current,
                 'X-BetaSeries-Token'    : betaseries_api_user_token,
                 'X-BetaSeries-Key'      : betaseries_api_user_key
             }),
