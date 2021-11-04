@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.4
+// @version      0.20.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -19,7 +19,7 @@
 // @grant        GM_addStyle
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends generate_route
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends generate_route trans
    bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert */
 /* jslint unparam: true */
 
@@ -142,6 +142,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
                 timer = setInterval(function() {
                     addBtnWatchedToEpisode();
+                    // On évite une boucle infinie
                     if (++waitEpisodes >= 100) {
                         clearInterval(timer);
                         notification('Wait Episodes List', 'Les vignettes des saisons et des épisodes n\'ont pas été trouvées.');
@@ -847,7 +848,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         $('.parent-ad-desktop').attr('style', 'display: none !important');
         setInterval(function() {
             let $frame;
-            // Supprime les iframes autres que celles des vidéos de bande annonce
             $('iframe[name!="userscript"]').each((i, elt) => {
                 $frame = $(elt);
                 if (!$frame.hasClass('embed-responsive-item')) {
@@ -987,9 +987,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     let checkbox = $vignette.find('.checkSeen');
                     checkbox.attr('id', 'episode-' + id);
                     checkbox.addClass('seen');
+                    checkbox.data('pos', v);
                 } else {
                     // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
-                    $vignette.append('<div id="episode-' + id + '" class="checkSeen" style="background: none;"></div>');
+                    $vignette.append(`<div id="episode-${id}" class="checkSeen" data-pos="${v}" style="background: none;"></div>`);
                 }
             }
             // On ajoute un event click sur la case 'checkSeen'
@@ -1319,6 +1320,22 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 .then(function(data) {
                     if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
                     changeStatus($elt, status);
+                    // On met à jour l'objet Episode dans le cache
+                    if (cache.has('episodes', key)) {
+                        let episodes = cache.get('episodes', key).episodes;
+                        const pos = $elt.data('pos');
+                        if (pos && episodes[pos].id == episodeId) {
+                            episodes[pos] = data.episode;
+                        } else {
+                            for (let e = 0; e < episodes.length; e++) {
+                                if (episodes[e].id == episodeId) {
+                                    episodes[e] = data.episode;
+                                    break;
+                                }
+                            }
+                        }
+                        cache.set('episodes', key, {episodes: episodes});
+                    }
                 },
                 function(err) {
                     if (debug) console.log('changeStatusVignette error %s', err);
@@ -1638,7 +1655,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
-
                 /**
                  * Retourne le contenu de la Popup de présentation du similar
                  * @param  {Number} objId L'identifiant de la ressource
@@ -1665,21 +1681,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     } else {
                         template += 'Aucun vote</p>';
                     }
-                    // On ajoute les cases à cocher pour indiquer l'état d'un film (Vu, A voir, Ne veux pas voir)
-                    // pour l'utilisateur connecté
                     if (type.singular == 'movie') {
                         // Ajouter une case à cocher pour l'état "Vu"
                         template += `<p><label for="seen">Vu</label>
-                            <input type="checkbox" class="movie movieSeen" name="seen" data-movie="${objRes.id}"  ${objRes.user.status === 1 ? 'checked' : ''} style="margin-right:5px;"></input>`;
+                            <input type="checkbox" class="movie movieSeen" name="seen" data-movie="${objRes.id}"  ${objRes.user.status == 1 ? 'checked' : ''} style="margin-right:5px;"></input>`;
                         // Ajouter une case à cocher pour l'état "A voir"
                         template += `<label for="mustSee">A voir</label>
-                            <input type="checkbox" class="movie movieMustSee" name="mustSee" data-movie="${objRes.id}" ${objRes.user.status === 0 ? 'checked' : ''} style="margin-right:5px;"></input>`;
+                            <input type="checkbox" class="movie movieMustSee" name="mustSee" data-movie="${objRes.id}" ${objRes.user.status == 0 ? 'checked' : ''} style="margin-right:5px;"></input>`;
                         // Ajouter une case à cocher pour l'état "Ne pas voir"
                         template += `<label for="notSee">Ne pas voir</label>
-                            <input type="checkbox" class="movie movieNotSee" name="notSee" data-movie="${objRes.id}"  ${objRes.user.status === 2 ? 'checked' : ''}></input></p>`;
-                    }
-                    // Ajoute la possibilité d'ajouter la série sur le compte de l'utilisateur connecté
-                    else if (type.singular === 'show' && objRes.in_account === false) {
+                            <input type="checkbox" class="movie movieNotSee" name="notSee" data-movie="${objRes.id}"  ${objRes.user.status == 2 ? 'checked' : ''}></input></p>`;
+                    } else if (type.singular === 'show' && objRes.in_account === false) {
                         template += '<p><a href="javascript:;" class="addShow">Ajouter</a></p>';
                     }
                     template += '<p><u>Genres:</u> ' + genres + '</p>';
@@ -1713,7 +1725,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     template += `<p>${description}</p></div>`;
                     return template;
                 }
-
                 /**
                  * Retourne le titre de la Popup de présentation du similar
                  * @param  {Object} objRes L'objet de la série
@@ -1903,7 +1914,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                             current_item.removeClass("hl");
                                             next_item.addClass("hl");
                                         }
-
                                         return false;
                                     }
                                     /* Flèche du haut */
