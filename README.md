@@ -108,7 +108,7 @@ Les feuilles de style, les images et le scripts JS sont disponibles dans le rép
 
 Vous pouvez définir votre propre serveur en modifiant la constante `serverBaseUrl` en début de script.
 ```JavaScript
-const serverBaseUrl = 'https://betaseries.aufilelec.fr';
+const serverBaseUrl = 'https://betaseries.example.org';
 
 ```
 
