@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.6
+// @version      0.20.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -109,7 +109,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
               }
           },
           api = {
-            base: 'https://api.betaseries.com',
+              base: 'https://api.betaseries.com',
               versions: {current: '3.0', last: '3.0'},
               categories: [
                   'badges', 'comments', 'episodes', 'friends', 'members', 'messages',
@@ -118,6 +118,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   'timeline'
               ]
           };
+
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
         <link rel="stylesheet"
@@ -129,8 +130,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
               integrity="${integrityStyle}"
               crossorigin="anonymous" referrerpolicy="no-referrer" />
     `);
-    let userIdentified = typeof betaseries_api_user_token != 'undefined',
-        timer, timerUA, currentUser, cache = new Cache(),
+    let timer, timerUA, currentUser, cache = new Cache(),
         counter = 0, dialog;
 
     checkApiVersion();
@@ -163,7 +163,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         addStatusToGestionSeries();
     }
     // Fonctions appeler sur la page des membres
-    else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && userIdentified) {
+    else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && userIdentified()) {
         if (regexUser.test(url)) {
             // On récupère les infos du membre connecté
             getMember()
@@ -200,6 +200,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     }
 
     /**
+     * Verifie si l'utilisateur est connecté
+     * @return {boolean}
+     */
+    function userIdentified() {
+        return typeof betaseries_api_user_token != 'undefined';
+    }
+
+    /**
      * Cette fonction vérifie la dernière version de l'API
      */
     function checkApiVersion() {
@@ -209,14 +217,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             return response.text();
         }).then(html => {
-            // Convert the HTML string into a document object
-            let parser = new DOMParser(),
-                doc = parser.parseFromString(html, 'text/html');
-            // $('.maincontent > ul > li > strong').last().text().trim().split(' ')[1]
-            const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(),
-                  lastF = parseFloat(latest);
-            if (!Number.isNaN(lastF) && lastF > parseFloat(api.versions.last)) {
-                window.alert("L'API possède une nouvelle version: " + latest);
+            if (html) {
+                // Convert the HTML string into a document object
+                let parser = new DOMParser(),
+                    doc = parser.parseFromString(html, 'text/html');
+                // $('.maincontent > ul > li > strong').last().text().trim().split(' ')[1]
+                const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(),
+                      lastF = parseFloat(latest);
+                if (!Number.isNaN(lastF) && lastF > parseFloat(api.versions.last)) {
+                    window.alert("L'API possède une nouvelle version: " + latest);
+                }
             }
         });
     }
@@ -229,6 +239,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @return {void}
      */
     function notification(title, text) {
+        // GM_notification(details, ondone), GM_notification(text, title, image, onclick)
         let notifContainer = $('.userscript-notifications');
         // On ajoute notre zone de notifications
         if ($('.userscript-notifications').length <= 0) {
@@ -666,7 +677,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function getMember(id = null) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key === '') return;
+        if (! userIdentified() || betaseries_api_user_key === '') return;
 
         let args = {};
         if (id) args.id = id;
@@ -980,13 +991,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * Ajoute un bouton Vu sur la vignette d'un épisode
      */
     function addBtnWatchedToEpisode() {
-        if (! /^\/serie\//.test(url)) return;
-
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key === '') return;
+        if (! userIdentified() || betaseries_api_user_key === '') return;
 
-        const seasons = $('#seasons div[role="button"]'),
-              type = getApiResource(url.split('/')[1]); // Le type de ressource
         let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
             vignettes = getVignettes();
 
@@ -1001,6 +1008,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return;
         }
 
+        const seasons = $('#seasons div[role="button"]'),
+              type = getApiResource(url.split('/')[1]); // Le type de ressource
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
 
         // Ajoute les cases à cocher sur les vignettes des épisodes
@@ -1027,7 +1036,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 e.stopPropagation();
                 e.preventDefault();
                 const $elt = $(e.currentTarget),
-                      episodeId = getEpisodeId($elt);
+                      episodeId = getEpisodeId($elt),
+                      res = cache.get('shows', getResourceId()).show;
+                if (res.in_account === false) {
+                    addShowClick();
+                    $('#reactjs-show-actions > div > button').trigger('click');
+                }
                 toggleSpinner($elt, true);
                 // On vérifie si l'épisode a déjà été vu
                 if ($elt.hasClass('seen')) {
@@ -1147,16 +1161,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             let promise;
 
             function addShowClick() {
-                const res = cache.get('shows', showId).show;
+                let res = cache.get('shows', showId).show;
                 // Vérifier si le membre a ajouter la série à son compte
                 if (res.in_account === false) {
                     // On ajoute un event click pour masquer les vignettes
-                    $('#reactjs-show-actions > div > button').click(() => {
+                    $('#reactjs-show-actions > div > button').one('click', () => {
                         for (let v = 0; v < len; v++) {
                             $(vignettes.get(v))
                                 .find('img')
                                 .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
                         }
+                        res.in_account = true;
+                        cache.set('shows', showId, {show: res});
                         let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
                             urlShow = res.resource_url.substring(location.origin.length),
                             title = res.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
@@ -1196,45 +1212,54 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
             function deleteShowClick() {
                 const res = cache.get('shows', showId).show;
-                // Gestion de la suppression de la série du compte utilisateur
-                $('.blockInformations__actions .dropdown-menu a:last-child').removeAttr('onclick').click((e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    // Supprimer la série du compte utilisateur
-                    new PopupAlert({
-                        title: trans("popup.delete_show.title", { "%title%": res.title }),
-                        text: trans("popup.delete_show.text", { "%title%": res.title }),
-                        callback_yes: function() {
-                            callBetaSeries('DELETE', 'shows', 'show', {id: res.id})
+                if (res.in_account) {
+                    // Gestion de la suppression de la série du compte utilisateur
+                    $('.blockInformations__actions .dropdown-menu a:last-child').removeAttr('onclick').one('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        // Supprimer la série du compte utilisateur
+                        new PopupAlert({
+                            title: trans("popup.delete_show.title", { "%title%": res.title }),
+                            text: trans("popup.delete_show.text", { "%title%": res.title }),
+                            callback_yes: function() {
+                                callBetaSeries('DELETE', 'shows', 'show', {id: res.id})
                                 .then((data) => {
-                                new PopupAlert({
-                                    title: trans("popup.delete_show_success.title"),
-                                    text: trans("popup.delete_show_success.text", { "%title%": res.title }),
-                                    yes: trans("popup.delete_show_success.yes"),
+                                    new PopupAlert({
+                                        title: trans("popup.delete_show_success.title"),
+                                        text: trans("popup.delete_show_success.text", { "%title%": res.title }),
+                                        yes: trans("popup.delete_show_success.yes"),
+                                    });
+                                    cache.set('shows', showId, data);
+                                    // On remet le bouton Ajouter
+                                    $('#reactjs-show-actions').empty().append(`
+                                        <div class="blockInformations__action">
+                                          <button class="btn-reset btn-transparent" type="button">
+                                            <span class="svgContainer">
+                                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                                              </svg>
+                                            </span>
+                                          </button>
+                                          <div class="label">Ajouter</div>
+                                        </div>`
+                                    );
+                                    // On supprime les différentes options de la série liées à l'utilisateur
+                                    $('.blockInformations__actions .dropdown-menu a:first-child').siblings().each((i, e) => { $(e).remove(); });
+                                    addShowClick();
+                                }, (err) => {
+                                    notification('Erreur de suppression de la série', err);
                                 });
-                                cache.set('shows', showId, data);
-                                $('#reactjs-show-actions').empty().append(`
-                                <div class="blockInformations__action">
-                                  <button class="btn-reset btn-transparent" type="button">
-                                    <span class="svgContainer">
-                                      <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                                      </svg>
-                                    </span>
-                                  </button>
-                                  <div class="label">Ajouter</div>
-                                </div>`);
-                                $('.blockInformations__actions .dropdown-menu a:first-child').siblings().each((i, e) => { $(e).remove(); });
-                                addShowClick();
-                            }, (err) => {
-                                notification('Erreur de suppression de la série', err);
-                            });
-                        },
-                        callback_no: function() {}
+                            },
+                            callback_no: function() {}
+                        });
                     });
-                });
+                }
             }
-            deleteShowClick();
+            if (res.in_account) {
+                deleteShowClick();
+            } else {
+                addShowClick();
+            }
 
             if (cache.has('episodes', key)) {
                 promise = new Promise((resolve) => {
@@ -1590,7 +1615,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function similarsViewed() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
+        if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
 
         console.group('similarsViewed');
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
@@ -1931,47 +1956,46 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 });
                                 $("#similaire_id_search").off('keydown').on('keydown', (e) => {
                                     const current_item = $("#search_results .item.hl");
-                                    /* Flèche du bas */
-                                    if (e.keyCode == 40) {
-                                        if (current_item.length === 0) {
-                                            $("#search_results .item:first").addClass("hl");
-                                        } else {
-                                            let next_item = $("#search_results .item.hl").next("div");
-                                            if (next_item.attr("class") === "title") {
-                                                next_item = next_item.next("div");
+                                    switch(e.keyCode) {
+                                        /* Flèche du bas */
+                                        case 40:
+                                            if (current_item.length === 0) {
+                                                $("#search_results .item:first").addClass("hl");
+                                            } else {
+                                                let next_item = $("#search_results .item.hl").next("div");
+                                                if (next_item.attr("class") === "title") {
+                                                    next_item = next_item.next("div");
+                                                }
+                                                current_item.removeClass("hl");
+                                                next_item.addClass("hl");
                                             }
-                                            current_item.removeClass("hl");
-                                            next_item.addClass("hl");
-                                        }
-                                        return false;
-                                    }
-                                    /* Flèche du haut */
-                                    if (e.keyCode == 38) {
-                                        if (current_item.length !== 0) {
-                                            let prev_item = $("#search_results .item.hl").prev("div");
-                                            if (prev_item.attr("class") == "title") {
-                                                prev_item = prev_item.prev("div");
+                                            break;
+
+                                        /* Flèche du haut */
+                                        case 38:
+                                            if (current_item.length !== 0) {
+                                                let prev_item = $("#search_results .item.hl").prev("div");
+                                                if (prev_item.attr("class") == "title") {
+                                                    prev_item = prev_item.prev("div");
+                                                }
+                                                current_item.removeClass("hl");
+                                                prev_item.addClass("hl");
                                             }
-                                            current_item.removeClass("hl");
-                                            prev_item.addClass("hl");
-                                        }
-                                        return false;
-                                    }
+                                            break;
 
-                                    /* Touche Entrée */
-                                    if (e.keyCode == 13) {
-                                        if (debug) console.log('current_item', current_item);
-                                        if (current_item.length !== 0) {
-                                            autocompleteSimilar(current_item.find("span"));
-                                        }
-                                        return false;
-                                    }
+                                        /* Touche Entrée */
+                                        case 13:
+                                            if (debug) console.log('current_item', current_item);
+                                            if (current_item.length !== 0) {
+                                                autocompleteSimilar(current_item.find("span"));
+                                            }
+                                            break;
 
-                                    /* Touche Echap */
-                                    if (e.keyCode == 27) {
-                                        $("#search_results").empty();
-                                        $("input[name=similaire_id_search]").val("").trigger("blur");
-                                        return false;
+                                        /* Touche Echap */
+                                        case 27:
+                                            $("#search_results").empty();
+                                            $("input[name=similaire_id_search]").val("").trigger("blur");
+                                            break;
                                     }
                                 });
                             }, (err) => {
@@ -1982,7 +2006,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             $("#similaire_id_search").off("keydown");
                         }
                     });
-                },
+                }
             });
 
             function autocompleteSimilar(el) {
@@ -2166,7 +2190,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function addStatusToGestionSeries() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified || betaseries_api_user_key === '') return;
+        if (! userIdentified() || betaseries_api_user_key === '') return;
 
         let series = $('#member_shows div.showItem.cf');
         if (series.length < 1) return;
