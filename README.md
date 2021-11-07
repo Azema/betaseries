@@ -54,6 +54,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus et met à jour la barre de progression de la série
 * Ajout d'une popup, au survol d'une vignette d'un épisode, pour afficher le synopsis
+* Gestion des boutons _Ajouter_, _Archiver_ et _Favoris_, ainsi que du menu _Options_, sans avoir à recharger la page.
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante
 
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
