@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.21.0
+// @version      0.22.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -30,6 +30,8 @@
 
 /* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
 let betaseries_api_user_key = '';
+/* Ajouter ici votre clé d'API V3 à themoviedb */
+let themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
@@ -1924,13 +1926,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     if (type.singular == 'movie') {
                         // Ajouter une case à cocher pour l'état "Vu"
                         template += `<p><label for="seen">Vu</label>
-                            <input type="checkbox" class="movie movieSeen" name="seen" data-movie="${objRes.id}"  ${objRes.user.status == 1 ? 'checked' : ''} style="margin-right:5px;"></input>`;
+                            <input type="checkbox" class="movie movieSeen" name="seen" data-movie="${objRes.id}"  ${objRes.user.status === 1 ? 'checked' : ''} style="margin-right:5px;"></input>`;
                         // Ajouter une case à cocher pour l'état "A voir"
                         template += `<label for="mustSee">A voir</label>
-                            <input type="checkbox" class="movie movieMustSee" name="mustSee" data-movie="${objRes.id}" ${objRes.user.status == 0 ? 'checked' : ''} style="margin-right:5px;"></input>`;
+                            <input type="checkbox" class="movie movieMustSee" name="mustSee" data-movie="${objRes.id}" ${objRes.user.status === 0 ? 'checked' : ''} style="margin-right:5px;"></input>`;
                         // Ajouter une case à cocher pour l'état "Ne pas voir"
                         template += `<label for="notSee">Ne pas voir</label>
-                            <input type="checkbox" class="movie movieNotSee" name="notSee" data-movie="${objRes.id}"  ${objRes.user.status == 2 ? 'checked' : ''}></input></p>`;
+                            <input type="checkbox" class="movie movieNotSee" name="notSee" data-movie="${objRes.id}"  ${objRes.user.status === 2 ? 'checked' : ''}></input></p>`;
                     } else if (type.singular === 'show' && objRes.in_account === false) {
                         template += '<p><a href="javascript:;" class="addShow">Ajouter</a></p>';
                     }
@@ -1994,13 +1996,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     decodeTitle($elt);
                     // On ajoute l'icone pour visualiser les data JSON du similar
                     $elt.html($elt.html() +
-                              `<i class="fa fa-wrench popover-wrench"
-                                  aria-hidden="true"
-                                  style="margin-left:5px;cursor:pointer;"
-                                  data-id="${resource.id}"
-                                  data-type="${type.singular}">
-                               </i>`
-                             );
+                      `<i class="fa fa-wrench popover-wrench"
+                          aria-hidden="true"
+                          style="margin-left:5px;cursor:pointer;"
+                          data-id="${resource.id}"
+                          data-type="${type.singular}">
+                       </i>`
+                    );
+                    checkImgSimilar($elt, resource, type.singular);
                     // On ajoute le bandeau viewed sur le similar
                     addBandeau($elt, resource.user.status, resource.notes, type.singular);
                     // On ajoute la popover sur le similar
@@ -2235,6 +2238,49 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 parseFloat(objNote.mean).toFixed(2),
                 objNote.total
             );
+        }
+
+        /**
+         * Remplace les blocs d'image manquantes des similars
+         * par les posters sur artworks de TheTVDB
+         *
+         * @param  {Object} elt    Objet jQuery du titre du similar
+         * @param  {Object} objRes Objet type show du similar
+         * @param  {String} type   Type de ressource (show or movie)
+         * @return {void}
+         */
+        function checkImgSimilar(elt, objRes, type) {
+            let img = elt.siblings('a').find('img.js-lazy-image');
+            if (img.length <= 0) {
+                if (type === 'show' && objRes.thetvdb_id > 0 && objRes.thetvdb_id !== null) {
+                    // On tente de remplacer le block div 404 par une image
+                    elt.siblings('a').find('div.block404').replaceWith(`
+                        <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in"
+                             width="125"
+                             height="188"
+                             alt="Poster de ${objRes.title}"
+                             src="https://artworks.thetvdb.com/banners/posters/${objRes.thetvdb_id}-1.jpg"/>
+                    `);
+                }
+                else if (type === 'movie' && objRes.tmdb_id > 0 && objRes.tmdb_id !== null) {
+                    if (themoviedb_api_user_key.length <= 0) return;
+                    let uriApiTmdb = `https://api.themoviedb.org/3/movie/${objRes.tmdb_id}?api_key=${themoviedb_api_user_key}&language=fr-FR`;
+                    fetch(uriApiTmdb).then(response => {
+                        if (!response.ok) return null;
+                        return response.json();
+                    }).then(data => {
+                        if (data !== null && data.hasOwnProperty('poster_path') && data.poster_path !== null) {
+                            elt.siblings('a').find('div.block404').replaceWith(`
+                                <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in"
+                                     width="125"
+                                     height="188"
+                                     alt="Poster de ${objRes.title}"
+                                     src="https://image.tmdb.org/t/p/original${data.poster_path}"/>
+                            `);
+                        }
+                    });
+                }
+            }
         }
     }
 
