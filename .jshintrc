@@ -18,6 +18,7 @@
   "globals" : {
     "GM_addStyle": true,
     "betaseries_api_user_token": true,
+    "betaseries_user_id": true,
     "newApiParameter": true,
     "viewMoreFriends": true,
     "bootstrap": true,

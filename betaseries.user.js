@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.20.7
+// @version      0.21.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -19,7 +19,7 @@
 // @grant        GM_addStyle
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token newApiParameter viewMoreFriends generate_route trans
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans
    bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert */
 /* jslint unparam: true */
 
@@ -42,7 +42,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           url = location.pathname,
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
-          integrityStyle = 'sha384-Pa7Ap5STuXNRqzHdArnBJqsxuwGEXO7ERfQkZSL/GQSdpA1IAj1Hh1pXYyorLmBX',
+          integrityStyle = 'sha384-9vWUkFu5M38ivsbn2lSwQqjJoyGWvQY3Ae8aSufJ0IPpCErOT2OtfrgABHS4Lf+V',
           integrityPopover = 'sha384-4ypvRw5lbeuC9BjCt95Vm2vhzXpnUWqFxUBf1SYr2AzF6s6e+BMCcaw8mZbXBLgf',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
           // URI des images et description des classifications TV et films
@@ -118,7 +118,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   'timeline'
               ]
           };
-
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
         <link rel="stylesheet"
@@ -438,6 +437,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * Le sommaire est constitué des liens vers les fonctions des méthodes.
      */
     function sommaireDevApi() {
+        if (debug) console.log('build sommaire');
         let titles = $('.maincontent h2'),
             methods = {};
         // Ajout du style CSS pour les tables
@@ -517,12 +517,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             $title.append('<i class="fa fa-chevron-circle-up" aria-hidden="true" title="Retour au sommaire"></i>');
             if (! (key in methods)) methods[key] = {title: txt};
             methods[key][verb] = {id: id, title: desc};
-
         }
         // Construire un sommaire des fonctions
         //if (debug) console.log('methods', methods);
         $('.maincontent h1').after(buildTable());
-        if (debug) console.log('build sommaire', $('#sommaire'));
         $('#sommaire').show('fast');
 
         $('.linkSommaire').click(function(e) {
@@ -646,13 +644,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * Ajoute la classification dans les détails de la ressource
      */
     function addRating() {
+        if (/^\/episode\//.test(url)) { return; }
         if (debug) console.log('addRating');
         let type = getApiResource(url.split('/')[1]), // Indique de quel type de ressource il s'agit
             eltId = getResourceId(), // Identifiant de la ressource
             fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
         callBetaSeries('GET', type.plural, fonction, {'id': eltId})
-        .then(function(data) {
+        .then(data => {
             if (data[type.singular].hasOwnProperty('rating')) {
                 let rating = ratings.hasOwnProperty(data[type.singular].rating) ? ratings[data[type.singular].rating] : '';
                 if (rating !== '') {
@@ -664,7 +663,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     );
                 }
             }
-        }, (err) => {
+        },
+        err => {
             notification('Erreur de récupération de ' + type.singular, 'addRating: ' + err);
         });
     }
@@ -925,7 +925,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             eltId = getResourceId(), // Identifiant de la ressource
             fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
 
-        if (debug) console.log('votes %d, eltId: %d, type: %s', votes.length, eltId, type.singular);
+        if (debug) console.log('Note Stars Elt %d, eltId: %d, type: %s', votes.length, eltId, type.singular);
 
         // On recupère les détails de la ressource
         callBetaSeries('GET', type.plural, fonction, {'id': eltId})
@@ -1036,12 +1036,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 e.stopPropagation();
                 e.preventDefault();
                 const $elt = $(e.currentTarget),
-                      episodeId = getEpisodeId($elt),
-                      res = cache.get('shows', getResourceId()).show;
-                if (res.in_account === false) {
-                    addShowClick();
-                    $('#reactjs-show-actions > div > button').trigger('click');
-                }
+                      episodeId = getEpisodeId($elt);
                 toggleSpinner($elt, true);
                 // On vérifie si l'épisode a déjà été vu
                 if ($elt.hasClass('seen')) {
@@ -1158,65 +1153,235 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   showId = getResourceId(), // Identifiant de la ressource principale
                   key = `show-${showId}-${seasonNum}`,
                   res = cache.get('shows', showId).show;
-            let promise;
 
-            function addShowClick() {
+            /**
+             * Ajoute un eventHandler sur les boutons Archiver et Favoris
+             */
+            function AddEventBtnsArchiveAndFavoris() {
+                let btnArchive = $('#reactjs-show-actions button.btn-archive'),
+                    btnFavoris = $('#reactjs-show-actions button.btn-favoris');
+                if (btnArchive.length === 0 || btnFavoris.length === 0) {
+                    $('#reactjs-show-actions button:first').addClass('btn-archive');
+                    btnArchive = $('#reactjs-show-actions button.btn-archive');
+                    $('#reactjs-show-actions button:last').addClass('btn-favoris');
+                    btnFavoris = $('#reactjs-show-actions button.btn-favoris');
+                }
+                // Fonction Archiver
+                btnArchive.off('click').click((e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (debug) console.group('show-archive');
+                    const res = cache.get('shows', showId).show;
+                    if (! res.user.archived) {
+                        callBetaSeries('POST', 'shows', 'archive', {id: res.id})
+                            .then(data => {
+                            cache.set('shows', res.id, data);
+                            const parent = $(e.currentTarget).parent();
+                            $('span', e.currentTarget).css('transform', 'rotate(180deg)');
+                            $('.label', parent).text(trans('show.button.unarchive.label'));
+                            if (debug) console.groupEnd('show-archive');
+                        }, err => {
+                            notification('Erreur d\'archivage de la série', err);
+                            if (debug) console.groupEnd('show-archive');
+                        });
+                    } else {
+                        callBetaSeries('DELETE', 'shows', 'archive', {id: res.id})
+                            .then(data => {
+                            cache.set('shows', res.id, data);
+                            const parent = $(e.currentTarget).parent();
+                            $('span', e.currentTarget).css('transform', 'rotate(0deg)');
+                            $('.label', parent).text(trans('show.button.archive.label'));
+                            if (debug) console.groupEnd('show-archive');
+                        }, err => {
+                            notification('Erreur d\'archivage de la série', err);
+                            if (debug) console.groupEnd('show-archive');
+                        });
+                    }
+                });
+                // Fonction Favoris
+                btnFavoris.off('click').click((e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (debug) console.group('show-favoris');
+                    const res = cache.get('shows', showId).show;
+                    if (! res.user.favorited) {
+                        callBetaSeries('POST', 'shows', 'favorite', {id: res.id})
+                            .then(data => {
+                            cache.set('shows', res.id, data);
+                            $(e.currentTarget).children('span').replaceWith(`
+                              <span class="svgContainer">
+                                <svg width="21" height="19" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M15.156.91a5.887 5.887 0 0 0-4.406 2.026A5.887 5.887 0 0 0 6.344.909C3.328.91.958 3.256.958 6.242c0 3.666 3.33 6.653 8.372 11.19l1.42 1.271 1.42-1.28c5.042-4.528 8.372-7.515 8.372-11.18 0-2.987-2.37-5.334-5.386-5.334z"></path>
+                                </svg>
+                              </span>`);
+                            if (debug) console.groupEnd('show-favoris');
+                        }, err => {
+                            notification('Erreur de favoris de la série', err);
+                            if (debug) console.groupEnd('show-favoris');
+                        });
+                    } else {
+                        callBetaSeries('DELETE', 'shows', 'favorite', {id: res.id})
+                            .then(data => {
+                            cache.set('shows', res.id, data);
+                            $(e.currentTarget).children('span').replaceWith(`
+                              <span class="svgContainer">
+                                <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
+                                </svg>
+                              </span>`);
+                            if (debug) console.groupEnd('show-favoris');
+                        }, err => {
+                            notification('Erreur de favoris de la série', err);
+                            if (debug) console.groupEnd('show-favoris');
+                        });
+                    }
+                });
+            }
+
+            /*
+             * On gère l'ajout de la série dans le compte utilisateur
+             *
+             * @param {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
+             */
+            function addShowClick(trigEpisode = false) {
                 let res = cache.get('shows', showId).show;
                 // Vérifier si le membre a ajouter la série à son compte
                 if (res.in_account === false) {
+                    $('#reactjs-show-actions').empty().append(`
+                        <div class="blockInformations__action">
+                          <button class="btn-reset btn-transparent" type="button">
+                            <span class="svgContainer">
+                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                              </svg>
+                            </span>
+                          </button>
+                          <div class="label">Ajouter</div>
+                        </div>`
+                     );
                     // On ajoute un event click pour masquer les vignettes
-                    $('#reactjs-show-actions > div > button').one('click', () => {
+                    $('#reactjs-show-actions > div > button').off('click').one('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (debug) console.group('AddShow');
+
                         for (let v = 0; v < len; v++) {
                             $(vignettes.get(v))
                                 .find('img')
                                 .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
                         }
-                        res.in_account = true;
-                        cache.set('shows', showId, {show: res});
+                        callBetaSeries('POST', 'shows', 'show', {id: res.id})
+                        .then((data) => {
+                            res = data.show;
+                            cache.set('shows', showId, data);
+                            changeBtnAdd();
+                            if (debug) console.groupEnd('AddShow');
+                        }, err => {
+                            notification('Erreur d\'ajout de la série', err);
+                            if (debug) console.groupEnd('AddShow');
+                        });
+                    });
+                }
+                function changeBtnAdd() {
+                    const linksDd = $('.blockInformations__actions .dropdown-menu a');
+                    if (linksDd.length <= 2) {
                         let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
                             urlShow = res.resource_url.substring(location.origin.length),
                             title = res.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
-                            template = `
-                          <a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>
-                          <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
-                            showClose: true,
-                            type: "popin-subtitles",
-                            reactModuleId: "reactjs-subtitles",
-                            params: {
-                              mediaId: "${showId}",
-                              type: "show",
-                              titlePopin: "${title}";
-                            },
-                            callback: function() {
-                              addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
-                            },
-                          });">Sous-titres</button>
-                          <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${showId}, 'show');">Signaler un problème</a>
-                          <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${showId}, '0')">Demander une mise à jour</a>
-                          <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
+                            templateOpts = `
+                              <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
+                                showClose: true,
+                                type: "popin-subtitles",
+                                reactModuleId: "reactjs-subtitles",
+                                params: {
+                                  mediaId: "${showId}",
+                                  type: "show",
+                                  titlePopin: "${title}";
+                                },
+                                callback: function() {
+                                  loadRecommendationModule('subtitles');
+                                  //addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
+                                },
+                              });">Sous-titres</button>
+                              <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${showId}, 'show');">Signaler un problème</a>
+                              <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${showId}, '0')">Demander une mise à jour</a>
+                              <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
 
-                          <form class="autocomplete js-autocomplete-form header-navigation-item">
-                            <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
-                            <div class="autocomplete__toShow" hidden="">
-                              <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
-                              <div class="autocomplete__response js-display-response"></div>
-                            </div>
-                          </form>
-                          <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>
+                              <form class="autocomplete js-autocomplete-form header-navigation-item">
+                                <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
+                                <div class="autocomplete__toShow" hidden="">
+                                  <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
+                                  <div class="autocomplete__response js-display-response"></div>
+                                </div>
+                              </form>
+                              <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>
                             `;
-                        $('div.blockInformations__actions .dropdown-menu').append(template);
-                        deleteShowClick();
-                    });
+                        if (linksDd.length === 1) {
+                            templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
+                        }
+                        $('div.blockInformations__actions .dropdown-menu').append(templateOpts);
+                    }
+
+                    const divs = $('#reactjs-show-actions > div');
+                    if (divs.length === 1) {
+                        $('#reactjs-show-actions').remove();
+                        $('.blockInformations__actions').prepend(`
+                            <div class="displayFlex alignItemsFlexStart" id="reactjs-show-actions" data-show-id="${res.id}" data-user-hasarchived="${res.user.archived ? '1' : ''}" data-show-inaccount="1" data-user-id="${betaseries_user_id}" data-show-favorised="${res.user.favorited ? '1' : ''}">
+                              <div class="blockInformations__action">
+                                <button class="btn-reset btn-transparent btn-archive" type="button">
+                                  <span class="svgContainer">
+                                    <svg fill="#0d151c" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="m16 8-1.41-1.41-5.59 5.58v-12.17h-2v12.17l-5.58-5.59-1.42 1.42 8 8z"></path>
+                                    </svg>
+                                  </span>
+                                </button>
+                                <div class="label">${trans('show.button.archive.label')}</div>
+                              </div>
+                              <div class="blockInformations__action">
+                                <button class="btn-reset btn-transparent btn-favoris" type="button">
+                                  <span class="svgContainer">
+                                    <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
+                                    </svg>
+                                  </span>
+                                </button>
+                                <div class="label">${trans('show.button.favorite.label')}</div>
+                              </div>
+                            </div>`);
+                        let vignette;
+                        for (let v = 0; v < len; v++) {
+                            vignette = $(vignettes.get(v));
+                            if (vignette.find('.seen').length <= 0) {
+                                vignette
+                                    .find('img')
+                                    .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                            }
+                        }
+                    }
+                    AddEventBtnsArchiveAndFavoris();
+                    deleteShowClick();
+                }
+                if (trigEpisode) {
+                    changeBtnAdd();
                 }
             }
 
+            /*
+             * Gère la suppression de la série du compte utilisateur
+             */
             function deleteShowClick() {
                 const res = cache.get('shows', showId).show;
-                if (res.in_account) {
+                if (res.in_account && $('.blockInformations__actions .dropdown-menu a').length > 2) {
+                    AddEventBtnsArchiveAndFavoris();
                     // Gestion de la suppression de la série du compte utilisateur
-                    $('.blockInformations__actions .dropdown-menu a:last-child').removeAttr('onclick').one('click', (e) => {
+                    $('.blockInformations__actions .dropdown-menu a:last-child')
+                        .removeAttr('onclick')
+                        .off('click')
+                        .one('click', (e) =>
+                    {
                         e.stopPropagation();
                         e.preventDefault();
+                        if (debug) console.group('DeleteShow');
                         // Supprimer la série du compte utilisateur
                         new PopupAlert({
                             title: trans("popup.delete_show.title", { "%title%": res.title }),
@@ -1229,25 +1394,42 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                         text: trans("popup.delete_show_success.text", { "%title%": res.title }),
                                         yes: trans("popup.delete_show_success.yes"),
                                     });
+                                    data.show.user.status = 0;
+                                    data.show.user.archived = false;
+                                    data.show.user.favorited = false;
+                                    data.show.user.remaining = 0;
+                                    data.show.user.last = "S00E00";
+                                    data.show.user.next.id = null;
                                     cache.set('shows', showId, data);
                                     // On remet le bouton Ajouter
                                     $('#reactjs-show-actions').empty().append(`
                                         <div class="blockInformations__action">
-                                          <button class="btn-reset btn-transparent" type="button">
+                                          <button class="btn-reset btn-transparent btn-add" type="button">
                                             <span class="svgContainer">
                                               <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
                                               </svg>
                                             </span>
                                           </button>
-                                          <div class="label">Ajouter</div>
+                                          <div class="label">${trans('show.button.add.label')}</div>
                                         </div>`
                                     );
                                     // On supprime les différentes options de la série liées à l'utilisateur
                                     $('.blockInformations__actions .dropdown-menu a:first-child').siblings().each((i, e) => { $(e).remove(); });
+                                    // Nettoyage de l'affichage et du cache des épisodes
+                                    cache.clear('episodes');
+                                    let checks = $('#episodes .checkSeen.seen'),
+                                        update = false;
+                                    for (let c = 0; c < checks.length; c++) {
+                                        if (c === checks.length - 1) update = true;
+                                        if (debug) console.log('clean episode %d', c, update);
+                                        changeStatus($(checks.get(c)), 'notSeen', update);
+                                    }
                                     addShowClick();
+                                    if (debug) console.groupEnd('DeleteShow');
                                 }, (err) => {
                                     notification('Erreur de suppression de la série', err);
+                                    if (debug) console.groupEnd('DeleteShow');
                                 });
                             },
                             callback_no: function() {}
@@ -1255,18 +1437,22 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 }
             }
+            $('.blockInformations__actions .dropdown-menu').attr('x-placement', 'bottom-start');
+            // On gère l'ajout et la suppression de la série dans le compte utilisateur
             if (res.in_account) {
                 deleteShowClick();
             } else {
                 addShowClick();
             }
 
+            let promise; // Contient la promesse de récupérer les épisodes de la saison courante
             if (cache.has('episodes', key)) {
                 promise = new Promise((resolve) => {
                     resolve(cache.get('episodes', key));
                 });
             } else {
-                promise = callBetaSeries('GET', 'shows', 'episodes', {thetvdb_id: res.thetvdb_id, season: parseInt(seasonNum, 10)}, true);
+                let params = {id: res.id, season: parseInt(seasonNum, 10)};
+                promise = callBetaSeries('GET', 'shows', 'episodes', params, true, false);
                 // On stocke le résultat en cache
                 promise.then(
                     (data) => { cache.set('episodes', key, data); },
@@ -1288,6 +1474,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 `);
             }
 
+            // On ajoute la description des épisodes dans des Popup
             promise.then((data) => {
                 let intTime = setInterval(function() {
                     if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
@@ -1300,6 +1487,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         let description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
                         if (description.length > 350) {
                             description = description.substring(0, 350) + '...';
+                        } else if (description.length <= 0) {
+                            description = 'Aucune description';
                         }
                         // Ajoute la synopsis de l'épisode au survol de la vignette
                         $vignette.popover({
@@ -1365,7 +1554,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              * @return {void}
              */
             function changeStatusVignette($elt, status, method, episodeId) {
-                let args = {'id': episodeId};
+                let args = {'id': episodeId},
+                    res = cache.get('shows', getResourceId()).show;
                 if (method == 'POST') {
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
                 }
@@ -1373,7 +1563,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 callBetaSeries(method, 'episodes', 'watched', args)
                 .then(function(data) {
                     if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
+
                     changeStatus($elt, status);
+                    if (res.in_account === false) {
+                        addShowClick(true);
+                    }
                     // On met à jour l'objet Episode dans le cache
                     if (cache.has('episodes', key)) {
                         let episodes = cache.get('episodes', key).episodes;
@@ -1412,8 +1606,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              */
             function changeStatus($elt, newStatus, update = true) {
                 if (newStatus == 'seen') {
-                    const background = 'rgba(13,21,28,.2) center no-repeat url(\'data:image/svg+xml;utf8,<svg fill="%23fff" width="12" height="10" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"/></svg>\')';
-                    $elt.css('background', background); // On ajoute le check dans la case à cocher
+                    $elt.css('background', ''); // On ajoute le check dans la case à cocher
                     $elt.addClass('seen'); // On ajoute la classe 'seen'
                     // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
                     $elt.parent('div.slide__image').find('img').removeAttr('style');
@@ -1682,16 +1875,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }
 
-        let params = {'details': true},
-            objSimilars = [],
-            setcache = true; // Indique si il faut enregistrer / pas la réponse dans le cache
-        if (type.singular == 'show') {
-            params.thetvdb_id = res.thetvdb_id;
-        } else if (type.singular == 'movie') {
-            params.id = res.id;
-            setcache = false;
-        }
-        callBetaSeries('GET', type.plural, 'similars', params, true, setcache)
+        let params = {'details': true, id: res.id},
+            objSimilars = [];
+        callBetaSeries('GET', type.plural, 'similars', params, true, false)
         .then(function(data) {
             let intTime = setInterval(function() {
                 if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
@@ -2255,15 +2441,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * Fonction servant à appeler l'API de BetaSeries
      *
      * @param  {String}   type             Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-     * @param  {String}   methode          La ressource de l'API (ex: shows, seasons, episodes...)
-     * @param  {String}   fonction         La fonction à appliquer sur la ressource (ex: search, list...)
+     * @param  {String}   category         La catégorie de l'API (ex: shows, seasons, episodes...)
+     * @param  {String}   fonction         La fonction à appliquer sur la catégorie (ex: search, list...)
      * @param  {Object}   args             Un objet (clef, valeur) à transmettre dans la requête
      * @param  {bool}     [nocache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
      * @param  {bool}     [setcache=true]  Indique si on doit ou pas enregistrer la réponse dans le cache (Par défaut: true)
      * @return {Promise}
      */
-    function callBetaSeries(type, methode, fonction, args, nocache = false, setcache = true) {
-        let uri = `${api.base}/${methode}/${fonction}`,
+    function callBetaSeries(type, category, fonction, args, nocache = false, setcache = true) {
+        if (! api.categories.includes(category)) {
+            throw new Error('Categorie (' + category + ') inconnue dans l\'API.');
+        }
+        let uri = `${api.base}/${category}/${fonction}`,
             // Les en-têtes pour l'API
             myHeaders = new Headers({
                 'Accept'                : 'application/json',
@@ -2283,7 +2472,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         if (debug) {
             console.log('callBetaSeries', {
                 type: type,
-                methode: methode,
+                category: category,
                 fonction: fonction,
                 args: args,
                 nocache: nocache,
@@ -2302,19 +2491,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             initFetch.body = new URLSearchParams(args);
         }
         // On retourne la ressource en cache si elle y est présente
-        if (! nocache && type === 'GET' && args && 'id' in args && cache.has(methode, args.id)) {
+        if (! nocache && type === 'GET' && args && 'id' in args && cache.has(category, args.id)) {
+            if (debug) console.log('callBetaSeries retourne la ressource du cache (%s: %d)', category, args.id);
             return new Promise((resolve) => {
-                resolve(cache.get(methode, args.id));
+                resolve(cache.get(category, args.id));
             });
         }
 
         return new Promise((resolve, reject) => {
             counter++; // Incrément du compteur de requêtes à l'API
             fetch(uri, initFetch).then(response => {
-                if (debug) console.log('fetch response', response);
+                if (debug) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
                 // On récupère les données et les transforme en objet
                 response.json().then((data) => {
-                    if (debug) console.log('fetch status (%d) & data', response.status, data);
+                    if (debug) console.log('fetch (%s %s) data', type, uri, data);
                     // On gère le retour d'erreurs de l'API
                     if (data.hasOwnProperty('errors') && data.errors.length > 0) {
                         const code = data.errors[0].code,
@@ -2327,7 +2517,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         } else if (code == 2001) {
                             // Appel de l'authentification pour obtenir un token valide
                             authenticate().then(() => {
-                                callBetaSeries(type, methode, fonction, args, nocache, setcache)
+                                callBetaSeries(type, category, fonction, args, nocache, setcache)
                                 .then((data) => {
                                     resolve(data);
                                 }, (err) => {
@@ -2349,7 +2539,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     }
                     // Retour sans erreur, on met la ressource en cache
                     if (setcache && type == 'GET' && args && 'id' in args) {
-                        cache.set(methode, args.id, data);
+                        cache.set(category, args.id, data);
                     }
                     resolve(data);
                 });
