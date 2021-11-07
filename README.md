@@ -49,6 +49,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
   * ***Série:*** Possibilité d'ajouter la série au compteur utilisateur connecté
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource (série et film)
+* Ajout de la récupération d'images pour les similars sur les sites [_thetvdb_](http://www.thetvdb.com) et [_themoviedb_](http://www.themoviedb.org), Si elles ne sont pas présentes sur betaseries.
 
 #### Séries
 
