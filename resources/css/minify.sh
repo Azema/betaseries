@@ -5,27 +5,23 @@ if [ -z "$1" ]; then
 	exit 1;
 fi
 
-if [ ! -f "$1" ]; then
+if [ ! -f "$1.css" ]; then
   echo "File does not exist"
   exit 1;
 fi
-if [ -f "./yui-compressor" ]; then
-    compressor='./yui-compressor';
-else
-    compressor='yui-compressor';
-fi
-file=$(basename -- "$1")
+
+file=$(basename -- "$1.css")
 filename="${file%.*}"
 extension="${file##*.}"
 filenameMin="$filename.min.$extension"
+compressor="/usr/bin/yui-compressor"
+if [ ! -f "$compressor" ]; then
+  compressor="./yui-compressor";
+fi
 
 echo "file: $file, filename: $filename, extension: $extension, filename min: $filenameMin"
 
-#echo "$compressor --type 'css' --charset 'utf-8' -v -o $filenameMin $file"
-$compressor --type 'css' --charset 'utf-8' -v -o "$filenameMin" "$file"
-if [ $? -eq 0 ]; then
-    integrity=`cat $filenameMin | openssl dgst -sha384 -binary | openssl enc -base64 -A`
-    echo "Integrity sha384-$integrity";
-else
-    echo "Erreur de compression";
-fi
+$compressor --type css --charset utf-8 -v -o "$filenameMin" "$file"
+
+integrity=`cat $filenameMin | openssl dgst -sha384 -binary | openssl enc -base64 -A`
+echo "Integrity sha384-$integrity"
