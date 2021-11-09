@@ -40,23 +40,23 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 #### Séries et Films
 
 * En mode DEV, ajout d'un bouton à côté du titre d'un similar, pour visualiser ses données JSON.
-* Ajoute un bandeau d'angle "Viewed" sur les séries similaires déjà vues (Nécessite d'être connecté à votre compte utilisateur)
+* Ajoute un bandeau d'angle "Viewed" sur les séries/films similaires déjà vues (Nécessite d'être connecté à votre compte utilisateur)
 
 ![Séries similaires avec le bandeau vues](/screenshots/similarsViewed.jpg "Séries similaires avec le bandeau vues")
 * Ajout d'une popup avec les détails d'une série/film similaire lors du survol de l'image d'un similaire
 * Dans la popup d'un similaire:
   * ***Film:*** Possibilité d'indiquer l'état _Vu_, _A voir_ ou _Ne veux pas voir_
-  * ***Série:*** Possibilité d'ajouter la série au compteur utilisateur connecté
+  * ***Série:*** Possibilité d'ajouter la série au compte de l'utilisateur connecté
 * Ajout des notes sous les titres des similaires
-* Ajout du logo de classification TV dans les infos de la ressource (série et film)
-* Ajout de la récupération d'images pour les similars sur les sites [_thetvdb_](http://www.thetvdb.com) et [_themoviedb_](http://www.themoviedb.org), Si elles ne sont pas présentes sur betaseries.
+* Ajout du logo de classification TV dans les infos de la ressource principale (série et film)
+* Ajout de la récupération d'images, pour les similars, sur les sites [_thetvdb_](http://www.thetvdb.com) et [_themoviedb_](http://www.themoviedb.org), Si elles ne sont pas présentes sur [betaseries](https://www.betaseries.com).
 
 #### Séries
 
-* Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou enlever l'épisode aux épisodes vus et met à jour la barre de progression de la série
-* Ajout d'une popup, au survol d'une vignette d'un épisode, pour afficher le synopsis
+* Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou retirer l'épisode aux épisodes vus. La barre de progression de la série, ainsi que l'affichage du prochain épisode à visionner, sont mis à jour en même temps que les épisodes, sans recharger toute la page.
+* Ajout d'une popup, au survol d'une vignette d'un épisode, pour afficher le synopsis.
 * Gestion des boutons _Ajouter_, _Archiver_ et _Favoris_, ainsi que du menu _Options_, sans avoir à recharger la page.
-* Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante
+* Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
 
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
 
@@ -97,6 +97,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ## Futures améliorations possibles
 
 * ~~Afficher les infos de la ressource dans une popup, lors du survol d'un similar~~
+* Enregistrer les filtres des séries et des films sur l'espace de stockage local.
 
 ## Développement
 
