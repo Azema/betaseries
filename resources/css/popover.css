@@ -1,8 +1,14 @@
-.slide__image .popover.bs-popover-right {
-  left: 60px;
+#episodes .slide__image .popover.bs-popover-right {
+  left: 250px;
 }
-.slide__image .popover.bs-popover-left {
-  left: -385px;
+#episodes .slide__image .popover.bs-popover-left {
+  left: -350px;
+}
+#similars .slide__image .popover.bs-popover-right {
+  left:  60px;
+}
+#similars .slide__image .popover.bs-popover-left {
+  left:  -385px;
 }
 .popover {
   position: absolute;

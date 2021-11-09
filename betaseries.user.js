@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.22.0
+// @version      0.22.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -44,8 +44,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           url = location.pathname,
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
-          integrityStyle = 'sha384-9vWUkFu5M38ivsbn2lSwQqjJoyGWvQY3Ae8aSufJ0IPpCErOT2OtfrgABHS4Lf+V',
-          integrityPopover = 'sha384-4ypvRw5lbeuC9BjCt95Vm2vhzXpnUWqFxUBf1SYr2AzF6s6e+BMCcaw8mZbXBLgf',
+          integrityStyle = 'sha384-x/8PvvxEakscoR1nP+kAaboqJwgFCTb6aBvNK1TzVCtVfsPd4zkapdOG0j+Jv0aD',
+          integrityPopover = 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
           // URI des images et description des classifications TV et films
           ratings = {
@@ -120,6 +120,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   'timeline'
               ]
           };
+
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
         <link rel="stylesheet"
@@ -310,7 +311,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         function countFilter(target) {
             const current = $('#count_' + target);
             if (current.length > 0) {
-                let len = $('#pays > button').length,
+                let len = $('#pays > button.hactive, #pays > button.active').length,
                     display = 'none';
                 current.text(len);
 
@@ -1004,7 +1005,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // On supprime le timer Interval
             clearInterval(timer);
             // On ajoute les cases à cocher sur les vignettes courantes
-            addCheckbox();
+            addCheckSeen();
         } else {
             if (debug) console.log('addBtnWatchedToEpisode: En attente du chargement des vignettes');
             return;
@@ -1015,40 +1016,152 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
 
         // Ajoute les cases à cocher sur les vignettes des épisodes
-        function addCheckbox() {
+        function addCheckSeen() {
             vignettes = getVignettes();
             len = $('#episodes .slide__image').length;
 
-            for (let v = 0; v < len; v++) {
-                let $vignette = $(vignettes.get(v)),
-                    id = getEpisodeId($vignette);
-                if (checkSeenPresent($vignette)) {
-                    // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
-                    let checkbox = $vignette.find('.checkSeen');
-                    checkbox.attr('id', 'episode-' + id);
-                    checkbox.addClass('seen');
-                    checkbox.data('pos', v);
-                } else {
-                    // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
-                    $vignette.append(`<div id="episode-${id}" class="checkSeen" data-pos="${v}" style="background: none;"></div>`);
-                }
+            const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
+                  showId = getResourceId(), // Identifiant de la ressource principale
+                  key = `show-${showId}-${seasonNum}`, // Clé de cache des épisodes de la saison
+                  res = cache.get('shows', showId, 'addCheckSeen').show; // L'objet Show
+
+            let promise; // Contient la promesse de récupérer les épisodes de la saison courante
+            if (cache.has('episodes', key)) {
+                promise = new Promise((resolve) => {
+                    resolve(cache.get('episodes', key, 'addCheckSeen'));
+                });
+            } else {
+                let params = {id: res.id, season: parseInt(seasonNum, 10)};
+                promise = callBetaSeries('GET', 'shows', 'episodes', params, true, false);
+                // On stocke le résultat en cache
+                promise.then(
+                    (data) => { cache.set('episodes', key, data); },
+                    (err) => { notification('Erreur de récupération des épisodes', 'addCheckSeen: ' + err); }
+                );
             }
-            // On ajoute un event click sur la case 'checkSeen'
-            $('#episodes .checkSeen').click(function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                const $elt = $(e.currentTarget),
-                      episodeId = getEpisodeId($elt);
-                toggleSpinner($elt, true);
-                // On vérifie si l'épisode a déjà été vu
-                if ($elt.hasClass('seen')) {
-                    // On demande à l'enlever des épisodes vus
-                    changeStatusVignette($elt, 'notSeen', 'DELETE', episodeId);
-                }
-                // Sinon, on l'ajoute aux épisodes vus
-                else {
-                    changeStatusVignette($elt, 'seen', 'POST', episodeId);
-                }
+            // On ajoute le CSS et le Javascript pour les popup
+            if ($('#csspopover').length === 0 && $('#jsbootstrap').length === 0) {
+                $('head').append(`
+                    <link rel="stylesheet"
+                          id="csspopover"
+                          href="${serverBaseUrl}/css/popover.min.css"
+                          integrity="${integrityPopover}"
+                          crossorigin="anonymous" \>
+                    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+                            id="jsbootstrap"
+                            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+                            crossorigin="anonymous"></script>
+                `);
+            }
+
+            /**
+             * Retourne la position de la popup par rapport à l'image du similar
+             * @param  {Object} tip Unknown
+             * @param  {Object} elt Le DOM Element du lien du similar
+             * @return {String}     La position de la popup
+             */
+            let funcPlacement = (tip, elt) => {
+                //if (debug) console.log('funcPlacement', tip, $(tip).width());
+                let rect = elt.getBoundingClientRect(),
+                    width = $(window).width(),
+                    sizePopover = 320;
+                return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
+            };
+            function tempTitle(objRes) {
+                return `<span style="color: var(--link_color);">Synopsis épisode ${objRes.code}</span>`;
+            }
+
+            // On ajoute la description des épisodes dans des Popup
+            promise.then((data) => {
+                let intTime = setInterval(function() { // En attente du chargement des scripts JS
+                    if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
+                    else clearInterval(intTime);
+
+                    if (debug) console.log('Add synopsis episode');
+                    let $vignette,
+                        objRes,
+                        description,
+                        checkbox;
+                    for (let v = 0; v < len; v++) {
+                        $vignette = $(vignettes.get(v));
+                        objRes = data.episodes[v];
+                        description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
+                        if (description.length > 350) {
+                            description = description.substring(0, 350) + '...';
+                        } else if (description.length <= 0) {
+                            description = 'Aucune description';
+                        }
+
+                        checkbox = $vignette.find('.checkSeen');
+                        // if (debug) console.log('addCheckSeen(pos: %d, length: %d) obj:', v, checkbox.length, objRes);
+                        if (checkbox.length > 0 && objRes.user.seen) {
+                            // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
+                            checkbox.attr('id', 'episode-' + objRes.id);
+                            checkbox.data('pos', v);
+                            checkbox.attr('title', trans("member_shows.remove"));
+                            checkbox.addClass('seen');
+                        } else if (checkbox.length <= 0 && !objRes.user.seen && !objRes.user.hidden) {
+                            // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
+                            $vignette.append(`<div id="episode-${objRes.id}"
+                                                   class="checkSeen"
+                                                   data-pos="${v}"
+                                                   style="background: rgba(13,21,28,.2);"
+                                                   title="${trans("member_shows.markas")}"></div>`
+                            );
+                            $vignette.find('img.js-lazy-image').attr('style', 'filter: blur(5px);');
+                        }
+                        // Ajoute la synopsis de l'épisode au survol de la vignette
+                        $vignette.popover({
+                            container: $vignette,
+                            delay: { "show": 500, "hide": 100 },
+                            html: true,
+                            content: `<p>${description}</p>`,
+                            placement: funcPlacement,
+                            title: tempTitle(objRes),
+                            trigger: 'hover',
+                            boundary: 'window'
+                            //fallbackPlacement: ['left', 'right']
+                        });
+                    }
+                    /*$('#episodes .slide__image').on('shown.bs.popover', function () {
+                        let popover = $('#episodes .popover'),
+                            placement = popover.attr('x-placement');
+                        popover.hide(10);
+
+                        if (placement === 'left') {
+                            popover.css('left', '-350px');
+                        }
+                        else if (placement === 'right') {
+                            popover.css('left', '250px');
+                        }
+                        popover.fadeIn(400);
+                    });*/
+                    // On ajoute un event click sur la case 'checkSeen'
+                    $('#episodes .checkSeen').click(function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const $elt = $(e.currentTarget),
+                              episodeId = getEpisodeId($elt);
+                        toggleSpinner($elt, true);
+                        // On vérifie si l'épisode a déjà été vu
+                        if ($elt.hasClass('seen')) {
+                            // On demande à l'enlever des épisodes vus
+                            changeStatusVignette($elt, 'notSeen', 'DELETE', episodeId);
+                        }
+                        // Sinon, on l'ajoute aux épisodes vus
+                        else {
+                            changeStatusVignette($elt, 'seen', 'POST', episodeId);
+                        }
+                    });
+                    // On ajoute un effet au survol de la case 'checkSeen'
+                    $('#episodes .checkSeen').hover(e => {
+                        $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.2)');
+                        $(e.currentTarget).parent('.slide__image').popover('hide');
+                    }, e => {
+                        $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.0)');
+                        $(e.currentTarget).parent('.slide__image').popover('show');
+                    });
+                }, 500);
             });
 
             // Ajouter un bouton de mise à jour des épisodes de la saison courante
@@ -1057,7 +1170,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     <div id="updateEpisodeList" class="updateElements">
                       <img src="${serverBaseUrl}/img/update.png"
                            class="updateEpisodes updateElement finish"
-                           title="Mise à jour les épisodes de la saison"
+                           title="Mise à jour des épisodes de la saison"
                            style="margin-right:10px;"/>
                     </div>`);
                 // On ajoute la gestion de l'event click sur le bouton
@@ -1074,10 +1187,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     let promise;
                     if (cache.has('episodes', key)) {
                         promise = new Promise((resolve) => {
-                            resolve(cache.get('episodes', key));
+                            resolve(cache.get('episodes', key, 'updateEpisodeList'));
                         });
                     } else {
-                        const res = cache.get('shows', showId).show,
+                        const res = cache.get('shows', showId, 'updateEpisodeList').show,
                               params = {thetvdb_id: res.thetvdb_id, season: parseInt(seasonNum, 10)};
                         promise = callBetaSeries('GET', 'shows', 'episodes', params, true);
                         // On stocke le résultat en cache
@@ -1099,10 +1212,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             checkSeen = $vignette.find('.checkSeen'); // DOMElement jQuery de la checkbox vu de l'épisode
                             if (debug) console.log('Episode ID', id);
                             // On vérifie que l'attribut ID est bien définit
-                            if (checkSeen.length > 0 && checkSeen.attr('id') === undefined) {
+                            if (checkSeen.length > 0 && checkSeen.attr('id') == undefined) {
                                 if (debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
                                 // On ajoute l'attribut ID
                                 checkSeen.attr('id', 'episode-' + id);
+                                checkSeen.data('pos', v);
                             }
                             // Si le membre a vu l'épisode et qu'il n'est pas indiqué, on change le statut
                             if (episode.user.seen && checkSeen.length > 0 && !checkSeen.hasClass('seen')) {
@@ -1136,27 +1250,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
 
             /**
-             * Retourne la position de la popup par rapport à l'image du similar
-             * @param  {Object} tip Unknown
-             * @param  {Object} elt Le DOM Element du lien du similar
-             * @return {String}     La position de la popup
-             */
-            let funcPlacement = (tip, elt) => {
-                //if (debug) console.log('funcPlacement', tip, $(tip).width());
-                let rect = elt.getBoundingClientRect(),
-                    width = $(window).width(),
-                    sizePopover = 320;
-                return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
-            };
-            function tempTitle(objRes) {
-                return `<span style="color: var(--link_color);">Synopsis épisode ${objRes.code}</span>`;
-            }
-            const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
-                  showId = getResourceId(), // Identifiant de la ressource principale
-                  key = `show-${showId}-${seasonNum}`,
-                  res = cache.get('shows', showId).show;
-
-            /**
              * Ajoute un eventHandler sur les boutons Archiver et Favoris
              */
             function AddEventBtnsArchiveAndFavoris() {
@@ -1173,7 +1266,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     e.stopPropagation();
                     e.preventDefault();
                     if (debug) console.group('show-archive');
-                    const res = cache.get('shows', showId).show;
+                    const res = cache.get('shows', showId, 'btnArchive').show;
                     if (! res.user.archived) {
                         callBetaSeries('POST', 'shows', 'archive', {id: res.id})
                             .then(data => {
@@ -1205,7 +1298,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     e.stopPropagation();
                     e.preventDefault();
                     if (debug) console.group('show-favoris');
-                    const res = cache.get('shows', showId).show;
+                    const res = cache.get('shows', showId, 'btnFavoris').show;
                     if (! res.user.favorited) {
                         callBetaSeries('POST', 'shows', 'favorite', {id: res.id})
                             .then(data => {
@@ -1246,9 +1339,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              * @param {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
              */
             function addShowClick(trigEpisode = false) {
-                let res = cache.get('shows', showId).show;
+                const res = cache.get('shows', showId, 'addShowClick').show;
                 // Vérifier si le membre a ajouter la série à son compte
                 if (res.in_account === false) {
+                    // Remplacer le DOMElement supprime l'eventHandler
                     $('#reactjs-show-actions').empty().append(`
                         <div class="blockInformations__action">
                           <button class="btn-reset btn-transparent" type="button">
@@ -1269,14 +1363,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
                         for (let v = 0; v < len; v++) {
                             $(vignettes.get(v))
-                                .find('img')
-                                .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                                .find('img.js-lazy-image')
+                                .attr('style', 'filter: blur(5px);');
                         }
                         callBetaSeries('POST', 'shows', 'show', {id: res.id})
                         .then((data) => {
-                            res = data.show;
                             cache.set('shows', showId, data);
-                            changeBtnAdd();
+                            changeBtnAdd(data.show);
                             if (debug) console.groupEnd('AddShow');
                         }, err => {
                             notification('Erreur d\'ajout de la série', err);
@@ -1284,12 +1377,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         });
                     });
                 }
-                function changeBtnAdd() {
+
+                /**
+                 * Ajoute les items du menu Options, ainsi que les boutons Archiver et Favoris
+                 * et on ajoute un voile sur les images des épisodes non-vu
+                 *
+                 * @param  {Object} objRes L'objet de type Show
+                 * @return {void}
+                 */
+                function changeBtnAdd(objRes) {
                     const linksDd = $('.blockInformations__actions .dropdown-menu a');
                     if (linksDd.length <= 2) {
                         let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
-                            urlShow = res.resource_url.substring(location.origin.length),
-                            title = res.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
+                            urlShow = objRes.resource_url.substring(location.origin.length),
+                            title = objRes.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
                             templateOpts = `
                               <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
                                 showClose: true,
@@ -1316,19 +1417,25 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                   <div class="autocomplete__response js-display-response"></div>
                                 </div>
                               </form>
-                              <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>
-                            `;
+                              <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
                         if (linksDd.length === 1) {
                             templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
                         }
                         $('div.blockInformations__actions .dropdown-menu').append(templateOpts);
                     }
 
+                    // On remplace le bouton Ajouter par les boutons Archiver et Favoris
                     const divs = $('#reactjs-show-actions > div');
                     if (divs.length === 1) {
                         $('#reactjs-show-actions').remove();
                         $('.blockInformations__actions').prepend(`
-                            <div class="displayFlex alignItemsFlexStart" id="reactjs-show-actions" data-show-id="${res.id}" data-user-hasarchived="${res.user.archived ? '1' : ''}" data-show-inaccount="1" data-user-id="${betaseries_user_id}" data-show-favorised="${res.user.favorited ? '1' : ''}">
+                            <div class="displayFlex alignItemsFlexStart"
+                                 id="reactjs-show-actions"
+                                 data-show-id="${objRes.id}"
+                                 data-user-hasarchived="${objRes.user.archived ? '1' : ''}"
+                                 data-show-inaccount="1"
+                                 data-user-id="${betaseries_user_id}"
+                                 data-show-favorised="${objRes.user.favorited ? '1' : ''}">
                               <div class="blockInformations__action">
                                 <button class="btn-reset btn-transparent btn-archive" type="button">
                                   <span class="svgContainer">
@@ -1350,13 +1457,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 <div class="label">${trans('show.button.favorite.label')}</div>
                               </div>
                             </div>`);
+                        // On ofusque l'image de l'épisode non-vu
                         let vignette;
                         for (let v = 0; v < len; v++) {
                             vignette = $(vignettes.get(v));
                             if (vignette.find('.seen').length <= 0) {
-                                vignette
-                                    .find('img')
-                                    .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                                vignette.find('img').attr('style', 'filter: blur(5px);');
                             }
                         }
                     }
@@ -1372,7 +1478,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              * Gère la suppression de la série du compte utilisateur
              */
             function deleteShowClick() {
-                const res = cache.get('shows', showId).show;
+                const res = cache.get('shows', showId, 'deleteShowClick').show;
                 if (res.in_account && $('.blockInformations__actions .dropdown-menu a').length > 2) {
                     AddEventBtnsArchiveAndFavoris();
                     // Gestion de la suppression de la série du compte utilisateur
@@ -1396,6 +1502,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                         text: trans("popup.delete_show_success.text", { "%title%": res.title }),
                                         yes: trans("popup.delete_show_success.yes"),
                                     });
+                                    // On nettoie les propriétés servant à l'update de l'affichage
                                     data.show.user.status = 0;
                                     data.show.user.archived = false;
                                     data.show.user.favorited = false;
@@ -1416,12 +1523,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                           <div class="label">${trans('show.button.add.label')}</div>
                                         </div>`
                                     );
-                                    // On supprime les différentes options de la série liées à l'utilisateur
+                                    // On supprime les items du menu Options
                                     $('.blockInformations__actions .dropdown-menu a:first-child').siblings().each((i, e) => { $(e).remove(); });
                                     // Nettoyage de l'affichage et du cache des épisodes
                                     cache.clear('episodes');
                                     let checks = $('#episodes .checkSeen.seen'),
-                                        update = false;
+                                        update = false; // Flag pour l'update de l'affichage
                                     for (let c = 0; c < checks.length; c++) {
                                         if (c === checks.length - 1) update = true;
                                         if (debug) console.log('clean episode %d', c, update);
@@ -1439,88 +1546,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 }
             }
-            $('.blockInformations__actions .dropdown-menu').attr('x-placement', 'bottom-start');
             // On gère l'ajout et la suppression de la série dans le compte utilisateur
             if (res.in_account) {
                 deleteShowClick();
             } else {
                 addShowClick();
             }
-
-            let promise; // Contient la promesse de récupérer les épisodes de la saison courante
-            if (cache.has('episodes', key)) {
-                promise = new Promise((resolve) => {
-                    resolve(cache.get('episodes', key));
-                });
-            } else {
-                let params = {id: res.id, season: parseInt(seasonNum, 10)};
-                promise = callBetaSeries('GET', 'shows', 'episodes', params, true, false);
-                // On stocke le résultat en cache
-                promise.then(
-                    (data) => { cache.set('episodes', key, data); },
-                    (err) => { notification('Erreur de récupération des épisodes', 'addCheckbox: ' + err); }
-                );
-            }
-            // On ajoute le CSS et le Javascript pour les popup
-            if ($('#csspopover').length === 0 && $('#jsbootstrap').length === 0) {
-                $('head').append(`
-                    <link rel="stylesheet"
-                          id="csspopover"
-                          href="${serverBaseUrl}/css/popover.min.css"
-                          integrity="${integrityPopover}"
-                          crossorigin="anonymous" \>
-                    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
-                            id="jsbootstrap"
-                            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
-                            crossorigin="anonymous"></script>
-                `);
-            }
-
-            // On ajoute la description des épisodes dans des Popup
-            promise.then((data) => {
-                let intTime = setInterval(function() {
-                    if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
-                    else clearInterval(intTime);
-
-                    if (debug) console.log('Add synopsis episode');
-                    for (let v = 0; v < len; v++) {
-                        const $vignette = $(vignettes.get(v)),
-                              objRes = data.episodes[v];
-                        let description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
-                        if (description.length > 350) {
-                            description = description.substring(0, 350) + '...';
-                        } else if (description.length <= 0) {
-                            description = 'Aucune description';
-                        }
-                        // Ajoute la synopsis de l'épisode au survol de la vignette
-                        $vignette.popover({
-                            container: $vignette,
-                            delay: { "show": 500, "hide": 100 },
-                            html: true,
-                            content: `<p>${description}</p>`,
-                            placement: funcPlacement,
-                            title: tempTitle(objRes),
-                            trigger: 'hover',
-                            fallbackPlacement: ['left', 'right']
-                        });
-                    }
-                    $('#episodes .slide__image').on('shown.bs.popover', function () {
-                        let popover = $('#episodes .popover'),
-                            img = popover.parent().find('img.js-lazy-image'),
-                            placement = popover.attr('x-placement'),
-                            space = 0;
-
-                        if (placement === 'left') {
-                            space = popover.width() + 5;
-                            popover.css('left', `-${space}px`);
-                        }
-                        else if (placement === 'right') {
-                            space = img.width();
-                            popover.css('left', `${space}px`);
-                        }
-                    });
-                }, 500);
-            });
 
             /**
              * Affiche/masque le spinner de modification des épisodes
@@ -1557,7 +1588,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              */
             function changeStatusVignette($elt, status, method, episodeId) {
                 let args = {'id': episodeId},
-                    res = cache.get('shows', getResourceId()).show;
+                    res = cache.get('shows', getResourceId(), 'changeStatusVignette').show;
                 if (method == 'POST') {
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
                 }
@@ -1572,7 +1603,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     }
                     // On met à jour l'objet Episode dans le cache
                     if (cache.has('episodes', key)) {
-                        let episodes = cache.get('episodes', key).episodes;
+                        let episodes = cache.get('episodes', key, 'changeStatusVignette').episodes;
                         const pos = $elt.data('pos');
                         if (pos && episodes[pos].id == episodeId) {
                             episodes[pos] = data.episode;
@@ -1610,6 +1641,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 if (newStatus == 'seen') {
                     $elt.css('background', ''); // On ajoute le check dans la case à cocher
                     $elt.addClass('seen'); // On ajoute la classe 'seen'
+                    $elt.attr('title', trans("member_shows.remove"));
                     // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
                     $elt.parent('div.slide__image').find('img').removeAttr('style');
                     $elt.parent('div.slide_flex').removeClass('slide--notSeen');
@@ -1634,8 +1666,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         }
                     }
                 } else {
-                    $elt.css('background', 'none'); // On enlève le check dans la case à cocher
+                    $elt.css('background', 'rgba(13,21,28,.2)'); // On enlève le check dans la case à cocher
                     $elt.removeClass('seen'); // On supprime la classe 'seen'
+                    $elt.attr('title', trans("member_shows.markas"));
                     // On remet le voile masquant sur la vignette de l'épisode
                     $elt.parent('div.slide__image')
                         .find('img')
@@ -1648,7 +1681,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
                     if ($('#episodes .seen').length < len) {
                         $('#seasons div.slide--current .checkSeen').remove();
-                        //$('div.slide--current').addClass('slide--seen');
+                        $('#seasons div.slide--current').removeClass('slide--seen');
                         $('#seasons div.slide--current').addClass('slide--notSeen');
                     }
                 }
@@ -1687,7 +1720,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 if (debug) console.log('updateProgressBar');
                 let showId = getResourceId(),
                     progBar = $('.progressBarShow'),
-                    show = cache.get('shows', showId).show;
+                    show = cache.get('shows', showId, 'updateProgressBar').show;
                 // On met à jour la barre de progression
                 progBar.css('width', show.user.status.toFixed(1) + '%');
             }
@@ -1700,7 +1733,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 if (debug) console.log('updateNextEpisode');
                 let showId = getResourceId(),
                     nextEpisode = $('a.blockNextEpisode'),
-                    show = cache.get('shows', showId).show;
+                    show = cache.get('shows', showId, 'updateNextEpisode').show;
 
                 if (nextEpisode.length > 0 && 'next' in show.user && show.user.next.id !== null) {
                     if (debug) console.log('nextEpisode et show.user.next OK', show.user);
@@ -1764,6 +1797,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
         // On ajoute un event sur le changement de saison
         seasons.click(function() {
+            $('#episodes .checkSeen').off('click');
             //e.stopPropagation();
             //e.preventDefault();
             if (debug) console.log('season click');
@@ -1777,7 +1811,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     if (debug) console.log('Season click clear timer, nbVignettes (%d, %d)', vigns.length, len);
                     // On supprime le timer Interval
                     clearInterval(timer);
-                    addCheckbox();
+                    addCheckSeen();
                 }
             }, 500);
         });
@@ -1795,9 +1829,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return $('#episodes .slide__image');
         }
         // On vérifie si le flag 'checkSeen' est présent
-        function checkSeenPresent(elt) {
+        /*function checkSeenPresent(elt) {
             return elt.find('.checkSeen').length > 0;
-        }
+        }*/
         // Retourne l'identifiant de l'épisode
         function getEpisodeId(episode) {
             return episode.parents('div.slide_flex').find('button').first().attr('id').split('-')[1];
@@ -1817,7 +1851,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             len = similars.length, // Le nombre de similaires
             type = getApiResource(url.split('/')[1]), // Le type de ressource
             resId = getResourceId(), // Identifiant de la ressource
-            res = cache.get(type.plural, resId)[type.singular];
+            res = cache.get(type.plural, resId, 'similarsViewed')[type.singular];
 
         if (debug) console.log('nb similars: %d', len, parseInt(res.similars, 10));
 
@@ -1903,7 +1937,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                  * @return {String}       La présentation du similar
                  */
                 function tempContentPopup(objId) {
-                    const objRes = cache.get(type.plural, objId)[type.singular],
+                    const objRes = cache.get(type.plural, objId, 'tempContentPopup')[type.singular],
                           genres = Object.values(objRes.genres).join(', '),
                           status = objRes.status == 'Ended' ? 'Terminée' : 'En cours',
                           seen = (objRes.user.status > 0) ? 'Vu à <strong>' + objRes.user.status + '%</strong>' : 'Pas vu';
@@ -2245,14 +2279,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * par les posters sur artworks de TheTVDB
          *
          * @param  {Object} elt    Objet jQuery du titre du similar
-         * @param  {Object} objRes Objet type show du similar
+         * @param  {Object} objRes Objet type show/movie du similar
          * @param  {String} type   Type de ressource (show or movie)
          * @return {void}
          */
         function checkImgSimilar(elt, objRes, type) {
             let img = elt.siblings('a').find('img.js-lazy-image');
             if (img.length <= 0) {
-                if (type === 'show' && objRes.thetvdb_id > 0 && objRes.thetvdb_id !== null) {
+                if (type === 'show' && objRes.thetvdb_id > 0 && objRes.thetvdb_id != null) {
                     // On tente de remplacer le block div 404 par une image
                     elt.siblings('a').find('div.block404').replaceWith(`
                         <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in"
@@ -2262,14 +2296,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                              src="https://artworks.thetvdb.com/banners/posters/${objRes.thetvdb_id}-1.jpg"/>
                     `);
                 }
-                else if (type === 'movie' && objRes.tmdb_id > 0 && objRes.tmdb_id !== null) {
+                else if (type === 'movie' && objRes.tmdb_id > 0 && objRes.tmdb_id != null) {
                     if (themoviedb_api_user_key.length <= 0) return;
                     let uriApiTmdb = `https://api.themoviedb.org/3/movie/${objRes.tmdb_id}?api_key=${themoviedb_api_user_key}&language=fr-FR`;
                     fetch(uriApiTmdb).then(response => {
                         if (!response.ok) return null;
                         return response.json();
                     }).then(data => {
-                        if (data !== null && data.hasOwnProperty('poster_path') && data.poster_path !== null) {
+                        if (data !== null && data.hasOwnProperty('poster_path') && data.poster_path != null) {
                             elt.siblings('a').find('div.block404').replaceWith(`
                                 <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in"
                                      width="125"
@@ -2538,9 +2572,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
         // On retourne la ressource en cache si elle y est présente
         if (! nocache && type === 'GET' && args && 'id' in args && cache.has(category, args.id)) {
-            if (debug) console.log('callBetaSeries retourne la ressource du cache (%s: %d)', category, args.id);
+            //if (debug) console.log('callBetaSeries retourne la ressource du cache (%s: %d)', category, args.id);
             return new Promise((resolve) => {
-                resolve(cache.get(category, args.id));
+                resolve(cache.get(category, args.id, 'callBetaSeries'));
             });
         }
 
@@ -2653,9 +2687,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @param {String} key  the cache key
          * @returns {*} the cache entry if set, or undefined otherwise
          */
-        this.get = function(type, key) {
+        this.get = function(type, key, caller=null) {
             if (self.has(type, key)) {
-                if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
+                if (caller != null && debug) { console.log('[%s]: Retourne la ressource (%s) du cache', caller, type, {key: key}); }
+                else if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
                 return data[type][key];
             }
             return null;
