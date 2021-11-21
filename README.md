@@ -97,7 +97,6 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ## Futures améliorations possibles
 
 * ~~Afficher les infos de la ressource dans une popup, lors du survol d'un similar~~
-* Enregistrer les filtres des séries et des films sur l'espace de stockage local.
 
 ## Développement
 
