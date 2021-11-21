@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.22.1
+// @version      0.23.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -120,7 +120,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   'timeline'
               ]
           };
-
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
         <link rel="stylesheet"
@@ -195,10 +194,46 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         waitPagination();
         seriesFilterPays();
         if (/agenda/.test(url)) {
+            let countTimer = 0;
             timerUA = setInterval(function() {
+                if (++countTimer > 50) {
+                    clearInterval(timerUA);
+                    notification('Erreur Update Agenda', 'Le timer de chargement a dépassé le temps max autorisé.');
+                    return;
+                }
                 updateAgenda();
             }, 1000);
         }
+    }
+
+    // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
+    // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
+    const observer = new MutationObserver(function(mutationsList) {
+        let updateTitle = (i, e) => {if (isTruncated(e)) {$(e).parents('a').attr('title', $(e).text());}};
+        for (let mutation of mutationsList) {
+            if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
+                let node = mutation.addedNodes[0],
+                    $node = $(node);
+                if ($node.hasClass('col-md-4')) {
+                    $('.mainLink', $node).each(updateTitle);
+                } else if ($node.hasClass('js-searchResult')) {
+                    let title = $('.mainLink', $node).get(0);
+                    if (isTruncated(title)) {
+                        $node.attr('title', $(title).text());
+                    }
+                }
+            }
+        }
+    });
+    observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
+
+    /**
+     * Verifie si l'élément est tronqué, généralement, du texte
+     * @params {Object} Objet DOMElement
+     * @return {boolean}
+     */
+    function isTruncated(el) {
+        return el.scrollWidth > el.clientWidth;
     }
 
     /**
@@ -351,7 +386,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function updateApiConsole() {
         // Listener sur le btn nouveau paramètre
-        $('.form-group .btn-btn').prop('onclick', null).off('click').click((e, key) => {
+        $('div.form-group button.btn-btn.btn--blue').prop('onclick', null).off('click').click((e, key) => {
             e.stopPropagation();
             e.preventDefault();
             if (debug) console.log('nouveau parametre handler', key);
@@ -380,7 +415,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 paramsDoc.click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    $('.form-group .btn-btn').trigger('click', [$(e.currentTarget).text().trim()]);
+                    $('div.form-group button.btn-btn.btn--blue').trigger('click', [$(e.currentTarget).text().trim()]);
                 });
             }, 500);
         });
@@ -899,6 +934,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }, 1000);
         $('.blockPartner').attr('style', 'display: none !important');
+        $('.breadcrumb').hide();
     }
 
     /**
@@ -1018,7 +1054,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckSeen() {
             vignettes = getVignettes();
-            len = $('#episodes .slide__image').length;
+            len = parseInt($('#seasons .slide--current .slide__infos').text(), 10);
 
             const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
                   showId = getResourceId(), // Identifiant de la ressource principale
@@ -1082,7 +1118,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         objRes,
                         description,
                         checkbox;
-                    for (let v = 0; v < len; v++) {
+                    for (let v = 0; v < vignettes.length; v++) {
                         $vignette = $(vignettes.get(v));
                         objRes = data.episodes[v];
                         description = (type.singular == 'show') ? objRes.description : objRes.synopsis;
@@ -1097,7 +1133,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         if (checkbox.length > 0 && objRes.user.seen) {
                             // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
                             checkbox.attr('id', 'episode-' + objRes.id);
-                            checkbox.data('pos', v);
+                            checkbox.attr('data-pos', v);
                             checkbox.attr('title', trans("member_shows.remove"));
                             checkbox.addClass('seen');
                         } else if (checkbox.length <= 0 && !objRes.user.seen && !objRes.user.hidden) {
@@ -1109,6 +1145,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                                    title="${trans("member_shows.markas")}"></div>`
                             );
                             $vignette.find('img.js-lazy-image').attr('style', 'filter: blur(5px);');
+                        } else if (checkbox.length > 0 && objRes.user.hidden) {
+                            checkbox.remove();
                         }
                         // Ajoute la synopsis de l'épisode au survol de la vignette
                         $vignette.popover({
@@ -1177,30 +1215,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 $('.updateEpisodes').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (debug) console.group('updateEpisodes');
+                    if (debug) console.groupCollapsed('updateEpisodes');
                     const self = $(e.currentTarget);
                     self.removeClass('finish');
                     // Le numéro de la saison courante
                     const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
                           showId = getResourceId(), // Identifiant de la ressource principale
-                          key = `show-${showId}-${seasonNum}`;
-                    let promise;
-                    if (cache.has('episodes', key)) {
-                        promise = new Promise((resolve) => {
-                            resolve(cache.get('episodes', key, 'updateEpisodeList'));
-                        });
-                    } else {
-                        const res = cache.get('shows', showId, 'updateEpisodeList').show,
-                              params = {thetvdb_id: res.thetvdb_id, season: parseInt(seasonNum, 10)};
-                        promise = callBetaSeries('GET', 'shows', 'episodes', params, true);
-                        // On stocke le résultat en cache
-                        promise.then((data) => {
-                            cache.set('episodes', key, data);
-                        });
-                    }
-
-                    promise.then((data) => {
+                          key = `show-${showId}-${seasonNum}`,
+                          res = cache.get('shows', showId, 'updateEpisodeList').show;
+                    callBetaSeries('GET', 'shows', 'episodes', {id: res.id, season: parseInt(seasonNum, 10)}, true, false)
+                    .then((data) => {
                         if (debug) console.log('callBetaSeries GET shows/episodes', data);
+                        cache.set('episodes', key, data);
                         vignettes = getVignettes();
                         len = getNbVignettes();
                         let $vignette, episode, id, checkSeen, changed = false;
@@ -1228,6 +1254,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             else if (!episode.user.seen && checkSeen.length > 0 && checkSeen.hasClass('seen')) {
                                 if (debug) console.log('Changement du statut (notSeen) de l\'épisode');
                                 changeStatus(checkSeen, 'notSeen', false);
+                                changed = true;
+                            }
+                            else if (episode.user.hidden && checkSeen.length > 0) {
+                                checkSeen.remove();
                                 changed = true;
                             }
                         }
@@ -1265,7 +1295,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 btnArchive.off('click').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (debug) console.group('show-archive');
+                    if (debug) console.groupCollapsed('show-archive');
                     const res = cache.get('shows', showId, 'btnArchive').show;
                     if (! res.user.archived) {
                         callBetaSeries('POST', 'shows', 'archive', {id: res.id})
@@ -1297,7 +1327,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 btnFavoris.off('click').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (debug) console.group('show-favoris');
+                    if (debug) console.groupCollapsed('show-favoris');
                     const res = cache.get('shows', showId, 'btnFavoris').show;
                     if (! res.user.favorited) {
                         callBetaSeries('POST', 'shows', 'favorite', {id: res.id})
@@ -1359,7 +1389,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     $('#reactjs-show-actions > div > button').off('click').one('click', (e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        if (debug) console.group('AddShow');
+                        if (debug) console.groupCollapsed('AddShow');
 
                         for (let v = 0; v < len; v++) {
                             $(vignettes.get(v))
@@ -1470,7 +1500,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     deleteShowClick();
                 }
                 if (trigEpisode) {
-                    changeBtnAdd();
+                    getResource().then(obj => {
+                        changeBtnAdd(obj);
+                    });
                 }
             }
 
@@ -1489,7 +1521,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     {
                         e.stopPropagation();
                         e.preventDefault();
-                        if (debug) console.group('DeleteShow');
+                        if (debug) console.groupCollapsed('DeleteShow');
                         // Supprimer la série du compte utilisateur
                         new PopupAlert({
                             title: trans("popup.delete_show.title", { "%title%": res.title }),
@@ -1572,7 +1604,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     if (debug) console.log('toggleSpinner');
                     if (debug) console.groupEnd('episode checkSeen');
                 } else {
-                    if (debug) console.group('episode checkSeen');
+                    if (debug) console.groupCollapsed('episode checkSeen');
                     if (debug) console.log('toggleSpinner');
                     container.prepend(html);
                 }
@@ -1587,46 +1619,79 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              * @return {void}
              */
             function changeStatusVignette($elt, status, method, episodeId) {
+                const pos = $elt.data('pos');
                 let args = {'id': episodeId},
                     res = cache.get('shows', getResourceId(), 'changeStatusVignette').show;
-                if (method == 'POST') {
-                    args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
+                    promise = new Promise(resolve => { resolve(false); });
+
+                if (method === 'POST') {
+                    let createPromise = () => {
+                        return new Promise(resolve => {
+                            new PopupAlert({
+                                title: 'Episodes vus',
+                                text: 'Doit-on cocher les épisodes précédents comme vu ?',
+                                callback_yes: () => {
+                                    resolve(true);
+                                },
+                                callback_no: () => {
+                                    resolve(false);
+                                }
+                            });
+                        });
+                    };
+                    // On verifie si les épisodes précédents ont bien été indiqués comme vu
+                    for (let v = 0; v < pos; v++) {
+                        if (! $(vignettes.get(v)).hasClass('seen')) {
+                            promise = createPromise();
+                            break;
+                        }
+                    }
                 }
 
-                callBetaSeries(method, 'episodes', 'watched', args)
-                .then(function(data) {
-                    if (debug) console.log('callBetaSeries %s episodes/watched', method, data);
-
-                    changeStatus($elt, status);
-                    if (res.in_account === false) {
-                        addShowClick(true);
+                promise.then(response => {
+                    if (method === 'POST' && !response) {
+                        args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
                     }
-                    // On met à jour l'objet Episode dans le cache
-                    if (cache.has('episodes', key)) {
-                        let episodes = cache.get('episodes', key, 'changeStatusVignette').episodes;
-                        const pos = $elt.data('pos');
-                        if (pos && episodes[pos].id == episodeId) {
-                            episodes[pos] = data.episode;
-                        } else {
-                            for (let e = 0; e < episodes.length; e++) {
-                                if (episodes[e].id == episodeId) {
-                                    episodes[e] = data.episode;
-                                    break;
+
+                    callBetaSeries(method, 'episodes', 'watched', args)
+                    .then(function(data) {
+                        if (debug) console.log('changeStatusVignette %s episodes/watched', method, data);
+
+                        if (res.in_account === false) {
+                            addShowClick(true);
+                        }
+                        // On met à jour l'objet Episode dans le cache
+                        if (cache.has('episodes', key)) {
+                            let episodes = cache.get('episodes', key).episodes;
+                            if (! response && pos && episodes[pos].id == episodeId) {
+                                episodes[pos] = data.episode;
+                            } else {
+                                for (let e = 0; e < episodes.length; e++) {
+                                    if (response && e < pos && ! episodes[e].user.seen) {
+                                        episodes[e].user.seen = true;
+                                        if (debug) console.log(`query selector: #episodes .checkSeen[data-pos="${e}"]`);
+                                        changeStatus($(`#episodes .checkSeen[data-pos="${e}"]`), 'seen', false);
+                                    }
+                                    if (episodes[e].id == episodeId) {
+                                        episodes[e] = data.episode;
+                                        break;
+                                    }
                                 }
                             }
+                            cache.set('episodes', key, {episodes: episodes});
                         }
-                        cache.set('episodes', key, {episodes: episodes});
-                    }
-                },
-                function(err) {
-                    if (debug) console.log('changeStatusVignette error %s', err);
-                    if (err && err == 'changeStatus') {
-                        if (debug) console.log('changeStatusVignette error %s changeStatus', method);
                         changeStatus($elt, status);
-                    } else {
-                        toggleSpinner($elt, false);
-                        notification('Erreur de modification d\'un épisode', 'changeStatusVignette: ' + err);
-                    }
+                    },
+                    function(err) {
+                        if (debug) console.log('changeStatusVignette error %s', err);
+                        if (err && err == 'changeStatus') {
+                            if (debug) console.log('changeStatusVignette error %s changeStatus', method);
+                            changeStatus($elt, status);
+                        } else {
+                            toggleSpinner($elt, false);
+                            notification('Erreur de modification d\'un épisode', 'changeStatusVignette: ' + err);
+                        }
+                    });
                 });
             }
 
@@ -1638,13 +1703,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              * @return {void}
              */
             function changeStatus($elt, newStatus, update = true) {
-                if (newStatus == 'seen') {
+                if (debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
+                if (newStatus === 'seen') {
                     $elt.css('background', ''); // On ajoute le check dans la case à cocher
                     $elt.addClass('seen'); // On ajoute la classe 'seen'
                     $elt.attr('title', trans("member_shows.remove"));
                     // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
                     $elt.parent('div.slide__image').find('img').removeAttr('style');
-                    $elt.parent('div.slide_flex').removeClass('slide--notSeen');
+                    $elt.parents('div.slide_flex').removeClass('slide--notSeen');
 
                     // Si tous les épisodes de la saison ont été vus
                     if ($('#episodes .seen').length == len) {
@@ -1672,9 +1738,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     // On remet le voile masquant sur la vignette de l'épisode
                     $elt.parent('div.slide__image')
                         .find('img')
-                            .attr('style', 'transform: rotate(0deg) scale(1.2);filter: blur(30px);');
+                            .attr('style', 'filter: blur(5px);');
 
-                    const contVignette = $elt.parent('div.slide_flex');
+                    const contVignette = $elt.parents('div.slide_flex');
                     if (!contVignette.hasClass('slide--notSeen')) {
                         contVignette.addClass('slide--notSeen');
                     }
@@ -1797,12 +1863,19 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
         // On ajoute un event sur le changement de saison
         seasons.click(function() {
+            if (debug) console.groupCollapsed('season click');
             $('#episodes .checkSeen').off('click');
-            //e.stopPropagation();
-            //e.preventDefault();
-            if (debug) console.log('season click');
+            let indBoucle = 0;
             // On attend que les vignettes de la saison choisie soient chargées
             timer = setInterval(function() {
+                if (++indBoucle > 60) {
+                    if (debug) {
+                        console.log('Season click Timeout');
+                        console.groupEnd('season click');
+                    }
+                    clearInterval(timer);
+                    return;
+                }
                 const len = getNbVignettes(),
                       vigns = getVignettes();
                 // On vérifie qu'il y a des vignettes et que leur nombre soit égale
@@ -1812,6 +1885,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     // On supprime le timer Interval
                     clearInterval(timer);
                     addCheckSeen();
+                    if (debug) console.groupEnd('season click');
                 }
             }, 500);
         });
@@ -1838,6 +1912,114 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
     }
 
+    function replaceSuggestSimilarHandler($elt, objSimilars = []) {
+        // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
+        if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
+
+        console.log('replaceSuggestSimilarHandler');
+        let type = getApiResource(url.split('/')[1]), // Le type de ressource
+            resId = getResourceId(), // Identifiant de la ressource
+            res = cache.get(type.plural, resId, 'replaceSuggestSimilarHandler')[type.singular];
+
+        // Gestion d'ajout d'un similar
+        $elt.removeAttr('onclick').click(() => {
+            new PopupAlert({
+                showClose: true,
+                type: 'popin-suggestshow',
+                params: {
+                    id: res.id
+                },
+                callback: function() {
+                    $("#similaire_id_search").focus().on("keyup", (e) => {
+                        let search = $(e.currentTarget).val();
+                        if (search.length > 0 && e.keyCode != 40 && e.keyCode != 38) {
+                            callBetaSeries('GET', 'search', 'shows', {autres: 'mine', text: search})
+                            .then((data) => {
+                                $("#search_results .title").remove();
+                                $("#search_results .item").remove();
+                                let show;
+                                for (let s = 0; s < data.shows.length; s++) {
+                                    show = data.shows[s];
+                                    if (objSimilars.indexOf(show.id) !== -1) { continue; }
+                                    $('#search_results').append(`
+                                        <div class="item">
+                                          <p><span data-id="${show.id}" style="cursor:pointer;">${show.title}</span></p>
+                                        </div>`
+                                                               );
+                                }
+                                $('#search_results .item span').click((e) => {
+                                    autocompleteSimilar(e.currentTarget);
+                                });
+                                $("#similaire_id_search").off('keydown').on('keydown', (e) => {
+                                    const current_item = $("#search_results .item.hl");
+                                    switch(e.keyCode) {
+                                        /* Flèche du bas */
+                                        case 40:
+                                            if (current_item.length === 0) {
+                                                $("#search_results .item:first").addClass("hl");
+                                            } else {
+                                                let next_item = $("#search_results .item.hl").next("div");
+                                                if (next_item.attr("class") === "title") {
+                                                    next_item = next_item.next("div");
+                                                }
+                                                current_item.removeClass("hl");
+                                                next_item.addClass("hl");
+                                            }
+                                            break;
+
+                                        /* Flèche du haut */
+                                        case 38:
+                                            if (current_item.length !== 0) {
+                                                let prev_item = $("#search_results .item.hl").prev("div");
+                                                if (prev_item.attr("class") == "title") {
+                                                    prev_item = prev_item.prev("div");
+                                                }
+                                                current_item.removeClass("hl");
+                                                prev_item.addClass("hl");
+                                            }
+                                            break;
+
+                                        /* Touche Entrée */
+                                        case 13:
+                                            if (debug) console.log('current_item', current_item);
+                                            if (current_item.length !== 0) {
+                                                autocompleteSimilar(current_item.find("span"));
+                                            }
+                                            break;
+
+                                        /* Touche Echap */
+                                        case 27:
+                                            $("#search_results").empty();
+                                            $("input[name=similaire_id_search]").val("").trigger("blur");
+                                            break;
+                                    }
+                                });
+                            }, (err) => {
+                                notification('Ajout d\'un similar', 'Erreur requête Search: ' + err);
+                            });
+                        } else if (e.keyCode != 40 && e.keyCode != 38) {
+                            $("#search_results").empty();
+                            $("#similaire_id_search").off("keydown");
+                        }
+                    });
+                }
+            });
+
+            function autocompleteSimilar(el) {
+                let titre = $(el).html(),
+                    id = $(el).data("id");
+
+                titre = titre.replace(/&amp;/g, "&");
+                $("#search_results .item").remove();
+                $("#search_results .title").remove();
+                $("#similaire_id_search").val(titre).trigger("blur");
+                $("input[name=similaire_id]").val(id);
+                $('#popin-dialog .popin-content-html > form > div.button-set > button').focus();
+                //$("input[name=notes_url]").trigger("focus");
+            }
+        });
+    }
+
     /**
      * Vérifie si les séries/films similaires ont été vues
      * Nécessite que l'utilisateur soit connecté et que la clé d'API soit renseignée
@@ -1846,7 +2028,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
 
-        console.group('similarsViewed');
+        console.groupCollapsed('similarsViewed');
         let similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = similars.length, // Le nombre de similaires
             type = getApiResource(url.split('/')[1]), // Le type de ressource
@@ -1858,6 +2040,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len == 1 && $(similars.parent().get(0)).find('button').length == 1)) {
             $('.updateSimilars').addClass('finish');
+            replaceSuggestSimilarHandler($('#similars div.slides_flex div.slide_flex div.slide__image > button'));
             console.groupEnd('similarsViewed');
             return;
         }
@@ -1893,7 +2076,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 $('#similars .blockTitle')
                     .after(`<button type="button" class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05">Suggérer une série</button>`);
             }
-            // On ajoute la gestion de l'event click sur le bouton
+            // On ajoute la gestion de l'event click sur le bouton d'update des similars
             $('.updateSimilars').click(function(e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -1902,6 +2085,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 $('.bandViewed').remove();
                 // On supprime les notes
                 $('.stars-outer').remove();
+                $('.fa-wrench').remove();
                 // On supprime les popovers
                 $('#similars a.slide__image').each((i, elt) => {
                     $(elt).popover('dispose');
@@ -1911,9 +2095,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }
 
-        let params = {'details': true, id: res.id},
-            objSimilars = [];
-        callBetaSeries('GET', type.plural, 'similars', params, true, false)
+        let objSimilars = [];
+        callBetaSeries('GET', type.plural, 'similars', {'details': true, id: res.id}, true, false)
         .then(function(data) {
             let intTime = setInterval(function() {
                 if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
@@ -2148,103 +2331,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
         });
 
-        // Gestion d'ajout d'un similar
-        $('#similars button.blockTitle-subtitle').removeAttr('onclick').click(() => {
-            new PopupAlert({
-                showClose: true,
-                type: 'popin-suggestshow',
-                params: {
-                    id: res.id
-                },
-                callback: function() {
-                    $("#similaire_id_search").focus().on("keyup", (e) => {
-                        let search = $(e.currentTarget).val();
-                        if (search.length > 0 && e.keyCode != 40 && e.keyCode != 38) {
-                            callBetaSeries('GET', 'search', 'shows', {autres: 'mine', text: search})
-                            .then((data) => {
-                                $("#search_results .title").remove();
-                                $("#search_results .item").remove();
-                                let show;
-                                for (let s = 0; s < data.shows.length; s++) {
-                                    show = data.shows[s];
-                                    if (objSimilars.indexOf(show.id) !== -1) { continue; }
-                                    $('#search_results').append(`
-                                        <div class="item">
-                                          <p><span data-id="${show.id}" style="cursor:pointer;">${show.title}</span></p>
-                                        </div>`
-                                    );
-                                }
-                                $('#search_results .item span').click((e) => {
-                                    autocompleteSimilar(e.currentTarget);
-                                });
-                                $("#similaire_id_search").off('keydown').on('keydown', (e) => {
-                                    const current_item = $("#search_results .item.hl");
-                                    switch(e.keyCode) {
-                                        /* Flèche du bas */
-                                        case 40:
-                                            if (current_item.length === 0) {
-                                                $("#search_results .item:first").addClass("hl");
-                                            } else {
-                                                let next_item = $("#search_results .item.hl").next("div");
-                                                if (next_item.attr("class") === "title") {
-                                                    next_item = next_item.next("div");
-                                                }
-                                                current_item.removeClass("hl");
-                                                next_item.addClass("hl");
-                                            }
-                                            break;
-
-                                        /* Flèche du haut */
-                                        case 38:
-                                            if (current_item.length !== 0) {
-                                                let prev_item = $("#search_results .item.hl").prev("div");
-                                                if (prev_item.attr("class") == "title") {
-                                                    prev_item = prev_item.prev("div");
-                                                }
-                                                current_item.removeClass("hl");
-                                                prev_item.addClass("hl");
-                                            }
-                                            break;
-
-                                        /* Touche Entrée */
-                                        case 13:
-                                            if (debug) console.log('current_item', current_item);
-                                            if (current_item.length !== 0) {
-                                                autocompleteSimilar(current_item.find("span"));
-                                            }
-                                            break;
-
-                                        /* Touche Echap */
-                                        case 27:
-                                            $("#search_results").empty();
-                                            $("input[name=similaire_id_search]").val("").trigger("blur");
-                                            break;
-                                    }
-                                });
-                            }, (err) => {
-                                notification('Ajout d\'un similar', 'Erreur requête Search: ' + err);
-                            });
-                        } else if (e.keyCode != 40 && e.keyCode != 38) {
-                            $("#search_results").empty();
-                            $("#similaire_id_search").off("keydown");
-                        }
-                    });
-                }
-            });
-
-            function autocompleteSimilar(el) {
-                let titre = $(el).html(),
-                    id = $(el).data("id");
-
-                titre = titre.replace(/&amp;/g, "&");
-                $("#search_results .item").remove();
-                $("#search_results .title").remove();
-                $("#similaire_id_search").val(titre).trigger("blur");
-                $("input[name=similaire_id]").val(id);
-                $('#popin-dialog .popin-content-html > form > div.button-set > button').focus();
-                //$("input[name=notes_url]").trigger("focus");
-            }
-        });
+        replaceSuggestSimilarHandler($('#similars button.blockTitle-subtitle'), objSimilars);
 
         /**
          * Fonction d'ajout du bandeau "Viewed" sur les images des similaires
@@ -2326,28 +2413,31 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     function updateAgenda() {
         // Identifier les informations des épisodes à voir
         // Les containers
-        let containersEpisode = $('#reactjs-episodes-to-watch > div.mainBlock > div > div'),
-            linksTitle = $('div.m_s > div:nth-child(1) > div.media-body > a:nth-child(1)'),
-            linksEpisode = $('div > div.m_s > div:nth-child(1) > div.media-body > a.mainLink');
+        let containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer'),
+            len = containersEpisode.length,
+            currentShowIds = {};
 
         // En attente du chargement des épisodes
-        if (linksTitle.length > 0) {
-            if (debug) console.log('updateAgenda - nb titles: %d', linksTitle.length);
+        if (len > 0) {
+            if (debug) console.log('updateAgenda - nb containers: %d', len);
             clearInterval(timerUA);
         } else {
             if (debug) console.log('updateAgenda en attente');
             return;
         }
 
-        for (let t = 0; t < linksTitle.length; t++) {
-            const title = $(linksTitle.get(t)).text().trim(),
-                  episode = $(linksEpisode.get(t)).attr('href').split('/').pop().toLowerCase(),
-                  container = $(containersEpisode.get(t));
-            container
-                .data('title', title)
-                .data('code', episode);
-            //if (debug) console.log('title: %s - code: %s', title, episode);
-        }
+        callBetaSeries('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
+        .then(data => {
+            for (let t = 0; t < len; t++) {
+                const container = $(containersEpisode.get(t));
+                container
+                    .data('showId', data.shows[t].id)
+                    .data('code', data.shows[t].unseen[0].code.toLowerCase());
+                currentShowIds[data.shows[t].id] = {code: data.shows[t].unseen[0].code.toLowerCase()};
+                //if (debug) console.log('title: %s - code: %s', title, episode);
+            }
+        });
+
         if ($('.updateElements').length === 0) {
             // On ajoute le bouton de mise à jour des similaires
             $('.maintitle > div:nth-child(1)').after(`
@@ -2369,32 +2459,62 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (debug) console.group('Agenda updateEpisodes');
-                const self = $(e.currentTarget);
+                if (debug) console.groupCollapsed('Agenda updateEpisodes');
+                containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer');
+                const self = $(e.currentTarget),
+                      len = containersEpisode.length;
                 self.removeClass('finish');
-                const len = $('#reactjs-episodes-to-watch > div.mainBlock > div > div').length;
-                callBetaSeries('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len})
-                .then((data) => {
+                let countIntTime = 0;
+                callBetaSeries('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
+                .then(data => {
                     let intTime = setInterval(function() {
+                        if (++countIntTime > 60) {
+                            clearInterval(intTime);
+                            self.addClass('finish');
+                            notification('Erreur de mise à jour des épisodes', 'updateAgenda: updateEpisodes.click interval time over');
+                            if (debug) console.groupEnd('Agenda updateEpisodes');
+                            return;
+                        }
                         if (typeof moment != 'function') { return; }
                         else clearInterval(intTime);
+
                         moment.locale('fr');
-                        if (debug) console.log('updateAgenda callBetaSeries.then', data);
-                        let titles = []; // Liste des titres de series à voir
-                        for (let t = 0; t < data.shows.length; t++) {
-                            titles.push(data.shows[t].title);
+                        let newShowIds = {};
+                        if (debug) console.log('updateAgenda updateEpisodes', data);
+                        for (let s = 0; s < data.shows.length; s++) {
+                            newShowIds[data.shows[s].id] = {code: data.shows[s].unseen[0].code.toLowerCase()};
+                            if (!currentShowIds.hasOwnProperty(data.shows[s].id)) {
+                                if (debug) console.log('Une nouvelle série est arrivée', data.shows[s]);
+                                // Il s'agit d'une nouvelle série
+                                // TODO Ajouter un nouveau container
+                                let newContainer = $(buildContainer(data.shows[s].unseen[0]));
+                                renderNote(data.shows[s].unseen[0].note.mean, newContainer);
+                                $(containersEpisode.get(s)).parent().after(newContainer);
+                            }
                         }
+                        if (debug) console.log('Iteration principale');
+                        // Itération principale sur les containers
                         for (let e = 0; e < len; e++) {
                             let container = $(containersEpisode.get(e)),
-                                unseen = data.shows[e].unseen[0],
-                                indexTitle = titles.indexOf(container.data('title'));
-                            // Si la serie n'est plus dans la liste, on la supprime
-                            if (indexTitle == -1) {
-                                container.remove();
+                                unseen;
+                            // Si la serie n'est plus dans la liste
+                            if (!newShowIds.hasOwnProperty(container.data('showId'))) {
+                                if (debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
+                                container.parent().remove();
                                 continue;
                             }
-                            if (container.data('title') == data.shows[e].title && container.data('code') != unseen.code.toLowerCase()) {
-                                if (debug) console.log('Episode à mettre à jour', data.shows[e]);
+                            if (container.data('showId') == data.shows[e].id) {
+                                unseen = data.shows[e].unseen[0];
+                            } else {
+                                for (let u = 0; u < len; u++) {
+                                    if (container.data('showId') == data.shows[u].id) {
+                                        unseen = data.shows[u].unseen[0];
+                                        break;
+                                    }
+                                }
+                            }
+                            if (container.data('code') != unseen.code.toLowerCase()) {
+                                if (debug) console.log('Episode à mettre à jour', unseen);
                                 // Mettre à jour l'épisode
                                 let mainLink = $('a.mainLink', container),
                                     text = unseen.code + ' - ' + unseen.title;
@@ -2410,6 +2530,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 $('.media-left > .m_ab > .m_ag', container).css('width', String(unseen.show.progress) + '%');
                                 // On met à jour la note
                                 renderNote(unseen.note.mean, container);
+                            } else {
+                                console.log('Episode Show unchanged', unseen);
                             }
                         }
                         self.addClass('finish');
@@ -2448,6 +2570,192 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     </svg>
                 `);
             });
+        }
+
+        /**
+         * Permet de construire le container d'un episode
+         * @param  {Object} unseen Correspond à l'objet Episode non vu
+         * @return {String}
+         */
+        function buildContainer(unseen) {
+            let description = unseen.description;
+            if (description.length <= 0) {
+                description = 'Aucune description';
+            } else if (description.length > 145) {
+                description = description.substring(0, 145) + '...';
+            }
+
+            const urlShow = unseen.resource_url.replace('episode', 'serie').replace(/\/s\d{2}e\d{2}$/, '');
+            let template = `
+            <div class="a6_ba displayFlex justifyContentSpaceBetween" style="opacity: 1; transition: opacity 300ms ease-out 0s, transform;">
+              <div class="a6_a8 ComponentEpisodeContainer media">
+                <div class="media-left">
+                  <img class="greyBorder a6_a2" src="https://api.betaseries.com/pictures/shows?key=${betaseries_api_user_key}&id=${unseen.show.id}&width=119&height=174" width="119" height="174" alt="Affiche de la série ${unseen.show.title}">
+                </div>
+                <div class="a6_bc media-body alignSelfStretch displayFlex flexDirectionColumn">
+                  <div class="media">
+                    <div class="media-body minWidth0 alignSelfStretch displayFlex flexDirectionColumn alignItemsFlexStart">
+                      <a class="a6_bp displayBlock nd" href="${urlShow}" title="${trans("agenda.episodes_watch.show_link_title", {title: unseen.show.title})}">
+                        <strong>${unseen.show.title}</strong>
+                      </a>
+                      <a class="a6_bp a6_ak mainLink displayBlock nd" href="${unseen.resource_url}" title="${trans("agenda.episodes_watch.episode_link_title", {code: unseen.code.toUpperCase(), title: unseen.title})}">${unseen.code.toUpperCase()} - ${unseen.title}</a>
+                      <div class="date displayFlex a6_bv">
+                        <time class="mainTime">${moment(unseen.date).format('D MMMM YYYY')}</time>
+                        <span class="stars" title=""></span>
+                      </div>
+                    </div>
+                    <div class="a6_bh media-right" data-tour="step: 6; title: ${trans("tourguide.series-agenda.6.title")}; content: ${trans("tourguide.series-agenda.6.content")};">
+                      <div class="displayFlex alignItemsCenter">
+                        <button type="button" class="btn-reset alignSelfCenter ij_il ij_in"></button>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="a6_bt" style="margin: 11px 0px 10px;">${description}</p>
+                  <div class="media">
+                    <div class="media-left alignSelfCenter">
+                      <div class="a6_bj">
+                        <div class="a6_bn" style="width: ${unseen.show.progress}%;"></div>
+                      </div>
+                    </div>
+                    <div class="media-body alignSelfCenter displayFlex flexDirectionColumn alignItemsFlexStart">
+                      <span class="a6_bl">${secondsToDhms(unseen.show.minutes_remaining * 60)} (${unseen.show.remaining} ép.)</span>
+                    </div>
+                  </div>
+                  <div class="media" style="margin-top: 9px;">
+                    <div class="media-body alignSelfCenter">
+                      <div class="listAvatars listAvatars--small marginTopAuto">${watchedAvatar(unseen.watched_by)}</div>
+                    </div>
+                    <div class="a6_aq media-right alignSelfCenter positionRelative" data-tour="step: 5; title: Masquer un épisode; content: Si vous le souhaitez, choisissez de masquer cet épisode de votre liste d’épisodes à regarder ou retrouvez-en les sous-titres.;">
+                      <div class="displayFlex">`;
+            if (unseen.subtitles.length > 0) {
+                template += `
+                        <div class="svgContainer a6_0">
+                          <svg class="SvgSubtitles" width="20" height="16" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+                            <g fill="none">
+                              <path d="M2.083.751c2.389-.501 5.028-.751 7.917-.751 2.939 0 5.619.259 8.04.778.75.161 1.342.736 1.524 1.481.29 1.188.435 3.102.435 5.742s-.145 4.554-.435 5.742c-.182.745-.774 1.32-1.524 1.481-2.421.518-5.101.778-8.04.778-2.89 0-5.529-.25-7.917-.751-.734-.154-1.321-.706-1.519-1.43-.376-1.375-.564-3.315-.564-5.819s.188-4.443.564-5.819c.198-.724.784-1.276 1.519-1.43z"></path>
+                              <path class="SvgSubtitles__stroke" stroke="#C1E1FA" d="M2.237 1.485c-.459.096-.825.441-.949.894-.356 1.3-.538 3.178-.538 5.621 0 2.443.182 4.321.538 5.621.124.452.49.797.949.894 2.336.49 4.923.735 7.763.735 2.889 0 5.516-.254 7.883-.761.469-.1.839-.46.953-.926.273-1.116.414-2.979.414-5.564 0-2.584-.141-4.447-.414-5.563-.114-.466-.484-.825-.953-.926-2.367-.507-4.995-.761-7.883-.761-2.84 0-5.428.246-7.763.735z"></path>
+                              <path class="SvgSubtitles__fill" fill="#C1E1FA" d="M4 7h12v2h-12zm2 3h8v2h-8z"></path>
+                            </g>
+                          </svg>
+                        </div>`;
+            }
+            template += `
+                      </div>
+                    </div>
+                    <div class="media-right alignSelfCenter positionRelative" style="min-height: 24px;">
+                      <div class="positionRelative">
+                        <div class="btn-group">
+                          <button id="dropdownSubtitle-8899" role="button" aria-haspopup="true" aria-expanded="false" type="button" class="a6_as btn-reset dropdown-toggle -toggle btn btn-default">
+                            <span class="svgContainer">
+                              <svg fill="#999" width="4" height="16" viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill-rule="nonzero" fill="inherit"></path>
+                              </svg>
+                            </span>
+                            <span class="caret"></span>
+                          </button>
+                          <ul role="menu" class="-menu" aria-labelledby="dropdownSubtitle-8899"></ul>
+                        </div>
+                        <div class="dropdown-menu dropdown-menu--topRight ho_hy" aria-labelledby="dropdownSubtitle-8899" style="top: 0px;">
+                          <div class="sousTitres">
+                            <div class="ho_hu">
+                              <button type="button" class="ho_g btn-reset btn-btn btn--grey">Ne pas regarder cet épisode</button>
+                              <button type="button" class="ho_g btn-reset btn-btn btn-blue2">J'ai récupéré cet épisode</button>
+                            </div>
+                            ${renderSubtitles(unseen)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            `;
+            return template;
+            function watchedAvatar(friends) {
+                let template = '',
+                    friend;
+                for (let f = 0; f < friends.length; f++) {
+                    friend = friends[f];
+                    template += `
+                        <a href="/membre/${friend.login}" class="listAvatar">
+                          <img src="https://api.betaseries.com/pictures/members?key=${betaseries_api_user_key}&id=${friend.id}&width=24&height=24&placeholder=png" width="24" height="24" alt="Avatar de ${friend.login}">
+                        </a>`;
+                }
+                return template;
+            }
+            function secondsToDhms(seconds) {
+                seconds = Number(seconds);
+                const d = Math.floor(seconds / (3600*24)),
+                      h = Math.floor(seconds % (3600*24) / 3600),
+                      m = Math.floor(seconds % 3600 / 60);
+                      //s = Math.floor(seconds % 60);
+
+                let dDisplay = d > 0 ? d + ' j ' : '',
+                    hDisplay = h > 0 ? h + ' h ' : '',
+                    mDisplay = m >= 0 && d <= 0 ? m + ' min' : '';
+                    //sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
+                return dDisplay + hDisplay + mDisplay;
+            }
+            function renderSubtitles(unseen) {
+                if (unseen.subtitles.length <= 0) return '';
+
+                let template = `
+                <div>
+                  <div class="ho_gh ComponentTitleDropdown">Sous-titres de l'épisode</div>
+                  <div style="display: grid; row-gap: 5px;">
+                    <div class="maxHeight280px overflowYScroll">
+                      <div>`;
+                for (let st = 0; st < unseen.subtitles.length; st++) {
+                    let subtitle = unseen.subtitles[st];
+                    if (st > 0) template += '<div style="margin-top: 5px;">';
+                    template += `
+                        <div style="align-items: center; display: flex; justify-content: flex-start;">
+                          <div class="svgContainer">
+                            <svg class="SvgPertinence" fill="#EEE" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                              <rect fill="${subtitle.quality >= 1 ? '#999' : 'inherit'}" x="0" y="10" width="4" height="6"></rect>
+                              <rect fill="${subtitle.quality >= 3 ? '#999' : 'inherit'}" x="6" y="5" width="4" height="11"></rect>
+                              <rect fill="${subtitle.quality >= 5 ? '#999' : 'inherit'}" x="12" y="0" width="4" height="16"></rect>
+                            </svg>
+                          </div>
+                          <div class="ComponentLang" style="border: 1px solid currentcolor; border-radius: 4px; color: rgb(51, 51, 51); flex-shrink: 0; font-size: 10px; font-weight: 700; height: 18px; line-height: 17px; margin: 0px 10px 0px 5px; min-width: 22px; padding: 0px 3px; text-align: center;">${subtitle.language}</div>
+                          <div class="minWidth0" style="flex-grow: 1;">
+                            <a href="${subtitle.url}" class="displayBlock mainLink nd" title="Provenance : ${subtitle.source} / ${subtitle.file} / Ajouté le ${moment(subtitle.date).format('DD/MM/YYYY')}" style="max-width: 365px; margin: 0px; font-size: 12px;">
+                              ${ellipsisSubtitles(subtitle)}
+                            </a>
+                          </div>
+                          <button title="Signaler ce sous-titre" type="button" class="btn-reset" onclick="srtInaccurate(${subtitle.id});">
+                            <span class="svgContainer">
+                              <svg fill="#eee" width="22" height="19" viewBox="0 0 22 19" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 19h22l-11-19-11 19zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill-rule="nonzero" fill="inherit"></path>
+                              </svg>
+                            </span>
+                          </button>
+                        </div>
+                        `;
+                }
+                template += `
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                `;
+                function ellipsisSubtitles(subtitle) {
+                    let subtitleName = subtitle.file,
+                        LIMIT_ELLIPSIS = 50;
+                    if (subtitleName.length <= LIMIT_ELLIPSIS) {
+                        return `<div class="nd displayInlineBlock">${subtitleName}</div>`;
+                    }
+                    let LENGTH_LAST_ELLIPSIS = 45;
+                    return `
+                      <div>
+                        <div class="nd displayInlineBlock" style="max-width: 40px;">${subtitleName}</div>
+                        <div class="nd displayInlineBlock">${subtitleName.slice(-LENGTH_LAST_ELLIPSIS)}</div>
+                      </div>
+                    `;
+                }
+                return template;
+            }
         }
     }
 
