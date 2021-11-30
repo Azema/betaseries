@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.0
+// @version      0.23.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -2845,7 +2845,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             myHeaders = new Headers({
                 'Accept'                : 'application/json',
                 'X-BetaSeries-Version'  : api.versions.current,
-                'X-BetaSeries-Token'    : betaseries_api_user_token,
+                'Authorization'         : 'Bearer ' + betaseries_api_user_token,
                 'X-BetaSeries-Key'      : betaseries_api_user_key
             }),
             // objet qui contient les paramètres de la requête
