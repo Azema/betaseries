@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.2
+// @version      0.23.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1046,8 +1046,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function usRenderStars($elt, note, total) {
         changeTitleNote($elt.parent('.stars-outer'), note, total);
-        let starPercentageRounded = `${(Math.round(((note / 5) * 100) / 10) * 10)}%`;
-        $elt.css('width', starPercentageRounded);
+        let starPercentRounded = Math.round(((note / 5) * 100) / 10) * 10;
+        $elt.width(starPercentRounded + '%');
     }
 
     /**
