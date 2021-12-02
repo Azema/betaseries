@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.4
+// @version      0.23.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1541,7 +1541,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     $('.blockInformations__actions .dropdown-menu a:last-child')
                         .removeAttr('onclick')
                         .off('click')
-                        .one('click', (e) =>
+                        .on('click', (e) =>
                     {
                         e.stopPropagation();
                         e.preventDefault();
