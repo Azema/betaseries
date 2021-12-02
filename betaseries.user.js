@@ -44,7 +44,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           url = location.pathname,
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
-          integrityStyle = 'sha384-x/8PvvxEakscoR1nP+kAaboqJwgFCTb6aBvNK1TzVCtVfsPd4zkapdOG0j+Jv0aD',
+          integrityStyle = 'sha384-sWazNELc6YE5zeHEk9tF4rACMlQ4WwshaWhr9fAj495Mp4Ta0wqTWuaa0kFW48Ao',
           integrityPopover = 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
           // URI des images et description des classifications TV et films
