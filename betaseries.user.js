@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.6
+// @version      0.23.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1950,6 +1950,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
     }
 
+    /**
+     * Modifie le fonctionnement d'ajout d'un similar
+     *
+     * @param  {Object}   $elt        L'élément DOMElement jQuery
+     * @param  {Number[]} objSimilars Un tableau des identifiants des similars actuels
+     * @return {void}
+     */
     function replaceSuggestSimilarHandler($elt, objSimilars = []) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
@@ -1978,12 +1985,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 let show;
                                 for (let s = 0; s < data.shows.length; s++) {
                                     show = data.shows[s];
-                                    if (objSimilars.indexOf(show.id) !== -1) { continue; }
+                                    if (objSimilars.indexOf(show.id) !== -1) { continue; } // Similar déjà proposé
                                     $('#search_results').append(`
                                         <div class="item">
                                           <p><span data-id="${show.id}" style="cursor:pointer;">${show.title}</span></p>
                                         </div>`
-                                                               );
+                                    );
                                 }
                                 $('#search_results .item span').click((e) => {
                                     autocompleteSimilar(e.currentTarget);
