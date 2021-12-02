@@ -2890,6 +2890,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             myHeaders = new Headers({
                 'Accept'                : 'application/json',
                 'X-BetaSeries-Version'  : api.versions.current,
+                //'X-BetaSeries-Token'    : betaseries_api_user_token,
                 'Authorization'         : 'Bearer ' + betaseries_api_user_token,
                 'X-BetaSeries-Key'      : betaseries_api_user_key
             }),
