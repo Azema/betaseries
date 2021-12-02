@@ -934,7 +934,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }, 1000);
         $('.blockPartner').attr('style', 'display: none !important');
-        $('.breadcrumb').hide();
+        //$('.breadcrumb').hide();
     }
 
     /**
