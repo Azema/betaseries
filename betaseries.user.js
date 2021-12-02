@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.5
+// @version      0.23.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1780,7 +1780,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     getResource(true).then((data) => {
                         updateProgressBar();
                         updateNextEpisode();
-                        if (debug) console.log('Next ID et status', {next: data.show.user.next.id, status: data.show.status, archived: data.show.user.archived});
+                        if (debug) console.log('Next ID et status', {next: data.show.user.next.id, status: data.show.status, archived: data.show.user.archived, note_user: data.show.note.user});
                         if (data.show.user.next.id === null && data.show.status === 'Ended' && data.show.user.archived === false) {
                             if (debug) console.log('Série terminée, popup confirmation');
                             new PopupAlert({
@@ -1789,6 +1789,19 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 callback_yes: function() {
                                     $('#reactjs-show-actions > div:nth-child(1) > button').trigger('click');
                                     //cache.remove('shows', data.show.id);
+                                },
+                                callback_no: function() {
+                                    return true;
+                                }
+                            });
+                        }
+                        if (data.show.user.next.id === null && data.show.note.user === 0) {
+                            if (debug) console.log('Proposition de voter pour la série');
+                            new PopupAlert({
+                                title: trans("popin.note.title.show"),
+                                text: "N'oubliez pas de noter la série",
+                                callback_yes: function() {
+                                    $('.blockInformations__metadatas .stars-outer').trigger('click');
                                 },
                                 callback_no: function() {
                                     return true;
