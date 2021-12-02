@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.3
+// @version      0.23.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1524,7 +1524,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     deleteShowClick();
                 }
                 if (trigEpisode) {
-                    getResource().then(obj => {
+                    getResource(true).then(obj => {
                         changeBtnAdd(obj);
                     });
                 }
