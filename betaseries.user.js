@@ -1644,6 +1644,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              */
             function changeStatusVignette($elt, status, method, episodeId) {
                 const pos = $elt.data('pos');
+                vignettes = $('#episodes .checkSeen');
                 let args = {'id': episodeId},
                     res = cache.get('shows', getResourceId(), 'changeStatusVignette').show;
                     promise = new Promise(resolve => { resolve(false); });
@@ -1681,7 +1682,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     .then(function(data) {
                         if (debug) console.log('changeStatusVignette %s episodes/watched', method, data);
 
-                        if (res.in_account === false) {
+                        if (res && res.in_account === false) {
                             addShowClick(true);
                         }
                         // On met à jour l'objet Episode dans le cache
