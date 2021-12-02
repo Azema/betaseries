@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.1
+// @version      0.23.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -962,22 +962,46 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
             type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
             eltId = getResourceId(), // Identifiant de la ressource
-            fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+            note, // Objet note venant de l'API
+            // Fonction qui modifie l'attribut title du DOMElement des votes, en fonction du type de media
+            updateNoteTitle = function(data, title) {
+                // On récupère l'objet note en fonction du type de media
+                note = (type.singular === 'show' || type.singular === 'movie') ?
+                    data[type.singular].notes : data[type.singular].note;
+                // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
+                changeTitleNote(votes, note.mean, note.total);
+                // On ajoute la note du membre connecté, si il a voté
+                if (note.user > 0) {
+                    votes.attr('title', title + `, votre note: ${note.user}`);
+                }
+            };
 
-        if (debug) console.log('Note Stars Elt %d, eltId: %d, type: %s', votes.length, eltId, type.singular);
+        if (debug) console.log('Note Stars Elt %s, eltId: %d, type: %s', votes.length?'true':'false', eltId, type.singular);
 
         // On recupère les détails de la ressource
-        callBetaSeries('GET', type.plural, fonction, {'id': eltId})
-        .then((data) => {
-            //if (debug) console.log('addNumberVoters callBetaSeries', data);
-            let note;
-            if (type.singular == 'show' || type.singular == 'movie') note = data[type.singular].notes;
-            else note = data[type.singular].note;
-            // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
-            changeTitleNote(votes, note.mean, note.total);
-            if (note.user > 0) {
-                votes.attr('title', votes.attr('title') + `, votre note: ${note.user} / 5`);
-            }
+        getResource().then((data) => {
+            // if (debug) console.log('addNumberVoters callBetaSeries', data);
+            updateNoteTitle(data, votes.attr('title'));
+            // On ajoute un observer sur le titre de la note, en cas de changement lors d'un vote
+            new MutationObserver((mutationsList) => {
+                let mutation,
+                    changeTitleMutation = () => {
+                        // On met à jour le nombre de votants, ainsi que la note du membre connecté
+                        getResource(true).then(res => { updateNoteTitle(res, mutation.target.title); });
+                    };
+                for (mutation of mutationsList) {
+                    // On vérifie si le titre a été modifié
+                    if (! /vote/.test(mutation.target.title)) {
+                        changeTitleMutation();
+                    }
+                }
+            }).observe(votes.get(0), {
+                attributes: true,
+                childList: false,
+                characterData: false,
+                subtree: false,
+                attributeFilter: ['title']
+            });
         }, (err) => {
             notification('Erreur de récupération de ' + type.singular, 'addNumberVoters: ' + err);
         });
