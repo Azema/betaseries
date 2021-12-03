@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.7
+// @version      0.23.8
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -962,18 +962,26 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let votes = $('.stars.js-render-stars'), // ElementHTML ayant pour attribut le titre avec la note de la série
             type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
             eltId = getResourceId(), // Identifiant de la ressource
-            note, // Objet note venant de l'API
-            // Fonction qui modifie l'attribut title du DOMElement des votes, en fonction du type de media
-            updateNoteTitle = function(data, title) {
+            /**
+             * Fonction qui modifie l'attribut title du DOMElement des votes, en fonction du type de media
+             * @param  {Object}  data   La ressource venant de l'API
+             * @param  {Boolean} change (Optionel: true) Indique si on doit modifier l'attribut ou juste retourner le title
+             * @return {String}         Le title modifié
+             */
+            updateNoteTitle = function(data, change = true) {
                 // On récupère l'objet note en fonction du type de media
-                note = (type.singular === 'show' || type.singular === 'movie') ?
-                    data[type.singular].notes : data[type.singular].note;
-                // On ajoute le nombre de votants à côté de la note dans l'attribut 'title' de l'élément HTML
-                changeTitleNote(votes, note.mean, note.total);
+                let note = (type.singular === 'show' || type.singular === 'movie') ?
+                    data[type.singular].notes : data[type.singular].note,
+                    // On met à jour l'attribut title de la note de la ressource
+                    title = changeTitleNote(votes, note.mean, note.total, change);
                 // On ajoute la note du membre connecté, si il a voté
                 if (note.user > 0) {
-                    votes.attr('title', title + `, votre note: ${note.user}`);
+                    title += `, votre note: ${note.user}`;
+                    if (change) {
+                        votes.attr('title', title);
+                    }
                 }
+                return title;
             };
 
         if (debug) console.log('Note Stars Elt %s, eltId: %d, type: %s', votes.length?'true':'false', eltId, type.singular);
@@ -981,13 +989,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         // On recupère les détails de la ressource
         getResource().then((data) => {
             // if (debug) console.log('addNumberVoters callBetaSeries', data);
-            updateNoteTitle(data, votes.attr('title'));
+            let title = updateNoteTitle(data);
             // On ajoute un observer sur le titre de la note, en cas de changement lors d'un vote
             new MutationObserver((mutationsList) => {
                 let mutation,
                     changeTitleMutation = () => {
                         // On met à jour le nombre de votants, ainsi que la note du membre connecté
-                        getResource(true).then(res => { updateNoteTitle(res, mutation.target.title); });
+                        getResource(true).then(res => {
+                            let upTitle = updateNoteTitle(res, false);
+                            if (upTitle !== title) {
+                                votes.attr('title', upTitle);
+                            }
+                        });
                     };
                 for (mutation of mutationsList) {
                     // On vérifie si le titre a été modifié
@@ -1011,29 +1024,31 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * Ajoute le nombre de votes à la note dans l'attribut title de la balise
      * contenant la représentation de la note de la ressource
      *
-     * @param {Object} $elt    Le DOMElement jQuery à modifier
-     * @param {Number} note    La note de la ressource
-     * @param {Number} total   Le nombre de votants
-     * @return void
+     * @param {Object}  $elt    Le DOMElement jQuery à modifier
+     * @param {Number}  note    La note de la ressource
+     * @param {Number}  total   Le nombre de votants
+     * @para  {Boolean} change  (Optionel: true) Indique si on doit modifier l'attribut ou juste retourner le title
+     * @return {String}         Le title modifié
      */
-    function changeTitleNote($elt, note, total) {
+    function changeTitleNote($elt, note, total, change = true) {
         if (note <= 0 || total <= 0) {
             $elt.attr('title', 'Aucun vote');
             return;
         }
 
         let title = $elt.attr('title'),
-            votes = ' vote' + (parseInt(total, 10) > 1 ? 's' : '');
+            votes = 'vote' + (parseInt(total, 10) > 1 ? 's' : '');
         // On met en forme le nombre de votes
         total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(total);
         // On limite le nombre de chiffre après la virgule
         note = parseFloat(note).toFixed(1);
         // On vérifie que l'attribut title possède déjà la note, sinon on l'ajoute
-        if (! /\/ 5/.test(title)) {
-            title = note + ' / 5';
+        title = `${total} ${votes} : ${note} / 5`;
+        if (change) {
+            // On modifie l'attribut title pour y ajouter le nombre de votes
+            $elt.attr('title', title);
         }
-        // On modifie l'attribut title pour y ajouter le nombre de votes
-        $elt.attr('title', total + votes + ': ' + title);
+        return title;
     }
 
     /**
