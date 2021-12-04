@@ -1,3 +1,0 @@
-#!/bin/bash
-#echo "arguments: $*"
-java -jar './yuicompressor-2.4.8.jar' $*
