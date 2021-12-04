@@ -247,7 +247,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @return {boolean}
      */
     function userIdentified() {
-        return typeof betaseries_api_user_token != 'undefined';
+        return typeof betaseries_api_user_token !== 'undefined';
     }
 
     /**
@@ -2939,7 +2939,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
         // On check si on doit vérifier la validité du token
         // (https://www.betaseries.com/bugs/api/461)
-        if (checkKeys.indexOf(resource) !== -1 &&
+        if (userIdentified() && checkKeys.indexOf(resource) !== -1 &&
             api.check[resource].indexOf(method) !== -1)
         {
             check = true;
