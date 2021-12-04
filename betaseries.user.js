@@ -2954,6 +2954,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     mode: 'cors',
                     cache: 'no-cache'
                 };
+                if (debug) console.info('%ccall /members/is_active', 'color:blue');
                 fetch(`${api.base}/members/is_active`, paramsFetch).then(resp => {
                     if ( ! resp.ok) {
                         // Appel de l'authentification pour obtenir un token valide
