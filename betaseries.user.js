@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.23.8
+// @version      0.24.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -113,12 +113,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           api = {
               base: 'https://api.betaseries.com',
               versions: {current: '3.0', last: '3.0'},
-              categories: [
+              resources: [ // Les ressources disponibles dans l'API
                   'badges', 'comments', 'episodes', 'friends', 'members', 'messages',
                   'movies', 'news', 'oauth', 'pictures', 'planning', 'platforms',
                   'polls', 'reports', 'search', 'seasons', 'shows', 'subtitles',
                   'timeline'
-              ]
+              ],
+              check: { // Les endpoints qui nécessite de vérifier la volidité du token
+                episodes: ['display', 'list', 'search'],
+                movies  : ['list', 'movie', 'search', 'similars'],
+                search  : ['all', 'movies', 'shows'],
+                shows   : ['display', 'episodes', 'list', 'search', 'similars']
+              }
           };
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
@@ -2889,66 +2895,101 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * Fonction servant à appeler l'API de BetaSeries
      *
      * @param  {String}   type             Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-     * @param  {String}   category         La catégorie de l'API (ex: shows, seasons, episodes...)
-     * @param  {String}   fonction         La fonction à appliquer sur la catégorie (ex: search, list...)
+     * @param  {String}   resource         La ressource de l'API (ex: shows, seasons, episodes...)
+     * @param  {String}   method           La fonction à appliquer sur la ressource (ex: search, list...)
      * @param  {Object}   args             Un objet (clef, valeur) à transmettre dans la requête
      * @param  {bool}     [nocache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
      * @param  {bool}     [setcache=true]  Indique si on doit ou pas enregistrer la réponse dans le cache (Par défaut: true)
      * @return {Promise}
      */
-    function callBetaSeries(type, category, fonction, args, nocache = false, setcache = true) {
-        if (! api.categories.includes(category)) {
-            throw new Error('Categorie (' + category + ') inconnue dans l\'API.');
+    function callBetaSeries(type, resource, method, args, nocache = false, setcache = true) {
+        if (api.resources.indexOf(resource) === -1) {
+            throw new Error(`Ressource (${resource}) inconnue dans l\'API.`);
         }
-        let uri = `${api.base}/${category}/${fonction}`,
+        let check = false,
             // Les en-têtes pour l'API
-            myHeaders = new Headers({
+            myHeaders = {
                 'Accept'                : 'application/json',
                 'X-BetaSeries-Version'  : api.versions.current,
-                //'X-BetaSeries-Token'    : betaseries_api_user_token,
-                'Authorization'         : 'Bearer ' + betaseries_api_user_token,
+                'X-BetaSeries-Token'    : betaseries_api_user_token,
                 'X-BetaSeries-Key'      : betaseries_api_user_key
-            }),
-            // objet qui contient les paramètres de la requête
-            initFetch = {
-                method: type,
-                headers: myHeaders,
-                mode: 'cors',
-                cache: 'no-cache'
             },
-            keys = Object.keys(args);
+            checkKeys = Object.keys(api.check);
 
         if (debug) {
             console.log('callBetaSeries', {
                 type: type,
-                category: category,
-                fonction: fonction,
+                resource: resource,
+                method: method,
                 args: args,
                 nocache: nocache,
                 setcache: setcache
             });
         }
 
-        // On crée l'URL de la requête de type GET avec les paramètres
-        if (type === 'GET' && keys.length > 0) {
-            let params = [];
-            for (let key of keys) {
-                params.push(key + '=' + args[key]);
-            }
-            uri += '?' + params.join('&');
-        } else if (keys.length > 0) {
-            initFetch.body = new URLSearchParams(args);
-        }
         // On retourne la ressource en cache si elle y est présente
-        if (! nocache && type === 'GET' && args && 'id' in args && cache.has(category, args.id)) {
-            //if (debug) console.log('callBetaSeries retourne la ressource du cache (%s: %d)', category, args.id);
+        if (! nocache && type === 'GET' && args && 'id' in args &&
+            cache.has(resource, args.id))
+        {
+            //if (debug) console.log('callBetaSeries retourne la ressource du cache (%s: %d)', resource, args.id);
             return new Promise((resolve) => {
-                resolve(cache.get(category, args.id, 'callBetaSeries'));
+                resolve(cache.get(resource, args.id, 'callBetaSeries'));
             });
+        }
+
+        // On check si on doit vérifier la validité du token
+        // (https://www.betaseries.com/bugs/api/461)
+        if (checkKeys.indexOf(resource) !== -1 &&
+            api.check[resource].indexOf(method) !== -1)
+        {
+            check = true;
         }
 
         return new Promise((resolve, reject) => {
             counter++; // Incrément du compteur de requêtes à l'API
+            if (check) {
+                let paramsFetch = {
+                    method: 'GET',
+                    headers: myHeaders,
+                    mode: 'cors',
+                    cache: 'no-cache'
+                };
+                fetch(`${api.base}/members/is_active`, paramsFetch).then(resp => {
+                    if ( ! resp.ok) {
+                        // Appel de l'authentification pour obtenir un token valide
+                        authenticate().then(() => fetchUri(resolve, reject) ).catch(err => reject(err) );
+                        return;
+                    }
+                    fetchUri(resolve, reject);
+                }).catch(error => {
+                    if (debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                    console.error(error);
+                    reject(error.message);
+                });
+            } else {
+                fetchUri(resolve, reject);
+            }
+        });
+        function fetchUri(resolve, reject) {
+            let uri = `${api.base}/${resource}/${method}`,
+                initFetch = { // objet qui contient les paramètres de la requête
+                    method: type,
+                    headers: myHeaders,
+                    mode: 'cors',
+                    cache: 'no-cache'
+                },
+                keys = Object.keys(args);
+            // On crée l'URL de la requête de type GET avec les paramètres
+            if (type === 'GET' && keys.length > 0) {
+                let params = [];
+                for (let key of keys) {
+                    params.push(key + '=' + args[key]);
+                }
+                uri += '?' + params.join('&');
+            } else if (keys.length > 0) {
+                initFetch.body = new URLSearchParams(args);
+            }
+
             fetch(uri, initFetch).then(response => {
                 if (debug) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
                 // On récupère les données et les transforme en objet
@@ -2966,7 +3007,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         } else if (code == 2001) {
                             // Appel de l'authentification pour obtenir un token valide
                             authenticate().then(() => {
-                                callBetaSeries(type, category, fonction, args, nocache, setcache)
+                                callBetaSeries(type, resource, method, args, nocache, setcache)
                                 .then((data) => {
                                     resolve(data);
                                 }, (err) => {
@@ -2988,7 +3029,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     }
                     // Retour sans erreur, on met la ressource en cache
                     if (setcache && type == 'GET' && args && 'id' in args) {
-                        cache.set(category, args.id, data);
+                        cache.set(resource, args.id, data);
                     }
                     resolve(data);
                 });
@@ -2997,7 +3038,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 console.error(error);
                 reject(error.message);
             });
-        });
+        }
     }
 
     /**
