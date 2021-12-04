@@ -107,7 +107,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 ## Ressources
 
-Les feuilles de style, les images et le scripts JS sont disponibles dans le répertoire `resources`.
+Les feuilles de style, les images et les scripts JS sont disponibles dans le [repository betaseries-oauth](https://github.com/Azema/betaseries-oauth).
 
 Vous pouvez définir votre propre serveur en modifiant la constante `serverBaseUrl` en début de script.
 ```JavaScript
