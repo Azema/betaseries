@@ -1,4 +1,4 @@
-# betaseries
+# ![logo betaseries](/screenshots/48.png) betaseries
 UserScript pour le site [BetaSeries](https://www.betaseries.com/) testé avec Tampermonkey sur Chrome
 
 ## Sommaire
