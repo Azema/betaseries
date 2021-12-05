@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.3
+// @version      0.24.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1323,6 +1323,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
             /**
              * Ajoute un eventHandler sur les boutons Archiver et Favoris
+             * @return {void}
              */
             function AddEventBtnsArchiveAndFavoris() {
                 let btnArchive = $('#reactjs-show-actions button.btn-archive'),
@@ -1333,39 +1334,39 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     $('#reactjs-show-actions button:last').addClass('btn-favoris');
                     btnFavoris = $('#reactjs-show-actions button.btn-favoris');
                 }
-                // Fonction Archiver
+                // Event bouton Archiver
                 btnArchive.off('click').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     if (debug) console.groupCollapsed('show-archive');
-                    const res = cache.get('shows', showId, 'btnArchive').show;
+                    // Met à jour le bouton d'archivage de la série
+                    function updateBtnArchive(verb, transform, label, notif) {
+                        const res = cache.get('shows', showId, 'btnArchive').show;
+                        callBetaSeries(verb, 'shows', 'archive', {id: res.id})
+                            .then(data => {
+                                cache.set('shows', res.id, data);
+                                const parent = $(e.currentTarget).parent();
+                                $('span', e.currentTarget).css('transform', transform);
+                                $('.label', parent).text(trans(label));
+                                if (debug) console.groupEnd('show-archive');
+                            }, err => {
+                                notification(notif, err);
+                                if (debug) console.groupEnd('show-archive');
+                            });
+                    }
                     if (! res.user.archived) {
-                        callBetaSeries('POST', 'shows', 'archive', {id: res.id})
-                            .then(data => {
-                            cache.set('shows', res.id, data);
-                            const parent = $(e.currentTarget).parent();
-                            $('span', e.currentTarget).css('transform', 'rotate(180deg)');
-                            $('.label', parent).text(trans('show.button.unarchive.label'));
-                            if (debug) console.groupEnd('show-archive');
-                        }, err => {
-                            notification('Erreur d\'archivage de la série', err);
-                            if (debug) console.groupEnd('show-archive');
-                        });
+                        updateBtnArchive(
+                            'POST', 'rotate(180deg)',
+                            'show.button.unarchive.label', 'Erreur d\'archivage de la série'
+                        );
                     } else {
-                        callBetaSeries('DELETE', 'shows', 'archive', {id: res.id})
-                            .then(data => {
-                            cache.set('shows', res.id, data);
-                            const parent = $(e.currentTarget).parent();
-                            $('span', e.currentTarget).css('transform', 'rotate(0deg)');
-                            $('.label', parent).text(trans('show.button.archive.label'));
-                            if (debug) console.groupEnd('show-archive');
-                        }, err => {
-                            notification('Erreur d\'archivage de la série', err);
-                            if (debug) console.groupEnd('show-archive');
-                        });
+                        updateBtnArchive(
+                            'DELETE', 'rotate(0deg)',
+                            'show.button.archive.label', 'Erreur désarchivage de la série'
+                        );
                     }
                 });
-                // Fonction Favoris
+                // Event bouton Favoris
                 btnFavoris.off('click').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -1373,7 +1374,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     const res = cache.get('shows', showId, 'btnFavoris').show;
                     if (! res.user.favorited) {
                         callBetaSeries('POST', 'shows', 'favorite', {id: res.id})
-                            .then(data => {
+                        .then(data => {
                             cache.set('shows', res.id, data);
                             $(e.currentTarget).children('span').replaceWith(`
                               <span class="svgContainer">
@@ -1388,7 +1389,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         });
                     } else {
                         callBetaSeries('DELETE', 'shows', 'favorite', {id: res.id})
-                            .then(data => {
+                        .then(data => {
                             cache.set('shows', res.id, data);
                             $(e.currentTarget).children('span').replaceWith(`
                               <span class="svgContainer">
@@ -1458,7 +1459,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                  * @return {void}
                  */
                 function changeBtnAdd(objRes) {
-                    const linksDd = $('.blockInformations__actions .dropdown-menu a');
+                    const linksDd = $('.blockInformations__actions a.header-navigation-item');
                     if (linksDd.length <= 2) {
                         let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
                             urlShow = objRes.resource_url.substring(location.origin.length),
@@ -1493,14 +1494,21 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         if (linksDd.length === 1) {
                             templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
                         }
-                        $('div.blockInformations__actions .dropdown-menu').append(templateOpts);
+                        $('div.blockInformation__action.show .dropdown-menu').append(templateOpts);
                     }
 
                     // On remplace le bouton Ajouter par les boutons Archiver et Favoris
                     const divs = $('#reactjs-show-actions > div');
                     if (divs.length === 1) {
                         $('#reactjs-show-actions').remove();
-                        $('.blockInformations__actions').prepend(`
+                        let container = $('.blockInformations__actions'),
+                            method = 'prepend';
+                        // Si le bouton VOD est présent, on place les boutons après
+                        if ($('#dropdownWatchOn').length > 0) {
+                            container = $('#dropdownWatchOn').parent();
+                            method = 'after';
+                        }
+                        container[method](`
                             <div class="displayFlex alignItemsFlexStart"
                                  id="reactjs-show-actions"
                                  data-show-id="${objRes.id}"
@@ -1556,7 +1564,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 if (res.in_account && $('.blockInformations__actions .dropdown-menu a').length > 2) {
                     AddEventBtnsArchiveAndFavoris();
                     // Gestion de la suppression de la série du compte utilisateur
-                    $('.blockInformations__actions .dropdown-menu a:last-child')
+                    $('.blockInformations__actions .dropdown-menu a.header-navigation-item:last-child')
                         .removeAttr('onclick')
                         .off('click')
                         .on('click', (e) =>
