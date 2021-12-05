@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.5
+// @version      0.24.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -44,7 +44,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           url = location.pathname,
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
-          integrityStyle = 'sha384-sWazNELc6YE5zeHEk9tF4rACMlQ4WwshaWhr9fAj495Mp4Ta0wqTWuaa0kFW48Ao',
+          integrityStyle = 'sha384-V8mpAIZ2oSzmhzSom6iLlpspLyQAHtG+hFOP621HEF1DLiNbxigLJ8j66hVYtsUP',
           integrityPopover = 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
           // URI des images et description des classifications TV et films
@@ -151,6 +151,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             decodeTitle(); // On décode le titre de la ressource
             addRating(); // On ajoute la classification TV de la ressource courante
             addNumberVoters(); // On ajoute le nombre de votes à la note
+            updateSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
             if (/^\/serie\//.test(url)) {
                 let waitEpisodes = 0;
                 // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
@@ -1063,6 +1064,45 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         changeTitleNote($elt.parent('.stars-outer'), objNote);
         let starPercentRounded = Math.round(((objNote.mean / 5) * 100) / 10) * 10;
         $elt.width(starPercentRounded + '%');
+    }
+
+    /**
+     * Améliore l'affichage de la description de la ressource
+     *
+     * @return {void}
+     */
+    function updateSynopsis() {
+        let span = $('.blockInformations__synopsis span'),
+            $btnMore = $('a.js-show-fulltext');
+        if ($btnMore.length <= 0) {
+            return;
+        }
+        // On remplace le lien Plus par un bouton
+        $btnMore.replaceWith('<button role="button" class="u-colorWhiteOpacity05 js-show-fulltext textTransformUpperCase cursorPointer"></button>');
+        $btnMore = $('button.js-show-fulltext');
+        $btnMore.on('click', e => {
+            e.stopPropagation();
+            e.preventDefault();
+            $btnMore.hide();
+            let $btnLess = $('button.js-show-truncatetext');
+            // On ajoute le bouton Moins et son event click, si il n'existe pas
+            if ($btnLess.length <= 0) {
+                span.append('<button role="button" class="u-colorWhiteOpacity05 js-show-truncatetext textTransformUpperCase cursorPointer"></button>')
+                    .removeClass('sr-only');
+                $btnLess = $('button.js-show-truncatetext');
+                $btnLess.click((e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // Toggle display synopsis
+                    $btnMore.show();
+                    span.addClass('sr-only');
+                    $(this).hide();
+                });
+            } else {
+                $btnLess.show();
+                span.removeClass('sr-only');
+            }
+        });
     }
 
     /**

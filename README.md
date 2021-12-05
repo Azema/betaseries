@@ -36,6 +36,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ![Nombre de votants](/screenshots/nbVotants.jpg "Nombre de votants")
 * Ajout du vote du membre connecté à la note globale de la ressource
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
+* Ajout de la gestion du synopsis (description), pour l'afficher au complet et pour revenir à un synopsis tronqué, autant de fois que nécessaire.
 
 #### Séries et Films
 
