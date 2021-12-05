@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.2
+// @version      0.24.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -979,14 +979,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 let note = (type.singular === 'show' || type.singular === 'movie') ?
                     data[type.singular].notes : data[type.singular].note,
                     // On met à jour l'attribut title de la note de la ressource
-                    title = changeTitleNote(votes, note.mean, note.total, change);
-                // On ajoute la note du membre connecté, si il a voté
-                if (note.user > 0) {
-                    title += `, votre note: ${note.user}`;
-                    if (change) {
-                        votes.attr('title', title);
-                    }
-                }
+                    title = changeTitleNote(votes, note, change);
+
                 return title;
             };
 
@@ -1002,7 +996,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     changeTitleMutation = () => {
                         // On met à jour le nombre de votants, ainsi que la note du membre connecté
                         getResource(true).then(res => {
-                            let upTitle = updateNoteTitle(res, false);
+                            let upTitle = updateNoteTitle(res, mutation.target.title);
+                            // On évite une boucle infinie
                             if (upTitle !== title) {
                                 votes.attr('title', upTitle);
                             }
@@ -1031,27 +1026,27 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * contenant la représentation de la note de la ressource
      *
      * @param {Object}  $elt    Le DOMElement jQuery à modifier
-     * @param {Number}  note    La note de la ressource
-     * @param {Number}  total   Le nombre de votants
-     * @para  {Boolean} change  (Optionel: true) Indique si on doit modifier l'attribut ou juste retourner le title
-     * @return {String}         Le title modifié
+     * @param {Object}  objNote L'objet note de la ressource
+     * @param {Boolean} change  Indique si on doit changer l'attribut title du DOMElement
+     * @return void
      */
-    function changeTitleNote($elt, note, total, change = true) {
-        if (note <= 0 || total <= 0) {
-            $elt.attr('title', 'Aucun vote');
+    function changeTitleNote($elt, objNote, change = true) {
+        if (objNote.mean <= 0 || objNote.total <= 0) {
+            if (change) $elt.attr('title', 'Aucun vote');
             return;
         }
 
-        let title = $elt.attr('title'),
-            votes = 'vote' + (parseInt(total, 10) > 1 ? 's' : '');
-        // On met en forme le nombre de votes
-        total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(total);
-        // On limite le nombre de chiffre après la virgule
-        note = parseFloat(note).toFixed(1);
-        // On vérifie que l'attribut title possède déjà la note, sinon on l'ajoute
-        title = `${total} ${votes} : ${note} / 5`;
+        let votes = 'vote' + (parseInt(objNote.total, 10) > 1 ? 's' : ''),
+            // On met en forme le nombre de votes
+            total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(objNote.total),
+            // On limite le nombre de chiffre après la virgule
+            note = parseFloat(objNote.mean).toFixed(1),
+            title = `${total} ${votes} : ${note} / 5`;
+        // On ajoute la note du membre connecté, si il a voté
+        if (objNote.user > 0) {
+            title += `, votre note: ${objNote.user}`;
+        }
         if (change) {
-            // On modifie l'attribut title pour y ajouter le nombre de votes
             $elt.attr('title', title);
         }
         return title;
@@ -1061,13 +1056,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * Crée les étoiles pour le rendu de la note
      *
      * @param {Object} $elt     Objet JQuery
-     * @param {Number} note     La note de la ressource
-     * @param {Number} total    Le nombre de votes
+     * @param {Object} objNote  L'objet note de la ressource
      * @return void
      */
-    function usRenderStars($elt, note, total) {
-        changeTitleNote($elt.parent('.stars-outer'), note, total);
-        let starPercentRounded = Math.round(((note / 5) * 100) / 10) * 10;
+    function usRenderStars($elt, objNote) {
+        changeTitleNote($elt.parent('.stars-outer'), objNote);
+        let starPercentRounded = Math.round(((objNote.mean / 5) * 100) / 10) * 10;
         $elt.width(starPercentRounded + '%');
     }
 
@@ -1804,7 +1798,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     getResource(true).then((data) => {
                         updateProgressBar();
                         updateNextEpisode();
-                        if (debug) console.log('Next ID et status', {next: data.show.user.next.id, status: data.show.status, archived: data.show.user.archived, note_user: data.show.note.user});
+                        let note = (type.singular === 'show' || type.singular === 'movie') ?
+                                      data[type.singular].notes : data[type.singular].note;
+                        if (debug) {
+                            console.log('Next ID et status', {
+                                next: data.show.user.next.id,
+                                status: data.show.status,
+                                archived: data.show.user.archived,
+                                note_user: note.user
+                            });
+                        }
                         if (data.show.user.next.id === null && data.show.status === 'Ended' && data.show.user.archived === false) {
                             if (debug) console.log('Série terminée, popup confirmation');
                             new PopupAlert({
@@ -1819,7 +1822,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 }
                             });
                         }
-                        if (data.show.user.next.id === null && data.show.note.user === 0) {
+                        if (data.show.user.next.id === null && note.user === 0) {
                             if (debug) console.log('Proposition de voter pour la série');
                             new PopupAlert({
                                 title: trans("popin.note.title.show"),
@@ -2292,6 +2295,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     checkImgSimilar($elt, resource, type.singular);
                     // On ajoute le bandeau viewed sur le similar
                     addBandeau($elt, resource.user.status, resource.notes, type.singular);
+                    // On ajoute le code HTML pour le rendu de la note
+                    $elt.after(
+                        '<div class="stars-outer"><div class="stars-inner"></div></div>'
+                    );
+                    usRenderStars(
+                        $('.stars-inner', $elt.parent()),
+                        resource.notes
+                    );
                     // On ajoute la popover sur le similar
                     $link.popover({
                         container: $link,
@@ -2419,15 +2430,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
                 );
             }
-            // On ajoute le code HTML pour le rendu de la note
-            elt.after(
-                '<div class="stars-outer"><div class="stars-inner"></div></div>'
-            );
-            usRenderStars(
-                $('.stars-inner', elt.parent()),
-                parseFloat(objNote.mean).toFixed(2),
-                objNote.total
-            );
         }
 
         /**
