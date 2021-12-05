@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.4
+// @version      0.24.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1442,7 +1442,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         callBetaSeries('POST', 'shows', 'show', {id: res.id})
                         .then((data) => {
                             cache.set('shows', showId, data);
+                            // On met à jour les boutons Archiver et Favori
                             changeBtnAdd(data.show);
+                            // On met à jour le bloc du prochain épisode à voir
+                            updateNextEpisode();
                             if (debug) console.groupEnd('AddShow');
                         }, err => {
                             notification('Erreur d\'ajout de la série', err);
@@ -1902,7 +1905,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 }
                 /**
                  * Construit une vignette pour le prochain épisode à voir
-                 * @param  {Object} res Objet ressource de la page
+                 * @param  {Object} res  Objet API show
                  * @return {void}
                  */
                 function buildNextEpisode(res) {
@@ -2884,7 +2887,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             window.addEventListener("message", receiveMessage, false);
             function receiveMessage(event) {
                 const origin = new URL(serverBaseUrl).origin;
-                if (debug) console.log('receiveMessage', event);
+                // if (debug) console.log('receiveMessage', event);
                 if (event.origin !== origin) {
                     if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
                     reject('event.origin is not %s', origin);
