@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.1
+// @version      0.24.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1172,6 +1172,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         } else if (description.length <= 0) {
                             description = 'Aucune description';
                         }
+
+                        // Ajout de l'attribut title pour obtenir le nom complet de l'épisode, lorsqu'il est tronqué
+                        $vignette.next('.slide__title').attr('title', objRes.title);
 
                         checkbox = $vignette.find('.checkSeen');
                         // if (debug) console.log('addCheckSeen(pos: %d, length: %d) obj:', v, checkbox.length, objRes);
