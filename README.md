@@ -50,6 +50,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource principale (série et film)
 * Ajout de la récupération d'images, pour les similars, sur les sites [_thetvdb_](http://www.thetvdb.com) et [_themoviedb_](http://www.themoviedb.org), Si elles ne sont pas présentes sur [betaseries](https://www.betaseries.com).
+* Ajout de la gestion des boutons **Ajouter**, **Archiver**, **Favoris** et **Options**. Plus besoin de recharger la page lors de l'ajout ou de la suppression d'une série.
 
 #### Séries
 
