@@ -50,13 +50,12 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource principale (série et film)
 * Ajout de la récupération d'images, pour les similars, sur les sites [_thetvdb_](http://www.thetvdb.com) et [_themoviedb_](http://www.themoviedb.org), Si elles ne sont pas présentes sur [betaseries](https://www.betaseries.com).
-* Ajout de la gestion des boutons **Ajouter**, **Archiver**, **Favoris** et **Options**. Plus besoin de recharger la page lors de l'ajout ou de la suppression d'une série.
 
 #### Séries
 
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou retirer l'épisode aux épisodes vus. La barre de progression de la série, ainsi que l'affichage du prochain épisode à visionner, sont mis à jour en même temps que les épisodes, sans recharger toute la page.
 * Ajout d'une popup, au survol d'une vignette d'un épisode, pour afficher le synopsis.
-* Gestion des boutons _Ajouter_, _Archiver_ et _Favoris_, ainsi que du menu _Options_, sans avoir à recharger la page.
+* Ajout de la gestion des boutons **Ajouter**, **Archiver**, **Favoris** et **Options**. Plus besoin de recharger la page lors de l'ajout ou de la suppression d'une série.
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
 
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
