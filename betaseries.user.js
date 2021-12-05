@@ -1416,7 +1416,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 // Vérifier si le membre a ajouter la série à son compte
                 if (res.in_account === false) {
                     // Remplacer le DOMElement supprime l'eventHandler
-                    $('#reactjs-show-actions').empty().append(`
+                    $('#reactjs-show-actions').html(`
                         <div class="blockInformations__action">
                           <button class="btn-reset btn-transparent" type="button">
                             <span class="svgContainer">
@@ -1462,8 +1462,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                  * @return {void}
                  */
                 function changeBtnAdd(objRes) {
-                    const linksDd = $('.blockInformations__actions a.header-navigation-item');
-                    if (linksDd.length <= 2) {
+                    let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
+                    if ($optionsLinks.length <= 2) {
                         let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
                             urlShow = objRes.resource_url.substring(location.origin.length),
                             title = objRes.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
@@ -1494,10 +1494,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 </div>
                               </form>
                               <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
-                        if (linksDd.length === 1) {
+                        if ($optionsLinks.length === 1) {
                             templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
                         }
-                        $('div.blockInformation__action.show .dropdown-menu').append(templateOpts);
+                        $('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
+                            .append(templateOpts);
                     }
 
                     // On remplace le bouton Ajouter par les boutons Archiver et Favoris
@@ -1564,10 +1565,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
              */
             function deleteShowClick() {
                 const res = cache.get('shows', showId, 'deleteShowClick').show;
-                if (res.in_account && $('.blockInformations__actions .dropdown-menu a').length > 2) {
+                let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
+                // Le menu Options est au complet
+                if (res.in_account && $optionsLinks.length > 2) {
                     AddEventBtnsArchiveAndFavoris();
                     // Gestion de la suppression de la série du compte utilisateur
-                    $('.blockInformations__actions .dropdown-menu a.header-navigation-item:last-child')
+                    $optionsLinks.last()
                         .removeAttr('onclick')
                         .off('click')
                         .on('click', (e) =>
@@ -1596,7 +1599,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     data.show.user.next.id = null;
                                     cache.set('shows', showId, data);
                                     // On remet le bouton Ajouter
-                                    $('#reactjs-show-actions').empty().append(`
+                                    $('#reactjs-show-actions').html(`
                                         <div class="blockInformations__action">
                                           <button class="btn-reset btn-transparent btn-add" type="button">
                                             <span class="svgContainer">
@@ -1609,7 +1612,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                         </div>`
                                     );
                                     // On supprime les items du menu Options
-                                    $('.blockInformations__actions .dropdown-menu a:first-child').siblings().each((i, e) => { $(e).remove(); });
+                                    $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
                                     // Nettoyage de l'affichage et du cache des épisodes
                                     cache.clear('episodes');
                                     let checks = $('#episodes .checkSeen.seen'),
@@ -1631,6 +1634,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 }
             }
+            // On active les menus dropdown
+            $('.dropdown-toggle').dropdown();
             // On gère l'ajout et la suppression de la série dans le compte utilisateur
             if (res.in_account) {
                 deleteShowClick();
