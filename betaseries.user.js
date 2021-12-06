@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.25.0
+// @version      0.25.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1985,36 +1985,48 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             note_user: note.user
                         });
                     }
-                    if (data.show.user.next.id === null && data.show.status === 'Ended' && data.show.user.archived === false) {
-                        if (debug) console.log('Série terminée, popup confirmation archivage');
-                        new PopupAlert({
-                            title: 'Archivage de la série',
-                            text: 'Voulez-vous archiver cette série terminée ?',
-                            callback_yes: function() {
-                                $('#reactjs-show-actions button.btn-archive').trigger('click');
-                                //cache.remove('shows', data.show.id);
-                            },
-                            callback_no: function() {
-                                return true;
-                            }
-                        });
-                    }
-                    if (data.show.user.next.id === null && note.user === 0) {
-                        if (debug) console.log('Proposition de voter pour la série');
-                        new PopupAlert({
-                            title: trans("popin.note.title.show"),
-                            text: "N'oubliez pas de noter la série",
-                            callback_yes: function() {
-                                $('.blockInformations__metadatas .js-render-stars').trigger('click');
-                            },
-                            callback_no: function() {
-                                return true;
-                            }
-                        });
-                    }
-                    // On arrête la mise à jour auto des épisodes de la saison
-                    if (timerIntervalAuto) {
-                        clearInterval(timerIntervalAuto);
+                    // Si il n'y a plus d'épisodes à regarder
+                    if (data.show.user.remaining === 0) {
+                        let promise = new Promise(resolve => { return resolve(); });
+                        // On propose d'archiver si la série n'est plus en production
+                        if (data.show.status === 'Ended' && data.show.user.archived === false) {
+                            if (debug) console.log('Série terminée, popup confirmation archivage');
+                            promise = new Promise(resolve => {
+                                new PopupAlert({
+                                    title: 'Archivage de la série',
+                                    text: 'Voulez-vous archiver cette série terminée ?',
+                                    callback_yes: function() {
+                                        $('#reactjs-show-actions button.btn-archive').trigger('click');
+                                        //cache.remove('shows', data.show.id);
+                                        resolve();
+                                    },
+                                    callback_no: function() {
+                                        resolve();
+                                        return true;
+                                    }
+                                });
+                            });
+                        }
+                        // On propose de noter la série
+                        if (note.user === 0) {
+                            if (debug) console.log('Proposition de voter pour la série');
+                            promise.then(() => {
+                                new PopupAlert({
+                                    title: trans("popin.note.title.show"),
+                                    text: "N'oubliez pas de noter la série",
+                                    callback_yes: function() {
+                                        $('.blockInformations__metadatas .js-render-stars').trigger('click');
+                                    },
+                                    callback_no: function() {
+                                        return true;
+                                    }
+                                });
+                            });
+                        }
+                        // On arrête la mise à jour auto des épisodes de la saison
+                        if (timerIntervalAuto) {
+                            clearInterval(timerIntervalAuto);
+                        }
                     }
                     toggleSpinner($elt, false);
                 })
