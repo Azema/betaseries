@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.6
+// @version      0.24.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1115,6 +1115,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
             vignettes = getVignettes();
 
+        const seasons = $('#seasons div[role="button"]'),
+              type = getApiResource(url.split('/')[1]), // Le type de ressource
+              showId = getResourceId(), // Identifiant de la ressource principale
+              res = cache.get('shows', showId, 'addCheckSeen').show; // L'objet Show
+
         // On vérifie que les saisons et les episodes soient chargés sur la page
         if (vignettes.length > 0 && vignettes.length >= len) {
             // On supprime le timer Interval
@@ -1126,8 +1131,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return;
         }
 
-        const seasons = $('#seasons div[role="button"]'),
-              type = getApiResource(url.split('/')[1]); // Le type de ressource
+
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
 
         // Ajoute les cases à cocher sur les vignettes des épisodes
@@ -1136,9 +1140,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             len = parseInt($('#seasons .slide--current .slide__infos').text(), 10);
 
             const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(),
-                  showId = getResourceId(), // Identifiant de la ressource principale
-                  key = `show-${showId}-${seasonNum}`, // Clé de cache des épisodes de la saison
-                  res = cache.get('shows', showId, 'addCheckSeen').show; // L'objet Show
+                  key = `show-${showId}-${seasonNum}`; // Clé de cache des épisodes de la saison
 
             let promise; // Contient la promesse de récupérer les épisodes de la saison courante
             if (cache.has('episodes', key)) {
@@ -1243,19 +1245,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             //fallbackPlacement: ['left', 'right']
                         });
                     }
-                    /*$('#episodes .slide__image').on('shown.bs.popover', function () {
-                        let popover = $('#episodes .popover'),
-                            placement = popover.attr('x-placement');
-                        popover.hide(10);
-
-                        if (placement === 'left') {
-                            popover.css('left', '-350px');
-                        }
-                        else if (placement === 'right') {
-                            popover.css('left', '250px');
-                        }
-                        popover.fadeIn(400);
-                    });*/
                     // On ajoute un event click sur la case 'checkSeen'
                     $('#episodes .checkSeen').click(function(e) {
                         e.stopPropagation();
@@ -1266,11 +1255,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         // On vérifie si l'épisode a déjà été vu
                         if ($elt.hasClass('seen')) {
                             // On demande à l'enlever des épisodes vus
-                            changeStatusVignette($elt, 'notSeen', 'DELETE', episodeId);
+                            changeStatusVignette($elt, 'notSeen', 'DELETE', episodeId, key);
                         }
                         // Sinon, on l'ajoute aux épisodes vus
                         else {
-                            changeStatusVignette($elt, 'seen', 'POST', episodeId);
+                            changeStatusVignette($elt, 'seen', 'POST', episodeId, key);
                         }
                     });
                     // On ajoute un effet au survol de la case 'checkSeen'
@@ -1360,626 +1349,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 });
             }
-
-            /**
-             * Ajoute un eventHandler sur les boutons Archiver et Favoris
-             * @return {void}
-             */
-            function AddEventBtnsArchiveAndFavoris() {
-                let btnArchive = $('#reactjs-show-actions button.btn-archive'),
-                    btnFavoris = $('#reactjs-show-actions button.btn-favoris');
-                if (btnArchive.length === 0 || btnFavoris.length === 0) {
-                    $('#reactjs-show-actions button:first').addClass('btn-archive');
-                    btnArchive = $('#reactjs-show-actions button.btn-archive');
-                    $('#reactjs-show-actions button:last').addClass('btn-favoris');
-                    btnFavoris = $('#reactjs-show-actions button.btn-favoris');
-                }
-                // Event bouton Archiver
-                btnArchive.off('click').click((e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (debug) console.groupCollapsed('show-archive');
-                    // Met à jour le bouton d'archivage de la série
-                    function updateBtnArchive(verb, transform, label, notif) {
-                        const res = cache.get('shows', showId, 'btnArchive').show;
-                        callBetaSeries(verb, 'shows', 'archive', {id: res.id})
-                            .then(data => {
-                                cache.set('shows', res.id, data);
-                                const parent = $(e.currentTarget).parent();
-                                $('span', e.currentTarget).css('transform', transform);
-                                $('.label', parent).text(trans(label));
-                                if (debug) console.groupEnd('show-archive');
-                            }, err => {
-                                notification(notif, err);
-                                if (debug) console.groupEnd('show-archive');
-                            });
-                    }
-                    if (! res.user.archived) {
-                        updateBtnArchive(
-                            'POST', 'rotate(180deg)',
-                            'show.button.unarchive.label', 'Erreur d\'archivage de la série'
-                        );
-                    } else {
-                        updateBtnArchive(
-                            'DELETE', 'rotate(0deg)',
-                            'show.button.archive.label', 'Erreur désarchivage de la série'
-                        );
-                    }
-                });
-                // Event bouton Favoris
-                btnFavoris.off('click').click((e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (debug) console.groupCollapsed('show-favoris');
-                    const res = cache.get('shows', showId, 'btnFavoris').show;
-                    if (! res.user.favorited) {
-                        callBetaSeries('POST', 'shows', 'favorite', {id: res.id})
-                        .then(data => {
-                            cache.set('shows', res.id, data);
-                            $(e.currentTarget).children('span').replaceWith(`
-                              <span class="svgContainer">
-                                <svg width="21" height="19" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M15.156.91a5.887 5.887 0 0 0-4.406 2.026A5.887 5.887 0 0 0 6.344.909C3.328.91.958 3.256.958 6.242c0 3.666 3.33 6.653 8.372 11.19l1.42 1.271 1.42-1.28c5.042-4.528 8.372-7.515 8.372-11.18 0-2.987-2.37-5.334-5.386-5.334z"></path>
-                                </svg>
-                              </span>`);
-                            if (debug) console.groupEnd('show-favoris');
-                        }, err => {
-                            notification('Erreur de favoris de la série', err);
-                            if (debug) console.groupEnd('show-favoris');
-                        });
-                    } else {
-                        callBetaSeries('DELETE', 'shows', 'favorite', {id: res.id})
-                        .then(data => {
-                            cache.set('shows', res.id, data);
-                            $(e.currentTarget).children('span').replaceWith(`
-                              <span class="svgContainer">
-                                <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
-                                </svg>
-                              </span>`);
-                            if (debug) console.groupEnd('show-favoris');
-                        }, err => {
-                            notification('Erreur de favoris de la série', err);
-                            if (debug) console.groupEnd('show-favoris');
-                        });
-                    }
-                });
-            }
-
-            /*
-             * On gère l'ajout de la série dans le compte utilisateur
-             *
-             * @param {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
-             */
-            function addShowClick(trigEpisode = false) {
-                const res = cache.get('shows', showId, 'addShowClick').show;
-                // Vérifier si le membre a ajouter la série à son compte
-                if (res.in_account === false) {
-                    // Remplacer le DOMElement supprime l'eventHandler
-                    $('#reactjs-show-actions').html(`
-                        <div class="blockInformations__action">
-                          <button class="btn-reset btn-transparent" type="button">
-                            <span class="svgContainer">
-                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                              </svg>
-                            </span>
-                          </button>
-                          <div class="label">Ajouter</div>
-                        </div>`
-                     );
-                    // On ajoute un event click pour masquer les vignettes
-                    $('#reactjs-show-actions > div > button').off('click').one('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (debug) console.groupCollapsed('AddShow');
-
-                        for (let v = 0; v < len; v++) {
-                            $(vignettes.get(v))
-                                .find('img.js-lazy-image')
-                                .attr('style', 'filter: blur(5px);');
-                        }
-                        callBetaSeries('POST', 'shows', 'show', {id: res.id})
-                        .then((data) => {
-                            cache.set('shows', showId, data);
-                            // On met à jour les boutons Archiver et Favori
-                            changeBtnAdd(data.show);
-                            // On met à jour le bloc du prochain épisode à voir
-                            updateNextEpisode();
-                            if (debug) console.groupEnd('AddShow');
-                        }, err => {
-                            notification('Erreur d\'ajout de la série', err);
-                            if (debug) console.groupEnd('AddShow');
-                        });
-                    });
-                }
-
-                /**
-                 * Ajoute les items du menu Options, ainsi que les boutons Archiver et Favoris
-                 * et on ajoute un voile sur les images des épisodes non-vu
-                 *
-                 * @param  {Object} objRes L'objet de type Show
-                 * @return {void}
-                 */
-                function changeBtnAdd(objRes) {
-                    let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
-                    if ($optionsLinks.length <= 2) {
-                        let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
-                            urlShow = objRes.resource_url.substring(location.origin.length),
-                            title = objRes.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
-                            templateOpts = `
-                              <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
-                                showClose: true,
-                                type: "popin-subtitles",
-                                reactModuleId: "reactjs-subtitles",
-                                params: {
-                                  mediaId: "${showId}",
-                                  type: "show",
-                                  titlePopin: "${title}";
-                                },
-                                callback: function() {
-                                  loadRecommendationModule('subtitles');
-                                  //addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
-                                },
-                              });">Sous-titres</button>
-                              <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${showId}, 'show');">Signaler un problème</a>
-                              <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${showId}, '0')">Demander une mise à jour</a>
-                              <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
-
-                              <form class="autocomplete js-autocomplete-form header-navigation-item">
-                                <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
-                                <div class="autocomplete__toShow" hidden="">
-                                  <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
-                                  <div class="autocomplete__response js-display-response"></div>
-                                </div>
-                              </form>
-                              <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
-                        if ($optionsLinks.length === 1) {
-                            templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
-                        }
-                        $('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
-                            .append(templateOpts);
-                    }
-
-                    // On remplace le bouton Ajouter par les boutons Archiver et Favoris
-                    const divs = $('#reactjs-show-actions > div');
-                    if (divs.length === 1) {
-                        $('#reactjs-show-actions').remove();
-                        let container = $('.blockInformations__actions'),
-                            method = 'prepend';
-                        // Si le bouton VOD est présent, on place les boutons après
-                        if ($('#dropdownWatchOn').length > 0) {
-                            container = $('#dropdownWatchOn').parent();
-                            method = 'after';
-                        }
-                        container[method](`
-                            <div class="displayFlex alignItemsFlexStart"
-                                 id="reactjs-show-actions"
-                                 data-show-id="${objRes.id}"
-                                 data-user-hasarchived="${objRes.user.archived ? '1' : ''}"
-                                 data-show-inaccount="1"
-                                 data-user-id="${betaseries_user_id}"
-                                 data-show-favorised="${objRes.user.favorited ? '1' : ''}">
-                              <div class="blockInformations__action">
-                                <button class="btn-reset btn-transparent btn-archive" type="button">
-                                  <span class="svgContainer">
-                                    <svg fill="#0d151c" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="m16 8-1.41-1.41-5.59 5.58v-12.17h-2v12.17l-5.58-5.59-1.42 1.42 8 8z"></path>
-                                    </svg>
-                                  </span>
-                                </button>
-                                <div class="label">${trans('show.button.archive.label')}</div>
-                              </div>
-                              <div class="blockInformations__action">
-                                <button class="btn-reset btn-transparent btn-favoris" type="button">
-                                  <span class="svgContainer">
-                                    <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
-                                    </svg>
-                                  </span>
-                                </button>
-                                <div class="label">${trans('show.button.favorite.label')}</div>
-                              </div>
-                            </div>`);
-                        // On ofusque l'image de l'épisode non-vu
-                        let vignette;
-                        for (let v = 0; v < len; v++) {
-                            vignette = $(vignettes.get(v));
-                            if (vignette.find('.seen').length <= 0) {
-                                vignette.find('img').attr('style', 'filter: blur(5px);');
-                            }
-                        }
-                    }
-                    AddEventBtnsArchiveAndFavoris();
-                    deleteShowClick();
-                }
-                if (trigEpisode) {
-                    getResource(true).then(obj => {
-                        changeBtnAdd(obj);
-                    });
-                }
-            }
-
-            /*
-             * Gère la suppression de la série du compte utilisateur
-             */
-            function deleteShowClick() {
-                const res = cache.get('shows', showId, 'deleteShowClick').show;
-                let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
-                // Le menu Options est au complet
-                if (res.in_account && $optionsLinks.length > 2) {
-                    AddEventBtnsArchiveAndFavoris();
-                    // Gestion de la suppression de la série du compte utilisateur
-                    $optionsLinks.last()
-                        .removeAttr('onclick')
-                        .off('click')
-                        .on('click', (e) =>
-                    {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (debug) console.groupCollapsed('DeleteShow');
-                        // Supprimer la série du compte utilisateur
-                        new PopupAlert({
-                            title: trans("popup.delete_show.title", { "%title%": res.title }),
-                            text: trans("popup.delete_show.text", { "%title%": res.title }),
-                            callback_yes: function() {
-                                callBetaSeries('DELETE', 'shows', 'show', {id: res.id})
-                                .then((data) => {
-                                    new PopupAlert({
-                                        title: trans("popup.delete_show_success.title"),
-                                        text: trans("popup.delete_show_success.text", { "%title%": res.title }),
-                                        yes: trans("popup.delete_show_success.yes"),
-                                    });
-                                    // On nettoie les propriétés servant à l'update de l'affichage
-                                    data.show.user.status = 0;
-                                    data.show.user.archived = false;
-                                    data.show.user.favorited = false;
-                                    data.show.user.remaining = 0;
-                                    data.show.user.last = "S00E00";
-                                    data.show.user.next.id = null;
-                                    cache.set('shows', showId, data);
-                                    // On remet le bouton Ajouter
-                                    $('#reactjs-show-actions').html(`
-                                        <div class="blockInformations__action">
-                                          <button class="btn-reset btn-transparent btn-add" type="button">
-                                            <span class="svgContainer">
-                                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                                              </svg>
-                                            </span>
-                                          </button>
-                                          <div class="label">${trans('show.button.add.label')}</div>
-                                        </div>`
-                                    );
-                                    // On supprime les items du menu Options
-                                    $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
-                                    // Nettoyage de l'affichage et du cache des épisodes
-                                    cache.clear('episodes');
-                                    let checks = $('#episodes .checkSeen.seen'),
-                                        update = false; // Flag pour l'update de l'affichage
-                                    for (let c = 0; c < checks.length; c++) {
-                                        if (c === checks.length - 1) update = true;
-                                        if (debug) console.log('clean episode %d', c, update);
-                                        changeStatus($(checks.get(c)), 'notSeen', update);
-                                    }
-                                    addShowClick();
-                                    if (debug) console.groupEnd('DeleteShow');
-                                }, (err) => {
-                                    notification('Erreur de suppression de la série', err);
-                                    if (debug) console.groupEnd('DeleteShow');
-                                });
-                            },
-                            callback_no: function() {}
-                        });
-                    });
-                }
-            }
-            // On active les menus dropdown
-            $('.dropdown-toggle').dropdown();
-            // On gère l'ajout et la suppression de la série dans le compte utilisateur
-            if (res.in_account) {
-                deleteShowClick();
-            } else {
-                addShowClick();
-            }
-
-            /**
-             * Affiche/masque le spinner de modification des épisodes
-             *
-             * @param {Object} $elt     L'objet jQuery correspondant à l'épisode
-             * @param {bool}   display  Le flag indiquant si afficher ou masquer
-             * @return {void}
-             */
-            function toggleSpinner($elt, display) {
-                let container = $elt.parent(),
-                    html = '<div class="spinner">' +
-                             '<div class="spinner-item"></div>' +
-                             '<div class="spinner-item"></div>' +
-                             '<div class="spinner-item"></div>' +
-                           '</div>';
-                if (! display) {
-                    $('.spinner').remove();
-                    if (debug) console.log('toggleSpinner');
-                    if (debug) console.groupEnd('episode checkSeen');
-                } else {
-                    if (debug) console.groupCollapsed('episode checkSeen');
-                    if (debug) console.log('toggleSpinner');
-                    container.prepend(html);
-                }
-            }
-
-            /**
-             * Modifie le statut d'un épisode sur l'API
-             * @param  {Object} $elt      L'objet jQuery correspondant à l'épisode
-             * @param  {String} status    Le nouveau statut de l'épisode
-             * @param  {String} method    Verbe HTTP utilisé pour la requête à l'API
-             * @param  {Number} episodeId L'ID de l'épisode
-             * @return {void}
-             */
-            function changeStatusVignette($elt, status, method, episodeId) {
-                const pos = $elt.data('pos');
-                vignettes = $('#episodes .checkSeen');
-                let args = {'id': episodeId},
-                    res = cache.get('shows', getResourceId(), 'changeStatusVignette').show;
-                    promise = new Promise(resolve => { resolve(false); });
-
-                if (method === 'POST') {
-                    let createPromise = () => {
-                        return new Promise(resolve => {
-                            new PopupAlert({
-                                title: 'Episodes vus',
-                                text: 'Doit-on cocher les épisodes précédents comme vu ?',
-                                callback_yes: () => {
-                                    resolve(true);
-                                },
-                                callback_no: () => {
-                                    resolve(false);
-                                }
-                            });
-                        });
-                    };
-                    // On verifie si les épisodes précédents ont bien été indiqués comme vu
-                    for (let v = 0; v < pos; v++) {
-                        if (! $(vignettes.get(v)).hasClass('seen')) {
-                            promise = createPromise();
-                            break;
-                        }
-                    }
-                }
-
-                promise.then(response => {
-                    if (method === 'POST' && !response) {
-                        args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
-                    }
-
-                    callBetaSeries(method, 'episodes', 'watched', args)
-                    .then(function(data) {
-                        if (debug) console.log('changeStatusVignette %s episodes/watched', method, data);
-
-                        if (res && res.in_account === false) {
-                            addShowClick(true);
-                        }
-                        // On met à jour l'objet Episode dans le cache
-                        if (cache.has('episodes', key)) {
-                            let episodes = cache.get('episodes', key).episodes;
-                            if (! response && pos && episodes[pos].id == episodeId) {
-                                episodes[pos] = data.episode;
-                            } else {
-                                for (let e = 0; e < episodes.length; e++) {
-                                    if (response && e < pos && ! episodes[e].user.seen) {
-                                        episodes[e].user.seen = true;
-                                        if (debug) console.log(`query selector: #episodes .checkSeen[data-pos="${e}"]`);
-                                        changeStatus($(`#episodes .checkSeen[data-pos="${e}"]`), 'seen', false);
-                                    }
-                                    if (episodes[e].id == episodeId) {
-                                        episodes[e] = data.episode;
-                                        break;
-                                    }
-                                }
-                            }
-                            cache.set('episodes', key, {episodes: episodes});
-                        }
-                        changeStatus($elt, status);
-                    },
-                    function(err) {
-                        if (debug) console.log('changeStatusVignette error %s', err);
-                        if (err && err == 'changeStatus') {
-                            if (debug) console.log('changeStatusVignette error %s changeStatus', method);
-                            changeStatus($elt, status);
-                        } else {
-                            toggleSpinner($elt, false);
-                            notification('Erreur de modification d\'un épisode', 'changeStatusVignette: ' + err);
-                        }
-                    });
-                });
-            }
-
-            /**
-             * Change le statut visuel de la vignette sur le site
-             * @param  {Object} $elt          L'objet jQuery de l'épisode
-             * @param  {String} newStatus     Le nouveau statut de l'épisode
-             * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
-             * @return {void}
-             */
-            function changeStatus($elt, newStatus, update = true) {
-                if (debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
-                if (newStatus === 'seen') {
-                    $elt.css('background', ''); // On ajoute le check dans la case à cocher
-                    $elt.addClass('seen'); // On ajoute la classe 'seen'
-                    $elt.attr('title', trans("member_shows.remove"));
-                    // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
-                    $elt.parent('div.slide__image').find('img').removeAttr('style');
-                    $elt.parents('div.slide_flex').removeClass('slide--notSeen');
-
-                    // Si tous les épisodes de la saison ont été vus
-                    if ($('#episodes .seen').length == len) {
-                        const slideCurrent = $('#seasons div.slide--current');
-                        // On check la saison
-                        $('#seasons div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
-                        slideCurrent
-                            .removeClass('slide--notSeen')
-                            .addClass('slide--seen');
-                        if (debug) console.log('Tous les épisodes de la saison ont été vus', slideCurrent);
-                        // Si il y a une saison suivante, on la sélectionne
-                        if (slideCurrent.next().length > 0) {
-                            if (debug) console.log('Il y a une autre saison');
-                            slideCurrent.next().trigger('click');
-                            slideCurrent
-                                .removeClass('slide--current')
-                                .removeClass('slide--notSeen')
-                                .addClass('slide--seen');
-                        }
-                    }
-                } else {
-                    $elt.css('background', 'rgba(13,21,28,.2)'); // On enlève le check dans la case à cocher
-                    $elt.removeClass('seen'); // On supprime la classe 'seen'
-                    $elt.attr('title', trans("member_shows.markas"));
-                    // On remet le voile masquant sur la vignette de l'épisode
-                    $elt.parent('div.slide__image')
-                        .find('img')
-                            .attr('style', 'filter: blur(5px);');
-
-                    const contVignette = $elt.parents('div.slide_flex');
-                    if (!contVignette.hasClass('slide--notSeen')) {
-                        contVignette.addClass('slide--notSeen');
-                    }
-
-                    if ($('#episodes .seen').length < len) {
-                        $('#seasons div.slide--current .checkSeen').remove();
-                        $('#seasons div.slide--current').removeClass('slide--seen');
-                        $('#seasons div.slide--current').addClass('slide--notSeen');
-                    }
-                }
-                if (update) {
-                    getResource(true).then((data) => {
-                        updateProgressBar();
-                        updateNextEpisode();
-                        let note = (type.singular === 'show' || type.singular === 'movie') ?
-                                      data[type.singular].notes : data[type.singular].note;
-                        if (debug) {
-                            console.log('Next ID et status', {
-                                next: data.show.user.next.id,
-                                status: data.show.status,
-                                archived: data.show.user.archived,
-                                note_user: note.user
-                            });
-                        }
-                        if (data.show.user.next.id === null && data.show.status === 'Ended' && data.show.user.archived === false) {
-                            if (debug) console.log('Série terminée, popup confirmation');
-                            new PopupAlert({
-                                title: 'Archivage de la série',
-                                text: 'Voulez-vous archiver cette série terminée ?',
-                                callback_yes: function() {
-                                    $('#reactjs-show-actions > div:nth-child(1) > button').trigger('click');
-                                    //cache.remove('shows', data.show.id);
-                                },
-                                callback_no: function() {
-                                    return true;
-                                }
-                            });
-                        }
-                        if (data.show.user.next.id === null && note.user === 0) {
-                            if (debug) console.log('Proposition de voter pour la série');
-                            new PopupAlert({
-                                title: trans("popin.note.title.show"),
-                                text: "N'oubliez pas de noter la série",
-                                callback_yes: function() {
-                                    $('.blockInformations__metadatas .stars-outer').trigger('click');
-                                },
-                                callback_no: function() {
-                                    return true;
-                                }
-                            });
-                        }
-                        toggleSpinner($elt, false);
-                    }, (err) => {
-                        toggleSpinner($elt, false);
-                        notification('Erreur de récupération de la ressource principale', 'changeStatus: ' + err);
-                    });
-                }
-            }
-
-            /**
-             * Met à jour la barre de progression de visionnage de la série
-             * @return {void}
-             */
-            function updateProgressBar() {
-                if (debug) console.log('updateProgressBar');
-                let showId = getResourceId(),
-                    progBar = $('.progressBarShow'),
-                    show = cache.get('shows', showId, 'updateProgressBar').show;
-                // On met à jour la barre de progression
-                progBar.css('width', show.user.status.toFixed(1) + '%');
-            }
-
-            /**
-             * Met à jour le bloc du prochain épisode à voir
-             * @return {void}
-             */
-            function updateNextEpisode() {
-                if (debug) console.log('updateNextEpisode');
-                let showId = getResourceId(),
-                    nextEpisode = $('a.blockNextEpisode'),
-                    show = cache.get('shows', showId, 'updateNextEpisode').show;
-
-                if (nextEpisode.length > 0 && 'next' in show.user && show.user.next.id !== null) {
-                    if (debug) console.log('nextEpisode et show.user.next OK', show.user);
-                    // Modifier l'image
-                    let img = nextEpisode.find('img'),
-                        parent = img.parent('div'),
-                        height = img.attr('height'),
-                        width = img.attr('width'),
-                        src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${show.user.next.id}&width=${width}&height=${height}`;
-                    img.remove();
-                    parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
-                    // Modifier le titre
-                    nextEpisode.find('.titleEpisode').text(show.user.next.code.toUpperCase() + ' - ' + show.user.next.title);
-                    // Modifier le lien
-                    nextEpisode.attr('href', nextEpisode.attr('href').replace(/s\d{2}e\d{2}/, show.user.next.code.toLowerCase()));
-                    // Modifier le nombre d'épisodes restants
-                    let remaining = nextEpisode.find('.remaining div'),
-                        txt = remaining.text().trim();
-                    remaining.text(txt.replace(/^\d+/, show.user.remaining));
-                }
-                else if (nextEpisode.length <= 0 && 'next' in show.user && show.user.next.id !== null) {
-                    if (debug) console.log('No nextEpisode et show.user.next OK', show.user);
-                    buildNextEpisode(show);
-                }
-                else if (!('next' in show.user) || show.user.next.id === null) {
-                    nextEpisode.remove();
-                }
-                /**
-                 * Construit une vignette pour le prochain épisode à voir
-                 * @param  {Object} res  Objet API show
-                 * @return {void}
-                 */
-                function buildNextEpisode(res) {
-                    let height = 70,
-                        width = 124,
-                        src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${res.user.next.id}&width=${width}&height=${height}`,
-                        serieTitle = res.resource_url.split('/').pop(),
-                        template = `
-                        <a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
-                          <div class="media-left">
-                            <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
-                              <img src="${src}" width="${width}" height="${height}">
-                            </div>
-                          </div>
-                          <div class="media-body">
-                            <div class="title">
-                              <strong>Prochain épisode à regarder</strong>
-                            </div>
-                            <div class="titleEpisode">
-                              ${res.user.next.code.toUpperCase()} - ${res.user.next.title}
-                            </div>
-                            <div class="remaining">
-                              <div class="u-colorWhiteOpacity05">${res.user.remaining} épisode${(show.user.remaining > 1) ? 's' : ''} à regarder</div>
-                            </div>
-                          </div>
-                        </a>`;
-                    $('.blockInformations__actions').after(template);
-                }
-            }
         }
 
         // On ajoute un event sur le changement de saison
@@ -2010,6 +1379,625 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 }
             }, 500);
         });
+
+        /**
+         * Ajoute un eventHandler sur les boutons Archiver et Favoris
+         */
+        function AddEventBtnsArchiveAndFavoris() {
+            let btnArchive = $('#reactjs-show-actions button.btn-archive'),
+                btnFavoris = $('#reactjs-show-actions button.btn-favoris');
+            if (btnArchive.length === 0 || btnFavoris.length === 0) {
+                $('#reactjs-show-actions button:first').addClass('btn-archive');
+                btnArchive = $('#reactjs-show-actions button.btn-archive');
+                $('#reactjs-show-actions button:last').addClass('btn-favoris');
+                btnFavoris = $('#reactjs-show-actions button.btn-favoris');
+            }
+            // Event bouton Archiver
+            btnArchive.off('click').click((e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (debug) console.groupCollapsed('show-archive');
+                // Met à jour le bouton d'archivage de la série
+                function updateBtnArchive(verb, transform, label, notif) {
+                    const res = cache.get('shows', showId, 'btnArchive').show;
+                    callBetaSeries(verb, 'shows', 'archive', {id: res.id})
+                        .then(data => {
+                        cache.set('shows', res.id, data);
+                        const parent = $(e.currentTarget).parent();
+                        $('span', e.currentTarget).css('transform', transform);
+                        $('.label', parent).text(trans(label));
+                        if (debug) console.groupEnd('show-archive');
+                    }, err => {
+                        notification(notif, err);
+                        if (debug) console.groupEnd('show-archive');
+                    });
+                }
+                if (! res.user.archived) {
+                    updateBtnArchive(
+                        'POST', 'rotate(180deg)',
+                        'show.button.unarchive.label', 'Erreur d\'archivage de la série'
+                    );
+                } else {
+                    updateBtnArchive(
+                        'DELETE', 'rotate(0deg)',
+                        'show.button.archive.label', 'Erreur désarchivage de la série'
+                    );
+                }
+            });
+            // Event bouton Favoris
+            btnFavoris.off('click').click((e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (debug) console.groupCollapsed('show-favoris');
+                const res = cache.get('shows', showId, 'btnFavoris').show;
+                if (! res.user.favorited) {
+                    callBetaSeries('POST', 'shows', 'favorite', {id: res.id})
+                        .then(data => {
+                        cache.set('shows', res.id, data);
+                        $(e.currentTarget).children('span').replaceWith(`
+                              <span class="svgContainer">
+                                <svg width="21" height="19" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M15.156.91a5.887 5.887 0 0 0-4.406 2.026A5.887 5.887 0 0 0 6.344.909C3.328.91.958 3.256.958 6.242c0 3.666 3.33 6.653 8.372 11.19l1.42 1.271 1.42-1.28c5.042-4.528 8.372-7.515 8.372-11.18 0-2.987-2.37-5.334-5.386-5.334z"></path>
+                                </svg>
+                              </span>`);
+                        if (debug) console.groupEnd('show-favoris');
+                    }, err => {
+                        notification('Erreur de favoris de la série', err);
+                        if (debug) console.groupEnd('show-favoris');
+                    });
+                } else {
+                    callBetaSeries('DELETE', 'shows', 'favorite', {id: res.id})
+                        .then(data => {
+                        cache.set('shows', res.id, data);
+                        $(e.currentTarget).children('span').replaceWith(`
+                              <span class="svgContainer">
+                                <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
+                                </svg>
+                              </span>`);
+                        if (debug) console.groupEnd('show-favoris');
+                    }, err => {
+                        notification('Erreur de favoris de la série', err);
+                        if (debug) console.groupEnd('show-favoris');
+                    });
+                }
+            });
+        }
+
+        /*
+         * On gère l'ajout de la série dans le compte utilisateur
+         *
+         * @param {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
+         */
+        function addShowClick(trigEpisode = false) {
+            const res = cache.get('shows', showId, 'addShowClick').show;
+            // Vérifier si le membre a ajouter la série à son compte
+            if (res.in_account === false) {
+                // Remplacer le DOMElement supprime l'eventHandler
+                $('#reactjs-show-actions').html(`
+                        <div class="blockInformations__action">
+                          <button class="btn-reset btn-transparent" type="button">
+                            <span class="svgContainer">
+                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                              </svg>
+                            </span>
+                          </button>
+                          <div class="label">Ajouter</div>
+                        </div>`
+                                               );
+                // On ajoute un event click pour masquer les vignettes
+                $('#reactjs-show-actions > div > button').off('click').one('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (debug) console.groupCollapsed('AddShow');
+
+                    for (let v = 0; v < len; v++) {
+                        $(vignettes.get(v))
+                            .find('img.js-lazy-image')
+                            .attr('style', 'filter: blur(5px);');
+                    }
+                    callBetaSeries('POST', 'shows', 'show', {id: res.id})
+                        .then((data) => {
+                        cache.set('shows', showId, data);
+                        // On met à jour les boutons Archiver et Favori
+                        changeBtnAdd(data.show);
+                        // On met à jour le bloc du prochain épisode à voir
+                        updateNextEpisode();
+                        if (debug) console.groupEnd('AddShow');
+                    }, err => {
+                        notification('Erreur d\'ajout de la série', err);
+                        if (debug) console.groupEnd('AddShow');
+                    });
+                });
+            }
+
+            /**
+                 * Ajoute les items du menu Options, ainsi que les boutons Archiver et Favoris
+                 * et on ajoute un voile sur les images des épisodes non-vu
+                 *
+                 * @param  {Object} objRes L'objet de type Show
+                 * @return {void}
+                 */
+            function changeBtnAdd(objRes) {
+                let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
+                if ($optionsLinks.length <= 2) {
+                    let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
+                        urlShow = objRes.resource_url.substring(location.origin.length),
+                        title = objRes.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
+                        templateOpts = `
+                              <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
+                                showClose: true,
+                                type: "popin-subtitles",
+                                reactModuleId: "reactjs-subtitles",
+                                params: {
+                                  mediaId: "${showId}",
+                                  type: "show",
+                                  titlePopin: "${title}";
+                                },
+                                callback: function() {
+                                  loadRecommendationModule('subtitles');
+                                  //addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
+                                },
+                              });">Sous-titres</button>
+                              <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${showId}, 'show');">Signaler un problème</a>
+                              <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${showId}, '0')">Demander une mise à jour</a>
+                              <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
+
+                              <form class="autocomplete js-autocomplete-form header-navigation-item">
+                                <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
+                                <div class="autocomplete__toShow" hidden="">
+                                  <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
+                                  <div class="autocomplete__response js-display-response"></div>
+                                </div>
+                              </form>
+                              <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
+                    if ($optionsLinks.length === 1) {
+                        templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
+                    }
+                    $('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
+                        .append(templateOpts);
+                }
+
+                // On remplace le bouton Ajouter par les boutons Archiver et Favoris
+                const divs = $('#reactjs-show-actions > div');
+                if (divs.length === 1) {
+                    $('#reactjs-show-actions').remove();
+                    let container = $('.blockInformations__actions'),
+                        method = 'prepend';
+                    // Si le bouton VOD est présent, on place les boutons après
+                    if ($('#dropdownWatchOn').length > 0) {
+                        container = $('#dropdownWatchOn').parent();
+                        method = 'after';
+                    }
+                    container[method](`
+                            <div class="displayFlex alignItemsFlexStart"
+                                 id="reactjs-show-actions"
+                                 data-show-id="${objRes.id}"
+                                 data-user-hasarchived="${objRes.user.archived ? '1' : ''}"
+                                 data-show-inaccount="1"
+                                 data-user-id="${betaseries_user_id}"
+                                 data-show-favorised="${objRes.user.favorited ? '1' : ''}">
+                              <div class="blockInformations__action">
+                                <button class="btn-reset btn-transparent btn-archive" type="button">
+                                  <span class="svgContainer">
+                                    <svg fill="#0d151c" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="m16 8-1.41-1.41-5.59 5.58v-12.17h-2v12.17l-5.58-5.59-1.42 1.42 8 8z"></path>
+                                    </svg>
+                                  </span>
+                                </button>
+                                <div class="label">${trans('show.button.archive.label')}</div>
+                              </div>
+                              <div class="blockInformations__action">
+                                <button class="btn-reset btn-transparent btn-favoris" type="button">
+                                  <span class="svgContainer">
+                                    <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
+                                    </svg>
+                                  </span>
+                                </button>
+                                <div class="label">${trans('show.button.favorite.label')}</div>
+                              </div>
+                            </div>`);
+                    // On ofusque l'image de l'épisode non-vu
+                    let vignette;
+                    for (let v = 0; v < len; v++) {
+                        vignette = $(vignettes.get(v));
+                        if (vignette.find('.seen').length <= 0) {
+                            vignette.find('img').attr('style', 'filter: blur(5px);');
+                        }
+                    }
+                }
+                AddEventBtnsArchiveAndFavoris();
+                deleteShowClick();
+            }
+            if (trigEpisode) {
+                getResource(true).then(obj => {
+                    changeBtnAdd(obj);
+                });
+            }
+        }
+
+        /**
+         * Gère la suppression de la série du compte utilisateur
+         */
+        function deleteShowClick() {
+            const res = cache.get('shows', showId, 'deleteShowClick').show;
+            let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
+            // Le menu Options est au complet
+            if (res.in_account && $optionsLinks.length > 2) {
+                AddEventBtnsArchiveAndFavoris();
+                // Gestion de la suppression de la série du compte utilisateur
+                $optionsLinks.last()
+                    .removeAttr('onclick')
+                    .off('click')
+                    .on('click', (e) =>
+                        {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // Supprimer la série du compte utilisateur
+                    new PopupAlert({
+                        title: trans("popup.delete_show.title", { "%title%": res.title }),
+                        text: trans("popup.delete_show.text", { "%title%": res.title }),
+                        callback_yes: function() {
+                            callBetaSeries('DELETE', 'shows', 'show', {id: res.id})
+                                .then((data) => {
+                                new PopupAlert({
+                                    title: trans("popup.delete_show_success.title"),
+                                    text: trans("popup.delete_show_success.text", { "%title%": res.title }),
+                                    yes: trans("popup.delete_show_success.yes"),
+                                });
+                                // On nettoie les propriétés servant à l'update de l'affichage
+                                data.show.user.status = 0;
+                                data.show.user.archived = false;
+                                data.show.user.favorited = false;
+                                data.show.user.remaining = 0;
+                                data.show.user.last = "S00E00";
+                                data.show.user.next.id = null;
+                                cache.set('shows', showId, data);
+                                // On remet le bouton Ajouter
+                                $('#reactjs-show-actions').html(`
+                                        <div class="blockInformations__action">
+                                          <button class="btn-reset btn-transparent btn-add" type="button">
+                                            <span class="svgContainer">
+                                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                                              </svg>
+                                            </span>
+                                          </button>
+                                          <div class="label">${trans('show.button.add.label')}</div>
+                                        </div>`
+                                                               );
+                                // On supprime les items du menu Options
+                                $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
+                                // Nettoyage de l'affichage et du cache des épisodes
+                                cache.clear('episodes');
+                                let checks = $('#episodes .checkSeen.seen'),
+                                    update = false; // Flag pour l'update de l'affichage
+                                for (let c = 0; c < checks.length; c++) {
+                                    if (c === checks.length - 1) update = true;
+                                    if (debug) console.log('clean episode %d', c, update);
+                                    changeStatus($(checks.get(c)), 'notSeen', update);
+                                }
+                                addShowClick();
+                            }, (err) => {
+                                notification('Erreur de suppression de la série', err);
+                            });
+                        },
+                        callback_no: function() {}
+                    });
+                });
+            }
+        }
+        // On active les menus dropdown
+        $('.dropdown-toggle').dropdown();
+        // On gère l'ajout et la suppression de la série dans le compte utilisateur
+        if (res.in_account) {
+            deleteShowClick();
+        } else {
+            addShowClick();
+        }
+
+        /**
+         * Affiche/masque le spinner de modification des épisodes
+         *
+         * @param {Object} $elt     L'objet jQuery correspondant à l'épisode
+         * @param {bool}   display  Le flag indiquant si afficher ou masquer
+         * @return {void}
+         */
+        function toggleSpinner($elt, display) {
+            let container = $elt.parent(),
+                html = '<div class="spinner">' +
+                '<div class="spinner-item"></div>' +
+                '<div class="spinner-item"></div>' +
+                '<div class="spinner-item"></div>' +
+                '</div>';
+            if (! display) {
+                $('.spinner').remove();
+                if (debug) console.log('toggleSpinner');
+                if (debug) console.groupEnd('episode checkSeen');
+            } else {
+                if (debug) console.groupCollapsed('episode checkSeen');
+                if (debug) console.log('toggleSpinner');
+                container.prepend(html);
+            }
+        }
+
+        /**
+         * Modifie le statut d'un épisode sur l'API
+         * @param  {Object} $elt      L'objet jQuery correspondant à l'épisode
+         * @param  {String} status    Le nouveau statut de l'épisode
+         * @param  {String} method    Verbe HTTP utilisé pour la requête à l'API
+         * @param  {Number} episodeId L'ID de l'épisode
+         * @param  {String} key       La clé du cache des épisodes de la saison
+         * @return {void}
+         */
+        function changeStatusVignette($elt, status, method, episodeId, key) {
+            const pos = $elt.data('pos'),
+                  res = cache.get('shows', showId, 'changeStatusVignette').show;
+            vignettes = $('#episodes .checkSeen');
+            let args = {'id': episodeId},
+                promise = new Promise(resolve => { resolve(false); });
+
+            if (method === 'POST') {
+                let createPromise = () => {
+                    return new Promise(resolve => {
+                        new PopupAlert({
+                            title: 'Episodes vus',
+                            text: 'Doit-on cocher les épisodes précédents comme vu ?',
+                            callback_yes: () => {
+                                resolve(true);
+                            },
+                            callback_no: () => {
+                                resolve(false);
+                            }
+                        });
+                    });
+                };
+                // On verifie si les épisodes précédents ont bien été indiqués comme vu
+                for (let v = 0; v < pos; v++) {
+                    if (! $(vignettes.get(v)).hasClass('seen')) {
+                        promise = createPromise();
+                        break;
+                    }
+                }
+            }
+
+            promise.then(response => {
+                if (method === 'POST' && !response) {
+                    args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
+                }
+
+                callBetaSeries(method, 'episodes', 'watched', args)
+                .then(data => {
+                    if (debug) console.log('changeStatusVignette %s episodes/watched', method, data);
+
+                    if (res && res.in_account === false) {
+                        addShowClick(true);
+                    }
+                    // On met à jour l'objet Episode dans le cache
+                    if (cache.has('episodes', key)) {
+                        let episodes = cache.get('episodes', key).episodes;
+                        if (! response && pos && episodes[pos].id == episodeId) {
+                            episodes[pos] = data.episode;
+                        } else {
+                            for (let e = 0; e < episodes.length; e++) {
+                                if (response && e < pos && ! episodes[e].user.seen) {
+                                    episodes[e].user.seen = true;
+                                    if (debug) console.log(`query selector: #episodes .checkSeen[data-pos="${e}"]`);
+                                    changeStatus($(`#episodes .checkSeen[data-pos="${e}"]`), 'seen', false);
+                                }
+                                if (episodes[e].id == episodeId) {
+                                    episodes[e] = data.episode;
+                                    break;
+                                }
+                            }
+                        }
+                        cache.set('episodes', key, {episodes: episodes});
+                    }
+                    changeStatus($elt, status);
+                })
+                .catch(err => {
+                    if (debug) console.log('changeStatusVignette error %s', err);
+                    if (err && err == 'changeStatus') {
+                        if (debug) console.log('changeStatusVignette error %s changeStatus', method);
+                        changeStatus($elt, status);
+                    } else {
+                        toggleSpinner($elt, false);
+                        notification('Erreur de modification d\'un épisode', 'changeStatusVignette: ' + err);
+                    }
+                });
+            });
+        }
+
+        /**
+         * Change le statut visuel de la vignette sur le site
+         * @param  {Object} $elt          L'objet jQuery de l'épisode
+         * @param  {String} newStatus     Le nouveau statut de l'épisode
+         * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
+         * @return {void}
+         */
+        function changeStatus($elt, newStatus, update = true) {
+            if (debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
+            if (newStatus === 'seen') {
+                $elt.css('background', ''); // On ajoute le check dans la case à cocher
+                $elt.addClass('seen'); // On ajoute la classe 'seen'
+                $elt.attr('title', trans("member_shows.remove"));
+                // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
+                $elt.parent('div.slide__image').find('img').removeAttr('style');
+                $elt.parents('div.slide_flex').removeClass('slide--notSeen');
+
+                // Si tous les épisodes de la saison ont été vus
+                if ($('#episodes .seen').length == len) {
+                    const slideCurrent = $('#seasons div.slide--current');
+                    // On check la saison
+                    $('#seasons div.slide--current .slide__image').prepend('<div class="checkSeen"></div>');
+                    slideCurrent
+                        .removeClass('slide--notSeen')
+                        .addClass('slide--seen');
+                    if (debug) console.log('Tous les épisodes de la saison ont été vus', slideCurrent);
+                    // Si il y a une saison suivante, on la sélectionne
+                    if (slideCurrent.next().length > 0) {
+                        if (debug) console.log('Il y a une autre saison');
+                        slideCurrent.next().trigger('click');
+                        slideCurrent
+                            .removeClass('slide--current')
+                            .removeClass('slide--notSeen')
+                            .addClass('slide--seen');
+                    }
+                }
+            } else {
+                $elt.css('background', 'rgba(13,21,28,.2)'); // On enlève le check dans la case à cocher
+                $elt.removeClass('seen'); // On supprime la classe 'seen'
+                $elt.attr('title', trans("member_shows.markas"));
+                // On remet le voile masquant sur la vignette de l'épisode
+                $elt.parent('div.slide__image')
+                    .find('img')
+                    .attr('style', 'filter: blur(5px);');
+
+                const contVignette = $elt.parents('div.slide_flex');
+                if (!contVignette.hasClass('slide--notSeen')) {
+                    contVignette.addClass('slide--notSeen');
+                }
+
+                if ($('#episodes .seen').length < len) {
+                    $('#seasons div.slide--current .checkSeen').remove();
+                    $('#seasons div.slide--current').removeClass('slide--seen');
+                    $('#seasons div.slide--current').addClass('slide--notSeen');
+                }
+            }
+            if (update) {
+                getResource(true).then(data => {
+                    updateProgressBar();
+                    updateNextEpisode();
+                    let note = (type.singular === 'show' || type.singular === 'movie') ?
+                        data[type.singular].notes : data[type.singular].note;
+                    if (debug) {
+                        console.log('Next ID et status', {
+                            next: data.show.user.next.id,
+                            status: data.show.status,
+                            archived: data.show.user.archived,
+                            note_user: note.user
+                        });
+                    }
+                    if (data.show.user.next.id === null && data.show.status === 'Ended' && data.show.user.archived === false) {
+                        if (debug) console.log('Série terminée, popup confirmation archivage');
+                        new PopupAlert({
+                            title: 'Archivage de la série',
+                            text: 'Voulez-vous archiver cette série terminée ?',
+                            callback_yes: function() {
+                                $('#reactjs-show-actions button.btn-archive').trigger('click');
+                                //cache.remove('shows', data.show.id);
+                            },
+                            callback_no: function() {
+                                return true;
+                            }
+                        });
+                    }
+                    if (data.show.user.next.id === null && note.user === 0) {
+                        if (debug) console.log('Proposition de voter pour la série');
+                        new PopupAlert({
+                            title: trans("popin.note.title.show"),
+                            text: "N'oubliez pas de noter la série",
+                            callback_yes: function() {
+                                $('.blockInformations__metadatas .js-render-stars').trigger('click');
+                            },
+                            callback_no: function() {
+                                return true;
+                            }
+                        });
+                    }
+                    toggleSpinner($elt, false);
+                })
+                .catch(err => {
+                    toggleSpinner($elt, false);
+                    notification('Erreur de récupération de la ressource principale', 'changeStatus: ' + err);
+                });
+            }
+        }
+
+        /**
+         * Met à jour la barre de progression de visionnage de la série
+         * @return {void}
+         */
+        function updateProgressBar() {
+            if (debug) console.log('updateProgressBar');
+            let showId = getResourceId(),
+                progBar = $('.progressBarShow'),
+                show = cache.get('shows', showId, 'updateProgressBar').show;
+            // On met à jour la barre de progression
+            progBar.css('width', show.user.status.toFixed(1) + '%');
+        }
+
+        /**
+         * Met à jour le bloc du prochain épisode à voir
+         * @return {void}
+         */
+        function updateNextEpisode() {
+            if (debug) console.log('updateNextEpisode');
+            let showId = getResourceId(),
+                nextEpisode = $('a.blockNextEpisode'),
+                show = cache.get('shows', showId, 'updateNextEpisode').show;
+
+            if (nextEpisode.length > 0 && 'next' in show.user && show.user.next.id !== null) {
+                if (debug) console.log('nextEpisode et show.user.next OK', show.user);
+                // Modifier l'image
+                let img = nextEpisode.find('img'),
+                    parent = img.parent('div'),
+                    height = img.attr('height'),
+                    width = img.attr('width'),
+                    src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${show.user.next.id}&width=${width}&height=${height}`;
+                img.remove();
+                parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
+                // Modifier le titre
+                nextEpisode.find('.titleEpisode').text(show.user.next.code.toUpperCase() + ' - ' + show.user.next.title);
+                // Modifier le lien
+                nextEpisode.attr('href', nextEpisode.attr('href').replace(/s\d{2}e\d{2}/, show.user.next.code.toLowerCase()));
+                // Modifier le nombre d'épisodes restants
+                let remaining = nextEpisode.find('.remaining div'),
+                    txt = remaining.text().trim();
+                remaining.text(txt.replace(/^\d+/, show.user.remaining));
+            }
+            else if (nextEpisode.length <= 0 && 'next' in show.user && show.user.next.id !== null) {
+                if (debug) console.log('No nextEpisode et show.user.next OK', show.user);
+                buildNextEpisode(show);
+            }
+            else if (!('next' in show.user) || show.user.next.id === null) {
+                nextEpisode.remove();
+            }
+
+            /**
+                 * Construit une vignette pour le prochain épisode à voir
+                 * @param  {Object} res  Objet API show
+                 * @return {void}
+                 */
+            function buildNextEpisode(res) {
+                let height = 70,
+                    width = 124,
+                    src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${res.user.next.id}&width=${width}&height=${height}`,
+                    serieTitle = res.resource_url.split('/').pop(),
+                    template = `
+                        <a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
+                          <div class="media-left">
+                            <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
+                              <img src="${src}" width="${width}" height="${height}">
+                            </div>
+                          </div>
+                          <div class="media-body">
+                            <div class="title">
+                              <strong>Prochain épisode à regarder</strong>
+                            </div>
+                            <div class="titleEpisode">
+                              ${res.user.next.code.toUpperCase()} - ${res.user.next.title}
+                            </div>
+                            <div class="remaining">
+                              <div class="u-colorWhiteOpacity05">${res.user.remaining} épisode${(show.user.remaining > 1) ? 's' : ''} à regarder</div>
+                            </div>
+                          </div>
+                        </a>`;
+                $('.blockInformations__actions').after(template);
+            }
+        }
 
         // Retourne la saison courante
         /*function getCurrentSeason() {
