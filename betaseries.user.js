@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.9
+// @version      0.25.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1113,7 +1113,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         if (! userIdentified() || betaseries_api_user_key === '') return;
 
         let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
-            vignettes = getVignettes();
+            vignettes = getVignettes(),
+            timerIntervalAuto; // intervalID
 
         const seasons = $('#seasons div[role="button"]'),
               type = getApiResource(url.split('/')[1]), // Le type de ressource
@@ -1282,6 +1283,110 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                            title="Mise à jour des épisodes de la saison"
                            style="margin-right:10px;"/>
                     </div>`);
+                let objDataUpEpisodeList = {auto: false, interval: 0}; // Options Update episode list
+
+                /**
+                 * Fonction retournant le contenu de la Popup des options update
+                 * de la liste des épisodes
+                 * @return {String} Contenu HTML de la PopUp des options update
+                 */
+                const contentUp = function() {
+                        let intervals = [
+                                {val: 0, label: 'Jamais'},
+                                {val: 1, label: '1 min.'},
+                                {val: 5, label: '5 min.'},
+                                {val: 10, label: '10 min.'},
+                                {val: 15, label: '15 min.'},
+                                {val: 30, label: '30 min.'},
+                                {val: 45, label: '45 min.'},
+                                {val: 60, label: '60 min.'}
+                            ],
+                            contentUpdate = `
+                            <form id="optionsUpdateEpisodeList">
+                              <div class="form-group form-check">
+                                <input type="checkbox"
+                                       class="form-check-input"
+                                       id="updateEpisodeListAuto"${objDataUpEpisodeList.auto ? 'checked="true"' : ''}>
+                                <label class="form-check-label"
+                                       for="updateEpisodeListAuto">Mise à jour auto des épisodes</label>
+                              </div>
+                              <div class="form-group">
+                                <label for="updateEpisodeListTime">Intervalles</label>
+                                <select class="form-control" id="updateEpisodeListTime">`;
+                        for (let i = 0; i < intervals.length; i++) {
+                            contentUpdate += `<option value="${intervals[i].val}"
+                                ${objDataUpEpisodeList.interval === intervals[i].val ? 'selected="true"': ''}>
+                                ${intervals[i].label}</option>`;
+                        }
+                        contentUpdate += `</select></div>
+                              <button type="submit" class="btn btn-primary">Submit</button>
+                              <button type="button" class="close btn btn-danger">Cancel</button>
+                              </form>`;
+                        return contentUpdate;
+                    },
+                      titlePopup = function() {
+                        let style = "position: absolute; right: 5px; border: none; background: transparent; font-size: 1.5em; top: 0;";
+                          return `<div>Options de mise à jour
+                              <button type="button" class="close" aria-label="Close" style="${style}">
+                                <span aria-hidden="true">&times;</span>
+                              </button>
+                          </div>`;
+                      };
+
+                $('#updateEpisodeList').popover({
+                    container: $('#updateEpisodeList'),
+                    // delay: { "show": 500, "hide": 100 },
+                    html: true,
+                    content: contentUp,
+                    placement: 'right',
+                    title: titlePopup,
+                    trigger: 'manual',
+                    boundary: 'window'
+                });
+                $('#updateEpisodeList img.updateElement').hover(function(e) {
+                    e.stopPropagation();
+                    $('#updateEpisodeList').popover('show');
+                });
+                $('#updateEpisodeList').on('shown.bs.popover', function () {
+                    let popover = $('.popover');
+                    popover.css('left', `65px`);
+                    $('.popover-header').css('background-color', 'grey').css('opacity', '0.6');
+
+                    $('#updateEpisodeList button.close').click((e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        $('#updateEpisodeList').popover('hide');
+                    });
+                    $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
+                            intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
+                            objDataUpEpisodeList.auto = checkAuto;
+                            objDataUpEpisodeList.interval = intervalAuto;
+                        if (debug) console.log('updateEpisodeList submit', {checkAuto: checkAuto, interval: intervalAuto});
+                        if (checkAuto && intervalAuto > 0) {
+                            if (timerIntervalAuto) {
+                                if (debug) console.log('close old interval timer');
+                                clearInterval(timerIntervalAuto);
+                            }
+                            timerIntervalAuto = setInterval(function() {
+                                if (!objDataUpEpisodeList.auto) {
+                                    if (debug) console.log('Arrêt de la mise à jour auto des épisodes');
+                                    clearInterval(timerIntervalAuto);
+                                    timerIntervalAuto = null;
+                                    return;
+                                }
+                                if (debug) console.log('update episode list');
+                                const btnUpEpisodeList = $('.updateEpisodes');
+                                if (btnUpEpisodeList.length > 0) {
+                                    btnUpEpisodeList.trigger('click');
+                                }
+                            }, (intervalAuto * 60) * 1000);
+                        }
+                        $('#updateEpisodeList').popover('hide');
+                    });
+                });
                 // On ajoute la gestion de l'event click sur le bouton
                 $('.updateEpisodes').click((e) => {
                     e.stopPropagation();
@@ -1906,6 +2011,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 return true;
                             }
                         });
+                    }
+                    // On arrête la mise à jour auto des épisodes de la saison
+                    if (timerIntervalAuto) {
+                        clearInterval(timerIntervalAuto);
                     }
                     toggleSpinner($elt, false);
                 })
