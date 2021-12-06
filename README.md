@@ -54,10 +54,10 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 #### Séries
 
-* Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou retirer l'épisode aux épisodes vus. La barre de progression de la série, ainsi que l'affichage du prochain épisode à visionner, sont mis à jour en même temps que les épisodes, sans recharger toute la page.
 * Ajout d'une popup, au survol d'une vignette d'un épisode, pour afficher le synopsis.
 * Ajout de la gestion des boutons **Ajouter**, **Archiver**, **Favoris** et **Options**. Plus besoin de recharger la page lors de l'ajout ou de la suppression d'une série.
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
+* Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou retirer l'épisode des épisodes vus. La barre de progression de la série, ainsi que l'affichage du prochain épisode à visionner, sont mis à jour en même temps que les épisodes, sans recharger toute la page.
 
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
 * Ajout d'une mise à jour automatique des épisodes de la saison courante, avec réglage des options, au survol du bouton de mise à jour. Les options permettent d'activer l'update et l'intervalle de temps entre les mises à jour.
