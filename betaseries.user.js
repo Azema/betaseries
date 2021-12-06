@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.7
+// @version      0.24.8
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -2926,15 +2926,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     reject('event.origin is not %s', origin);
                     return;
                 }
-                let msg = event.data.message;
-                if (msg == 'access_token') {
+                if (event.data.message == 'access_token') {
                     betaseries_api_user_token = event.data.value;
                     $('#containerIframe').remove();
-                    resolve(msg);
+                    resolve(event.data.message);
+                    window.removeEventListener("message", receiveMessage, false);
                 } else {
                     if (debug) console.error('Erreur de récuperation du token', event);
                     reject(event.data);
                     notification('Erreur de récupération du token', 'Pas de message');
+                    window.removeEventListener("message", receiveMessage, false);
                 }
             }
         });
