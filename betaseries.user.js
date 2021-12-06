@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.24.8
+// @version      0.24.9
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -3008,7 +3008,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 fetch(`${api.base}/members/is_active`, paramsFetch).then(resp => {
                     if ( ! resp.ok) {
                         // Appel de l'authentification pour obtenir un token valide
-                        authenticate().then(() => fetchUri(resolve, reject) ).catch(err => reject(err) );
+                        authenticate().then(() => {
+                            // On met à jour le token pour le prochain appel à l'API
+                            myHeaders['X-BetaSeries-Token'] = betaseries_api_user_token;
+                            fetchUri(resolve, reject);
+                        }).catch(err => reject(err) );
                         return;
                     }
                     fetchUri(resolve, reject);
