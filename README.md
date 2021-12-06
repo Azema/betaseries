@@ -60,6 +60,9 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
 
 ![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
+* Ajout d'une mise à jour automatique des épisodes de la saison courante, avec réglage des options, au survol du bouton de mise à jour. Les options permettent d'activer l'update et l'intervalle de temps entre les mises à jour.
+
+![Options de mise à jour auto](/screenshots/OptionsUpdateAutoEpisodes.jpg "Options de mise à jour auto")
 
 #### Liste des séries
 
