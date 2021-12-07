@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.25.6
+// @version      0.25.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -147,7 +147,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (++notLoop >= 20) {
                 clearInterval(timerLazy);
                 // Ca ne fera pas le job, mais ça ne déclenchera pas d'erreur
-                fnLazy = {init: function(){}};
+                fnLazy = {init: function(){console.log('fake lazyLoad');}};
             }
             if (typeof lazyLoad !== 'undefined') {
                 fnLazy = new lazyLoad({});
@@ -1344,8 +1344,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                  * @return {String} Contenu HTML de la PopUp des options update
                  */
                 const contentUp = function() {
-                    const res = cache.get('shows', showId, 'contentUp').show;
-                    let intervals = [
+                    let objUpAuto = GM_getValue('objUpAuto');
+                    if (!objUpAuto.hasOwnProperty(showId)) {
+                        // Lorsque la série a été supprimée du compte du membre
+                        objUpAuto = defaultObjUpAuto;
+                    }
+                    const res = cache.get('shows', showId, 'contentUp').show,
+                          intervals = [
                             {val: 0, label: 'Jamais'},
                             {val: 1, label: '1 min.'},
                             {val: 5, label: '5 min.'},
@@ -1354,8 +1359,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             {val: 30, label: '30 min.'},
                             {val: 45, label: '45 min.'},
                             {val: 60, label: '60 min.'}
-                        ],
-                        contentUpdate = `
+                        ];
+                    let contentUpdate = `
                             <form id="optionsUpdateEpisodeList">
                               <div class="form-group form-check">
                                 <input type="checkbox"
@@ -1378,8 +1383,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     }
                     contentUpdate += `</select></div>
                             ${!res.in_account ? '<div class="form-group"><p>Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>':''}
-                            <button type="submit" class="btn btn-primary"${!res.in_account ? ' disabled="true"' : ''}>Submit</button>
-                            <button type="button" class="close btn btn-danger">Cancel</button>
+                            <button type="submit" class="btn btn-primary"${!res.in_account ? ' disabled="true"' : ''}>Sauver</button>
+                            <button type="button" class="close btn btn-danger">Annuler</button>
                         </form>`;
                     return contentUpdate;
                 };
@@ -1390,17 +1395,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                  * @return {String} Contenu HTML du titre de la PopUp des options update
                  */
                 const titlePopup = function() {
-                        let style = "position: absolute; right: 5px; border: none; background: transparent; font-size: 1.5em; top: 0;",
-                        className = objUpAuto[showId].status ? 'success' : 'secondary',
-                        label = objUpAuto[showId].status ? 'running' : 'not running',
-                        help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
-                    return `<div>Options de mise à jour <span class="badge badge-pill badge-${className}">${label}</span>
-                              <button type="button" class="close" aria-label="Close" style="${style}">
+                    let objUpAuto = GM_getValue('objUpAuto');
+                    if (!objUpAuto.hasOwnProperty(showId)) {
+                        // Lorsque la série a été supprimée du compte du membre
+                        objUpAuto = defaultObjUpAuto;
+                    }
+                    const style = "position: absolute; right: 5px; border: none; background: transparent; font-size: 1.5em; top: 0;",
+                          className = (objUpAuto[showId] && objUpAuto[showId].status) ? 'success' : 'secondary',
+                          label = (objUpAuto[showId] && objUpAuto[showId].status) ? 'running' : 'not running',
+                          help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
+                    return `<div style="color:#000;">Options de mise à jour <span class="badge badge-pill badge-${className}">${label}</span>
+                              <button type="button" class="close" aria-label="Close" title="Fermer" style="${style}">
                                 <span aria-hidden="true">&times;</span>
                               </button>
-                              <i class="fa fa-question-circle"
-                                 style="color:blue;margin-left:5px;"
-                                 aria-hidden="true" title="${help}"></i>
+                              <i class="fa fa-question-circle" style="color:blue;margin-left:5px;" aria-hidden="true" title="${help}"></i>
                             </div>`;
                 };
 
@@ -1409,6 +1417,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                  * @return {void}
                  */
                 const launchUpAuto = function() {
+                    let objUpAuto = GM_getValue('objUpAuto', defaultObjUpAuto);
                     // Si les options sont modifiées pour arrêter la tâche
                     // et que le statut est en cours
                     if (objUpAuto[showId].status &&
@@ -1485,10 +1494,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 );
                 $('#updateEpisodeList').on('shown.bs.popover', function () {
                     $('.popover').css('left', '65px').css('top', '40px');
-                    $('.popover-header')
-                        .html(titlePopup())
-                        .css('color', '#000');
-                    $('.popover-body').html(contentUp());
 
                     $('#updateEpisodeList button.close').click((e) => {
                         e.stopPropagation();
@@ -1499,6 +1504,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         e.stopPropagation();
                         e.preventDefault();
                         let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
+                            objUpAuto = GM_getValue('objUpAuto'),
                             intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
                             objUpAuto[showId].auto = checkAuto;
                             objUpAuto[showId].interval = intervalAuto;
@@ -1701,17 +1707,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (res.in_account === false) {
                 // Remplacer le DOMElement supprime l'eventHandler
                 $('#reactjs-show-actions').html(`
-                        <div class="blockInformations__action">
-                          <button class="btn-reset btn-transparent" type="button">
-                            <span class="svgContainer">
-                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                              </svg>
-                            </span>
-                          </button>
-                          <div class="label">Ajouter</div>
-                        </div>`
-                                               );
+                    <div class="blockInformations__action">
+                      <button class="btn-reset btn-transparent" type="button">
+                        <span class="svgContainer">
+                          <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                          </svg>
+                        </span>
+                      </button>
+                      <div class="label">Ajouter</div>
+                    </div>`
+                );
                 // On ajoute un event click pour masquer les vignettes
                 $('#reactjs-show-actions > div > button').off('click').one('click', (e) => {
                     e.stopPropagation();
@@ -2162,6 +2168,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         // On supprime la série des options d'update
                         if (objUpAuto.hasOwnProperty(data.show.id)) {
                             delete objUpAuto[data.show.id];
+                            if (debug) console.log('changeStatus objUpAuto after delete', objUpAuto);
                             GM_setValue('objUpAuto', objUpAuto);
                         }
                     }
