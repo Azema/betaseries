@@ -32,7 +32,9 @@
     "trans": true,
     "Headers": true,
     "Request": true,
-    "URLSearchParams": true
+    "URLSearchParams": true,
+    "GM_getValue": true,
+    "GM_setValue": true
   },
   "indent"        : 4         // Specify indentation spacing
 }
