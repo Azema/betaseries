@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.25.4
+// @version      0.25.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1344,7 +1344,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                        ${objUpAuto[showId].auto ? ' checked="true"' : ''}
                                        ${!res.in_account ? ' disabled="true"' : ''}>
                                 <label class="form-check-label"
-                                       for="updateEpisodeListAuto">Mise à jour auto des épisodes</label>
+                                       for="updateEpisodeListAuto">Activer la mise à jour auto des épisodes</label>
                               </div>
                               <div class="form-group">
                                 <label for="updateEpisodeListTime">Intervalles</label>
@@ -1372,11 +1372,15 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 const titlePopup = function() {
                         let style = "position: absolute; right: 5px; border: none; background: transparent; font-size: 1.5em; top: 0;",
                         className = objUpAuto[showId].status ? 'success' : 'secondary',
-                        label = objUpAuto[showId].status ? 'running' : 'not running';
+                        label = objUpAuto[showId].status ? 'running' : 'not running',
+                        help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
                     return `<div>Options de mise à jour <span class="badge badge-pill badge-${className}">${label}</span>
                               <button type="button" class="close" aria-label="Close" style="${style}">
                                 <span aria-hidden="true">&times;</span>
                               </button>
+                              <i class="fa fa-question-circle"
+                                 style="color:blue;margin-left:5px;"
+                                 aria-hidden="true" title="${help}"></i>
                             </div>`;
                 };
 
