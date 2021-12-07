@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.25.5
+// @version      0.25.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -45,7 +45,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           url = location.pathname,
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
-          integrityStyle = 'sha384-hgsLEgmKnR4mpsu+uKEcdM2H2FT5MpohhPDYxIkgHl2soz12Rya4FEL4eBxzreYJ',
+          integrityStyle = 'sha384-z4aam29xkOKmgpOUGhk9kS8/SutkQeUtEBBXm2NYiZFc2CJSvH5hothze+P0/dz8',
           integrityPopover = 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg',
           integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
           // URI des images et description des classifications TV et films
@@ -606,60 +606,80 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     function addBtnDev() {
         const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>',
               dialogHTML = `
+              <style>
+                .dialog-container .close {
+                  float: right;
+                  font-size: 1.5rem;
+                  font-weight: 700;
+                  line-height: 1;
+                  color: #fff;
+                  text-shadow: 0 1px 0 #fff;
+                  opacity: .5;
+                  margin-right: 20px;
+                }
+                .dialog-container .close:hover {color: #000;text-decoration: none;}
+                .dialog-container .close:not(:disabled):hover, .close:not(:disabled):focus {opacity: .75;}
+                .dialog-container button.close {padding: 0;background-color: transparent;border: 0;}
+                .dialog-container .counter {font-size:0.8em;}
+              </style>
                 <div
                   class="dialog dialog-container table-dark"
                   id="dialog-resource"
-                  aria-hidden="true"
                   aria-labelledby="dialog-resource-title"
+                  style="display:none;"
                 >
-                  <div class="dialog-overlay" data-a11y-dialog-hide></div>
+                  <div class="dialog-overlay"></div>
                   <div class="dialog-content" role="document" style="width: 80%;">
-                    <button
-                      data-a11y-dialog-hide
-                      class="dialog-close"
-                      title="Fermer cette boîte de dialogue"
-                      aria-label="Fermer cette boîte de dialogue"
-                    >
-                      <i class="fa fa-times" aria-hidden="true"></i>
-                    </button>
-
-                    <h1 id="dialog-resource-title">Données de la ressource <span style="font-size:0.8em;"></span></h1>
-
+                    <h1 id="dialog-resource-title">Données de la ressource
+                        <span class="counter"></span>
+                        <button type = "button"
+                                class = "close"
+                                aria-label = "Close"
+                                title = "Fermer la boîte de dialogue">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </h1>
                     <div class="data-resource content"></div>
                   </div>
                 </div>`;
         $('.blockInformations__actions').append(btnHTML);
         $('body').append(dialogHTML);
-        dialog = new A11yDialog(document.querySelector('#dialog-resource'));
+        dialog = $('#dialog-resource');
         const html = document.documentElement;
 
+        const onShow = function() {
+            html.style.overflowY = 'hidden';
+            $('#dialog-resource')
+                .css('z-index', '1005')
+                .css('overflow', 'scroll');
+        };
+        const onHide = function() {
+            html.style.overflowY = '';
+            $('#dialog-resource')
+                .css('z-index', '0')
+                .css('overflow', 'none');
+        };
         $('.blockInformations__actions .fa-wrench').parent().click((e) => {
             e.stopPropagation();
             e.preventDefault();
             let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-                eltId = getResourceId(), // Identifiant de la ressource
-                $dataRes = $('#dialog-resource .data-resource'), // DOMElement contenant le rendu JSON de la ressource
-                fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+                $dataRes = $('#dialog-resource .data-resource'); // DOMElement contenant le rendu JSON de la ressource
 
-            callBetaSeries('GET', type.plural, fonction, {'id': eltId})
+            getResource()
             .then(function(data) {
-                if (debug) console.log('addBtnDev promise return', data);
-                if (! $dataRes.is(':empty')) $dataRes.empty();
-                $dataRes.append(renderjson.set_show_to_level(2)(data[type.singular]));
-                $('#dialog-resource-title span').empty().text('(' + counter + ' appels API)');
-                dialog.show();
+                // if (debug) console.log('addBtnDev promise return', data);
+                $dataRes.empty().append(renderjson.set_show_to_level(2)(data[type.singular]));
+                $('#dialog-resource-title span.counter').empty().text('(' + counter + ' appels API)');
+                dialog.show(400, onShow);
             }, (err) => {
-                notification('Erreur de récupération de ' + type.singular, 'addBtnDev: ' + err);
+                notification('Erreur de récupération de la ressource', 'addBtnDev: ' + err);
             });
         });
-        $('.dialog-close').click(function(e) {
+        $('.dialog button.close').click(function(e) {
             e.stopPropagation();
             e.preventDefault();
-            dialog.hide();
+            dialog.hide(400, onHide);
         });
-        dialog
-            .on('show', function() { html.style.overflowY = 'hidden'; $('#dialog-resource').css('z-index', '1005').css('overflow', 'scroll');})
-            .on('hide', function() { html.style.overflowY = ''; $('#dialog-resource').css('z-index', '0').css('overflow', 'none');});
     }
 
     /**
