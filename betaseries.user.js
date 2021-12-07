@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.25.3
+// @version      0.25.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1438,9 +1438,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     container: $('#updateEpisodeList'),
                     // delay: { "show": 500, "hide": 100 },
                     html: true,
-                    content: '',
+                    content: contentUp,
                     placement: 'right',
-                    title: '',
+                    title: titlePopup,
                     trigger: 'manual',
                     boundary: 'window'
                 });
@@ -1449,7 +1449,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     // In
                     function(e) {
                         e.stopPropagation();
-                        $(e.currentTarget).addClass('hover');
                         timeoutHover = setTimeout(function() {
                             $('#updateEpisodeList').popover('show');
                         }, 500);
@@ -1458,11 +1457,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     function(e) {
                         e.stopPropagation();
                         clearTimeout(timeoutHover);
-                        $(e.currentTarget).removeClass('hover');
                     }
                 );
                 $('#updateEpisodeList').on('shown.bs.popover', function () {
-                    $('.popover').css('left', `65px`).css('top', '45px');
+                    $('.popover').css('left', '65px').css('top', '40px');
                     $('.popover-header')
                         .html(titlePopup())
                         .css('color', '#000');
