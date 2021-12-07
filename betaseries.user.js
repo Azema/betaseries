@@ -1874,31 +1874,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         callback_yes: function() {
                             callBetaSeries('DELETE', 'shows', 'show', {id: res.id})
                             .then((data) => {
-                                new PopupAlert({
-                                    title: trans("popup.delete_show_success.title"),
-                                    text: trans("popup.delete_show_success.text", { "%title%": res.title }),
-                                    yes: trans("popup.delete_show_success.yes"),
-                                });
-                                // On nettoie les propriétés servant à l'update de l'affichage
-                                data.show.user.status = 0;
-                                data.show.user.archived = false;
-                                data.show.user.favorited = false;
-                                data.show.user.remaining = 0;
-                                data.show.user.last = "S00E00";
-                                data.show.user.next.id = null;
-                                cache.set('shows', showId, data);
-                                if (timerIntervalAuto) {
-                                    clearInterval(timerIntervalAuto);
-                                }
-                                let objUpAuto = GM_getValue('objUpAuto');
-                                // On supprime la série des options d'update
-                                if (objUpAuto.hasOwnProperty(res.id)) {
-                                    delete objUpAuto[res.id];
-                                    GM_setValue('objUpAuto', objUpAuto);
-                                }
+                                const afterNotif = function() {
+                                    // On nettoie les propriétés servant à l'update de l'affichage
+                                    data.show.user.status = 0;
+                                    data.show.user.archived = false;
+                                    data.show.user.favorited = false;
+                                    data.show.user.remaining = 0;
+                                    data.show.user.last = "S00E00";
+                                    data.show.user.next.id = null;
+                                    cache.set('shows', showId, data);
 
-                                // On remet le bouton Ajouter
-                                $('#reactjs-show-actions').html(`
+                                    // On remet le bouton Ajouter
+                                    $('#reactjs-show-actions').html(`
                                         <div class="blockInformations__action">
                                           <button class="btn-reset btn-transparent btn-add" type="button">
                                             <span class="svgContainer">
@@ -1909,19 +1896,26 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                           </button>
                                           <div class="label">${trans('show.button.add.label')}</div>
                                         </div>`
-                                                               );
-                                // On supprime les items du menu Options
-                                $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
-                                // Nettoyage de l'affichage et du cache des épisodes
-                                cache.clear('episodes');
-                                let checks = $('#episodes .checkSeen.seen'),
-                                    update = false; // Flag pour l'update de l'affichage
-                                for (let c = 0; c < checks.length; c++) {
-                                    if (c === checks.length - 1) update = true;
-                                    if (debug) console.log('clean episode %d', c, update);
-                                    changeStatus($(checks.get(c)), 'notSeen', update);
-                                }
-                                addShowClick();
+                                    );
+                                    // On supprime les items du menu Options
+                                    $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
+                                    // Nettoyage de l'affichage et du cache des épisodes
+                                    cache.clear('episodes');
+                                    let checks = $('#episodes .checkSeen'),
+                                        update = false; // Flag pour l'update de l'affichage
+                                    for (let c = 0; c < checks.length; c++) {
+                                        if (c === checks.length - 1) update = true;
+                                        if (debug) console.log('clean episode %d', c, update);
+                                        changeStatus($(checks.get(c)), 'notSeen', update);
+                                    }
+                                    addShowClick();
+                                };
+                                new PopupAlert({
+                                    title: trans("popup.delete_show_success.title"),
+                                    text: trans("popup.delete_show_success.text", { "%title%": res.title }),
+                                    yes: trans("popup.delete_show_success.yes"),
+                                    callback_yes: afterNotif
+                                });
                             }, (err) => {
                                 notification('Erreur de suppression de la série', err);
                             });
@@ -1956,6 +1950,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 '</div>';
             if (! display) {
                 $('.spinner').remove();
+                fnLazy.init();
                 if (debug) console.log('toggleSpinner');
                 if (debug) console.groupEnd('episode checkSeen');
             } else {
@@ -2126,7 +2121,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     if (data.show.user.remaining === 0) {
                         let promise = new Promise(resolve => { return resolve(); });
                         // On propose d'archiver si la série n'est plus en production
-                        if (data.show.status === 'Ended' && data.show.user.archived === false) {
+                        if (data.show.in_account && data.show.status === 'Ended' &&
+                            data.show.user.archived === false)
+                        {
                             if (debug) console.log('Série terminée, popup confirmation archivage');
                             promise = new Promise(resolve => {
                                 new PopupAlert({
@@ -2150,9 +2147,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             promise.then(() => {
                                 new PopupAlert({
                                     title: trans("popin.note.title.show"),
-                                    text: "N'oubliez pas de noter la série",
+                                    text: "Voulez-vous noter la série ?",
                                     callback_yes: function() {
                                         $('.blockInformations__metadatas .js-render-stars').trigger('click');
+                                        return true;
                                     },
                                     callback_no: function() {
                                         return true;
