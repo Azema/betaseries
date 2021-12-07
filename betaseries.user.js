@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.25.7
+// @version      0.25.8
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -43,6 +43,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
     const debug = false,
           url = location.pathname,
+          noop = function(){},
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           tableCSS = serverBaseUrl + '/css/table.min.css',
           integrityStyle = 'sha384-z4aam29xkOKmgpOUGhk9kS8/SutkQeUtEBBXm2NYiZFc2CJSvH5hothze+P0/dz8',
@@ -1305,13 +1306,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         }
                     });
                     // On ajoute un effet au survol de la case 'checkSeen'
-                    $('#episodes .checkSeen').hover(e => {
-                        $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.2)');
-                        $(e.currentTarget).parent('.slide__image').popover('hide');
-                    }, e => {
-                        $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.0)');
-                        $(e.currentTarget).parent('.slide__image').popover('show');
-                    });
+                    $('#episodes .checkSeen').hover(
+                        // IN
+                        e => {
+                            $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.2)');
+                            $(e.currentTarget).parent('.slide__image').popover('hide');
+                        },
+                        // OUT
+                        e => {
+                            $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.0)');
+                            $(e.currentTarget).parent('.slide__image').popover('show');
+                        }
+                    );
                 }, 500);
             });
 
@@ -1566,14 +1572,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         }
                         // On met à jour les éléments, seulement si il y a eu des modifications
                         if (changed) {
+                            $('#episodes .slides_flex').get(0).scrollLeft =
+                                $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
                             // On récupère la ressource principale sur l'API
                             getResource(true).then(() => {
                                 updateProgressBar();
-                                updateNextEpisode();
+                                updateNextEpisode(function() {
+                                    self.addClass('finish'); // On arrete l'animation de mise à jour
+                                    if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
+                                });
                             });
+                        } else {
+                            self.addClass('finish'); // On arrete l'animation de mise à jour
+                            if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
                         }
-                        self.addClass('finish'); // On arrete l'animation de mise à jour
-                        if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
                     }, (err) => {
                         self.addClass('finish');
                         if (debug) console.groupEnd('updateEpisodes');
@@ -1629,11 +1641,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 e.stopPropagation();
                 e.preventDefault();
                 if (debug) console.groupCollapsed('show-archive');
+                const res = cache.get('shows', showId, 'btnArchive').show;
                 // Met à jour le bouton d'archivage de la série
                 function updateBtnArchive(verb, transform, label, notif) {
-                    const res = cache.get('shows', showId, 'btnArchive').show;
                     callBetaSeries(verb, 'shows', 'archive', {id: res.id})
-                        .then(data => {
+                    .then(data => {
                         cache.set('shows', res.id, data);
                         const parent = $(e.currentTarget).parent();
                         $('span', e.currentTarget).css('transform', transform);
@@ -1664,7 +1676,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 const res = cache.get('shows', showId, 'btnFavoris').show;
                 if (! res.user.favorited) {
                     callBetaSeries('POST', 'shows', 'favorite', {id: res.id})
-                        .then(data => {
+                    .then(data => {
                         cache.set('shows', res.id, data);
                         $(e.currentTarget).children('span').replaceWith(`
                               <span class="svgContainer">
@@ -1679,7 +1691,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 } else {
                     callBetaSeries('DELETE', 'shows', 'favorite', {id: res.id})
-                        .then(data => {
+                    .then(data => {
                         cache.set('shows', res.id, data);
                         $(e.currentTarget).children('span').replaceWith(`
                               <span class="svgContainer">
@@ -1723,20 +1735,21 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     e.stopPropagation();
                     e.preventDefault();
                     if (debug) console.groupCollapsed('AddShow');
-
+                    const vignettes = $('#episodes .checkSeen');
                     for (let v = 0; v < len; v++) {
                         $(vignettes.get(v))
                             .find('img.js-lazy-image')
                             .attr('style', 'filter: blur(5px);');
                     }
                     callBetaSeries('POST', 'shows', 'show', {id: res.id})
-                        .then((data) => {
+                    .then((data) => {
                         cache.set('shows', showId, data);
                         // On met à jour les boutons Archiver et Favori
                         changeBtnAdd(data.show);
                         // On met à jour le bloc du prochain épisode à voir
-                        updateNextEpisode();
-                        if (debug) console.groupEnd('AddShow');
+                        updateNextEpisode(function() {
+                            if (debug) console.groupEnd('AddShow');
+                        });
                     }, err => {
                         notification('Erreur d\'ajout de la série', err);
                         if (debug) console.groupEnd('AddShow');
@@ -2196,7 +2209,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * Met à jour le bloc du prochain épisode à voir
          * @return {void}
          */
-        function updateNextEpisode() {
+        function updateNextEpisode(cb = noop) {
             if (debug) console.log('updateNextEpisode');
             let showId = getResourceId(),
                 nextEpisode = $('a.blockNextEpisode'),
@@ -2229,6 +2242,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 nextEpisode.remove();
             }
             fnLazy.init();
+            cb();
 
             /**
                  * Construit une vignette pour le prochain épisode à voir
