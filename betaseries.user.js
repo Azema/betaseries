@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      0.25.1
+// @version      0.25.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -19,8 +19,8 @@
 // @grant        GM_addStyle
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans
-   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert */
+/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans lazyLoad
+   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert loadRecommendationModule */
 /* jslint unparam: true */
 
 
@@ -138,7 +138,25 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
               crossorigin="anonymous" referrerpolicy="no-referrer" />
     `);
     let timer, timerUA, currentUser, cache = new Cache(),
-        counter = 0, dialog;
+        counter = 0, dialog, fnLazy;
+    if (typeof lazyLoad === 'undefined') {
+        let notLoop = 0;
+        let timerLazy = setInterval(function() {
+            // Pour eviter une boucle infinie
+            if (++notLoop >= 20) {
+                clearInterval(timerLazy);
+                // Ca ne fera pas le job, mais ça ne déclenchera pas d'erreur
+                fnLazy = {init: function(){}};
+            }
+            if (typeof lazyLoad !== 'undefined') {
+                fnLazy = new lazyLoad({});
+                clearInterval(timerLazy);
+                timerLazy = null;
+            }
+        }, 500);
+    } else {
+        fnLazy = new lazyLoad({});
+    }
 
     checkApiVersion();
     // Fonctions appeler pour les pages des series, des films et des episodes
@@ -703,9 +721,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     // On ajoute la classification
                     $('.blockInformations__details')
                     .append(
-                        '<li id="rating"><strong>Classification</strong><img src="' +
-                        rating.img + '" title="' + rating.title + '"/></li>'
+                        `<li id="rating"><strong>Classification</strong>
+                            <img src="${rating.img}" title="${rating.title}"/>
+                        </li>`
                     );
+                    fnLazy.init();
                 }
             }
         },
@@ -1321,17 +1341,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         contentUpdate += `</select></div>
                               <button type="submit" class="btn btn-primary">Submit</button>
                               <button type="button" class="close btn btn-danger">Cancel</button>
-                              </form>`;
+                            </form>`;
                         return contentUpdate;
                     },
-                      titlePopup = function() {
+                    titlePopup = function() {
                         let style = "position: absolute; right: 5px; border: none; background: transparent; font-size: 1.5em; top: 0;";
-                          return `<div>Options de mise à jour
-                              <button type="button" class="close" aria-label="Close" style="${style}">
-                                <span aria-hidden="true">&times;</span>
-                              </button>
-                          </div>`;
-                      };
+                        return `<div>Options de mise à jour
+                                  <button type="button" class="close" aria-label="Close" style="${style}">
+                                    <span aria-hidden="true">&times;</span>
+                                  </button>
+                                </div>`;
+                    };
 
                 $('#updateEpisodeList').popover({
                     container: $('#updateEpisodeList'),
@@ -1343,9 +1363,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     trigger: 'manual',
                     boundary: 'window'
                 });
+                let timeoutHover;
                 $('#updateEpisodeList img.updateElement').hover(function(e) {
                     e.stopPropagation();
-                    $('#updateEpisodeList').popover('show');
+                    $(e.currentTarget).addClass('hover');
+                    timeoutHover = setTimeout(function() {
+                        $('#updateEpisodeList').popover('show');
+                    }, 500);
+                }, function(e) {
+                    e.stopPropagation();
+                    clearTimeout(timeoutHover);
+                    $(e.currentTarget).removeClass('hover');
                 });
                 $('#updateEpisodeList').on('shown.bs.popover', function () {
                     let popover = $('.popover');
@@ -1414,7 +1442,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             checkSeen = $vignette.find('.checkSeen'); // DOMElement jQuery de la checkbox vu de l'épisode
                             if (debug) console.log('Episode ID', id);
                             // On vérifie que l'attribut ID est bien définit
-                            if (checkSeen.length > 0 && checkSeen.attr('id') == undefined) {
+                            if (checkSeen.length > 0 && typeof checkSeen.attr('id') === 'undefined') {
                                 if (debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
                                 // On ajoute l'attribut ID
                                 checkSeen.attr('id', 'episode-' + id);
@@ -2069,7 +2097,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     width = img.attr('width'),
                     src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${show.user.next.id}&width=${width}&height=${height}`;
                 img.remove();
-                parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
+                parent.append(`<img data-src="${src}" class="js-lazy-image" height="${height}" width="${width}" />`);
                 // Modifier le titre
                 nextEpisode.find('.titleEpisode').text(show.user.next.code.toUpperCase() + ' - ' + show.user.next.title);
                 // Modifier le lien
@@ -2086,6 +2114,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             else if (!('next' in show.user) || show.user.next.id === null) {
                 nextEpisode.remove();
             }
+            fnLazy.init();
 
             /**
                  * Construit une vignette pour le prochain épisode à voir
@@ -2101,7 +2130,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         <a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
                           <div class="media-left">
                             <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
-                              <img src="${src}" width="${width}" height="${height}">
+                              <img class="js-lazy-image" data-src="${src}" width="${width}" height="${height}">
                             </div>
                           </div>
                           <div class="media-body">
@@ -2609,31 +2638,33 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         function checkImgSimilar(elt, objRes, type) {
             let img = elt.siblings('a').find('img.js-lazy-image');
             if (img.length <= 0) {
-                if (type === 'show' && objRes.thetvdb_id > 0 && objRes.thetvdb_id != null) {
+                if (type === 'show' && objRes.thetvdb_id > 0 && objRes.thetvdb_id !== null) {
                     // On tente de remplacer le block div 404 par une image
                     elt.siblings('a').find('div.block404').replaceWith(`
-                        <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in"
+                        <img class="js-lazy-image u-opacityBackground fade-in"
                              width="125"
                              height="188"
                              alt="Poster de ${objRes.title}"
-                             src="https://artworks.thetvdb.com/banners/posters/${objRes.thetvdb_id}-1.jpg"/>
+                             data-src="https://artworks.thetvdb.com/banners/posters/${objRes.thetvdb_id}-1.jpg"/>
                     `);
+                    fnLazy.init();
                 }
-                else if (type === 'movie' && objRes.tmdb_id > 0 && objRes.tmdb_id != null) {
+                else if (type === 'movie' && objRes.tmdb_id > 0 && objRes.tmdb_id !== null) {
                     if (themoviedb_api_user_key.length <= 0) return;
                     let uriApiTmdb = `https://api.themoviedb.org/3/movie/${objRes.tmdb_id}?api_key=${themoviedb_api_user_key}&language=fr-FR`;
                     fetch(uriApiTmdb).then(response => {
                         if (!response.ok) return null;
                         return response.json();
                     }).then(data => {
-                        if (data !== null && data.hasOwnProperty('poster_path') && data.poster_path != null) {
+                        if (data !== null && data.hasOwnProperty('poster_path') && data.poster_path !== null) {
                             elt.siblings('a').find('div.block404').replaceWith(`
-                                <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in"
+                                <img class="js-lazy-image u-opacityBackground fade-in"
                                      width="125"
                                      height="188"
                                      alt="Poster de ${objRes.title}"
-                                     src="https://image.tmdb.org/t/p/original${data.poster_path}"/>
+                                     data-src="https://image.tmdb.org/t/p/original${data.poster_path}"/>
                             `);
+                            fnLazy.init();
                         }
                     });
                 }
@@ -2749,7 +2780,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     }
                                 }
                             }
-                            if (container.data('code') != unseen.code.toLowerCase()) {
+                            if (container.data('code') !== unseen.code.toLowerCase()) {
                                 if (debug) console.log('Episode à mettre à jour', unseen);
                                 // Mettre à jour l'épisode
                                 let mainLink = $('a.mainLink', container),
@@ -2770,6 +2801,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 console.log('Episode Show unchanged', unseen);
                             }
                         }
+                        fnLazy.init();
                         self.addClass('finish');
                         if (debug) console.groupEnd('Agenda updateEpisodes');
                     }, 500);
@@ -2826,7 +2858,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             <div class="a6_ba displayFlex justifyContentSpaceBetween" style="opacity: 1; transition: opacity 300ms ease-out 0s, transform;">
               <div class="a6_a8 ComponentEpisodeContainer media">
                 <div class="media-left">
-                  <img class="greyBorder a6_a2" src="https://api.betaseries.com/pictures/shows?key=${betaseries_api_user_key}&id=${unseen.show.id}&width=119&height=174" width="119" height="174" alt="Affiche de la série ${unseen.show.title}">
+                  <img class="js-lazy-image greyBorder a6_a2" data-src="https://api.betaseries.com/pictures/shows?key=${betaseries_api_user_key}&id=${unseen.show.id}&width=119&height=174" width="119" height="174" alt="Affiche de la série ${unseen.show.title}">
                 </div>
                 <div class="a6_bc media-body alignSelfStretch displayFlex flexDirectionColumn">
                   <div class="media">
@@ -2915,7 +2947,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     friend = friends[f];
                     template += `
                         <a href="/membre/${friend.login}" class="listAvatar">
-                          <img src="https://api.betaseries.com/pictures/members?key=${betaseries_api_user_key}&id=${friend.id}&width=24&height=24&placeholder=png" width="24" height="24" alt="Avatar de ${friend.login}">
+                          <img class="js-lazy-image" data-src="https://api.betaseries.com/pictures/members?key=${betaseries_api_user_key}&id=${friend.id}&width=24&height=24&placeholder=png" width="24" height="24" alt="Avatar de ${friend.login}">
                         </a>`;
                 }
                 return template;

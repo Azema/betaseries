@@ -13,7 +13,8 @@
     "humanizeDuration",
     "renderjson",
     "PopupAlert",
-    "moment"
+    "moment",
+    "lazyLoad"
   ],
   "globals" : {
     "GM_addStyle": true,
