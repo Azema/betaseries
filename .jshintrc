@@ -7,6 +7,7 @@
   "devel"         : true,     // Allow development statements e.g. `console.log();`.
   "jquery"        : true,     // Enable globals exposed by jQuery JavaScript library.
   "esnext"        : false,
+  "eqnull"        : true,
   "predef"        : [         // Extra globals.
     "jQuery",
     "A11yDialog",
@@ -17,24 +18,24 @@
     "lazyLoad"
   ],
   "globals" : {
-    "GM_addStyle": true,
     "betaseries_api_user_token": true,
     "betaseries_user_id": true,
     "newApiParameter": true,
     "viewMoreFriends": true,
-    "bootstrap": true,
-    "deleteFilterOthersCountries": true,
+    "bootstrap": false,
+    "deleteFilterOthersCountries": false,
     "baseUrl": true,
-    "CONSTANTE_FILTER": true,
-    "CONSTANTE_SORT": true,
-    "hideButtonReset": true,
-    "generate_route": true,
-    "trans": true,
-    "Headers": true,
-    "Request": true,
-    "URLSearchParams": true,
-    "GM_getValue": true,
-    "GM_setValue": true
+    "CONSTANTE_FILTER": false,
+    "CONSTANTE_SORT": false,
+    "hideButtonReset": false,
+    "generate_route": false,
+    "trans": false,
+    "Headers": false,
+    "Request": false,
+    "URLSearchParams": false,
+    "GM_getValue": false,
+    "GM_setValue": false,
+    "GM_info": false
   },
   "indent"        : 4         // Specify indentation spacing
 }

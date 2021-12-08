@@ -21,8 +21,8 @@
 // ==/UserScript==
 
 /* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans lazyLoad
-   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert loadRecommendationModule */
-/* jslint unparam: true */
+   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert loadRecommendationModule GM_info */
+/* jslint unparam: true, eqnull:true, unused:true */
 
 
 /************************************************************************************************/
@@ -128,6 +128,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 shows   : ['display', 'episodes', 'list', 'search', 'similars']
               }
           };
+    if (debug) console.log('UserScript BetaSeries v%s', GM_info.script.version);
     // Ajout des feuilles de styles pour le userscript
     $('head').append(`
         <link rel="stylesheet"
@@ -2606,17 +2607,19 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
                     decodeTitle($elt);
                     // On ajoute l'icone pour visualiser les data JSON du similar
-                    $elt.html($elt.html() +
-                      `<i class="fa fa-wrench popover-wrench"
-                          aria-hidden="true"
-                          style="margin-left:5px;cursor:pointer;"
-                          data-id="${resource.id}"
-                          data-type="${type.singular}">
-                       </i>`
-                    );
+                    if (debug) {
+                        $elt.html($elt.html() +
+                          `<i class="fa fa-wrench popover-wrench"
+                              aria-hidden="true"
+                              style="margin-left:5px;cursor:pointer;"
+                              data-id="${resource.id}"
+                              data-type="${type.singular}">
+                           </i>`
+                        );
+                    }
                     checkImgSimilar($elt, resource, type.singular);
                     // On ajoute le bandeau viewed sur le similar
-                    addBandeau($elt, resource.user.status, resource.notes, type.singular);
+                    addBandeau($elt, resource.user.status, type.singular);
                     // On ajoute le code HTML pour le rendu de la note
                     $elt.after(
                         '<div class="stars-outer"><div class="stars-inner"></div></div>'
@@ -2741,10 +2744,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          *
          * @param {Object} elt      Objet jQuery du Noeud HTML contenant le titre du similaire
          * @param {Number} status   Le statut de vu de la serie pour l'utilisateur courant
-         * @param {Object} objNote  Objet note contenant la note moyenne et le nombre total de votes
+         * @param {String} type     Le type de ressource
          * @return void
          */
-        function addBandeau(elt, status, objNote, type) {
+        function addBandeau(elt, status, type) {
             // Si la série a été vue ou commencée
             if (status && ((type === 'movie' && status === 1) || (type === 'show' && status > 0))) {
                 // On ajoute le bandeau "Viewed"
@@ -3435,7 +3438,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          */
         this.get = function(type, key, caller=null) {
             if (self.has(type, key)) {
-                if (caller != null && debug) { console.log('[%s]: Retourne la ressource (%s) du cache', caller, type, {key: key}); }
+                if (caller !== null && debug) { console.log('[%s]: Retourne la ressource (%s) du cache', caller, type, {key: key}); }
                 else if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
                 return data[type][key];
             }
