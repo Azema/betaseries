@@ -1487,18 +1487,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     /**
      * Modifie le fonctionnement d'ajout d'un similar
      *
-     * @param  {Object}   $elt        L'élément DOMElement jQuery
-     * @param  {Number[]} objSimilars Un tableau des identifiants des similars actuels
+     * @param  {Object}   $elt          L'élément DOMElement jQuery
+     * @param  {Number[]} [objSimilars] Un tableau des identifiants des similars actuels
      * @return {void}
      */
     function replaceSuggestSimilarHandler($elt, objSimilars = []) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
 
-        console.log('replaceSuggestSimilarHandler');
-        let type = getApiResource(url.split('/')[1]), // Le type de ressource
-            resId = getResourceId(), // Identifiant de la ressource
-            res = cache.get(type.plural, resId, 'replaceSuggestSimilarHandler')[type.singular];
+        if (debug) console.log('replaceSuggestSimilarHandler');
+        const type = getApiResource(url.split('/')[1]), // Le type de ressource
+              resId = getResourceId(); // Identifiant de la ressource
 
         // Gestion d'ajout d'un similar
         $elt.removeAttr('onclick').click(() => {
@@ -1506,72 +1505,29 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 showClose: true,
                 type: 'popin-suggestshow',
                 params: {
-                    id: res.id
+                    id: resId
                 },
                 callback: function() {
                     $("#similaire_id_search").focus().on("keyup", (e) => {
                         let search = $(e.currentTarget).val();
                         if (search.length > 0 && e.keyCode != 40 && e.keyCode != 38) {
-                            callBetaSeries('GET', 'search', 'shows', {autres: 'mine', text: search})
+                            callBetaSeries('GET', 'search', type.plural, {autres: 'mine', text: search})
                             .then((data) => {
+                                const medias = data[type.plural];
                                 $("#search_results .title").remove();
                                 $("#search_results .item").remove();
-                                let show;
-                                for (let s = 0; s < data.shows.length; s++) {
-                                    show = data.shows[s];
-                                    if (objSimilars.indexOf(show.id) !== -1) { continue; } // Similar déjà proposé
+                                let media;
+                                for (let s = 0; s < medias.length; s++) {
+                                    media = medias[s];
+                                    if (objSimilars.indexOf(media.id) !== -1) { continue; } // Similar déjà proposé
                                     $('#search_results').append(`
                                         <div class="item">
-                                          <p><span data-id="${show.id}" style="cursor:pointer;">${show.title}</span></p>
+                                          <p><span data-id="${media.id}" style="cursor:pointer;">${media.title}</span></p>
                                         </div>`
                                     );
                                 }
                                 $('#search_results .item span').click((e) => {
                                     autocompleteSimilar(e.currentTarget);
-                                });
-                                $("#similaire_id_search").off('keydown').on('keydown', (e) => {
-                                    const current_item = $("#search_results .item.hl");
-                                    switch(e.keyCode) {
-                                        /* Flèche du bas */
-                                        case 40:
-                                            if (current_item.length === 0) {
-                                                $("#search_results .item:first").addClass("hl");
-                                            } else {
-                                                let next_item = $("#search_results .item.hl").next("div");
-                                                if (next_item.attr("class") === "title") {
-                                                    next_item = next_item.next("div");
-                                                }
-                                                current_item.removeClass("hl");
-                                                next_item.addClass("hl");
-                                            }
-                                            break;
-
-                                        /* Flèche du haut */
-                                        case 38:
-                                            if (current_item.length !== 0) {
-                                                let prev_item = $("#search_results .item.hl").prev("div");
-                                                if (prev_item.attr("class") == "title") {
-                                                    prev_item = prev_item.prev("div");
-                                                }
-                                                current_item.removeClass("hl");
-                                                prev_item.addClass("hl");
-                                            }
-                                            break;
-
-                                        /* Touche Entrée */
-                                        case 13:
-                                            if (debug) console.log('current_item', current_item);
-                                            if (current_item.length !== 0) {
-                                                autocompleteSimilar(current_item.find("span"));
-                                            }
-                                            break;
-
-                                        /* Touche Echap */
-                                        case 27:
-                                            $("#search_results").empty();
-                                            $("input[name=similaire_id_search]").val("").trigger("blur");
-                                            break;
-                                    }
                                 });
                             }, (err) => {
                                 notification('Ajout d\'un similar', 'Erreur requête Search: ' + err);
@@ -1579,6 +1535,50 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         } else if (e.keyCode != 40 && e.keyCode != 38) {
                             $("#search_results").empty();
                             $("#similaire_id_search").off("keydown");
+                        }
+                    });
+                    $("#similaire_id_search").off('keydown').on('keydown', (e) => {
+                        const current_item = $("#search_results .item.hl");
+                        switch(e.keyCode) {
+                            /* Flèche du bas */
+                            case 40:
+                                if (current_item.length === 0) {
+                                    $("#search_results .item:first").addClass("hl");
+                                } else {
+                                    let next_item = $("#search_results .item.hl").next("div");
+                                    if (next_item.attr("class") === "title") {
+                                        next_item = next_item.next("div");
+                                    }
+                                    current_item.removeClass("hl");
+                                    next_item.addClass("hl");
+                                }
+                                break;
+
+                            /* Flèche du haut */
+                            case 38:
+                                if (current_item.length !== 0) {
+                                    let prev_item = $("#search_results .item.hl").prev("div");
+                                    if (prev_item.attr("class") == "title") {
+                                        prev_item = prev_item.prev("div");
+                                    }
+                                    current_item.removeClass("hl");
+                                    prev_item.addClass("hl");
+                                }
+                                break;
+
+                            /* Touche Entrée */
+                            case 13:
+                                if (debug) console.log('current_item', current_item);
+                                if (current_item.length !== 0) {
+                                    autocompleteSimilar(current_item.find("span"));
+                                }
+                                break;
+
+                            /* Touche Echap */
+                            case 27:
+                                $("#search_results").empty();
+                                $("input[name=similaire_id_search]").val("").trigger("blur");
+                                break;
                         }
                     });
                 }
@@ -1609,14 +1609,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
 
         console.groupCollapsed('similarsViewed');
-        let similars = $('#similars .slide__title'), // Les titres des ressources similaires
-            len = similars.length, // Le nombre de similaires
-            type = getApiResource(url.split('/')[1]); // Le type de ressource
+        let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
+            len = $similars.length; // Le nombre de similaires
 
-        if (debug) console.log('nb similars: %d', len, parseInt(res.similars, 10));
+        if (debug) console.log('nb similars: %d', len, parseInt(res.nbSimilars, 10));
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
-        if (len <= 0 || (len === 1 && $(similars.parent().get(0)).find('button').length === 1)) {
+        if (len <= 0 || (len === 1 && $($similars.parent().get(0)).find('button').length === 1)) {
             $('.updateSimilars').addClass('finish');
             replaceSuggestSimilarHandler($('#similars div.slides_flex div.slide_flex div.slide__image > button'));
             console.groupEnd('similarsViewed');
@@ -1679,7 +1678,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
 
         let objSimilars = [];
-        res.fetchSimilars().then(function(data) {
+        res.fetchSimilars().then(function(res) {
             let intTime = setInterval(function() {
                 if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
                 else clearInterval(intTime);
@@ -1697,18 +1696,15 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
 
-                let obj = {}, resId;
-                for (let s = 0; s < data.similars.length; s++) {
-                    obj = {};
-                    resId = data.similars[s][type.singular].id;
-                    obj[type.singular] = data.similars[s][type.singular];
-                    cache.set(type.plural, resId, obj);
-                    objSimilars.push(resId);
+                for (let s = 0; s < res.similars.length; s++) {
+                    objSimilars.push(res.similars[s].id);
 
-                    let $elt = $(similars.get(s)),
+                    let $elt = $($similars.get(s)),
                         $link = $elt.siblings('a'),
-                        resource = data.similars[s][type.singular],
-                        similar = new Similar(resource, $elt.parents('.slide_flex'), type);
+                        similar = res.similars[s];
+                        similar.elt = $elt.parents('.slide_flex');
+                        similar.save();
+                        // similar = new Similar(resource, $elt.parents('.slide_flex'), type);
 
                     // On décode le titre du similar
                     similar.decodeTitle();
@@ -1736,41 +1732,41 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 }
                 // Event à l'ouverture de la Popover
                 $('#similars a.slide__image').on('shown.bs.popover', function () {
-                    const resId = $(this).parent().find('.popover-wrench').data('id'),
-                          type = $(this).parent().find('.popover-wrench').data('type');
-                    // On met à jour les données du Popover
-                    // $('.popover-body').html(tempContentPopup(resId));
+                    const $wrench = $(this).parent().find('.popover-wrench'),
+                          resId = $wrench.data('id'),
+                          type = $wrench.data('type'),
+                          similar = res.getSimilar(resId);
                     // On gère les modifs sur les cases à cocher de l'état d'un film similar
                     if (type === 'movie') {
                         $('input.movie').change(e => {
                             e.stopPropagation();
                             e.preventDefault();
                             const $elt = $(e.currentTarget);
-                            let params = {id: $elt.data('movie'), state: 0};
+                            let state = 0;
                             if (debug) console.log('input.movie change', $elt, params);
                             if ($elt.is(':checked') && $elt.hasClass('movieSeen')) {
-                                params.state = 1;
+                                state = 1;
                             } else if (($elt.is(':checked') && $elt.hasClass('movieMustSee')) ||
                                        (! $elt.is(':checked') && $elt.hasClass('movieSeen')))
                             {
-                                params.state = 0;
+                                state = 0;
                             } else if ($elt.is(':checked') && $elt.hasClass('movieNotSee')) {
-                                params.state = 2;
+                                state = 2;
                             }
                             $('input.movie:not(.' + $elt.get(0).classList[1] + ')').each((i, e) => {
                                 $(e).prop( "checked", false );
                             });
-                            callBetaSeries('POST', 'movies', 'movie', params)
-                                .then(data => {
-                                if (params.state === 1) {
+
+                            similar.addToAccount(state).then(similar => {
+                                if (state === 1) {
                                     $elt.parents('a').prepend(
                                         `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
                                     );
                                 } else if ($elt.parents('a').find('.bandViewed').length > 0) {
                                     $elt.parents('a').find('.bandViewed').remove();
                                 }
-                                if (debug) console.log('movie mustSee/seen OK', data);
-                                cache.set('movies', params.id, data);
+                                if (debug) console.log('movie mustSee/seen OK', similar);
+                                // cache.set('movies', params.id, data);
                             }, err => {
                                 console.warn('movie mustSee/seen KO', err);
                             });
@@ -1781,12 +1777,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         $('.popover .addShow').click((e) => {
                             e.stopPropagation();
                             e.preventDefault();
-                            callBetaSeries('POST', 'shows', 'show', {id: resId})
-                            .then(data => {
+                            similar.addToAccount().then(() => {
                                 const para = $(e.currentTarget).parent('p');
                                 $(e.currentTarget).remove();
                                 para.text('<span style="color:var(--link-color)">La série a bien été ajoutée à votre compte</span>').delay( 2000 ).fadeIn( 400 );
-                                cache.set('shows', resId, data);
+                                // cache.set('shows', resId, data);
                             }, err => {
                                 console.error('Popover addShow error', err);
                             });
@@ -2538,7 +2533,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     class Episode extends Media {
         constructor(data, elt) {
             super(data);
-            this.elt = elt;
+            this.elt = elt || $('.blockInformations');
             this._type = {singular: 'episode', plural: 'episodes'};
             if (cache.has('shows', this.show.id)) {
                 this.show = new Show(cache.get('shows', this.show.id));
@@ -2816,18 +2811,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // Si la série a été vue ou commencée
             if (this.user.status &&
                 (
-                    (this._type === 'movie' && this.user.status === 1) ||
-                    (this._type === 'show' && this.user.status > 0))
+                    (this._type.singular === 'movie' && this.user.status === 1) ||
+                    (this._type.singular === 'show' && this.user.status > 0))
                 )
             {
                 // On ajoute le bandeau "Viewed"
-                this._elt.find('a.slide__image').prepend(
+                this.elt.find('a.slide__image').prepend(
                     `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
                 );
             }
         }
         wrench() {
-            const $title = this._elt.find('.slide__title'),
+            const $title = this.elt.find('.slide__title'),
                   _this = this;
             $title.html($title.html() +
               `<i class="fa fa-wrench popover-wrench"
@@ -2869,11 +2864,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 });
             });
         }
-        fetch() {
+        fetch(force = false) {
             const method = this._type.singular === 'show' ? 'display' : 'movie';
-            return callBetaSeries('GET', this._type.plural, method, {id: this.id});
+            return callBetaSeries('GET', this._type.plural, method, {id: this.id}, force);
         }
-        getDescription() {
+        get description() {
             return (this._type.singular === 'show') ? this.description : this.synopsis;
         }
         getContentPopup() {
@@ -2881,7 +2876,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   status = this.status == 'Ended' ? 'Terminée' : 'En cours',
                   seen = (this.user.status > 0) ? 'Vu à <strong>' + this.user.status + '%</strong>' : 'Pas vu';
             //if (debug) console.log('similars tempContentPopup', objRes);
-            let description = this.getDescription();
+            let description = this.description;
             if (description.length > 200) {
                 description = description.substring(0, 200) + '…';
             }
@@ -3043,6 +3038,28 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 }
             }
         }
+        /**
+         * Add Show to account member
+         * @return {Promise} Promise of show
+         */
+        addToAccount(state = 0) {
+            const _this = this;
+            if (this.in_account) return new Promise(resolve => resolve(_this));
+            let params = {id: this.id};
+            if (this._type.singular === 'movie') {
+                params.state = state;
+            }
+            return new Promise((resolve, reject) => {
+                callBetaSeries('POST', _this._type.plural, _this.type.singular, params)
+                .then(data => {
+                    Object.assign(this, data[_this._type.singular]);
+                    _this.save();
+                    resolve(_this);
+                }, err => {
+                    reject(err);
+                });
+            });
+        }
     }
     /**
      * @class
@@ -3066,19 +3083,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (data) {
                 Object.assign(this, data);
             }
-            this.nbEpisodes = data.episodes;
             this.nbSeasons = data.seasons;
-            this.nbSimilars = data.similars;
+            this.seasons = data.seasons_details;
+            this.nbEpisodes = data.episodes;
+            this.episodes = [];
             if (_episodes && _episodes.length === data.episodes) {
                 this.episodes = _episodes;
-            } else {
-                this.episodes = null;
             }
-            this.seasons = data.seasons_details;
+            this.nbSimilars = data.similars;
+            this.similars = [];
             if (_similars && _similars.length === data.similars) {
                 this.similars = _similars;
-            } else {
-                this.similars = null;
             }
         }
         get elt() {
@@ -3112,15 +3127,15 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {Promise} Promise of show
          */
         addToAccount() {
-            if (this.in_account) return new Promise(resolve => resolve());
-
             const _this = this;
+            if (this.in_account) return new Promise(resolve => resolve(_this));
+
             return new Promise((resolve, reject) => {
-                callBetaSeries('POST', 'shows', 'show', {id: this.id})
+                callBetaSeries('POST', 'shows', 'show', {id: _this.id})
                 .then(data => {
-                    Object.assign(this, data.show);
+                    _this.init(data.show);
                     _this.save();
-                    resolve(this);
+                    resolve(_this);
                 }, err => {
                     reject(err);
                 });
@@ -3403,6 +3418,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     for (let e = 0; e < data.episodes.length; e++) {
                         _this.episodes.push(new Episode(data.episodes[e]));
                     }
+                    _this.save();
                     resolve(this);
                     // cache.set('episodes', `show-${_this.id}-${season}`, data);
                 }, err => {
@@ -3418,17 +3434,24 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 .then(data => {
                     if (data.similars.length > 0) {
                         for (let s = 0; s < data.similars.length; s++) {
-                            _this.similars.push(new Similar(data.similars[s]), null, _this._type);
+                            _this.similars.push(new Similar(data.similars[s].show), null, _this._type);
                         }
                     }
+                    _this.save();
                     resolve(_this);
                 }, err => {
                     reject(err);
                 });
             });
         }
-        get description() {
-            return this.description;
+        getSimilar(id) {
+            if (!this.similars) return null;
+            for (let s = 0; s < this.similars.length; s++) {
+                if (this.similars[s].id === id) {
+                    return this.similars[s];
+                }
+            }
+            return null;
         }
         /*
          * On gère l'ajout de la série dans le compte utilisateur
@@ -3771,6 +3794,35 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             this.elt = $('.blockInformations');
             this._type = {singular: 'movie', plural: 'movies'};
         }
+        /**
+         * Initialize l'objet avec les données
+         * @param  {Object} data Les données de la série
+         * @return {void}
+         */
+        init(data) {
+            // On sauvegarde les épisodes et les similars
+            const _similars = this.similars;
+            const _comments = this.comments;
+            const _characters = this.characters;
+            if (data) {
+                Object.assign(this, data);
+            }
+            this.nbSimilars = data.similars;
+            this.similars = [];
+            if (_similars && data.similars === _similars.length) {
+                this.similars = _similars;
+            }
+            this.nbComments = data.comments;
+            this.comments = [];
+            if (_comments && data.comments === _comments.length) {
+                this.comments = _comments;
+            }
+            this.nbCharacters = data.characters;
+            this.characters = [];
+            if (_characters && data.characters === _characters.length) {
+                this.characters = _characters;
+            }
+        }
         get elt() {
             return this._elt;
         }
@@ -3800,9 +3852,56 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 .then(data => {
                     if (data.similars.length > 0) {
                         for (let s = 0; s < data.similars.length; s++) {
-                            _this.similars.push(new Similar(data.similars[s]), null, _this._type);
+                            _this.similars.push(new Similar(data.similars[s].movie), null, _this._type);
                         }
                     }
+                    resolve(_this);
+                }, err => {
+                    reject(err);
+                });
+            });
+        }
+        getSimilar(id) {
+            if (!this.similars) return null;
+            for (let s = 0; s < this.similars.length; s++) {
+                if (this.similars[s].id === id) {
+                    return this.similars[s];
+                }
+            }
+            return null;
+        }
+        /**
+         * Add Movie to account member
+         * @return {Promise} Promise of movie
+         */
+        addToAccount(state) {
+            const _this = this;
+            if (this.in_account) return new Promise(resolve => resolve(_this));
+
+            return new Promise((resolve, reject) => {
+                callBetaSeries('POST', 'movies', 'movie', {id: _this.id, state: state})
+                .then(data => {
+                    _this.init(data.movie);
+                    _this.save();
+                    resolve(_this);
+                }, err => {
+                    reject(err);
+                });
+            });
+        }
+        /**
+         * Remove movie from account member
+         * @return {Promise} Promise of movie
+         */
+        removeFromAccount() {
+            const _this = this;
+            if (!this.in_account) return new Promise(resolve => resolve(_this));
+
+            return new Promise((resolve, reject) => {
+                callBetaSeries('DELETE', 'movies', 'movie', {id: _this.id})
+                .then(data => {
+                    _this.init(data.movie);
+                    _this.save();
                     resolve(_this);
                 }, err => {
                     reject(err);
