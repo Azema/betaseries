@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.8
+// @version      1.0.9
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -2781,6 +2781,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             // Si les options modifiées pour lancer
             else if (objUpAuto[show.id].auto && objUpAuto[show.id].interval > 0) {
+                if (show.user.remaining <= 0) {
+                    objUpAuto[show.id].status = false;
+                    GM_setValue('objUpAuto', objUpAuto);
+                    if (timerIntervalAuto) clearInterval(timerIntervalAuto);
+                    return;
+                }
                 objUpAuto[show.id].status = true;
                 if (timerIntervalAuto) {
                     if (debug) console.log('close old interval timer');
@@ -2813,8 +2819,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             launchUpAuto();
         } else if (objUpAuto[show.id].status) {
             objUpAuto[show.id].status = false;
-            objUpAuto[show.id].auto = false;
-            clearInterval(timerIntervalAuto);
+            // objUpAuto[show.id].auto = false;
+            GM_setValue('objUpAuto', objUpAuto);
+            if (timerIntervalAuto) clearInterval(timerIntervalAuto);
         }
         $('#updateEpisodeList').popover({
             container: $('#updateEpisodeList'),
@@ -2841,6 +2848,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 clearTimeout(timeoutHover);
             }
         );
+        // On ferme et désactive les autres popups lorsque celle des options est ouverte
+        $('#updateEpisodeList').on('show.bs.popover', function () {
+            $('#episodes .slide__image').popover('hide');
+            $('#episodes .slide__image').popover('disable');
+        });
+        // On réactive les autres popus lorsque celle des options se ferme
+        $('#updateEpisodeList').on('hide.bs.popover', function () {
+            $('#episodes .slide__image').popover('enable');
+        });
+
         $('#updateEpisodeList').on('shown.bs.popover', function () {
             $('#updateEpisodeList button.close').click((e) => {
                 e.stopPropagation();
@@ -2853,9 +2870,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
                     objUpAuto = GM_getValue('objUpAuto'),
                     intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
-                    objUpAuto[show.id].auto = checkAuto;
-                    objUpAuto[show.id].interval = intervalAuto;
-                    GM_setValue('objUpAuto', objUpAuto);
+                objUpAuto[show.id].auto = checkAuto;
+                objUpAuto[show.id].interval = intervalAuto;
+                GM_setValue('objUpAuto', objUpAuto);
                 if (debug) console.log('updateEpisodeList submit', objUpAuto[show.id]);
                 launchUpAuto();
                 $('#updateEpisodeList').popover('hide');
@@ -2958,7 +2975,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         const $checkSeen = $(this).find('.checkSeen'),
                               episodeId = $checkSeen.data('id'),
                               episode = res.getEpisode(episodeId);
-                        $('.popover-header').html(episode.getTitlePopup());
+                        $('#episodes .slide__image .popover-header').html(episode.getTitlePopup());
                     });
                     // On ajoute un event click sur la case 'checkSeen'
                     $('#episodes .checkSeen').click(function(e) {
