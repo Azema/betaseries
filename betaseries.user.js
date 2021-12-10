@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.4
+// @version      1.0.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -2564,7 +2564,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      *
      * @return {void}
      */
-    function updateSynopsis() {
+    function upgradeSynopsis() {
         let span = $('.blockInformations__synopsis span'),
             $btnMore = $('a.js-show-fulltext');
         if ($btnMore.length <= 0) {
@@ -2910,11 +2910,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             html: true,
                             content: `<p>${description}</p>`,
                             placement: funcPlacement,
-                            title: episode.getTitlePopup,
+                            title: ' ',
                             trigger: 'hover',
                             boundary: 'window'
                         });
                     }
+                    $('#episodes .slide__image').on('shown.bs.popover', function () {
+                        const $checkSeen = $(this).find('.checkSeen'),
+                              episodeId = $checkSeen.data('id'),
+                              episode = res.getEpisode(episodeId);
+                        $('.popover-header').html(episode.getTitlePopup());
+                    });
                     // On ajoute un event click sur la case 'checkSeen'
                     $('#episodes .checkSeen').click(function(e) {
                         e.stopPropagation();
@@ -2970,12 +2976,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     self.removeClass('finish');
                     // Le numéro de la saison courante
                     const seasonNum = $('#seasons .slide_flex.slide--current .slide__title').text().match(/\d+/).shift();
-                          // showId = getResourceId(), // Identifiant de la ressource principale
-                          // res = new Show(cache.get('shows', showId, 'updateEpisodeList'));
-                    res.fetchEpisodes(parseInt(seasonNum, 10), true)
-                    .then((objShow) => {
-                        if (debug) console.log('callBetaSeries GET shows/episodes', objShow);
-                        //cache.set('episodes', key, data);
+                    res.fetchEpisodes(parseInt(seasonNum, 10), true).then((objShow) => {
                         vignettes = getVignettes();
                         len = getNbVignettes();
                         let $vignette, episode, changed = false, retour;
@@ -3291,9 +3292,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         container: $link,
                         delay: { "show": 250, "hide": 100 },
                         html: true,
-                        content: similar.getContentPopup,
+                        content: ' ', // Mise à jour dans lors de l'event shown
                         placement: funcPlacement,
-                        title: similar.getTitlePopup,
+                        title: ' ', // Mise à jour dans lors de l'event shown
                         trigger: 'hover',
                         fallbackPlacement: ['left', 'right']
                     });
@@ -3304,6 +3305,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                           resId = $wrench.data('id'),
                           type = $wrench.data('type'),
                           similar = res.getSimilar(resId);
+                    $('.popover-header').html(similar.getTitlePopup());
+                    $('.popover-body').html(similar.getContentPopup());
                     // On gère les modifs sur les cases à cocher de l'état d'un film similar
                     if (type === 'movie') {
                         $('input.movie').change(e => {
