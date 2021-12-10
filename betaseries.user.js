@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.2
+// @version      1.0.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1786,25 +1786,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 let waitEpisodes = 0;
-                // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
-                timer = setInterval(function() {
-                    // On évite une boucle infinie
-                    if (++waitEpisodes >= 100) {
-                        clearInterval(timer);
-                        notification('Wait Episodes List', 'Les vignettes des saisons et des épisodes n\'ont pas été trouvées.');
-                        return;
-                    }
-                    let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
-                        episodes = $('#episodes .slide_flex');
-
-                    // On vérifie que les saisons et les episodes soient chargés sur la page
-                    if (episodes.length <= 0 && episodes.length < len) {
-                        if (debug) console.log('addBtnWatchedToEpisode: En attente du chargement des vignettes');
-                        return;
-                    }
-                    clearInterval(timer);
-                    addBtnWatchedToEpisode(objRes);
-                }, 500);
+                waitSeasonsAndEpisodesLoaded(() => addBtnWatchedToEpisode(objRes));
             }
         });
     }
@@ -2652,6 +2634,37 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     }
 
     /**
+     * Patiente le temps du chargment des saisons et des épisodes
+     * @param  {Function} cb Fonction de callback en cas de success
+     * @param  {Function} cb Fonction de callback en cas d'error
+     * @return {void}
+     */
+    function waitSeasonsAndEpisodesLoaded(successCb, errorCb = noop) {
+        let waitEpisodes = 0;
+        // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
+        timer = setInterval(function() {
+            // On évite une boucle infinie
+            if (++waitEpisodes >= 100) {
+                clearInterval(timer);
+                notification('Wait Episodes List', 'Les vignettes des saisons et des épisodes n\'ont pas été trouvées.');
+                errorCb();
+                return;
+            }
+            let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
+                episodes = $('#episodes .slide_flex');
+
+            // On vérifie que les saisons et les episodes soient chargés sur la page
+            if (episodes.length <= 0 && episodes.length < len) {
+                if (debug) console.log('waitSeasonsAndEpisodesLoaded: En attente du chargement des vignettes');
+                return;
+            }
+            if (debug) console.log('waitSeasonsAndEpisodesLoaded, nbVignettes (%d, %d)', episodes.length, len);
+            clearInterval(timer);
+            successCb();
+        }, 500);
+    }
+
+    /**
      * Gère la mise à jour auto des épisodes de la saison courante
      * @param  {Show} show L'objet de type Show
      * @return {void}
@@ -3044,29 +3057,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         seasons.click(function() {
             if (debug) console.groupCollapsed('season click');
             $('#episodes .checkSeen').off('click');
-            let indBoucle = 0;
             // On attend que les vignettes de la saison choisie soient chargées
-            timer = setInterval(function() {
-                if (++indBoucle > 60) {
+            waitSeasonsAndEpisodesLoaded(
+                () => {
+                    addCheckSeen();
+                    if (debug) console.groupEnd('season click');
+                }, () => {
                     if (debug) {
                         console.error('Season click Timeout');
                         console.groupEnd('season click');
                     }
-                    clearInterval(timer);
-                    return;
                 }
-                const len = getNbVignettes(),
-                      vigns = getVignettes();
-                // On vérifie qu'il y a des vignettes et que leur nombre soit égale
-                // ou supérieur au nombre d'épisodes indiqués dans la saison
-                if (vigns.length > 0 && vigns.length >= len) {
-                    if (debug) console.log('Season click clear timer, nbVignettes (%d, %d)', vigns.length, len);
-                    // On supprime le timer Interval
-                    clearInterval(timer);
-                    addCheckSeen();
-                    if (debug) console.groupEnd('season click');
-                }
-            }, 500);
+            );
         });
         // On active les menus dropdown
         $('.dropdown-toggle').dropdown();
