@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.6
+// @version      1.0.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -577,6 +577,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     GM_setValue('objUpAuto', objUpAuto);
                 }
                 promise.then(() => { cb(); });
+            } else {
+                cb();
             }
         }
         /**
@@ -3002,6 +3004,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     e.stopPropagation();
                     e.preventDefault();
                     if (debug) console.groupCollapsed('updateEpisodes');
+                    // On ferme la popup des options d'update auto
+                    $('#updateEpisodeList').popover('hide');
                     const self = $(e.currentTarget);
                     self.removeClass('finish');
                     // Le numéro de la saison courante
@@ -3028,6 +3032,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
                             objShow.update(true).then(() => {
                                 self.addClass('finish');
+                                fnLazy.init(); // On affiche les images lazyload
                                 if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
                             }, err => {
                                 self.addClass('finish');
