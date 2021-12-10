@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.7
+// @version      1.0.8
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -254,10 +254,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             this._elt = elt;
         }
+        /**
+         * Sauvegarde l'objet en cache
+         * @return {Media} This
+         */
         save() {
             cache.set(this._type.plural, this.id, this);
             return this;
         }
+        /**
+         * Décode le titre de la page
+         * @return {Media} This
+         */
         decodeTitle() {
             let $elt = this.elt.find('.blockInformations__title'),
                 title = $elt.text();
@@ -2779,7 +2787,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     clearInterval(timerIntervalAuto);
                 }
                 timerIntervalAuto = setInterval(function() {
-                    if (!objUpAuto[show.id].auto) {
+                    if (!objUpAuto[show.id].auto || show.user.remaining <= 0) {
                         objUpAuto[show.id].status = false;
                         GM_setValue('objUpAuto', objUpAuto);
                         if (debug) console.log('Arrêt de la mise à jour auto des épisodes');
@@ -2801,7 +2809,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             GM_setValue('objUpAuto', objUpAuto);
         };
         // On relance l'update auto des épisodes au chargement de la page
-        if (show.in_account && objUpAuto[show.id].status) {
+        if (show.in_account && show.user.remaining > 0 && objUpAuto[show.id].status) {
             launchUpAuto();
         } else if (objUpAuto[show.id].status) {
             objUpAuto[show.id].status = false;
@@ -3028,8 +3036,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         // On met à jour les éléments, seulement si il y a eu des modifications
                         if (changed) {
                             if (debug) console.log('updateEpisodes changed true');
-                            $('#episodes .slides_flex').get(0).scrollLeft =
-                                $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
+                            // Si il reste des épisodes à voir, on scroll
+                            if ($('#episodes .slide_flex.slide--notSeen').length > 0) {
+                                $('#episodes .slides_flex').get(0).scrollLeft =
+                                    $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
+                            }
                             objShow.update(true).then(() => {
                                 self.addClass('finish');
                                 fnLazy.init(); // On affiche les images lazyload
