@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.3
+// @version      1.0.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -1781,11 +1781,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             removeAds(); // On retire les pubs
             similarsViewed(objRes); // On s'occupe des ressources similaires
             objRes.decodeTitle(); // On décode le titre de la ressource
-            addNumberVoters(objRes); // On ajoute le nombre de votes à la note
-            updateSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
+            objRes.addNumberVoters(); // On ajoute le nombre de votes à la note
+            upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
-                let waitEpisodes = 0;
+                // On ajoute la gestion des épisodes
                 waitSeasonsAndEpisodesLoaded(() => addBtnWatchedToEpisode(objRes));
             }
         });
@@ -2560,46 +2560,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     }
 
     /**
-     * Ajoute le nombre de votes à la note de la ressource
-     * @param {Media} objRes L'objet ressource de l'API
-     */
-    function addNumberVoters(objRes) {
-        // On sort si la clé d'API n'est pas renseignée
-        if (betaseries_api_user_key === '') return;
-
-        const votes = $('.stars.js-render-stars'); // ElementHTML ayant pour attribut le titre avec la note de la série
-
-        if (debug) console.log('Note Stars Elt %s', votes.length?'true':'false');
-
-        // if (debug) console.log('addNumberVoters callBetaSeries', data);
-        const title = objRes.changeTitleNote(false);
-        // On ajoute un observer sur le titre de la note, en cas de changement lors d'un vote
-        new MutationObserver((mutationsList) => {
-            let mutation;
-            const changeTitleMutation = () => {
-                // On met à jour le nombre de votants, ainsi que la note du membre connecté
-                const upTitle = objRes.changeTitleNote(false);
-                // On évite une boucle infinie
-                if (upTitle !== title) {
-                    votes.attr('title', upTitle);
-                }
-            };
-            for (mutation of mutationsList) {
-                // On vérifie si le titre a été modifié
-                if (! /vote/.test(mutation.target.title)) {
-                    changeTitleMutation();
-                }
-            }
-        }).observe(votes.get(0), {
-            attributes: true,
-            childList: false,
-            characterData: false,
-            subtree: false,
-            attributeFilter: ['title']
-        });
-    }
-
-    /**
      * Améliore l'affichage de la description de la ressource
      *
      * @return {void}
@@ -2875,9 +2835,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
             vignettes = getVignettes();
 
-        // On supprime le timer Interval
-        clearInterval(timer);
-
         const seasons = $('#seasons .slide_flex');
 
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
@@ -2934,6 +2891,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         $vignette = $(vignettes.get(v));
                         episode = objShow.episodes[v];
                         episode.elt = $vignette.parents('.slide_flex');
+                        episode.save();
                         description = episode.description;
                         if (description.length > 350) {
                             description = description.substring(0, 350) + '…';
@@ -2963,7 +2921,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         e.preventDefault();
                         const $elt = $(e.currentTarget),
                               episodeId = getEpisodeId($elt);
-                        const episode = new Episode(cache.get('episodes', episodeId), $elt.parents('.slide_flex'));
+                        const episode = res.getEpisode(episodeId);
                         episode.show = res;
                         episode.toggleSpinner(true);
                         // On vérifie si l'épisode a déjà été vu
@@ -3020,20 +2978,21 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         //cache.set('episodes', key, data);
                         vignettes = getVignettes();
                         len = getNbVignettes();
-                        let $vignette, episode, changed = false;
+                        let $vignette, episode, changed = false, retour;
 
                         for (let v = 0; v < len; v++) {
                             $vignette = $(vignettes.get(v)); // DOMElement jQuery de l'image de l'épisode
                             episode = objShow.episodes[v];
                             episode.elt = $vignette.parents('.slide_flex'); // Données de l'épisode
                             if (debug) console.log('Episode ID', getEpisodeId($vignette), episode.id);
-                            let retour = episode.updateCheckSeen(v);
+                            retour = episode.updateCheckSeen(v);
                             if (!changed) {
                                 changed = retour;
                             }
                         }
                         // On met à jour les éléments, seulement si il y a eu des modifications
                         if (changed) {
+                            if (debug) console.log('updateEpisodes changed true');
                             $('#episodes .slides_flex').get(0).scrollLeft =
                                 $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
                             objShow.update(true).then(() => {
@@ -3282,7 +3241,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     $(elt).popover('dispose');
                 });
                 // On met à jour les series similaires
-                similarsViewed();
+                similarsViewed(res);
             });
         }
 
@@ -3352,7 +3311,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             e.preventDefault();
                             const $elt = $(e.currentTarget);
                             let state = 0;
-                            if (debug) console.log('input.movie change', $elt, params);
+                            if (debug) console.log('input.movie change', $elt);
                             if ($elt.is(':checked') && $elt.hasClass('movieSeen')) {
                                 state = 1;
                             } else if (($elt.is(':checked') && $elt.hasClass('movieMustSee')) ||
@@ -3841,15 +3800,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     /**
      * Fonction servant à appeler l'API de BetaSeries
      *
-     * @param  {String}   type             Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-     * @param  {String}   resource         La ressource de l'API (ex: shows, seasons, episodes...)
-     * @param  {String}   method           La fonction à appliquer sur la ressource (ex: search, list...)
-     * @param  {Object}   args             Un objet (clef, valeur) à transmettre dans la requête
-     * @param  {bool}     [nocache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
-     * @param  {bool}     [setcache=true]  Indique si on doit ou pas enregistrer la réponse dans le cache (Par défaut: true)
+     * @param  {String}   type              Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
+     * @param  {String}   resource          La ressource de l'API (ex: shows, seasons, episodes...)
+     * @param  {String}   method            La fonction à appliquer sur la ressource (ex: search, list...)
+     * @param  {Object}   args              Un objet (clef, valeur) à transmettre dans la requête
+     * @param  {bool}     [no_cache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
      * @return {Promise}
      */
-    function callBetaSeries(type, resource, method, args, nocache = false, setcache = true) {
+    function callBetaSeries(type, resource, method, args, no_cache = false) {
         if (api.resources.indexOf(resource) === -1) {
             throw new Error(`Ressource (${resource}) inconnue dans l\'API.`);
         }
@@ -3869,13 +3827,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 resource: resource,
                 method: method,
                 args: args,
-                nocache: nocache,
-                setcache: setcache
+                no_cache: no_cache,
+                // setcache: setcache
             });
         }
 
         // On retourne la ressource en cache si elle y est présente
-        if (! nocache && type === 'GET' && args && 'id' in args &&
+        if (! no_cache && type === 'GET' && args && 'id' in args &&
             cache.has(resource, args.id))
         {
             //if (debug) console.log('callBetaSeries retourne la ressource du cache (%s: %d)', resource, args.id);
@@ -3959,7 +3917,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         } else if (code == 2001) {
                             // Appel de l'authentification pour obtenir un token valide
                             authenticate().then(() => {
-                                callBetaSeries(type, resource, method, args, nocache, setcache)
+                                callBetaSeries(type, resource, method, args, no_cache)
                                 .then((data) => {
                                     resolve(data);
                                 }, (err) => {
@@ -3980,9 +3938,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         return;
                     }
                     // Retour sans erreur, on met la ressource en cache
-                    if (setcache && type == 'GET' && args && 'id' in args) {
+                    /*if (setcache && type == 'GET' && args && 'id' in args) {
                         cache.set(resource, args.id, data);
-                    }
+                    }*/
                     resolve(data);
                 });
             }).catch(error => {
