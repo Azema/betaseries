@@ -610,7 +610,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                       next = this.user.next,
                       src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${next.id}&width=${width}&height=${height}`;
                 img.remove();
-                parent.append(`<img data-src="${src}" class="js-lazy-image" height="${height}" width="${width}" />`);
+                parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
                 // Modifier le titre
                 nextEpisode.find('.titleEpisode').text(`${next.code.toUpperCase()} - ${next.title}`);
                 // Modifier le lien
@@ -642,7 +642,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         <a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
                           <div class="media-left">
                             <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
-                              <img class="js-lazy-image" data-src="${src}" width="${width}" height="${height}">
+                              <img src="${src}" width="${width}" height="${height}">
                             </div>
                           </div>
                           <div class="media-body">
@@ -3019,7 +3019,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             $vignette = $(vignettes.get(v)); // DOMElement jQuery de l'image de l'épisode
                             episode = objShow.episodes[v];
                             episode.elt = $vignette.parents('.slide_flex'); // Données de l'épisode
-                            if (debug) console.log('Episode ID', getEpisodeId($vignette), episode.id);
+                            //if (debug) console.log('Episode ID', getEpisodeId($vignette), episode.id);
                             retour = episode.updateCheckSeen(v);
                             if (!changed) {
                                 changed = retour;
@@ -3040,6 +3040,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
                             });
                         } else {
+                            if (debug) console.log('updateEpisodes no changes');
                             self.addClass('finish'); // On arrete l'animation de mise à jour
                             if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
                         }
