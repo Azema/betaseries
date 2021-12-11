@@ -37,7 +37,7 @@ let themoviedb_api_user_key = '';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
 /************************************************************************************************/
-
+var exports = {};
 (function($) {
     'use strict';
 
@@ -1799,6 +1799,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         });
     };
+
+    exports.Media = Media;
+    exports.Show = Show;
+    exports.Movie = Movie;
+    exports.Episode = Episode;
+    exports.Similar = Similar;
 
     // On affiche la version du script
     if (debug) console.log('UserScript BetaSeries v%s', GM_info.script.version);
