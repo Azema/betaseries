@@ -645,7 +645,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         constructor(data) {
             super(data, $('.blockInformations'));
             this._type = {singular: 'show', plural: 'shows'};
-            this.init().save();
+            this.save();
         }
         /**
          * Initialize l'objet avec les données
@@ -656,19 +656,28 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // On sauvegarde les épisodes et les similars
             const _episodes = this.episodes;
             const _similars = this.similars;
+            const _comments = this.comments;
             super.init(data);
-            this.nbSeasons = this.seasons;
+            this.nbComments = parseInt(this.comments, 10);
+            this.comments = [];
+            if (_comments) {
+                this.comments = _comments;
+            }
+            this.nbSeasons = parseInt(this.seasons, 10);
             this.seasons = this.seasons_details;
-            this.nbEpisodes = this.episodes;
+            this.nbEpisodes = parseInt(this.episodes, 10);
             this.episodes = [];
             if (_episodes) {
                 this.episodes = _episodes;
             }
-            this.nbSimilars = this.similars;
+            this.nbSimilars = parseInt(this.similars, 10);
             this.similars = [];
             if (_similars && _similars.length === this.similars) {
                 this.similars = _similars;
             }
+            this.length = parseInt(this.length, 10);
+            this.followers = parseInt(this.followers, 10);
+            this.characters = parseInt(this.characters, 10);
             return this;
         }
         isEnded() {
@@ -795,7 +804,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 _this.fetch(force).then(data => {
                     _this.init(data.show);
                     _this.save();
-                    _this.updateRender(function() {
+                    _this.updateRender(() => {
                         resolve(_this);
                         cb();
                     });
@@ -863,17 +872,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             }
                         });
                     });
-                }
-                // On arrête la mise à jour auto des épisodes de la saison
-                if (timerIntervalAuto) {
-                    clearInterval(timerIntervalAuto);
-                }
-                let objUpAuto = GM_getValue('objUpAuto');
-                // On supprime la série des options d'update
-                if (objUpAuto.hasOwnProperty(this.id)) {
-                    delete objUpAuto[this.id];
-                    if (debug) console.log('changeStatus objUpAuto after delete', objUpAuto);
-                    GM_setValue('objUpAuto', objUpAuto);
                 }
                 promise.then(() => { cb(); });
             } else {
@@ -1769,6 +1767,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          */
         init(data) {
             super.init(data);
+            return this;
         }
         /**
          * Indique si le membre connecté à ajouté le similar à son compte
@@ -2085,6 +2084,133 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
     }
 
+    class UpdateAuto {
+        static instance = null;
+        static exists = false;
+        static timer = null;
+
+        constructor(objShow) {
+            if (! (objShow instanceof Show)) {
+                throw new TypeError('Show must be an instance of class Show');
+            }
+            if (UpdateAuto.exists) {
+                return UpdateAuto.instance;
+            }
+            this._objShow = objShow;
+            this._showId = objShow.id;
+            this._init(objShow.id);
+            UpdateAuto.instance = this;
+            UpdateAuto.exists = true;
+            return this;
+        }
+        _init(showId) {
+            let objUpAuto = GM_getValue('objUpAuto');
+            if (objUpAuto.hasOwnProperty(showId)) {
+                this._status = objUpAuto[showId].status;
+                this._auto = objUpAuto[showId].auto;
+                this._interval = objUpAuto[showId].interval;
+            } else {
+                this._status = false; // Statut de la tâche d'update
+                this._auto = false; // Autorise l'activation de la tâche d'update des épisodes
+                this._interval = 0; // Intervalle de temps entre les mises à jour
+            }
+            return this;
+        }
+        _save() {
+            let objUpAuto = GM_getValue('objUpAuto');
+            let obj = {
+                status: this._status,
+                auto: this._auto,
+                interval: this._interval
+            };
+            objUpAuto[this._showId] = obj;
+            GM_setValue('objUpAuto', objUpAuto);
+            this.changeColorBtn();
+            return this;
+        }
+
+        get status() {
+            return this._status;
+        }
+        set status(status) {
+            this._status = status;
+            this._save();
+        }
+        get auto() {
+            return this._auto;
+        }
+        set auto(auto) {
+            this._auto = auto;
+            this._save();
+        }
+        get interval() {
+            return this._interval;
+        }
+        set interval(val) {
+            this._interval = val;
+            this._save();
+        }
+        changeColorBtn() {
+            let color = '#fff';
+            if (this._status && this._auto) {
+                color = 'green';
+            } else if (this._auto && ! this._status) {
+                color = 'orange';
+            } else if (! this._auto && ! this._status) {
+                color = 'red';
+            }
+            $('.updateEpisodes').css('color', color);
+        }
+        stop() {
+            this.status = false;
+            clearInterval(UpdateAuto.timer);
+            UpdateAuto.timer = null;
+        }
+        delete() {
+            let objUpAuto = GM_getValue('objUpAuto');
+            if (objUpAuto.hasOwnProperty(this._showId)) {
+                delete objUpAuto[this._showId];
+                GM_setValue('objUpAuto', objUpAuto);
+            }
+            return this;
+        }
+        launch() {
+            // Si les options sont modifiées pour arrêter la tâche
+            // et que le statut est en cours
+            if (this._status && (!this._auto || this._interval <= 0)) {
+                if (debug) console.log('close interval updateEpisodeListAuto');
+                this.stop();
+            }
+            // Si les options modifiées pour lancer
+            else if (this._auto && this._interval > 0) {
+                if (this._objShow.user.remaining <= 0) {
+                    this.stop();
+                    return;
+                }
+                this.status = true;
+                if (UpdateAuto.timer) {
+                    if (debug) console.log('close old interval timer');
+                    clearInterval(UpdateAuto.timer);
+                }
+                UpdateAuto.timer = setInterval(function() {
+                    if (! this._auto || this._objShow.user.remaining <= 0) {
+                        if (debug) console.log('Arrêt de la mise à jour auto des épisodes');
+                        this.stop();
+                        return;
+                    }
+                    if (debug) console.log('update episode list');
+                    const btnUpEpisodeList = $('.updateEpisodes');
+                    if (btnUpEpisodeList.length > 0) {
+                        btnUpEpisodeList.trigger('click');
+                        if ( ! this._status) {
+                            this.status = true;
+                        }
+                    }
+                }, (this._interval * 60) * 1000);
+            }
+        }
+    }
+
     /*
             Méthodes déplacées pour le bon chargement des classes
             les appels à d'autres classes dans une classe pose
@@ -2096,7 +2222,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @param  {Boolean} force  Forcer l'appel à l'API
      * @return {Show}           L'objet Show
      */
-    Show.prototype.fetchEpisodes = function(season, force = false) {
+    Show.prototype.fetchEpisodes = function(season) {
         // if (debug) console.log('Show fetchEpisodes', {season: season, force: force, object: this});
         if (!season) {
             throw new Error('season required');
@@ -2274,7 +2400,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
     // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
     // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
-    const observer = new MutationObserver(function(mutationsList) {
+    const observer = new MutationObserver(mutationsList => {
         let updateTitle = (i, e) => {if (isTruncated(e)) {$(e).parents('a').attr('title', $(e).text());}};
         for (let mutation of mutationsList) {
             if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
@@ -3088,19 +3214,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @return {void}
      */
     function updateAutoEpisodeList(show) {
-        let defaultObjUpAuto = {}, defaultOptions = {
-            auto: false, // Autorise l'activation de la tâche d'update des épisodes
-            interval: 0,  // Intervalle de temps entre les mises à jour
-            status: false // Statut de la tâche d'update
-        };
-        defaultObjUpAuto[show.id] = defaultOptions;
-        // Options Update episode list
-        let objUpAuto = GM_getValue('objUpAuto', defaultObjUpAuto);
-        // On ajoute les options pour cette série
-        if ( ! objUpAuto.hasOwnProperty(show.id)) {
-            objUpAuto[show.id] = defaultOptions;
-            GM_setValue('objUpAuto', objUpAuto);
-        }
+        let objUpAuto = new UpdateAuto(show);
 
         /**
          * Fonction retournant le contenu de la Popup des options update
@@ -3108,11 +3222,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {String} Contenu HTML de la PopUp des options update
          */
         const contentUp = function() {
-            let objUpAuto = GM_getValue('objUpAuto');
-            if (!objUpAuto.hasOwnProperty(show.id)) {
-                // Lorsque la série a été supprimée du compte du membre
-                objUpAuto = defaultObjUpAuto;
-            }
             const intervals = [
                     {val: 0, label: 'Jamais'},
                     {val: 1, label: '1 min.'},
@@ -3129,7 +3238,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         <input type="checkbox"
                                class="form-check-input"
                                id="updateEpisodeListAuto"
-                               ${objUpAuto[show.id].auto ? ' checked="true"' : ''}
+                               ${objUpAuto.auto ? ' checked="true"' : ''}
                                ${!show.in_account ? ' disabled="true"' : ''}>
                         <label class="form-check-label"
                                for="updateEpisodeListAuto">Activer la mise à jour auto des épisodes</label>
@@ -3141,7 +3250,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 ${!show.in_account ? ' disabled="true"' : ''}>`;
             for (let i = 0; i < intervals.length; i++) {
                 contentUpdate += `<option value="${intervals[i].val}"
-                    ${objUpAuto[show.id].interval === intervals[i].val ? 'selected="true"': ''}>
+                    ${objUpAuto.interval === intervals[i].val ? 'selected="true"': ''}>
                     ${intervals[i].label}</option>`;
             }
             contentUpdate += `</select></div>
@@ -3158,14 +3267,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {String} Contenu HTML du titre de la PopUp des options update
          */
         const titlePopup = function() {
-            let objUpAuto = GM_getValue('objUpAuto');
-            if (!objUpAuto.hasOwnProperty(show.id)) {
-                // Lorsque la série a été supprimée du compte du membre
-                objUpAuto = defaultObjUpAuto;
-            }
             const style = "position: absolute; right: 5px; border: none; background: transparent; font-size: 1.5em; top: 0;",
-                  className = (objUpAuto[show.id] && objUpAuto[show.id].status) ? 'success' : 'secondary',
-                  label = (objUpAuto[show.id] && objUpAuto[show.id].status) ? 'running' : 'not running',
+                  className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary',
+                  label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running',
                   help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
             return `<div style="color:#000;">Options de mise à jour <span class="badge badge-pill badge-${className}">${label}</span>
                       <button type="button" class="close" aria-label="Close" title="Fermer" style="${style}">
@@ -3175,90 +3279,35 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     </div>`;
         };
 
-        /**
-         * Fonction servant à lancer ou arrêter l'update auto des épisodes
-         * @return {void}
-         */
-        const launchUpAuto = function() {
-            let objUpAuto = GM_getValue('objUpAuto', defaultObjUpAuto);
-            // Si les options sont modifiées pour arrêter la tâche
-            // et que le statut est en cours
-            if (objUpAuto[show.id].status &&
-                (!objUpAuto[show.id].auto || objUpAuto[show.id].interval <= 0))
-            {
-                if (debug) console.log('close interval updateEpisodeListAuto');
-                objUpAuto[show.id].status = false;
-                // Si la tâche est en cours, on l'arrête
-                if (timerIntervalAuto) {
-                    clearInterval(timerIntervalAuto);
-                }
-            }
-            // Si les options modifiées pour lancer
-            else if (objUpAuto[show.id].auto && objUpAuto[show.id].interval > 0) {
-                if (show.user.remaining <= 0) {
-                    objUpAuto[show.id].status = false;
-                    GM_setValue('objUpAuto', objUpAuto);
-                    if (timerIntervalAuto) clearInterval(timerIntervalAuto);
-                    return;
-                }
-                objUpAuto[show.id].status = true;
-                if (timerIntervalAuto) {
-                    if (debug) console.log('close old interval timer');
-                    clearInterval(timerIntervalAuto);
-                }
-                timerIntervalAuto = setInterval(function() {
-                    if (!objUpAuto[show.id].auto || show.user.remaining <= 0) {
-                        objUpAuto[show.id].status = false;
-                        GM_setValue('objUpAuto', objUpAuto);
-                        if (debug) console.log('Arrêt de la mise à jour auto des épisodes');
-                        clearInterval(timerIntervalAuto);
-                        timerIntervalAuto = null;
-                        return;
-                    }
-                    if (debug) console.log('update episode list');
-                    const btnUpEpisodeList = $('.updateEpisodes');
-                    if (btnUpEpisodeList.length > 0) {
-                        btnUpEpisodeList.trigger('click');
-                        if ( ! objUpAuto[show.id].status) {
-                            objUpAuto[show.id].status = true;
-                            GM_setValue('objUpAuto', objUpAuto);
-                        }
-                    }
-                }, (objUpAuto[show.id].interval * 60) * 1000);
-            }
-            GM_setValue('objUpAuto', objUpAuto);
-        };
         // On relance l'update auto des épisodes au chargement de la page
-        if (show.in_account && show.user.remaining > 0 && objUpAuto[show.id].status) {
-            launchUpAuto();
-        } else if (objUpAuto[show.id].status) {
-            objUpAuto[show.id].status = false;
-            // objUpAuto[show.id].auto = false;
-            GM_setValue('objUpAuto', objUpAuto);
-            if (timerIntervalAuto) clearInterval(timerIntervalAuto);
+        if (show.in_account && show.user.remaining > 0 && objUpAuto.status) {
+            objUpAuto.launch();
+        } else if (objUpAuto.status) {
+            objUpAuto.stop();
         }
         let notLoop = 0;
         let intTime = setInterval(function() { // En attente du chargement des scripts JS
             if (++notLoop >= 20) {clearInterval(intTime); return;}
             if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
             else clearInterval(intTime);
-            $('#updateEpisodeList').popover({
+            if (debug) console.log('Loading popover updateEpisodes');
+            $('#updateEpisodeList .updateElement').popover({
                 container: $('#updateEpisodeList'),
                 // delay: { "show": 500, "hide": 100 },
                 html: true,
                 content: contentUp,
                 placement: 'right',
-                title: titlePopup,
+                title: ' ',
                 trigger: 'manual',
                 boundary: 'window'
             });
             let timeoutHover;
-            $('#updateEpisodeList img.updateElement').hover(
+            $('#updateEpisodeList .updateElement').hover(
                 // In
                 function(e) {
                     e.stopPropagation();
                     timeoutHover = setTimeout(function() {
-                        $('#updateEpisodeList').popover('show');
+                        $('#updateEpisodeList .updateElement').popover('show');
                     }, 500);
                 },
                 // Out
@@ -3268,33 +3317,32 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 }
             );
             // On ferme et désactive les autres popups lorsque celle des options est ouverte
-            $('#updateEpisodeList').on('show.bs.popover', function () {
+            $('#updateEpisodeList .updateElement').on('show.bs.popover', function () {
                 $('#episodes .slide__image').popover('hide');
                 $('#episodes .slide__image').popover('disable');
             });
             // On réactive les autres popus lorsque celle des options se ferme
-            $('#updateEpisodeList').on('hide.bs.popover', function () {
+            $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
                 $('#episodes .slide__image').popover('enable');
             });
 
-            $('#updateEpisodeList').on('shown.bs.popover', function () {
+            $('#updateEpisodeList .updateElement').on('shown.bs.popover', function () {
+                $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
                 $('#updateEpisodeList button.close').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    $('#updateEpisodeList').popover('hide');
+                    $('#updateEpisodeList .updateElement').popover('hide');
                 });
                 $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
-                        objUpAuto = GM_getValue('objUpAuto'),
                         intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
-                    objUpAuto[show.id].auto = checkAuto;
-                    objUpAuto[show.id].interval = intervalAuto;
-                    GM_setValue('objUpAuto', objUpAuto);
-                    if (debug) console.log('updateEpisodeList submit', objUpAuto[show.id]);
-                    launchUpAuto();
-                    $('#updateEpisodeList').popover('hide');
+                    if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
+                    if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
+                    if (debug) console.log('updateEpisodeList submit', objUpAuto);
+                    objUpAuto.launch();
+                    $('#updateEpisodeList .updateElement').popover('hide');
                 });
             });
         }, 500);
@@ -3437,13 +3485,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
             // Ajouter un bouton de mise à jour des épisodes de la saison courante
             if ($('#updateEpisodeList').length < 1) {
-                $('#episodes .blockTitles').prepend(`
-                    <style>#updateEpisodeList .popover {left: 65px; top: 40px;}</style>
-                    <div id="updateEpisodeList" class="updateElements">
+                /*
                       <img src="${serverBaseUrl}/img/update.png"
                            class="updateEpisodes updateElement finish"
                            title="Mise à jour des épisodes de la saison"
                            style="margin-right:10px;"/>
+
+                 */
+                $('#episodes .blockTitles').prepend(`
+                    <style>#updateEpisodeList .popover {left: 65px; top: 40px;}</style>
+                    <div id="updateEpisodeList" class="updateElements">
+                      <i class="fa fa-refresh fa-2x updateEpisodes updateElement finish"
+                         title="Mise à jour des épisodes de la saison"
+                         style="margin-right:10px;"
+                         aria-hidden="true"></i>
                     </div>`);
                 // On ajoute l'update auto des épisodes de la saison courante
                 updateAutoEpisodeList(res);
@@ -3453,7 +3508,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     e.preventDefault();
                     if (debug) console.groupCollapsed('updateEpisodes');
                     // On ferme la popup des options d'update auto
-                    $('#updateEpisodeList').popover('hide');
+                    $('#updateEpisodeList .updateElement').popover('hide');
                     const self = $(e.currentTarget);
                     self.removeClass('finish');
                     // Le numéro de la saison courante
@@ -3483,6 +3538,23 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
                             }
                             res.update(true).then(() => {
+                                // Si il n'y a plus d'épisodes à regarder sur la série
+                                if (res.user.remaining <= 0) {
+                                    // On arrête la mise à jour auto des épisodes
+                                    if (timerIntervalAuto) {
+                                        clearInterval(timerIntervalAuto);
+                                    }
+                                    let objUpAuto = new UpdateAuto(res);
+                                    // Si la série est terminée
+                                    if (res.isEnded()) {
+                                        // On supprime la série des options d'update
+                                        objUpAuto.delete();
+                                    } else {
+                                        // On désactive la mise à jour auto
+                                        objUpAuto.status = false;
+                                        objUpAuto.auto = false;
+                                    }
+                                }
                                 self.addClass('finish');
                                 fnLazy.init(); // On affiche les images lazyload
                                 if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
@@ -3670,7 +3742,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = $similars.length; // Le nombre de similaires
 
-        if (debug) console.log('nb similars: %d', len, parseInt(res.nbSimilars, 10));
+        if (debug) console.log('nb similars: %d', len, res.nbSimilars);
 
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len === 1 && $($similars.parent().get(0)).find('button').length === 1)) {
