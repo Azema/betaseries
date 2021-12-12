@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.12
+// @version      1.0.13
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -233,6 +233,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
     class Note {
         contructor(data) {
+            if (typeof data !== 'object') {
+                throw new Error('data is not an object');
+            }
             this.init(data);
         }
         /**
@@ -290,7 +293,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (typeof data !== 'object') {
                 throw new Error('data is not an object');
             }
-            Object.assign(this, data);
+            // Object.assign(this, data);
+            this.init(data);
             this._type = {singular: 'unknown', plural: 'unknown'};
             this.elt = elt;
         }
@@ -303,9 +307,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (data) {
                 Object.assign(this, data);
             }
-            if (this.notes) {
+            if (this.hasOwnProperty('notes')) {
                 this.objNote = this.notes;
-            } else if (this.note) {
+            } else if (this.hasOwnProperty('note')) {
                 this.objNote = this.note;
             }
             return this;
@@ -323,11 +327,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
         }
         /**
-         * Retourne l'objet Note
-         * @return {Note} [description]
+         * Retourne l'objet note de la ressource
+         * @return {Note}
          */
         get objNote() {
-            return this.objNote;
+            return this._objNote;
         }
         /**
          * Modifie l'objet Note
@@ -335,11 +339,15 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {void}
          */
         set objNote(note) {
-            if (this.objNote instanceof Note) {
-                this.objNote.init(note);
+            // if (Media.debug) console.log('set objNote param note', note);
+            if (note instanceof Note) {
+                this._objNote = note;
+            } else if (this._objNote instanceof Note) {
+                this._objNote.init(note);
             } else {
-                this.objNote = new Note(note);
+                this._objNote = new Note(note);
             }
+            // if (Media.debug) console.log('set objNote', this._objNote);
         }
         /**
          * Sauvegarde l'objet en cache
@@ -395,6 +403,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
         /**
          * Ajoute le nombre de votes à la note de la ressource
+         * @return {Media}
          */
         addNumberVoters() {
             const _this = this;
@@ -428,6 +437,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 subtree: false,
                 attributeFilter: ['title']
             });
+            return this;
         }
 
         /**
@@ -1432,7 +1442,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             this._type = {singular: 'episode', plural: 'episodes'};
             if (!(data.show instanceof Show)) {
                 if (cache.has('shows', this.show.id)) {
-                    this.show = new Show(cache.get('shows', this.show.id));
+                    this.show = cache.get('shows', this.show.id);
                 } else {
                     // fetch show
                 }
@@ -1898,8 +1908,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             template = '<div>';
             if (this._type.singular === 'show') {
                 template += `<p><strong>${this.seasons}</strong> saison${(this.seasons > 1 ? 's':'')}, <strong>${this.episodes}</strong> épisodes, `;
-                if (this.notes.total > 0) {
-                    template += `<strong>${this.notes.total}</strong> votes</p>`;
+                if (this.objNote.total > 0) {
+                    template += `<strong>${this.objNote.total}</strong> votes`;
+                    if (this.objNote.user > 0) {
+                        template += `, votre note: ${this.objNote.user}`;
+                    }
+                    template += '</p>';
                 } else {
                     template += 'Aucun vote</p>';
                 }
@@ -1922,8 +1936,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // movie
             else {
                 template += '<p>';
-                if (this.notes.total > 0) {
-                    template += `<strong>${this.notes.total}</strong> votes`;
+                if (this.objNote.total > 0) {
+                    template += `<strong>${this.objNote.total}</strong> votes`;
+                    if (this.objNote.user > 0) {
+                        template += `, votre note: ${this.objNote.user}`;
+                    }
                 } else {
                     template += 'Aucun vote';
                 }
@@ -1952,9 +1969,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         getTitlePopup() {
             if (debug) console.log('getTitlePopup', this);
             let title = this.title;
-            if (this.notes.total > 0) {
+            if (this.objNote.total > 0) {
                 title += ' <span style="font-size: 0.8em;color:#000;">' +
-                        parseFloat(this.notes.mean).toFixed(2) + ' / 5</span>';
+                        parseFloat(this.objNote.mean).toFixed(2) + ' / 5</span>';
             }
             return title;
         }
