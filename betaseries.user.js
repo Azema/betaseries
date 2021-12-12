@@ -231,6 +231,49 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     }
     cache = new Cache();
 
+    class Note {
+        contructor(data) {
+            this.init(data);
+        }
+        /**
+         * Initialize l'objet avec les données
+         * @param  {Object} data Les données de la série
+         * @return {Media}
+         */
+        init(data) {
+            if (data) {
+                Object.assign(this, data);
+            }
+            return this;
+        }
+        /**
+         * Retourne la note moyenne sous forme de pourcentage
+         * @return {number}
+         */
+        getPercentage() {
+            return Math.round(((this.mean / 5) * 100) / 10) * 10;
+        }
+        /**
+         * Retourne l'objet Note sous forme de String
+         *
+         * @return {String}
+         */
+        toSring() {
+            const votes = 'vote' + (parseInt(this.total, 10) > 1 ? 's' : ''),
+                  // On met en forme le nombre de votes
+                  total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true})
+                            .format(this.total),
+                  // On limite le nombre de chiffre après la virgule
+                  note = parseFloat(this.mean).toFixed(1);
+            let toString = `${total} ${votes} : ${note} / 5`;
+            // On ajoute la note du membre connecté, si il a voté
+            if (this.user > 0) {
+                toString += `, votre note: ${this.user}`;
+            }
+            return toString;
+        }
+    }
+
     /**
      * @class Classe abstraite des différents médias
      */
@@ -251,6 +294,22 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             this._type = {singular: 'unknown', plural: 'unknown'};
             this.elt = elt;
         }
+        /**
+         * Initialize l'objet avec les données
+         * @param  {Object} data Les données de la série
+         * @return {Media}
+         */
+        init(data) {
+            if (data) {
+                Object.assign(this, data);
+            }
+            if (this.notes) {
+                this.objNote = this.notes;
+            } else if (this.note) {
+                this.objNote = this.note;
+            }
+            return this;
+        }
         get elt() {
             return this._elt;
         }
@@ -261,6 +320,25 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             this._elt = elt;
             if (this._elt) {
                 this._eltId = this._elt.attr('id');
+            }
+        }
+        /**
+         * Retourne l'objet Note
+         * @return {Note} [description]
+         */
+        get objNote() {
+            return this.objNote;
+        }
+        /**
+         * Modifie l'objet Note
+         * @param  {Object} note Les données de la note
+         * @return {void}
+         */
+        set objNote(note) {
+            if (this.objNote instanceof Note) {
+                this.objNote.init(note);
+            } else {
+                this.objNote = new Note(note);
             }
         }
         /**
@@ -549,24 +627,26 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @class Classe représentant les séries
      */
     class Show extends Media {
+        /**
+         * Constructeur de la classe Show
+         * @param  {Object} data Les données de la ressource
+         * @return {Show}        La ressource
+         */
         constructor(data) {
             super(data, $('.blockInformations'));
             this._type = {singular: 'show', plural: 'shows'};
-            this.init();
-            this.save();
+            this.init().save();
         }
         /**
          * Initialize l'objet avec les données
          * @param  {Object} data Les données de la série
-         * @return {void}
+         * @return {Show}
          */
         init(data) {
             // On sauvegarde les épisodes et les similars
             const _episodes = this.episodes;
             const _similars = this.similars;
-            if (data) {
-                Object.assign(this, data);
-            }
+            super.init(data);
             this.nbSeasons = this.seasons;
             this.seasons = this.seasons_details;
             this.nbEpisodes = this.episodes;
@@ -579,9 +659,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (_similars && _similars.length === this.similars) {
                 this.similars = _similars;
             }
-        }
-        get objNote() {
-            return this.notes;
+            return this;
         }
         isEnded() {
             return (this.status.toLowerCase() === 'ended') ? true : false;
@@ -876,7 +954,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
         /**
          * Retourne l'objet Similar correspondant à l'ID
-         * @param  {Number} id  ID de l'épisode
+         * @param  {Number} id  ID du similar
          * @return {Similar}    L'objet Similar
          */
         getSimilar(id) {
@@ -1237,6 +1315,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @class Classe représentant les films
      */
     class Movie extends Media {
+        /**
+         * Constructeur de la classe Movie
+         * @param  {Object} data Les données de la ressource
+         * @return {Movie}        La ressource
+         */
         constructor(data) {
             super(data, $('.blockInformations'));
             this._type = {singular: 'movie', plural: 'movies'};
@@ -1246,16 +1329,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         /**
          * Initialize l'objet avec les données
          * @param  {Object} data Les données de la série
-         * @return {void}
+         * @return {Movie}
          */
         init(data) {
             // On sauvegarde les épisodes et les similars
             const _similars = this.similars;
             const _comments = this.comments;
             const _characters = this.characters;
-            if (data) {
-                Object.assign(this, data);
-            }
+            super.init(data);
             this.nbSimilars = this.similars;
             this.similars = [];
             if (_similars && this.similars === _similars.length) {
@@ -1271,21 +1352,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (_characters && this.characters === _characters.length) {
                 this.characters = _characters;
             }
-        }
-        get elt() {
-            return this._elt;
-        }
-        set elt (elt) {
-            if (elt && !elt.hasOwnProperty('jquery')) {
-                elt = $(elt);
-            }
-            this._elt = elt;
+            return this;
         }
         get description() {
             return this.synopsis;
-        }
-        get objNote() {
-            return this.notes;
         }
         get in_account() {
             return this.user.in_account;
@@ -1293,6 +1363,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         fetch() {
             return Media.callApi('GET', 'movies', 'movie', {id: this.id});
         }
+        /**
+         * Retourne l'objet Similar correspondant à l'ID
+         * @param  {Number} id  ID du similar
+         * @return {Similar}    L'objet Similar
+         */
         getSimilar(id) {
             if (!this.similars) return null;
             for (let s = 0; s < this.similars.length; s++) {
@@ -1304,7 +1379,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
         /**
          * Add Movie to account member
-         * @return {Promise} Promise of movie
+         * @return {Promise<Movie>} Promise of movie
          */
         addToAccount(state) {
             const _this = this;
@@ -1323,7 +1398,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
         /**
          * Remove movie from account member
-         * @return {Promise} Promise of movie
+         * @return {Promise<Movie>} Promise of movie
          */
         removeFromAccount() {
             const _this = this;
@@ -1346,6 +1421,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @class Classe représentant les épisodes
      */
     class Episode extends Media {
+        /**
+         * Constructeur de la classe Episode
+         * @param  {Object} data  Les données de la ressource
+         * @return {Episode}      La ressource
+         */
         constructor(data, elt) {
             elt = elt || $('.blockInformations');
             super(data, elt);
@@ -1359,22 +1439,29 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             this.save();
         }
+        /**
+         * Initialize l'objet avec les données
+         * @param  {Object} data  Les données de l'épisode
+         * @return {Episode}
+         */
         init(data) {
             const _show = this.show;
-            if (data) {
-                Object.assign(this, data);
-            }
+            super.init(data);
             if (_show instanceof Show) {
                 this.show = _show;
             }
-        }
-        get objNote() {
-            return this.note;
+            return this;
         }
         addAttrTitle() {
             // Ajout de l'attribut title pour obtenir le nom complet de l'épisode, lorsqu'il est tronqué
             this.elt.find('.slide__title').attr('title', this.title);
         }
+        /**
+         * Met à jour le DOMElement .checkSeen avec les
+         * données de l'épisode (id, pos, special)
+         * @param  {number} pos  La position de l'épisode dans la liste
+         * @return {Episode}
+         */
         initCheckSeen(pos) {
             const $checkbox = this.elt.find('.checkSeen');
             if ($checkbox.length > 0 && this.user.seen) {
@@ -1400,6 +1487,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             } else if ($checkbox.length > 0 && this.user.hidden) {
                 $checkbox.remove();
             }
+            return this;
         }
         /**
          * Met à jour les infos de la vignette et appelle la fonction d'update du rendu
@@ -1434,6 +1522,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             return changed;
         }
+        /**
+         * Retourne le code HTML du titre de la popup
+         * pour l'affichage de la description
+         * @return {string}
+         */
         getTitlePopup() {
             return `<span style="color: var(--link_color);">Synopsis épisode ${this.code}</span>`;
         }
@@ -1483,14 +1576,15 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 {
                     if (Media.debug) console.log('updateStatus %s episodes/watched', method, data);
                     if (! (_this.show instanceof Show) && cache.has('shows', _this.show.id)) {
-                        _this.show = new Show(cache.get('shows', _this.show.id));
+                        _this.show = cache.get('shows', _this.show.id);
                     }
                     // Si un épisode est vu et que la série n'a pas été ajoutée
                     // au compte du membre connecté
                     if (! _this.show.in_account && data.episode.show.in_account) {
                         _this.show.in_account = true;
-                        _this.show.save();
-                        _this.show.addShowClick(true);
+                        _this.show
+                            .save()
+                            .addShowClick(true);
                     }
                     // On met à jour l'objet Episode
                     if (method === 'POST' && response && pos) {
@@ -1501,14 +1595,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             }
                             if (! _this.show.episodes[e].user.seen) {
                                 _this.show.episodes[e].user.seen = true;
-                                _this.show.episodes[e].updateRender('seen', false);
-                                _this.show.episodes[e].save();
+                                _this.show.episodes[e]
+                                    .updateRender('seen', false)
+                                    .show.episodes[e].save();
                             }
                         }
                     }
-                    _this.init(data.episode);
-                    _this.updateRender(status, true);
-                    _this.save();
+                    _this
+                        .init(data.episode)
+                        .updateRender(status, true)
+                        .save();
                 })
                 .catch(err => {
                     if (Media.debug) console.error('updateStatus error %s', err);
@@ -1526,7 +1622,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * Change le statut visuel de la vignette sur le site
          * @param  {String} newStatus     Le nouveau statut de l'épisode
          * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
-         * @return {void}
+         * @return {Episode}
          */
         updateRender(newStatus, update = true) {
             const _this = this;
@@ -1604,13 +1700,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     console.warn('Episode.show is not an instance of class Show', this.show);
                 }
             }
+            return this;
         }
         /**
          * Affiche/masque le spinner de modification des épisodes
          *
-         * @param {Object} $elt     L'objet jQuery correspondant à l'épisode
-         * @param {bool}   display  Le flag indiquant si afficher ou masquer
-         * @return {void}
+         * @param  {Object}   $elt     L'objet jQuery correspondant à l'épisode
+         * @param  {boolean}  display  Le flag indiquant si afficher ou masquer
+         * @return {Episode}
          */
         toggleSpinner(display) {
             if (! display) {
@@ -1629,6 +1726,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     </div>`
                 );
             }
+            return this;
         }
     }
 
@@ -1636,6 +1734,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      * @class Classe représentant les similaires de type séries et films
      */
     class Similar extends Media {
+        /**
+         * Constructeur de la classe Similar
+         * @param  {Object} data Les données de la ressource
+         * @return {Similar}        La ressource
+         */
         constructor(data, elt, type) {
             if (type.singular === 'show') {
                 data._description = data.description;
@@ -1647,23 +1750,45 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             super(data, elt);
             this._type = type;
-            this.save();
+            this.init(data).save();
         }
-        get elt() {
-            return this._elt;
+        /**
+         * Initialize l'objet avec les données
+         * @param  {Object} data  Les données de l'épisode
+         * @return {Similar}
+         */
+        init(data) {
+            super.init(data);
         }
-        set elt (elt) {
-            if (elt && !elt.hasOwnProperty('jquery')) {
-                elt = $(elt);
-            }
-            this._elt = elt;
-        }
+        /**
+         * Indique si le membre connecté à ajouté le similar à son compte
+         * @return {boolean}
+         */
         get in_account() {
             return this._in_account;
         }
         set in_account(val) {
             this._in_account = val;
         }
+        /**
+         * Retourne la description de la ressource
+         * @return {string}
+         */
+        get description() {
+            return (this._type.singular === 'show') ? this._description : this.synopsis;
+        }
+        /**
+         * Modifie la description de la ressource
+         * @param  {string} synopsis Le texte de la description
+         * @return {void}
+         */
+        set description(synopsis) {
+            this.description = synopsis;
+        }
+        /**
+         * Ajoute le bandeau Viewed sur le poster du similar
+         * @return {Similar}
+         */
         addViewed() {
             // Si la série a été vue ou commencée
             if (this.user.status &&
@@ -1677,7 +1802,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
                 );
             }
+            return this;
         }
+        /**
+         * Ajoute l'icône wrench à côté du titre du similar
+         * pour permettre de visualiser les données du similar
+         * @return {Similar}
+         */
         wrench() {
             const $title = this.elt.find('.slide__title'),
                   _this = this;
@@ -1720,17 +1851,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 });
             });
+            return this;
         }
         fetch(force = false) {
             const method = this._type.singular === 'show' ? 'display' : 'movie';
             return Media.callApi('GET', this._type.plural, method, {id: this.id}, force);
         }
-        get description() {
-            return (this._type.singular === 'show') ? this._description : this.synopsis;
-        }
-        set description(synopsis) {
-            this.description = synopsis;
-        }
+        /**
+         * Retourne le contenu HTML pour la popup
+         * de présentation du similar
+         * @return {string}
+         */
         getContentPopup() {
             const _this = this,
                   status = this.status == 'Ended' ? 'Terminée' : 'En cours',
@@ -1814,6 +1945,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             return template + `<p>${description}</p></div>`;
         }
+        /**
+         * Retourne le contenu HTML du titre de la popup
+         * @return {string}
+         */
         getTitlePopup() {
             if (debug) console.log('getTitlePopup', this);
             let title = this.title;
@@ -1823,38 +1958,42 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             return title;
         }
+        /**
+         * Met à jour l'attribut title de la note du similar
+         * @param  {Boolean} change Indique si il faut modifier l'attribut
+         * @return {string}         La valeur modifiée de l'attribut title
+         */
         updateTitleNote(change = true) {
             const $elt = this._elt.find('.stars-outer');
-            if (this.notes.mean <= 0 || this.notes.total <= 0) {
+            if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
                 if (change) $elt.attr('title', 'Aucun vote');
-                return;
+                return '';
             }
 
-            const votes = 'vote' + (parseInt(this.notes.total, 10) > 1 ? 's' : ''),
-                  // On met en forme le nombre de votes
-                  total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true})
-                            .format(this.notes.total),
-                  // On limite le nombre de chiffre après la virgule
-                  note = parseFloat(this.notes.mean).toFixed(1);
-            let title = `${total} ${votes} : ${note} / 5`;
-            // On ajoute la note du membre connecté, si il a voté
-            if (this.notes.user > 0) {
-                title += `, votre note: ${this.notes.user}`;
-            }
+            const title = this.objNote.toString();
             if (change) {
                 $elt.attr('title', title);
             }
             return title;
         }
+        /**
+         * Ajoute la note, sous forme d'étoiles, du similar sous son titre
+         * @return {Similar}
+         */
         renderStars() {
             // On ajoute le code HTML pour le rendu de la note
             this._elt.find('.slide__title').after(
                 '<div class="stars-outer"><div class="stars-inner"></div></div>'
             );
             this.updateTitleNote();
-            let starPercentRounded = Math.round(((this.notes.mean / 5) * 100) / 10) * 10;
-            this._elt.find('.stars-inner').width(starPercentRounded + '%');
+            let percent = this.objNote.getPercentage();
+            this._elt.find('.stars-inner').width(percent + '%');
+            return this;
         }
+        /**
+         * Décode les HTMLEntities dans le titre du similar
+         * @return {Similar}
+         */
         decodeTitle() {
             let $elt = this._elt.find('.slide__title'),
                 title = $elt.text();
@@ -1862,7 +2001,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (/&#/.test(title)) {
                 $elt.text($('<textarea />').html(title).text());
             }
+            return this;
         }
+        /**
+         * Vérifie la présence de l'image du similar
+         * et tente d'en trouver une si celle-ci n'est pas présente
+         * @return {Similar}
+         */
         checkImg() {
             const $img = this._elt.find('img.js-lazy-image'),
                   _this = this;
@@ -1898,10 +2043,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 }
             }
+            return this;
         }
         /**
          * Add Show to account member
-         * @return {Promise} Promise of show
+         * @return {Promise<Similar>} Promise of show
          */
         addToAccount(state = 0) {
             const _this = this;
@@ -1913,8 +2059,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return new Promise((resolve, reject) => {
                 Media.callApi('POST', _this._type.plural, _this.type.singular, params)
                 .then(data => {
-                    Object.assign(this, data[_this._type.singular]);
-                    _this.save();
+                    _this.init(data[_this._type.singular]).save();
                     resolve(_this);
                 }, err => {
                     reject(err);
@@ -2049,7 +2194,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour instancier un objet Media
         getResource(true).then(objRes => {
-            if (debug) console.log('objet resource Media(%s)', objRes.constructor.name, Object.assign({}, objRes));
+            if (debug) console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
             if (debug) addBtnDev(); // On ajoute le bouton de Dev
             removeAds(); // On retire les pubs
             similarsViewed(objRes); // On s'occupe des ressources similaires
