@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.10
+// @version      1.0.11
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -3012,7 +3012,7 @@ var exports = {};
                               episodeId = $checkSeen.data('id'),
                               episode = res.getEpisode(episodeId);
                         if (!episode) {
-                            console.log('episode title popup', episodeId, res);
+                            console.warn('episode title popup', episodeId, res);
                         }
                         $('#episodes .slide__image .popover-header').html(episode.getTitlePopup());
                     });
@@ -3074,7 +3074,7 @@ var exports = {};
                     self.removeClass('finish');
                     // Le numéro de la saison courante
                     const seasonNum = $('#seasons .slide_flex.slide--current .slide__title').text().match(/\d+/).shift();
-                    res.fetchEpisodes(parseInt(seasonNum, 10), true).then((objShow) => {
+                    res.fetchEpisodes(parseInt(seasonNum, 10), true).then(() => {
                         // if (debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
                         vignettes = getVignettes();
                         len = getNbVignettes();
@@ -3103,8 +3103,9 @@ var exports = {};
                                 fnLazy.init(); // On affiche les images lazyload
                                 if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
                             }, err => {
+                                notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
                                 self.addClass('finish');
-                                if (debug) console.warn('Show update error', err);
+                                console.warn('Show update error', err);
                                 if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
                             });
                         } else {
