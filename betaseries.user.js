@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.11
+// @version      1.0.12
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -37,7 +37,6 @@ let themoviedb_api_user_key = '';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
 /************************************************************************************************/
-var exports = {};
 (function($) {
     'use strict';
 
@@ -236,6 +235,13 @@ var exports = {};
      * @class Classe abstraite des différents médias
      */
     class Media {
+        static debug = false;
+        static cache = null;
+        static api = null;
+        static token = null;
+        static userKey = null;
+        static serverBaseUrl = null;
+        static notification = function() {}
 
         constructor(data, elt) {
             if (typeof data !== 'object') {
@@ -262,7 +268,9 @@ var exports = {};
          * @return {Media} This
          */
         save() {
-            cache.set(this._type.plural, this.id, this);
+            if (Media.cache instanceof Cache) {
+                Media.cache.set(this._type.plural, this.id, this);
+            }
             return this;
         }
         /**
@@ -314,9 +322,9 @@ var exports = {};
             const _this = this;
             const votes = $('.stars.js-render-stars'); // ElementHTML ayant pour attribut le titre avec la note de la série
 
-            if (debug) console.log('addNumberVoters');
+            if (Media.debug) console.log('addNumberVoters');
 
-            // if (debug) console.log('addNumberVoters callBetaSeries', data);
+            // if (debug) console.log('addNumberVoters Media.callApi', data);
             const title = this.changeTitleNote(true);
             // On ajoute un observer sur l'attribut title de la note, en cas de changement lors d'un vote
             new MutationObserver((mutationsList) => {
@@ -341,6 +349,198 @@ var exports = {};
                 characterData: false,
                 subtree: false,
                 attributeFilter: ['title']
+            });
+        }
+
+        /**
+         * Fonction d'authentification sur l'API BetaSeries
+         *
+         * @return {Promise}
+         */
+        static authenticate() {
+            if (Media.debug) console.log('authenticate');
+            $('body').append(`
+                <div id="containerIframe">
+                  <iframe id="userscript"
+                          name="userscript"
+                          title="Connexion à BetaSeries"
+                          width="50%"
+                          height="400"
+                          src="${serverBaseUrl}/index.html"
+                          style="background:white;margin:auto;">
+                  </iframe>
+                </div>'
+            `);
+            return new Promise((resolve, reject) => {
+                function receiveMessage(event) {
+                    const origin = new URL(Media.serverBaseUrl).origin;
+                    // if (debug) console.log('receiveMessage', event);
+                    if (event.origin !== origin) {
+                        if (Media.debug) console.error('receiveMessage {origin: %s}', event.origin, event);
+                        reject('event.origin is not %s', origin);
+                        return;
+                    }
+                    if (event.data.message === 'access_token') {
+                        Media.token = event.data.value;
+                        $('#containerIframe').remove();
+                        resolve(event.data.message);
+                        window.removeEventListener("message", receiveMessage, false);
+                    } else {
+                        console.error('Erreur de récuperation du token', event);
+                        reject(event.data);
+                        notification('Erreur de récupération du token', 'Pas de message');
+                        window.removeEventListener("message", receiveMessage, false);
+                    }
+                }
+                window.addEventListener("message", receiveMessage, false);
+            });
+        }
+
+        /**
+         * Fonction servant à appeler l'API de BetaSeries
+         *
+         * @param  {String}   type              Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
+         * @param  {String}   resource          La ressource de l'API (ex: shows, seasons, episodes...)
+         * @param  {String}   action            L'action à appliquer sur la ressource (ex: search, list...)
+         * @param  {Object}   args              Un objet (clef, valeur) à transmettre dans la requête
+         * @param  {bool}     [force=false]     Indique si on doit utiliser le cache ou non (Par défaut: false)
+         * @return {Promise}
+         */
+        static callApi(type, resource, action, args, force = false) {
+            if (Media.api && Media.api.resources.indexOf(resource) === -1) {
+                throw new Error(`Ressource (${resource}) inconnue dans l\'API.`);
+            }
+            if (! Media.token || ! Media.userKey) {
+                throw new Error('Token and userKey are required');
+            }
+            let check = false,
+                // Les en-têtes pour l'API
+                myHeaders = {
+                    'Accept'                : 'application/json',
+                    'X-BetaSeries-Version'  : Media.api.versions.current,
+                    'X-BetaSeries-Token'    : Media.token,
+                    'X-BetaSeries-Key'      : Media.userKey
+                },
+                checkKeys = Object.keys(Media.api.check);
+
+            if (Media.debug) {
+                console.log('Media.callApi', {
+                    type: type,
+                    resource: resource,
+                    action: action,
+                    args: args,
+                    force: force
+                });
+            }
+
+            // On retourne la ressource en cache si elle y est présente
+            if (Media.cache && ! force && type === 'GET' && args && 'id' in args &&
+                Media.cache.has(resource, args.id))
+            {
+                //if (debug) console.log('Media.callApi retourne la ressource du cache (%s: %d)', resource, args.id);
+                return new Promise((resolve) => {
+                    resolve(Media.cache.get(resource, args.id, 'Media.callApi'));
+                });
+            }
+
+            // On check si on doit vérifier la validité du token
+            // (https://www.betaseries.com/bugs/api/461)
+            if (userIdentified() && checkKeys.indexOf(resource) !== -1 &&
+                Media.api.check[resource].indexOf(action) !== -1)
+            {
+                check = true;
+            }
+
+            function fetchUri(resolve, reject) {
+                let initFetch = { // objet qui contient les paramètres de la requête
+                    method: type,
+                    headers: myHeaders,
+                    mode: 'cors',
+                    cache: 'no-cache'
+                };
+                let uri = `${Media.api.base}/${resource}/${action}`;
+                const keys = Object.keys(args);
+                // On crée l'URL de la requête de type GET avec les paramètres
+                if (type === 'GET' && keys.length > 0) {
+                    let params = [];
+                    for (let key of keys) {
+                        params.push(key + '=' + encodeURIComponent(args[key]));
+                    }
+                    uri += '?' + params.join('&');
+                } else if (keys.length > 0) {
+                    initFetch.body = new URLSearchParams(args);
+                }
+
+                fetch(uri, initFetch).then(response => {
+                    if (Media.debug) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
+                    // On récupère les données et les transforme en objet
+                    response.json().then((data) => {
+                        if (Media.debug) console.log('fetch (%s %s) data', type, uri, data);
+                        // On gère le retour d'erreurs de l'API
+                        if (data.hasOwnProperty('errors') && data.errors.length > 0) {
+                            const code = data.errors[0].code,
+                                  text = data.errors[0].text;
+                            if (code === 2005 ||
+                                (response.status === 400 && code === 0 &&
+                                    text === "L'utilisateur a déjà marqué cet épisode comme vu."))
+                            {
+                                reject('changeStatus');
+                            } else if (code == 2001) {
+                                // Appel de l'authentification pour obtenir un token valide
+                                Media.authenticate().then(() => {
+                                    Media.callApi(type, resource, action, args, force)
+                                        .then(data => resolve(data), err => reject(err));
+                                }, (err) => {
+                                    reject(err);
+                                });
+                            } else {
+                                reject(JSON.stringify(data.errors[0]));
+                            }
+                            return;
+                        }
+                        // On gère les erreurs réseau
+                        if (!response.ok) {
+                            console.error('Fetch erreur network', response);
+                            reject(response);
+                            return;
+                        }
+                        resolve(data);
+                    });
+                }).catch(error => {
+                    if (Media.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                    console.error(error);
+                    reject(error.message);
+                });
+            }
+            return new Promise((resolve, reject) => {
+                counter++; // Incrément du compteur de requêtes à l'API
+                if (check) {
+                    let paramsFetch = {
+                        method: 'GET',
+                        headers: myHeaders,
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    };
+                    if (Media.debug) console.info('%ccall /members/is_active', 'color:blue');
+                    fetch(`${Media.api.base}/members/is_active`, paramsFetch).then(resp => {
+                        if ( ! resp.ok) {
+                            // Appel de l'authentification pour obtenir un token valide
+                            Media.authenticate().then(() => {
+                                // On met à jour le token pour le prochain appel à l'API
+                                myHeaders['X-BetaSeries-Token'] = Media.token;
+                                fetchUri(resolve, reject);
+                            }).catch(err => reject(err) );
+                            return;
+                        }
+                        fetchUri(resolve, reject);
+                    }).catch(error => {
+                        if (Media.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                        console.error(error);
+                        reject(error.message);
+                    });
+                } else {
+                    fetchUri(resolve, reject);
+                }
             });
         }
     }
@@ -398,7 +598,7 @@ var exports = {};
             if (this.in_account) return new Promise(resolve => resolve(_this));
 
             return new Promise((resolve, reject) => {
-                callBetaSeries('POST', 'shows', 'show', {id: _this.id})
+                Media.callApi('POST', 'shows', 'show', {id: _this.id})
                 .then(data => {
                     _this.init(data.show);
                     _this.save();
@@ -417,7 +617,7 @@ var exports = {};
 
             const _this = this;
             return new Promise((resolve, reject) => {
-                callBetaSeries('DELETE', 'shows', 'show', {id: this.id})
+                Media.callApi('DELETE', 'shows', 'show', {id: this.id})
                 .then(data => {
                     Object.assign(_this, data.show);
                     _this.save();
@@ -434,7 +634,7 @@ var exports = {};
         archive() {
             const _this = this;
             return new Promise((resolve, reject) => {
-                callBetaSeries('POST', 'shows', 'archive', {id: this.id})
+                Media.callApi('POST', 'shows', 'archive', {id: this.id})
                 .then(data => {
                     _this.init(data.show);
                     _this.save();
@@ -451,7 +651,7 @@ var exports = {};
         unarchive() {
             const _this = this;
             return new Promise((resolve, reject) => {
-                callBetaSeries('DELETE', 'shows', 'archive', {id: this.id})
+                Media.callApi('DELETE', 'shows', 'archive', {id: this.id})
                 .then(data => {
                     _this.init(data.show);
                     _this.save();
@@ -468,7 +668,7 @@ var exports = {};
         favorite() {
             const _this = this;
             return new Promise((resolve, reject) => {
-                callBetaSeries('POST', 'shows', 'favorite', {id: this.id})
+                Media.callApi('POST', 'shows', 'favorite', {id: this.id})
                 .then(data => {
                     _this.init(data.show);
                     _this.save();
@@ -485,7 +685,7 @@ var exports = {};
         unfavorite() {
             const _this = this;
             return new Promise((resolve, reject) => {
-                callBetaSeries('DELETE', 'shows', 'favorite', {id: this.id})
+                Media.callApi('DELETE', 'shows', 'favorite', {id: this.id})
                 .then(data => {
                     _this.init(data.show);
                     _this.save();
@@ -513,7 +713,7 @@ var exports = {};
                     });
                 })
                 .catch(err => {
-                    notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
+                    Media.notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
                     reject(err);
                     cb();
                 });
@@ -529,7 +729,7 @@ var exports = {};
             this.updateProgressBar();
             this.updateNextEpisode();
             let note = this.objNote;
-            if (debug) {
+            if (Media.debug) {
                 console.log('Next ID et status', {
                     next: this.user.next.id,
                     status: this.status,
@@ -543,7 +743,7 @@ var exports = {};
                 // On propose d'archiver si la série n'est plus en production
                 if (this.in_account && this.isEnded() && !this.isArchived())
                 {
-                    if (debug) console.log('Série terminée, popup confirmation archivage');
+                    if (Media.debug) console.log('Série terminée, popup confirmation archivage');
                     promise = new Promise(resolve => {
                         new PopupAlert({
                             title: 'Archivage de la série',
@@ -561,7 +761,7 @@ var exports = {};
                 }
                 // On propose de noter la série
                 if (note.user === 0) {
-                    if (debug) console.log('Proposition de voter pour la série');
+                    if (Media.debug) console.log('Proposition de voter pour la série');
                     promise.then(() => {
                         new PopupAlert({
                             title: trans("popin.note.title.show"),
@@ -597,7 +797,7 @@ var exports = {};
          * @return {void}
          */
         updateProgressBar() {
-            if (debug) console.log('updateProgressBar');
+            if (Media.debug) console.log('updateProgressBar');
             let progBar = $('.progressBarShow');
             // On met à jour la barre de progression
             progBar.css('width', this.user.status.toFixed(1) + '%');
@@ -607,11 +807,11 @@ var exports = {};
          * @return {void}
          */
         updateNextEpisode(cb = noop) {
-            if (debug) console.log('updateNextEpisode');
+            if (Media.debug) console.log('updateNextEpisode');
             const nextEpisode = $('a.blockNextEpisode');
 
             if (nextEpisode.length > 0 && this.user.next && this.user.next.id !== null) {
-                if (debug) console.log('nextEpisode et show.user.next OK', this.user);
+                if (Media.debug) console.log('nextEpisode et show.user.next OK', this.user);
                 // Modifier l'image
                 const img = nextEpisode.find('img'),
                       remaining = nextEpisode.find('.remaining div'),
@@ -630,7 +830,7 @@ var exports = {};
                 remaining.text(remaining.text().trim().replace(/^\d+/, this.user.remaining));
             }
             else if (nextEpisode.length <= 0 && this.user.next && this.user.next.id !== null) {
-                if (debug) console.log('No nextEpisode et show.user.next OK', this.user);
+                if (Media.debug) console.log('No nextEpisode et show.user.next OK', this.user);
                 buildNextEpisode(this);
             }
             else if (! this.user.next || this.user.next.id === null) {
@@ -672,7 +872,7 @@ var exports = {};
             }
         }
         fetch(force = false) {
-            return callBetaSeries('GET', 'shows', 'display', {id: this.id}, force);
+            return Media.callApi('GET', 'shows', 'display', {id: this.id}, force);
         }
         /**
          * Retourne l'objet Similar correspondant à l'ID
@@ -729,7 +929,7 @@ var exports = {};
                 $('#reactjs-show-actions > div > button').off('click').one('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (debug) console.groupCollapsed('AddShow');
+                    if (Media.debug) console.groupCollapsed('AddShow');
 
                     _this.addToAccount()
                     .then(show => {
@@ -737,11 +937,11 @@ var exports = {};
                         changeBtnAdd(show);
                         // On met à jour le bloc du prochain épisode à voir
                         _this.updateNextEpisode(function() {
-                            if (debug) console.groupEnd('AddShow');
+                            if (Media.debug) console.groupEnd('AddShow');
                         });
                     }, err => {
-                        notification('Erreur d\'ajout de la série', err);
-                        if (debug) console.groupEnd('AddShow');
+                        Media.notification('Erreur d\'ajout de la série', err);
+                        if (Media.debug) console.groupEnd('AddShow');
                     });
                 });
             }
@@ -926,7 +1126,7 @@ var exports = {};
                                     callback_yes: afterNotif
                                 });
                             }, (err) => {
-                                notification('Erreur de suppression de la série', err);
+                                Media.notification('Erreur de suppression de la série', err);
                             });
                         },
                         callback_no: function() {}
@@ -951,17 +1151,17 @@ var exports = {};
             btnArchive.off('click').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (debug) console.groupCollapsed('show-archive');
+                if (Media.debug) console.groupCollapsed('show-archive');
                 // Met à jour le bouton d'archivage de la série
                 function updateBtnArchive(promise, transform, label, notif) {
                     promise.then(() => {
                         const parent = $(e.currentTarget).parent();
                         $('span', e.currentTarget).css('transform', transform);
                         $('.label', parent).text(trans(label));
-                        if (debug) console.groupEnd('show-archive');
+                        if (Media.debug) console.groupEnd('show-archive');
                     }, err => {
-                        notification(notif, err);
-                        if (debug) console.groupEnd('show-archive');
+                        Media.notification(notif, err);
+                        if (Media.debug) console.groupEnd('show-archive');
                     });
                 }
                 if (! _this.user.archived) {
@@ -980,7 +1180,7 @@ var exports = {};
             btnFavoris.off('click').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (debug) console.groupCollapsed('show-favoris');
+                if (Media.debug) console.groupCollapsed('show-favoris');
                 if (! _this.user.favorited) {
                     _this.favorite()
                     .then(() => {
@@ -990,10 +1190,10 @@ var exports = {};
                                   <path d="M15.156.91a5.887 5.887 0 0 0-4.406 2.026A5.887 5.887 0 0 0 6.344.909C3.328.91.958 3.256.958 6.242c0 3.666 3.33 6.653 8.372 11.19l1.42 1.271 1.42-1.28c5.042-4.528 8.372-7.515 8.372-11.18 0-2.987-2.37-5.334-5.386-5.334z"></path>
                                 </svg>
                               </span>`);
-                        if (debug) console.groupEnd('show-favoris');
+                        if (Media.debug) console.groupEnd('show-favoris');
                     }, err => {
-                        notification('Erreur de favoris de la série', err);
-                        if (debug) console.groupEnd('show-favoris');
+                        Media.notification('Erreur de favoris de la série', err);
+                        if (Media.debug) console.groupEnd('show-favoris');
                     });
                 } else {
                     _this.unfavorite()
@@ -1004,10 +1204,10 @@ var exports = {};
                                   <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
                                 </svg>
                               </span>`);
-                        if (debug) console.groupEnd('show-favoris');
+                        if (Media.debug) console.groupEnd('show-favoris');
                     }, err => {
-                        notification('Erreur de favoris de la série', err);
-                        if (debug) console.groupEnd('show-favoris');
+                        Media.notification('Erreur de favoris de la série', err);
+                        if (Media.debug) console.groupEnd('show-favoris');
                     });
                 }
             });
@@ -1016,7 +1216,7 @@ var exports = {};
          * Ajoute la classification dans les détails de la ressource
          */
         addRating() {
-            if (debug) console.log('addRating');
+            if (Media.debug) console.log('addRating');
 
             if (this.rating) {
                 let rating = ratings.hasOwnProperty(this.rating) ? ratings[this.rating] : '';
@@ -1091,7 +1291,7 @@ var exports = {};
             return this.user.in_account;
         }
         fetch() {
-            return callBetaSeries('GET', 'movies', 'movie', {id: this.id});
+            return Media.callApi('GET', 'movies', 'movie', {id: this.id});
         }
         getSimilar(id) {
             if (!this.similars) return null;
@@ -1111,7 +1311,7 @@ var exports = {};
             if (this.in_account) return new Promise(resolve => resolve(_this));
 
             return new Promise((resolve, reject) => {
-                callBetaSeries('POST', 'movies', 'movie', {id: _this.id, state: state})
+                Media.callApi('POST', 'movies', 'movie', {id: _this.id, state: state})
                 .then(data => {
                     _this.init(data.movie);
                     _this.save();
@@ -1130,7 +1330,7 @@ var exports = {};
             if (!this.in_account) return new Promise(resolve => resolve(_this));
 
             return new Promise((resolve, reject) => {
-                callBetaSeries('DELETE', 'movies', 'movie', {id: _this.id})
+                Media.callApi('DELETE', 'movies', 'movie', {id: _this.id})
                 .then(data => {
                     _this.init(data.movie);
                     _this.save();
@@ -1210,7 +1410,7 @@ var exports = {};
             const $checkSeen = this.elt.find('.checkSeen');
             let changed = false;
             if ($checkSeen.length > 0 && $checkSeen.attr('id') === undefined) {
-                if (debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
+                if (Media.debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
                 // On ajoute l'attribut ID
                 $checkSeen.attr('id', 'episode-' + this.id);
                 $checkSeen.data('pos', pos);
@@ -1218,13 +1418,13 @@ var exports = {};
             // if (debug) console.log('updateCheckSeen', {seen: this.user.seen, elt: this.elt, checkSeen: $checkSeen.length, classSeen: $checkSeen.hasClass('seen'), pos: pos, Episode: this});
             // Si le membre a vu l'épisode et qu'il n'est pas indiqué, on change le statut
             if (this.user.seen && $checkSeen.length > 0 && !$checkSeen.hasClass('seen')) {
-                if (debug) console.log('Changement du statut (seen) de l\'épisode %s', this.code);
+                if (Media.debug) console.log('Changement du statut (seen) de l\'épisode %s', this.code);
                 this.updateRender('seen', false);
                 changed = true;
             }
             // Si le membre n'a pas vu l'épisode et qu'il n'est pas indiqué, on change le statut
             else if (!this.user.seen && $checkSeen.length > 0 && $checkSeen.hasClass('seen')) {
-                if (debug) console.log('Changement du statut (notSeen) de l\'épisode %s', this.code);
+                if (Media.debug) console.log('Changement du statut (notSeen) de l\'épisode %s', this.code);
                 this.updateRender('notSeen', false);
                 changed = true;
             }
@@ -1279,9 +1479,9 @@ var exports = {};
                     args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
                 }
 
-                callBetaSeries(method, 'episodes', 'watched', args).then(data =>
+                Media.callApi(method, 'episodes', 'watched', args).then(data =>
                 {
-                    if (debug) console.log('updateStatus %s episodes/watched', method, data);
+                    if (Media.debug) console.log('updateStatus %s episodes/watched', method, data);
                     if (! (_this.show instanceof Show) && cache.has('shows', _this.show.id)) {
                         _this.show = new Show(cache.get('shows', _this.show.id));
                     }
@@ -1311,13 +1511,13 @@ var exports = {};
                     _this.save();
                 })
                 .catch(err => {
-                    if (debug) console.error('updateStatus error %s', err);
+                    if (Media.debug) console.error('updateStatus error %s', err);
                     if (err && err == 'changeStatus') {
-                        if (debug) console.log('updateStatus error %s changeStatus', method);
+                        if (Media.debug) console.log('updateStatus error %s changeStatus', method);
                         _this.updateRender(status);
                     } else {
                         _this.toggleSpinner(false);
-                        notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
+                        Media.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
                     }
                 });
             });
@@ -1333,7 +1533,7 @@ var exports = {};
             const $elt = this.elt.find('.checkSeen');
             const lenEpisodes = $('#episodes .checkSeen').length;
             const lenNotSpecial = $('#episodes .checkSeen[data-special="0"]').length;
-            if (debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
+            if (Media.debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
             if (newStatus === 'seen') {
                 $elt.css('background', ''); // On ajoute le check dans la case à cocher
                 $elt.addClass('seen'); // On ajoute la classe 'seen'
@@ -1349,10 +1549,10 @@ var exports = {};
                     slideCurrent
                         .removeClass('slide--notSeen')
                         .addClass('slide--seen');
-                    if (debug) console.log('Tous les épisodes de la saison ont été vus', slideCurrent);
+                    if (Media.debug) console.log('Tous les épisodes de la saison ont été vus', slideCurrent);
                     // Si il y a une saison suivante, on la sélectionne
                     if (slideCurrent.next().length > 0) {
-                        if (debug) console.log('Il y a une autre saison');
+                        if (Media.debug) console.log('Il y a une autre saison');
                         slideCurrent.next().trigger('click');
                         slideCurrent
                             .removeClass('slide--current');
@@ -1416,11 +1616,11 @@ var exports = {};
             if (! display) {
                 $('.spinner').remove();
                 fnLazy.init();
-                if (debug) console.log('toggleSpinner');
-                if (debug) console.groupEnd('episode checkSeen');
+                if (Media.debug) console.log('toggleSpinner');
+                if (Media.debug) console.groupEnd('episode checkSeen');
             } else {
-                if (debug) console.groupCollapsed('episode checkSeen');
-                if (debug) console.log('toggleSpinner');
+                if (Media.debug) console.groupCollapsed('episode checkSeen');
+                if (Media.debug) console.log('toggleSpinner');
                 this.elt.find('.slide__image').prepend(`
                     <div class="spinner">
                         <div class="spinner-item"></div>
@@ -1523,7 +1723,7 @@ var exports = {};
         }
         fetch(force = false) {
             const method = this._type.singular === 'show' ? 'display' : 'movie';
-            return callBetaSeries('GET', this._type.plural, method, {id: this.id}, force);
+            return Media.callApi('GET', this._type.plural, method, {id: this.id}, force);
         }
         get description() {
             return (this._type.singular === 'show') ? this._description : this.synopsis;
@@ -1711,7 +1911,7 @@ var exports = {};
                 params.state = state;
             }
             return new Promise((resolve, reject) => {
-                callBetaSeries('POST', _this._type.plural, _this.type.singular, params)
+                Media.callApi('POST', _this._type.plural, _this.type.singular, params)
                 .then(data => {
                     Object.assign(this, data[_this._type.singular]);
                     _this.save();
@@ -1741,7 +1941,7 @@ var exports = {};
         }
         const _this = this;
         return new Promise((resolve, reject) => {
-            callBetaSeries('GET', 'shows', 'episodes', {thetvdb_id: this.thetvdb_id, season: season}, true)
+            Media.callApi('GET', 'shows', 'episodes', {thetvdb_id: this.thetvdb_id, season: season}, true)
             .then(data => {
                 _this.current_season = season;
                 _this.episodes = [];
@@ -1764,7 +1964,7 @@ var exports = {};
         const _this = this;
         this.similars = [];
         return new Promise((resolve, reject) => {
-            callBetaSeries('GET', 'shows', 'similars', {thetvdb_id: this.thetvdb_id, details: true}, true)
+            Media.callApi('GET', 'shows', 'similars', {thetvdb_id: this.thetvdb_id, details: true}, true)
             .then(data => {
                 if (data.similars.length > 0) {
                     for (let s = 0; s < data.similars.length; s++) {
@@ -1786,7 +1986,7 @@ var exports = {};
         const _this = this;
         this.similars = [];
         return new Promise((resolve, reject) => {
-            callBetaSeries('GET', 'movies', 'similars', {id: this.id, details: true}, true)
+            Media.callApi('GET', 'movies', 'similars', {id: this.id, details: true}, true)
             .then(data => {
                 if (data.similars.length > 0) {
                     for (let s = 0; s < data.similars.length; s++) {
@@ -1800,11 +2000,16 @@ var exports = {};
         });
     };
 
-    exports.Media = Media;
-    exports.Show = Show;
-    exports.Movie = Movie;
-    exports.Episode = Episode;
-    exports.Similar = Similar;
+    /**
+     * Paramétrage de la super classe Media
+     */
+    Media.debug = debug;
+    Media.cache = cache;
+    Media.notification = notification;
+    Media.api = api;
+    Media.token = betaseries_api_user_token;
+    Media.userKey = betaseries_api_user_key;
+    Media.serverBaseUrl = serverBaseUrl;
 
     // On affiche la version du script
     if (debug) console.log('UserScript BetaSeries v%s', GM_info.script.version);
@@ -1843,14 +2048,8 @@ var exports = {};
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour instancier un objet Media
-        getResource(true).then(function(data) {
-            const type = getApiResource(url.split('/')[1]), // Indique de quel type de ressource il s'agit
-                  /**
-                   * Objet Media de la ressource principale de la page
-                   * @type {Media}
-                   */
-                  objRes = new type.class(data[type.singular]);
-            if (debug) console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
+        getResource(true).then(objRes => {
+            if (debug) console.log('objet resource Media(%s)', objRes.constructor.name, Object.assign({}, objRes));
             if (debug) addBtnDev(); // On ajoute le bouton de Dev
             removeAds(); // On retire les pubs
             similarsViewed(objRes); // On s'occupe des ressources similaires
@@ -2344,8 +2543,7 @@ var exports = {};
             let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
                 $dataRes = $('#dialog-resource .data-resource'); // DOMElement contenant le rendu JSON de la ressource
 
-            getResource()
-            .then(function(data) {
+            getResourceData().then(function(data) {
                 // if (debug) console.log('addBtnDev promise return', data);
                 $dataRes.empty().append(renderjson.set_show_to_level(2)(data[type.singular]));
                 $('#dialog-resource-title span.counter').empty().text('(' + counter + ' appels API)');
@@ -2362,9 +2560,10 @@ var exports = {};
     }
 
     /**
-     * Cette fonction permet de stocker la ressource courante
-     * dans le cache, pour être utilisé par les autres fonctions
-     * @return {Promise}
+     * Cette fonction permet de retourner la ressource principale sous forme d'objet
+     * @param  {boolean} [nocache=false] Flag indiquant si il faut utiliser les données en cache
+     * @param  {number}  [id=null]       Identifiant de la ressource
+     * @return {Promise<Media>}
      */
     function getResource(nocache = false, id = null) {
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
@@ -2372,7 +2571,30 @@ var exports = {};
         id = (id === null) ? getResourceId() : id;
         if (debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
 
-        return callBetaSeries('GET', type.plural, fonction, {'id': id}, nocache);
+        return new Promise((resolve, reject) => {
+            Media.callApi('GET', type.plural, fonction, {'id': id}, nocache)
+            .then(data => {
+                resolve(new type.class(data[type.singular]));
+            }, err => {
+                reject(err);
+            });
+
+        });
+    }
+
+    /**
+     * Cette fonction permet de récupérer les données API de la ressource principale
+     * @param  {boolean} [nocache=false] Flag indiquant si il faut utiliser les données en cache
+     * @param  {number}  [id=null]       Identifiant de la ressource
+     * @return {Promise<Object>}
+     */
+    function getResourceData(nocache = false, id = null) {
+        const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
+              fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        id = (id === null) ? getResourceId() : id;
+        if (debug) console.log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
+
+        return Media.callApi('GET', type.plural, fonction, {'id': id}, nocache);
     }
 
     /**
@@ -2416,7 +2638,7 @@ var exports = {};
         let args = {};
         if (id) args.id = id;
         return new Promise((resolve) => {
-            callBetaSeries('GET', 'members', 'infos', args)
+            Media.callApi('GET', 'members', 'infos', args)
             .then(function(data) {
                 // On retourne les infos du membre
                 resolve(data.member);
@@ -3156,10 +3378,6 @@ var exports = {};
         function getVignettes() {
             return $('#episodes .slide__image');
         }
-        // Retourne l'identifiant de l'épisode
-        function getEpisodeId(episode) {
-            return episode.parents('div.slide_flex').find('button').first().attr('id').split('-')[1];
-        }
     }
 
     /**
@@ -3189,7 +3407,7 @@ var exports = {};
                     $("#similaire_id_search").focus().on("keyup", (e) => {
                         let search = $(e.currentTarget).val();
                         if (search.length > 0 && e.keyCode != 40 && e.keyCode != 38) {
-                            callBetaSeries('GET', 'search', type.plural, {autres: 'mine', text: search})
+                            Media.callApi('GET', 'search', type.plural, {autres: 'mine', text: search})
                             .then((data) => {
                                 const medias = data[type.plural];
                                 $("#search_results .title").remove();
@@ -3506,7 +3724,7 @@ var exports = {};
             return;
         }
 
-        callBetaSeries('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
+        Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
         .then(data => {
             for (let t = 0; t < len; t++) {
                 const container = $(containersEpisode.get(t));
@@ -3545,7 +3763,7 @@ var exports = {};
                       len = containersEpisode.length;
                 self.removeClass('finish');
                 let countIntTime = 0;
-                callBetaSeries('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
+                Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
                 .then(data => {
                     let intTime = setInterval(function() {
                         if (++countIntTime > 60) {
@@ -3853,7 +4071,7 @@ var exports = {};
         series.each(function(index, serie) {
             let id = $(serie).data('id'),
                 infos = $($(serie).find('.infos'));
-            callBetaSeries('GET', 'shows', 'display', {'id': id})
+            Media.callApi('GET', 'shows', 'display', {'id': id})
             .then(function(data) {
                 let statut = (data.show.status == 'Continuing') ? 'En cours' : 'Terminée';
                 infos.append(`<br>Statut: ${statut}`);
@@ -3862,198 +4080,4 @@ var exports = {};
             });
         });
     }
-
-    /**
-     * Fonction d'authentification sur l'API BetaSeries
-     *
-     * @return {Promise}
-     */
-    function authenticate() {
-        if (debug) console.log('authenticate');
-        $('body').append(`
-            <div id="containerIframe">
-              <iframe id="userscript"
-                      name="userscript"
-                      title="Connexion à BetaSeries"
-                      width="50%"
-                      height="400"
-                      src="${serverBaseUrl}/index.html"
-                      style="background:white;margin:auto;">
-              </iframe>
-            </div>'
-        `);
-        return new Promise((resolve, reject) => {
-            window.addEventListener("message", receiveMessage, false);
-            function receiveMessage(event) {
-                const origin = new URL(serverBaseUrl).origin;
-                // if (debug) console.log('receiveMessage', event);
-                if (event.origin !== origin) {
-                    if (debug) console.error('receiveMessage {origin: %s}', event.origin, event);
-                    reject('event.origin is not %s', origin);
-                    return;
-                }
-                if (event.data.message == 'access_token') {
-                    betaseries_api_user_token = event.data.value;
-                    $('#containerIframe').remove();
-                    resolve(event.data.message);
-                    window.removeEventListener("message", receiveMessage, false);
-                } else {
-                    if (debug) console.error('Erreur de récuperation du token', event);
-                    reject(event.data);
-                    notification('Erreur de récupération du token', 'Pas de message');
-                    window.removeEventListener("message", receiveMessage, false);
-                }
-            }
-        });
-    }
-
-    /**
-     * Fonction servant à appeler l'API de BetaSeries
-     *
-     * @param  {String}   type              Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-     * @param  {String}   resource          La ressource de l'API (ex: shows, seasons, episodes...)
-     * @param  {String}   method            La fonction à appliquer sur la ressource (ex: search, list...)
-     * @param  {Object}   args              Un objet (clef, valeur) à transmettre dans la requête
-     * @param  {bool}     [no_cache=false]  Indique si on doit utiliser le cache ou non (Par défaut: false)
-     * @return {Promise}
-     */
-    function callBetaSeries(type, resource, method, args, no_cache = false) {
-        if (api.resources.indexOf(resource) === -1) {
-            throw new Error(`Ressource (${resource}) inconnue dans l\'API.`);
-        }
-        let check = false,
-            // Les en-têtes pour l'API
-            myHeaders = {
-                'Accept'                : 'application/json',
-                'X-BetaSeries-Version'  : api.versions.current,
-                'X-BetaSeries-Token'    : betaseries_api_user_token,
-                'X-BetaSeries-Key'      : betaseries_api_user_key
-            },
-            checkKeys = Object.keys(api.check);
-
-        if (debug) {
-            console.log('callBetaSeries', {
-                type: type,
-                resource: resource,
-                method: method,
-                args: args,
-                no_cache: no_cache
-            });
-        }
-
-        // On retourne la ressource en cache si elle y est présente
-        if (! no_cache && type === 'GET' && args && 'id' in args &&
-            cache.has(resource, args.id))
-        {
-            //if (debug) console.log('callBetaSeries retourne la ressource du cache (%s: %d)', resource, args.id);
-            return new Promise((resolve) => {
-                resolve(cache.get(resource, args.id, 'callBetaSeries'));
-            });
-        }
-
-        // On check si on doit vérifier la validité du token
-        // (https://www.betaseries.com/bugs/api/461)
-        if (userIdentified() && checkKeys.indexOf(resource) !== -1 &&
-            api.check[resource].indexOf(method) !== -1)
-        {
-            check = true;
-        }
-
-        return new Promise((resolve, reject) => {
-            counter++; // Incrément du compteur de requêtes à l'API
-            if (check) {
-                let paramsFetch = {
-                    method: 'GET',
-                    headers: myHeaders,
-                    mode: 'cors',
-                    cache: 'no-cache'
-                };
-                if (debug) console.info('%ccall /members/is_active', 'color:blue');
-                fetch(`${api.base}/members/is_active`, paramsFetch).then(resp => {
-                    if ( ! resp.ok) {
-                        // Appel de l'authentification pour obtenir un token valide
-                        authenticate().then(() => {
-                            // On met à jour le token pour le prochain appel à l'API
-                            myHeaders['X-BetaSeries-Token'] = betaseries_api_user_token;
-                            fetchUri(resolve, reject);
-                        }).catch(err => reject(err) );
-                        return;
-                    }
-                    fetchUri(resolve, reject);
-                }).catch(error => {
-                    if (debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
-                    console.error(error);
-                    reject(error.message);
-                });
-            } else {
-                fetchUri(resolve, reject);
-            }
-        });
-        function fetchUri(resolve, reject) {
-            let uri = `${api.base}/${resource}/${method}`,
-                initFetch = { // objet qui contient les paramètres de la requête
-                    method: type,
-                    headers: myHeaders,
-                    mode: 'cors',
-                    cache: 'no-cache'
-                },
-                keys = Object.keys(args);
-            // On crée l'URL de la requête de type GET avec les paramètres
-            if (type === 'GET' && keys.length > 0) {
-                let params = [];
-                for (let key of keys) {
-                    params.push(key + '=' + args[key]);
-                }
-                uri += '?' + params.join('&');
-            } else if (keys.length > 0) {
-                initFetch.body = new URLSearchParams(args);
-            }
-
-            fetch(uri, initFetch).then(response => {
-                if (debug) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
-                // On récupère les données et les transforme en objet
-                response.json().then((data) => {
-                    if (debug) console.log('fetch (%s %s) data', type, uri, data);
-                    // On gère le retour d'erreurs de l'API
-                    if (data.hasOwnProperty('errors') && data.errors.length > 0) {
-                        const code = data.errors[0].code,
-                              text = data.errors[0].text;
-                        if (code === 2005 ||
-                            (response.status === 400 && code === 0 &&
-                                text === "L'utilisateur a déjà marqué cet épisode comme vu."))
-                        {
-                            reject('changeStatus');
-                        } else if (code == 2001) {
-                            // Appel de l'authentification pour obtenir un token valide
-                            authenticate().then(() => {
-                                callBetaSeries(type, resource, method, args, no_cache)
-                                .then((data) => {
-                                    resolve(data);
-                                }, (err) => {
-                                    reject(err);
-                                });
-                            }, (err) => {
-                                reject(err);
-                            });
-                        } else {
-                            reject(JSON.stringify(data.errors[0]));
-                        }
-                        return;
-                    }
-                    // On gère les erreurs réseau
-                    if (!response.ok) {
-                        console.error('Fetch erreur network', response);
-                        reject(response);
-                        return;
-                    }
-                    resolve(data);
-                });
-            }).catch(error => {
-                if (debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
-                console.error(error);
-                reject(error.message);
-            });
-        }
-    }
-
 })(jQuery);
