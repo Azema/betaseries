@@ -24,6 +24,7 @@
    bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert loadRecommendationModule */
 /* jslint unparam: true, eqnull:true, unused:true */
 
+'use strict';
 
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
@@ -38,7 +39,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
 /************************************************************************************************/
 (function($) {
-    'use strict';
 
     const debug = false,
           url = location.pathname,
@@ -2192,18 +2192,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     if (debug) console.log('close old interval timer');
                     clearInterval(UpdateAuto.timer);
                 }
+                const _this = this;
                 UpdateAuto.timer = setInterval(function() {
-                    if (! this._auto || this._objShow.user.remaining <= 0) {
+                    if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, _this._objShow));
+                    if (! _this._auto || _this._objShow.user.remaining <= 0) {
                         if (debug) console.log('Arrêt de la mise à jour auto des épisodes');
-                        this.stop();
+                        _this.stop();
                         return;
                     }
                     if (debug) console.log('update episode list');
                     const btnUpEpisodeList = $('.updateEpisodes');
                     if (btnUpEpisodeList.length > 0) {
                         btnUpEpisodeList.trigger('click');
-                        if ( ! this._status) {
-                            this.status = true;
+                        if ( ! _this._status) {
+                            _this.status = true;
                         }
                     }
                 }, (this._interval * 60) * 1000);
