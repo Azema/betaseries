@@ -3409,14 +3409,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // On réactive les autres popus lorsque celle des options se ferme
             $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
                 $('#episodes .slide__image').popover('enable');
-                $('.options .badge').off('click');
+                $('.optionsUpAuto .badge').off('click');
                 $('#updateEpisodeList button.close').off('click');
                 $('#optionsUpdateEpisodeList button.btn-primary').off('click');
             });
 
             $('#updateEpisodeList .updateElement').on('shown.bs.popover', function () {
                 $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
-                $('.options .badge').css('cursor', 'pointer').click(e => {
+                $('.optionsUpAuto .badge').css('cursor', 'pointer').click(e => {
                     e.stopPropagation();
                     e.preventDefault();
                     const $badge = $(e.currentTarget);
