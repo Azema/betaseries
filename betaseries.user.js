@@ -232,11 +232,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     cache = new Cache();
 
     class Note {
-        contructor(data) {
+        constructor(data) {
             if (typeof data !== 'object') {
                 throw new Error('data is not an object');
             }
-            this.init(data);
+            return this.init(data);
         }
         /**
          * Initialize l'objet avec les données
