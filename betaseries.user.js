@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.14
+// @version      1.0.15
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -934,10 +934,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             cb();
 
             /**
-                 * Construit une vignette pour le prochain épisode à voir
-                 * @param  {Object} res  Objet API show
-                 * @return {void}
-                 */
+             * Construit une vignette pour le prochain épisode à voir
+             * @param  {Object} res  Objet API show
+             * @return {void}
+             */
             function buildNextEpisode(res) {
                 let height = 70,
                     width = 124,
@@ -3287,6 +3287,25 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     {val: 60, label: '60 min.'}
                 ];
             let contentUpdate = `
+                    <style>
+                        .alert {
+                          position: relative;
+                          padding: 0.75rem 1.25rem;
+                          margin-bottom: 1rem;
+                          border: 1px solid transparent;
+                          border-radius: 0.25rem;
+                        }
+                        .alert-info {
+                          color: #0c5460;
+                          background-color: #d1ecf1;
+                          border-color: #bee5eb;
+                        }
+                        .alert-warning {
+                          color: #856404;
+                          background-color: #fff3cd;
+                          border-color: #ffeeba;
+                        }
+                    </style>
                     <form id="optionsUpdateEpisodeList">
                       <div class="form-group form-check">
                         <input type="checkbox"
@@ -3308,7 +3327,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     ${intervals[i].label}</option>`;
             }
             contentUpdate += `</select></div>
-                    ${!show.in_account ? '<div class="form-group"><p>Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>':''}
+                    ${!show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>':''}
                     <button type="submit" class="btn btn-primary"${!show.in_account ? ' disabled="true"' : ''}>Sauver</button>
                     <button type="button" class="close btn btn-danger">Annuler</button>
                 </form>`;
@@ -3321,12 +3340,24 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {String} Contenu HTML du titre de la PopUp des options update
          */
         const titlePopup = function() {
-            const style = "position: absolute; right: 5px; border: none; background: transparent; font-size: 1.5em; top: 0;",
-                  className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary',
+            const className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary',
                   label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running',
                   help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
-            return `<div style="color:#000;">Options de mise à jour <span class="badge badge-pill badge-${className}">${label}</span>
-                      <button type="button" class="close" aria-label="Close" title="Fermer" style="${style}">
+            return `<style>
+                        .optionsUpAuto .close{
+                            position: absolute;
+                            right: 5px;
+                            border: none;
+                            background: transparent;
+                            font-size: 1.5em;
+                            top: 0;
+                        }
+                        .optionsUpAuto .close:hover {border: none;outline: none;}
+                        .optionsUpAuto .close:focus {border: none;outline: none;}
+                    </style>
+                    <div class="optionsUpAuto" style="color:#000;">Options de mise à jour
+                      <span class="badge badge-pill badge-${className}"${objUpAuto.status ? 'title="Arrêter la tâche en cours"':''}>${label}</span>
+                      <button type="button" class="close" aria-label="Close" title="Fermer">
                         <span aria-hidden="true">&times;</span>
                       </button>
                       <i class="fa fa-question-circle" style="color:blue;margin-left:5px;" aria-hidden="true" title="${help}"></i>
@@ -3378,10 +3409,22 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // On réactive les autres popus lorsque celle des options se ferme
             $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
                 $('#episodes .slide__image').popover('enable');
+                $('.options .badge').off('click');
+                $('#updateEpisodeList button.close').off('click');
+                $('#optionsUpdateEpisodeList button.btn-primary').off('click');
             });
 
             $('#updateEpisodeList .updateElement').on('shown.bs.popover', function () {
                 $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
+                $('.options .badge').css('cursor', 'pointer').click(e => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const $badge = $(e.currentTarget);
+                    if ($badge.hasClass('badge-success')) {
+                        // On arrête la tâche d'update auto
+                        objUpAuto.stop();
+                    }
+                });
                 $('#updateEpisodeList button.close').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
