@@ -20,8 +20,8 @@
 // @grant        GM_setValue
 // ==/UserScript==
 
-/* global jQuery A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans lazyLoad
-   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT displayCountFilter baseUrl hideButtonReset moment PopupAlert loadRecommendationModule */
+/* global A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans lazyLoad
+   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT hideButtonReset moment PopupAlert */
 /* jslint unparam: true, eqnull:true, unused:true */
 
 'use strict';
@@ -110,26 +110,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
                   title: 'Interdit aux enfants de 17 ans et moins'
               }
-          },
-          api = {
-              base: 'https://api.betaseries.com',
-              versions: {current: '3.0', last: '3.0'},
-              resources: [ // Les ressources disponibles dans l'API
-                  'badges', 'comments', 'episodes', 'friends', 'members', 'messages',
-                  'movies', 'news', 'oauth', 'pictures', 'planning', 'platforms',
-                  'polls', 'reports', 'search', 'seasons', 'shows', 'subtitles',
-                  'timeline'
-              ],
-              check: { // Les endpoints qui nécessite de vérifier la volidité du token
-                episodes: ['display', 'list', 'search'],
-                movies  : ['list', 'movie', 'search', 'similars'],
-                search  : ['all', 'movies', 'shows'],
-                shows   : ['display', 'episodes', 'list', 'search', 'similars']
-              }
           };
     let timer, timerUA, currentUser, cache,
-        counter = 0, dialog, fnLazy,
-        timerIntervalAuto; // Timer Interval Auto update episode list
+        dialog, fnLazy;
 
     /**
      * @class Gestion du Cache pour le script
@@ -156,7 +139,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @returns {boolean} true if set, false otherwise
          */
         has(type, key) {
-            return (this._data.hasOwnProperty(type) && this._data[type].hasOwnProperty(key));
+            return (this._data[type] !== undefined && this._data[type][key] !== undefined);
         }
 
         /**
@@ -166,7 +149,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         clear(type = null) {
             if (debug) console.log('Nettoyage du cache', type);
             // On nettoie juste un type de ressource
-            if (type && this._data.hasOwnProperty(type)) {
+            if (type && this._data[type] !== undefined) {
                 for (let key in this._data[type]) {
                     delete this._data[type][key];
                 }
@@ -212,7 +195,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          */
         set(type, key, value) {
             // if (debug) console.log('Ajout de la ressource (%s) en cache', type, {key: key, val: value});
-            if (this._data.hasOwnProperty(type)) {
+            if (this._data[type] !== undefined) {
                 this._data[type][key] = value;
             }
         }
@@ -232,6 +215,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     cache = new Cache();
 
     class Note {
+        /**
+         * Le constructeur de la classe Note
+         * @param  {Object} data Les données de la note
+         * @return {Note}
+         */
         constructor(data) {
             if (typeof data !== 'object') {
                 throw new Error('data is not an object');
@@ -283,20 +271,43 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     class Media {
         static debug = false;
         static cache = null;
-        static api = null;
-        static token = null;
-        static userKey = null;
-        static serverBaseUrl = null;
-        static notification = function() {}
+        // Objet contenant les informations de l'API
+        static api = {
+            "url": 'https://api.betaseries.com',
+            "versions": {"current": '3.0', "last": '3.0'},
+            "resources": [ // Les ressources disponibles dans l'API
+                'badges', 'comments', 'episodes', 'friends', 'members', 'messages',
+                'movies', 'news', 'oauth', 'pictures', 'planning', 'platforms',
+                'polls', 'reports', 'search', 'seasons', 'shows', 'subtitles',
+                'timeline'
+            ],
+            "check": { // Les endpoints qui nécessite de vérifier la volidité du token
+                "episodes": ['display', 'list', 'search'],
+                "movies"  : ['list', 'movie', 'search', 'similars'],
+                "search"  : ['all', 'movies', 'shows'],
+                "shows"   : ['display', 'episodes', 'list', 'search', 'similars']
+            }
+        };
+        static token = null; // Le token d'authentification de l'API
+        static userKey = null; // La clé d'utilisation de l'API
+        static counter = 0; // Le nombre d'appels à l'API
+        static serverBaseUrl = null; // L'URL de base du serveur contenant les ressources statiques
+        static notification = function() {} // Fonction de notification sur la page Web
+        static userIdentified = function() {} // Fonction pour vérifier que le membre est connecté
 
+        /**
+         * Constructeur de la classe abstraite Media
+         * @param  {Object} data Les données de la ressource
+         * @param  {Object} elt  Le DOMElement jQuery
+         * @return {Media}
+         */
         constructor(data, elt) {
             if (typeof data !== 'object') {
                 throw new Error('data is not an object');
             }
-            // Object.assign(this, data);
-            this.init(data);
             this._type = {singular: 'unknown', plural: 'unknown'};
             this.elt = elt;
+            return this.init(data);
         }
         /**
          * Initialize l'objet avec les données
@@ -307,9 +318,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (data) {
                 Object.assign(this, data);
             }
-            if (this.hasOwnProperty('notes')) {
+            if (this.notes !== undefined) {
                 this.objNote = this.notes;
-            } else if (this.hasOwnProperty('note')) {
+            } else if (this.note !== undefined) {
                 this.objNote = this.note;
             }
             return this;
@@ -318,7 +329,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return this._elt;
         }
         set elt (elt) {
-            if (elt && !elt.hasOwnProperty('jquery')) {
+            if (elt && elt.jquery === undefined) {
                 elt = $(elt);
             }
             this._elt = elt;
@@ -339,7 +350,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {void}
          */
         set objNote(note) {
-            // if (Media.debug) console.log('set objNote param note', note);
             if (note instanceof Note) {
                 this._objNote = note;
             } else if (this._objNote instanceof Note) {
@@ -347,7 +357,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             } else {
                 this._objNote = new Note(note);
             }
-            // if (Media.debug) console.log('set objNote', this._objNote);
         }
         /**
          * Sauvegarde l'objet en cache
@@ -393,7 +402,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   note = parseFloat(this.objNote.mean).toFixed(1);
             let title = `${total} ${votes} : ${note} / 5`;
             // On ajoute la note du membre connecté, si il a voté
-            if (userIdentified() && this.objNote.user > 0) {
+            if (Media.userIdentified() && this.objNote.user > 0) {
                 title += `, votre note: ${this.objNote.user}`;
             }
             if (change) {
@@ -439,7 +448,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
             return this;
         }
-
         /**
          * Fonction d'authentification sur l'API BetaSeries
          *
@@ -454,7 +462,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                           title="Connexion à BetaSeries"
                           width="50%"
                           height="400"
-                          src="${serverBaseUrl}/index.html"
+                          src="${Media.serverBaseUrl}/index.html"
                           style="background:white;margin:auto;">
                   </iframe>
                 </div>'
@@ -476,14 +484,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     } else {
                         console.error('Erreur de récuperation du token', event);
                         reject(event.data);
-                        notification('Erreur de récupération du token', 'Pas de message');
+                        Media.notification('Erreur de récupération du token', 'Pas de message');
                         window.removeEventListener("message", receiveMessage, false);
                     }
                 }
                 window.addEventListener("message", receiveMessage, false);
             });
         }
-
         /**
          * Fonction servant à appeler l'API de BetaSeries
          *
@@ -496,7 +503,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          */
         static callApi(type, resource, action, args, force = false) {
             if (Media.api && Media.api.resources.indexOf(resource) === -1) {
-                throw new Error(`Ressource (${resource}) inconnue dans l\'API.`);
+                throw new Error(`Ressource (${resource}) inconnue dans l'API.`);
             }
             if (! Media.token || ! Media.userKey) {
                 throw new Error('Token and userKey are required');
@@ -533,7 +540,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
             // On check si on doit vérifier la validité du token
             // (https://www.betaseries.com/bugs/api/461)
-            if (userIdentified() && checkKeys.indexOf(resource) !== -1 &&
+            if (Media.userIdentified() && checkKeys.indexOf(resource) !== -1 &&
                 Media.api.check[resource].indexOf(action) !== -1)
             {
                 check = true;
@@ -546,7 +553,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     mode: 'cors',
                     cache: 'no-cache'
                 };
-                let uri = `${Media.api.base}/${resource}/${action}`;
+                let uri = `${Media.api.url}/${resource}/${action}`;
                 const keys = Object.keys(args);
                 // On crée l'URL de la requête de type GET avec les paramètres
                 if (type === 'GET' && keys.length > 0) {
@@ -560,12 +567,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 }
 
                 fetch(uri, initFetch).then(response => {
+                    Media.counter++; // Incrément du compteur de requêtes à l'API
                     if (Media.debug) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
                     // On récupère les données et les transforme en objet
                     response.json().then((data) => {
                         if (Media.debug) console.log('fetch (%s %s) data', type, uri, data);
                         // On gère le retour d'erreurs de l'API
-                        if (data.hasOwnProperty('errors') && data.errors.length > 0) {
+                        if (data.errors !== undefined && data.errors.length > 0) {
                             const code = data.errors[0].code,
                                   text = data.errors[0].text;
                             if (code === 2005 ||
@@ -601,7 +609,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 });
             }
             return new Promise((resolve, reject) => {
-                counter++; // Incrément du compteur de requêtes à l'API
                 if (check) {
                     let paramsFetch = {
                         method: 'GET',
@@ -610,7 +617,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         cache: 'no-cache'
                     };
                     if (Media.debug) console.info('%ccall /members/is_active', 'color:blue');
-                    fetch(`${Media.api.base}/members/is_active`, paramsFetch).then(resp => {
+                    fetch(`${Media.api.url}/members/is_active`, paramsFetch).then(resp => {
+                        Media.counter++; // Incrément du compteur de requêtes à l'API
                         if ( ! resp.ok) {
                             // Appel de l'authentification pour obtenir un token valide
                             Media.authenticate().then(() => {
@@ -645,7 +653,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         constructor(data) {
             super(data, $('.blockInformations'));
             this._type = {singular: 'show', plural: 'shows'};
-            this.save();
+            return this.save();
         }
         /**
          * Initialize l'objet avec les données
@@ -1305,7 +1313,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (Media.debug) console.log('addRating');
 
             if (this.rating) {
-                let rating = ratings.hasOwnProperty(this.rating) ? ratings[this.rating] : '';
+                let rating = ratings[this.rating] !== undefined ? ratings[this.rating] : '';
                 if (rating !== '') {
                     // On ajoute la classification
                     $('.blockInformations__details')
@@ -1331,8 +1339,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         constructor(data) {
             super(data, $('.blockInformations'));
             this._type = {singular: 'movie', plural: 'movies'};
-            this.init();
-            this.save();
+            return this.save();
         }
         /**
          * Initialize l'objet avec les données
@@ -1445,7 +1452,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     // fetch show
                 }
             }
-            this.save();
+            return this.save();
         }
         /**
          * Initialize l'objet avec les données
@@ -1755,10 +1762,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 delete data.in_account;
             } else {
                 data._in_account = data.user.in_account;
+                data._description = data.synopsis;
+                delete data.synopsis;
             }
             super(data, elt);
             this._type = type;
-            this.init(data).save();
+            return this.save();
         }
         /**
          * Initialize l'objet avec les données
@@ -1766,6 +1775,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {Similar}
          */
         init(data) {
+            if (this._type.singular === 'show') {
+                data._description = data.description;
+                delete data.description;
+                data._in_account = data.in_account;
+                delete data.in_account;
+            } else if (this._type.singular === 'movie') {
+                data._in_account = data.user.in_account;
+                data._description = data.synopsis;
+                delete data.synopsis;
+            }
             super.init(data);
             return this;
         }
@@ -1784,7 +1803,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {string}
          */
         get description() {
-            return (this._type.singular === 'show') ? this._description : this.synopsis;
+            return this._description;
         }
         /**
          * Modifie la description de la ressource
@@ -1792,7 +1811,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {void}
          */
         set description(synopsis) {
-            this.description = synopsis;
+            this._description = synopsis;
         }
         /**
          * Ajoute le bandeau Viewed sur le poster du similar
@@ -1851,7 +1870,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 //if (debug) console.log('Popover Wrench', eltId, self);
                 this.fetch().then(function(data) {
                     $dataRes.empty().append(renderjson.set_show_to_level(2)(data[_this._type.singular]));
-                    $('#dialog-resource-title span.counter').empty().text('(' + counter + ' appels API)');
+                    $('#dialog-resource-title span.counter').empty().text('(' + Media.counter + ' appels API)');
                     $('#dialog-resource').show(400, onShow);
                     $('#dialog-resource .close').click(e => {
                         e.stopPropagation();
@@ -2046,7 +2065,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         if (!response.ok) return null;
                         return response.json();
                     }).then(data => {
-                        if (data !== null && data.hasOwnProperty('poster_path') && data.poster_path !== null) {
+                        if (data !== null && data.poster_path !== undefined && data.poster_path !== null) {
                             _this._elt.find('div.block404').replaceWith(`
                                 <img class="js-lazy-image u-opacityBackground fade-in"
                                      width="125"
@@ -2105,7 +2124,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
         _init(showId) {
             let objUpAuto = GM_getValue('objUpAuto');
-            if (objUpAuto.hasOwnProperty(showId)) {
+            this._exist = false;
+            if (objUpAuto[showId] !== undefined) {
+                this._exist = true;
                 this._status = objUpAuto[showId].status;
                 this._auto = objUpAuto[showId].auto;
                 this._interval = objUpAuto[showId].interval;
@@ -2114,6 +2135,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 this._auto = false; // Autorise l'activation de la tâche d'update des épisodes
                 this._interval = 0; // Intervalle de temps entre les mises à jour
             }
+            this.changeColorBtn();
             return this;
         }
         _save() {
@@ -2125,6 +2147,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             };
             objUpAuto[this._showId] = obj;
             GM_setValue('objUpAuto', objUpAuto);
+            this._exist = true;
             this.changeColorBtn();
             return this;
         }
@@ -2150,9 +2173,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             this._interval = val;
             this._save();
         }
+        /**
+         * Change la couleur du bouton de mise à jour
+         * en fonction du statut de la mise à jour
+         * @return {UpdateAuto}
+         */
         changeColorBtn() {
             let color = '#fff';
-            if (this._status && this._auto) {
+            if (! this._exist) {
+                color = '#6c757d'; // grey
+            } else if (this._status && this._auto) {
                 color = 'green';
             } else if (this._auto && ! this._status) {
                 color = 'orange';
@@ -2160,37 +2190,53 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 color = 'red';
             }
             $('.updateEpisodes').css('color', color);
+            return this;
         }
+        /**
+         * Stop la tâche de mise à jour auto
+         * @return {UpdateAuto}
+         */
         stop() {
             if (this._objShow.user.remaining <= 0 && this._objShow.isEnded()) {
                 this._auto = false;
                 this._interval = 0;
+            } else if (this._objShow.user.remaining <= 0) {
+                this._auto = false;
             }
             this.status = false;
             clearInterval(UpdateAuto.timer);
             UpdateAuto.timer = null;
+            return this;
         }
+        /**
+         * Supprime les options du stockage
+         * @return {UpdateAuto}
+         */
         delete() {
             this.stop();
             let objUpAuto = GM_getValue('objUpAuto');
-            if (objUpAuto.hasOwnProperty(this._showId)) {
+            if (objUpAuto[this._showId] !== undefined) {
                 delete objUpAuto[this._showId];
                 GM_setValue('objUpAuto', objUpAuto);
             }
             return this;
         }
+        /**
+         * Lance la tâche de mise à jour auto
+         * @return {UpdateAuto}
+         */
         launch() {
             // Si les options sont modifiées pour arrêter la tâche
             // et que le statut est en cours
             if (this._status && (!this._auto || this._interval <= 0)) {
                 if (debug) console.log('close interval updateEpisodeListAuto');
-                this.stop();
+                return this.stop();
             }
             // Si les options modifiées pour lancer
             else if (this._auto && this._interval > 0) {
                 if (this._objShow.user.remaining <= 0) {
                     this.stop();
-                    return;
+                    return this;
                 }
                 this.status = true;
                 if (UpdateAuto.timer) {
@@ -2215,6 +2261,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     }
                 }, (this._interval * 60) * 1000);
             }
+            return this;
         }
     }
 
@@ -2301,7 +2348,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     Media.debug = debug;
     Media.cache = cache;
     Media.notification = notification;
-    Media.api = api;
+    Media.userIdentified = userIdentified;
     Media.token = betaseries_api_user_token;
     Media.userKey = betaseries_api_user_key;
     Media.serverBaseUrl = serverBaseUrl;
@@ -2460,7 +2507,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 // $('.maincontent > ul > li > strong').last().text().trim().split(' ')[1]
                 const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(),
                       lastF = parseFloat(latest);
-                if (!Number.isNaN(lastF) && lastF > parseFloat(api.versions.last)) {
+                if (!Number.isNaN(lastF) && lastF > parseFloat(Media.api.versions.last)) {
                     window.alert("L'API possède une nouvelle version: " + latest);
                 }
             }
@@ -2841,7 +2888,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             getResourceData().then(function(data) {
                 // if (debug) console.log('addBtnDev promise return', data);
                 $dataRes.empty().append(renderjson.set_show_to_level(2)(data[type.singular]));
-                $('#dialog-resource-title span.counter').empty().text('(' + counter + ' appels API)');
+                $('#dialog-resource-title span.counter').empty().text('(' + Media.counter + ' appels API)');
                 dialog.show(400, onShow);
             }, (err) => {
                 notification('Erreur de récupération de la ressource', 'addBtnDev: ' + err);
@@ -2879,11 +2926,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
     /**
      * Cette fonction permet de récupérer les données API de la ressource principale
-     * @param  {boolean} [nocache=false] Flag indiquant si il faut utiliser les données en cache
+     * @param  {boolean} [nocache=true]  Flag indiquant si il faut utiliser les données en cache
      * @param  {number}  [id=null]       Identifiant de la ressource
      * @return {Promise<Object>}
      */
-    function getResourceData(nocache = false, id = null) {
+    function getResourceData(nocache = true, id = null) {
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
               fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
         id = (id === null) ? getResourceId() : id;
@@ -3205,7 +3252,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 episodes = $('#episodes .slide_flex');
 
             // On vérifie que les saisons et les episodes soient chargés sur la page
-            if (episodes.length <= 0 && episodes.length < len) {
+            if (episodes.length <= 0 || episodes.length < len) {
                 if (debug) console.log('waitSeasonsAndEpisodesLoaded: En attente du chargement des vignettes');
                 return;
             }
@@ -3363,10 +3410,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (! userIdentified() || betaseries_api_user_key === '') return;
 
-        let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
-            vignettes = getVignettes();
-
         const seasons = $('#seasons .slide_flex');
+        let vignettes = getVignettes();
 
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
 
@@ -3376,7 +3421,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckSeen() {
             vignettes = getVignettes();
-            len = parseInt($('#seasons .slide--current .slide__infos').text(), 10);
 
             const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift();
 
@@ -3388,7 +3432,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                           id="csspopover"
                           href="${serverBaseUrl}/css/popover.min.css"
                           integrity="${integrityPopover}"
-                          crossorigin="anonymous" \>
+                          crossorigin="anonymous" />
                     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
                             id="jsbootstrap"
                             integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
@@ -3492,13 +3536,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
             // Ajouter un bouton de mise à jour des épisodes de la saison courante
             if ($('#updateEpisodeList').length < 1) {
-                /*
-                      <img src="${serverBaseUrl}/img/update.png"
-                           class="updateEpisodes updateElement finish"
-                           title="Mise à jour des épisodes de la saison"
-                           style="margin-right:10px;"/>
-
-                 */
                 $('#episodes .blockTitles').prepend(`
                     <style>#updateEpisodeList .popover {left: 65px; top: 40px;}</style>
                     <div id="updateEpisodeList" class="updateElements">
@@ -3523,7 +3560,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     res.fetchEpisodes(parseInt(seasonNum, 10), true).then(() => {
                         // if (debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
                         vignettes = getVignettes();
-                        len = getNbVignettes();
+                        // len = getNbVignettes();
                         let $vignette, episode, changed = false, retour;
 
                         for (let v = 0; v < vignettes.length; v++) {
@@ -3547,10 +3584,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             res.update(true).then(() => {
                                 // Si il n'y a plus d'épisodes à regarder sur la série
                                 if (res.user.remaining <= 0) {
-                                    // On arrête la mise à jour auto des épisodes
-                                    if (timerIntervalAuto) {
-                                        clearInterval(timerIntervalAuto);
-                                    }
                                     let objUpAuto = new UpdateAuto(res);
                                     // Si la série est terminée
                                     if (res.isEnded()) {
@@ -3558,8 +3591,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                         objUpAuto.delete();
                                     } else {
                                         // On désactive la mise à jour auto
-                                        objUpAuto.status = false;
-                                        objUpAuto.auto = false;
+                                        objUpAuto.stop();
                                     }
                                 }
                                 self.addClass('finish');
@@ -3611,10 +3643,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             res.addShowClick();
         }
 
-        // Retourne le nombre de vignettes
-        function getNbVignettes() {
-            return parseInt($('#seasons .slide--current .slide__infos').text().match(/\d+/).shift(), 10);
-        }
         // On récupère les vignettes des épisodes
         function getVignettes() {
             return $('#episodes .slide__image');
@@ -3771,7 +3799,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                           id="csspopover"
                           href="${serverBaseUrl}/css/popover.min.css"
                           integrity="${integrityPopover}"
-                          crossorigin="anonymous" \>
+                          crossorigin="anonymous" />
                     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
                             id="jsbootstrap"
                             integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
@@ -4022,7 +4050,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         if (debug) console.log('updateAgenda updateEpisodes', data);
                         for (let s = 0; s < data.shows.length; s++) {
                             newShowIds[data.shows[s].id] = {code: data.shows[s].unseen[0].code.toLowerCase()};
-                            if (!currentShowIds.hasOwnProperty(data.shows[s].id)) {
+                            if (currentShowIds[data.shows[s].id] === undefined) {
                                 if (debug) console.log('Une nouvelle série est arrivée', data.shows[s]);
                                 // Il s'agit d'une nouvelle série
                                 // TODO Ajouter un nouveau container
@@ -4037,7 +4065,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             let container = $(containersEpisode.get(e)),
                                 unseen;
                             // Si la serie n'est plus dans la liste
-                            if (!newShowIds.hasOwnProperty(container.data('showId'))) {
+                            if (newShowIds[container.data('showId')] === undefined) {
                                 if (debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
                                 container.parent().remove();
                                 continue;
