@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.13
+// @version      1.0.14
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -672,7 +672,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             this.nbSimilars = parseInt(this.similars, 10);
             this.similars = [];
-            if (_similars && _similars.length === this.similars) {
+            if (_similars) {
                 this.similars = _similars;
             }
             this.length = parseInt(this.length, 10);
@@ -2162,11 +2162,16 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             $('.updateEpisodes').css('color', color);
         }
         stop() {
+            if (this._objShow.user.remaining <= 0 && this._objShow.isEnded()) {
+                this._auto = false;
+                this._interval = 0;
+            }
             this.status = false;
             clearInterval(UpdateAuto.timer);
             UpdateAuto.timer = null;
         }
         delete() {
+            this.stop();
             let objUpAuto = GM_getValue('objUpAuto');
             if (objUpAuto.hasOwnProperty(this._showId)) {
                 delete objUpAuto[this._showId];
