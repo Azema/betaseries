@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.15
+// @version      1.0.16
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -664,7 +664,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     reject(err);
                                 });
                             } else {
-                                reject(JSON.stringify(data.errors[0]));
+                                reject(data.errors[0]);
                             }
                             return;
                         }
@@ -737,7 +737,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         /**
          * Initialize l'objet avec les données
          * @param  {Object} data Les données de la série
-         * @return {Show}
+         * @return {Show}        La ressource
          */
         init(data) {
             // On sauvegarde les épisodes et les similars
@@ -784,9 +784,27 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 })
             });
         }
+        /**
+         * Récupère les données de la série sur l'API
+         * @param  {boolean} [force=true] Indique si on utilise les données en cache
+         * @return {Promise<Object>}      Les données de la série
+         */
+        fetch(force = true) {
+            return Media.callApi('GET', 'shows', 'display', {id: this.id}, force, false);
+        }
+        /**
+         * isEnded - Indique si la série est terminée
+         *
+         * @return {boolean}  Terminée ou non
+         */
         isEnded() {
             return (this.status.toLowerCase() === 'ended') ? true : false;
         }
+        /**
+         * isArchived - Indique si la série est archivée
+         *
+         * @return {boolean}  Archivée ou non
+         */
         isArchived() {
             return this.user.archived;
         }
@@ -900,7 +918,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * Met à jour les données de la série
          * @param  {Boolean}  [force=false] Forcer la récupération des données sur l'API
          * @param  {Function} [cb=noop]     Fonction de callback
-         * @return {Promise}                Promesse (Show)
+         * @return {Promise<Show>}          Promesse (Show)
          */
         update(force = false, cb = noop) {
             const _this = this;
@@ -1118,16 +1136,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     e.stopPropagation();
                     e.preventDefault();
                     if (Media.debug) console.groupCollapsed('AddShow');
-
-                    _this.addToAccount()
-                    .then(show => {
+                    const done = function() {
                         // On met à jour les boutons Archiver et Favori
-                        changeBtnAdd(show);
+                        changeBtnAdd(_this);
                         // On met à jour le bloc du prochain épisode à voir
                         _this.updateNextEpisode(function() {
                             if (Media.debug) console.groupEnd('AddShow');
                         });
-                    }, err => {
+                    };
+                    _this.addToAccount()
+                    .then(() => done(), err => {
+                        if (err && err.code !== undefined && err.code === 2003) {
+                            done();
+                            return;
+                        }
                         Media.notification('Erreur d\'ajout de la série', err);
                         if (Media.debug) console.groupEnd('AddShow');
                     });
@@ -1254,66 +1276,71 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 {
                     e.stopPropagation();
                     e.preventDefault();
+                    const done = function() {
+                        const afterNotif = function() {
+                            // On nettoie les propriétés servant à l'update de l'affichage
+                            _this.user.status = 0;
+                            _this.user.archived = false;
+                            _this.user.favorited = false;
+                            _this.user.remaining = 0;
+                            _this.user.last = "S00E00";
+                            _this.user.next.id = null;
+                            _this.save();
+
+                            // On remet le bouton Ajouter
+                            $('#reactjs-show-actions').html(`
+                                <div class="blockInformations__action">
+                                  <button class="btn-reset btn-transparent btn-add" type="button">
+                                    <span class="svgContainer">
+                                      <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                                      </svg>
+                                    </span>
+                                  </button>
+                                  <div class="label">${trans('show.button.add.label')}</div>
+                                </div>`
+                            );
+                            // On supprime les items du menu Options
+                            $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
+                            // Nettoyage de l'affichage des épisodes
+                            const checks = $('#episodes .slide_flex');
+                            let promise,
+                                update = false; // Flag pour l'update de l'affichage
+                            if (_this.episodes && _this.episodes.length > 0) {
+                                promise = new Promise(resolve => resolve(_this));
+                            } else {
+                                promise = _this.fetchEpisodes();
+                            }
+                            promise.then(() => {
+                                for (let e = 0; e < _this.episodes.length; e++) {
+                                    if (_this.episodes[e].elt === null) {
+                                        _this.episodes[e].elt = $(checks.get(e));
+                                    }
+                                    if (e === _this.episodes.length - 1) update = true;
+                                    if (debug) console.log('clean episode %d', e, update);
+                                    _this.episodes[e].updateRender('notSeen', update);
+                                }
+                                _this.addShowClick();
+                            });
+                        };
+                        new PopupAlert({
+                            title: trans("popup.delete_show_success.title"),
+                            text: trans("popup.delete_show_success.text", { "%title%": _this.title }),
+                            yes: trans("popup.delete_show_success.yes"),
+                            callback_yes: afterNotif
+                        });
+                    };
                     // Supprimer la série du compte utilisateur
                     new PopupAlert({
                         title: trans("popup.delete_show.title", { "%title%": _this.title }),
                         text: trans("popup.delete_show.text", { "%title%": _this.title }),
                         callback_yes: function() {
                             _this.removeFromAccount()
-                            .then(show => {
-                                const afterNotif = function() {
-                                    // On nettoie les propriétés servant à l'update de l'affichage
-                                    show.user.status = 0;
-                                    show.user.archived = false;
-                                    show.user.favorited = false;
-                                    show.user.remaining = 0;
-                                    show.user.last = "S00E00";
-                                    show.user.next.id = null;
-                                    show.save();
-
-                                    // On remet le bouton Ajouter
-                                    $('#reactjs-show-actions').html(`
-                                        <div class="blockInformations__action">
-                                          <button class="btn-reset btn-transparent btn-add" type="button">
-                                            <span class="svgContainer">
-                                              <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                                              </svg>
-                                            </span>
-                                          </button>
-                                          <div class="label">${trans('show.button.add.label')}</div>
-                                        </div>`
-                                    );
-                                    // On supprime les items du menu Options
-                                    $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
-                                    // Nettoyage de l'affichage des épisodes
-                                    const checks = $('#episodes .slide_flex');
-                                    let promise,
-                                        update = false; // Flag pour l'update de l'affichage
-                                    if (show.episodes && show.episodes.length > 0) {
-                                        promise = new Promise(resolve => resolve(show));
-                                    } else {
-                                        promise = show.fetchEpisodes();
-                                    }
-                                    promise.then(show => {
-                                        for (let e = 0; e < show.episodes.length; e++) {
-                                            if (show.episodes[e].elt === null) {
-                                                show.episodes[e].elt = $(checks.get(e));
-                                            }
-                                            if (e === show.episodes.length - 1) update = true;
-                                            if (debug) console.log('clean episode %d', e, update);
-                                            show.episodes[e].updateRender('notSeen', update);
-                                        }
-                                        show.addShowClick();
-                                    });
-                                };
-                                new PopupAlert({
-                                    title: trans("popup.delete_show_success.title"),
-                                    text: trans("popup.delete_show_success.text", { "%title%": _this.title }),
-                                    yes: trans("popup.delete_show_success.yes"),
-                                    callback_yes: afterNotif
-                                });
-                            }, (err) => {
+                            .then(() => done(), err => {
+                                if (err && err.code !== undefined && err.code === 2004) {
+                                    done();
+                                    return;
+                                }
                                 Media.notification('Erreur de suppression de la série', err);
                             });
                         },
@@ -1469,8 +1496,30 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         get in_account() {
             return this.user.in_account;
         }
-        fetch() {
-            return Media.callApi('GET', 'movies', 'movie', {id: this.id});
+        /**
+         * Methode static servant à retourner un objet Movie
+         * à partir de son ID
+         * @param  {number} id             L'identifiant du film
+         * @param  {boolean} [force=false] Indique si on utilise le cache ou non
+         * @return {Promise<Movie>}
+         */
+        static fetch(id, force = false) {
+            return new Promise((resolve, reject) => {
+                Media.callApi('GET', 'movies', 'movie', {id: id}, force)
+                .then((data) => {
+                    resolve(new Movie(data));
+                }).catch((err) => {
+                    reject(err);
+                })
+            });
+        }
+        /**
+         * Récupère les données du film sur l'API
+         * @param  {boolean} [force=true] Indique si on utilise les données en cache
+         * @return {Promise<Object>}       Les données du film
+         */
+        fetch(force = true) {
+            return Media.callApi('GET', 'movies', 'movie', {id: this.id}, force, false);
         }
         /**
          * Retourne l'objet Similar correspondant à l'ID
@@ -1706,15 +1755,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     // On met à jour l'objet Episode
                     if (method === 'POST' && response && pos) {
                         const $vignettes = $('#episodes .slide_flex');
+                        let episode;
                         for (let e = 0; e < pos; e++) {
-                            if (_this.show.episodes[e].elt === null) {
-                                _this.show.episodes[e].elt = $vignettes.get(e);
+                            episode = _this.show.episodes[e];
+                            if (episode.elt === null) {
+                                episode.elt = $vignettes.get(e);
                             }
-                            if (! _this.show.episodes[e].user.seen) {
-                                _this.show.episodes[e].user.seen = true;
-                                _this.show.episodes[e]
+                            if (! episode.user.seen) {
+                                episode.user.seen = true;
+                                episode
                                     .updateRender('seen', false)
-                                    .show.episodes[e].save();
+                                    .save();
                             }
                         }
                     }
@@ -1780,7 +1831,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 } else if (lenSeen === lenNotSpecial) {
                     new PopupAlert({
                         title: 'Fin de la saison',
-                        text: 'Tous les épisodes de la saison, or spéciaux, ont été vu.<br/>Voulez-vous passer à la saison suivante ?',
+                        text: 'Tous les épisodes de la saison, hors spéciaux, ont été vu.<br/>Voulez-vous passer à la saison suivante ?',
                         callback_yes: () => {
                             moveSeason();
                         },
@@ -3538,7 +3589,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running',
                   help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
             return `<style>
-                        .optionsUpAuto .close{
+                        .optionsUpAuto .close {
                             position: absolute;
                             right: 5px;
                             border: none;
@@ -3605,22 +3656,24 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // Et on supprime les listeners de la popup
             $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
                 $('#episodes .slide__image').popover('enable');
-                $('.optionsUpAuto .badge').off('click');
+                $('.optionsUpAuto .badge').css('cursor', 'initial').off('click');
                 $('#updateEpisodeList button.close').off('click');
                 $('#optionsUpdateEpisodeList button.btn-primary').off('click');
             });
 
             $('#updateEpisodeList .updateElement').on('shown.bs.popover', function () {
                 $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
-                $('.optionsUpAuto .badge').css('cursor', 'pointer').click(e => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const $badge = $(e.currentTarget);
-                    if ($badge.hasClass('badge-success')) {
-                        // On arrête la tâche d'update auto
-                        objUpAuto.stop();
-                    }
-                });
+                if (objUpAuto.status) {
+                    $('.optionsUpAuto .badge').css('cursor', 'pointer').click(e => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const $badge = $(e.currentTarget);
+                        if ($badge.hasClass('badge-success')) {
+                            // On arrête la tâche d'update auto
+                            objUpAuto.stop();
+                        }
+                    });
+                }
                 $('#updateEpisodeList button.close').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
