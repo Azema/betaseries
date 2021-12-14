@@ -212,7 +212,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
         }
     }
-    cache = new Cache();
 
     class Note {
         /**
@@ -449,6 +448,21 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return this;
         }
         /**
+         * Tableau de similar
+         * @type Similar[]
+         */
+        similars;
+        /**
+         * Retourne les similars associés au media
+         * @return {Promise<Media>}
+         */
+        fetchSimilars() {}
+        /**
+         * Retourne le similar correspondant à l'identifiant
+         * @return {Similar}
+         */
+        getSimilar(id) {}
+        /**
          * Fonction d'authentification sur l'API BetaSeries
          *
          * @return {Promise}
@@ -646,6 +660,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     class Show extends Media {
         /**
+         * Liste d'épisodes
+         * @type Episode[]
+         */
+        episodes;
+        /**
          * Constructeur de la classe Show
          * @param  {Object} data Les données de la ressource
          * @return {Show}        La ressource
@@ -687,6 +706,23 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             this.followers = parseInt(this.followers, 10);
             this.characters = parseInt(this.characters, 10);
             return this;
+        }
+        /**
+         * Methode static servant à retourner un objet show
+         * à partir de son ID
+         * @param  {number} id             L'identifiant de la série
+         * @param  {boolean} [force=false] Indique si on utilise le cache ou non
+         * @return {Promise<Show>}
+         */
+        static fetch(id, force = false) {
+            return new Promise((resolve, reject) => {
+                Media.callApi('GET', 'shows', 'display', {id: id}, force)
+                .then((data) => {
+                    resolve(new Show(data));
+                }).catch((err) => {
+                    reject(err);
+                })
+            });
         }
         isEnded() {
             return (this.status.toLowerCase() === 'ended') ? true : false;
@@ -964,9 +1000,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         </a>`;
                 $('.blockInformations__actions').after(template);
             }
-        }
-        fetch(force = false) {
-            return Media.callApi('GET', 'shows', 'display', {id: this.id}, force);
         }
         /**
          * Retourne l'objet Similar correspondant à l'ID
@@ -1467,9 +1500,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             return this;
         }
+        /**
+         * Ajoute le titre de l'épisode à l'attribut Title
+         * du DOMElement correspondant au titre de l'épisode
+         * sur la page Web
+         *
+         * @return {Episode} L'épisode
+         */
         addAttrTitle() {
             // Ajout de l'attribut title pour obtenir le nom complet de l'épisode, lorsqu'il est tronqué
             this.elt.find('.slide__title').attr('title', this.title);
+            return this;
         }
         /**
          * Met à jour le DOMElement .checkSeen avec les
@@ -1881,10 +1922,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
             return this;
         }
-        fetch(force = false) {
-            const method = this._type.singular === 'show' ? 'display' : 'movie';
-            return Media.callApi('GET', this._type.plural, method, {id: this.id}, force);
-        }
         /**
          * Retourne le contenu HTML pour la popup
          * de présentation du similar
@@ -2104,10 +2141,28 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     }
 
     class UpdateAuto {
+        /**
+         * Instance unique de la classe UpdateAuto
+         * @type UpdateAuto
+         */
         static instance = null;
+        /**
+         * Indique si une instance de la classe existe déjà
+         * @type boolean
+         */
         static exists = false;
+        /**
+         * Contient l'identifiant du timer interval de la tâche
+         * @type number
+         */
         static timer = null;
 
+        /**
+         * constructor - Constructeur type Singleton de la classe
+         *
+         * @param  {Show} objShow  Un objet de type Show
+         * @return {UpdateAuto}    L'instance unique UpdateAuto
+         */
         constructor(objShow) {
             if (! (objShow instanceof Show)) {
                 throw new TypeError('Show must be an instance of class Show');
@@ -2122,6 +2177,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             UpdateAuto.exists = true;
             return this;
         }
+
+        /**
+         * _init - Initialize les données de l'objet
+         *
+         * @param  {type} showId L'identifiant de la série
+         * @return {UpdateAuto}  L'instance unique UpdateAuto
+         */
         _init(showId) {
             let objUpAuto = GM_getValue('objUpAuto');
             this._exist = false;
@@ -2138,6 +2200,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             this.changeColorBtn();
             return this;
         }
+
+        /**
+         * _save - Sauvegarde les options de la tâche d'update
+         * auto dans l'espace de stockage de Tampermonkey
+         *
+         * @return {UpdateAuto} L'instance unique UpdateAuto
+         */
         _save() {
             let objUpAuto = GM_getValue('objUpAuto');
             let obj = {
@@ -2152,31 +2221,77 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return this;
         }
 
+        /**
+         * get status - Retourne le statut de la tâche d'update auto
+         * des épisodes
+         *
+         * @return {boolean}  Le statut
+         */
         get status() {
             return this._status;
         }
+
+        /**
+         * set status - Modifie le statut de la tâche d'update auto
+         * des épisodes
+         *
+         * @param  {boolean} status Le statut de la tâche
+         * @return {void}
+         */
         set status(status) {
             this._status = status;
             this._save();
         }
+
+        /**
+         * get auto - Flag indiquant l'autorisation de pouvoir lancer
+         * la tâche d'update auto
+         *
+         * @return {boolean}  Flag d'autorisation
+         */
         get auto() {
             return this._auto;
         }
+
+        /**
+         * set auto - Modifie l'autorisation de lancer la tâche
+         * d'update auto
+         *
+         * @param  {boolean} auto Le flag
+         * @return {void}
+         */
         set auto(auto) {
             this._auto = auto;
             this._save();
         }
+
+        /**
+         * get interval - Retourne l'intervalle de temps entre
+         * chaque update auto
+         *
+         * @return {number}  L'intervalle de temps en minutes
+         */
         get interval() {
             return this._interval;
         }
+
+        /**
+         * set interval - Définit l'intervalle de temps, en minutes,
+         * entre chaque update auto
+         *
+         * @param  {number} val L'intervalle de temps en minutes
+         * @return {void}
+         */
         set interval(val) {
             this._interval = val;
             this._save();
         }
+
         /**
-         * Change la couleur du bouton de mise à jour
-         * en fonction du statut de la mise à jour
-         * @return {UpdateAuto}
+         * changeColorBtn - Modifie la couleur du bouton d'update
+         * des épisodes sur la page Web
+         *
+         * @return {UpdateAuto} L'instance unique UpdateAuto
          */
         changeColorBtn() {
             let color = '#fff';
@@ -2192,9 +2307,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             $('.updateEpisodes').css('color', color);
             return this;
         }
+
         /**
-         * Stop la tâche de mise à jour auto
-         * @return {UpdateAuto}
+         * stop - Permet de stopper la tâche d'update auto et
+         * aussi de modifier le flag et l'intervalle en fonction
+         * de l'état de la série
+         *
+         * @return {UpdateAuto} L'instance unique UpdateAuto
          */
         stop() {
             if (this._objShow.user.remaining <= 0 && this._objShow.isEnded()) {
@@ -2208,9 +2327,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             UpdateAuto.timer = null;
             return this;
         }
+
         /**
-         * Supprime les options du stockage
-         * @return {UpdateAuto}
+         * delete - Supprime les options d'update auto
+         * de la série de l'espace de stockage
+         *
+         * @return {UpdateAuto} L'instance unique UpdateAuto
          */
         delete() {
             this.stop();
@@ -2221,9 +2343,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             return this;
         }
+
         /**
-         * Lance la tâche de mise à jour auto
-         * @return {UpdateAuto}
+         * launch - Permet de lancer la tâche d'update auto
+         * des épisodes
+         *
+         * @return {UpdateAuto} L'instance unique UpdateAuto
          */
         launch() {
             // Si les options sont modifiées pour arrêter la tâche
@@ -2273,8 +2398,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     /**
      * Méthode récupérant les épisodes de la série pour une saison
      * @param  {number}  season Le numéro de la saison
-     * @param  {Boolean} force  Forcer l'appel à l'API
-     * @return {Show}           L'objet Show
+     * @return {Promise<Show>}  L'objet Show
      */
     Show.prototype.fetchEpisodes = function(season) {
         // if (debug) console.log('Show fetchEpisodes', {season: season, force: force, object: this});
@@ -2299,8 +2423,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         });
     };
     /**
-     * Méthode récupérant les similaires de la série
-     * @return {Show}  L'objet Show
+     * fetchSimilars - Méthode récupérant les similaires de la série
+     * @return {Promise<Show>}  L'objet Show
      */
     Show.prototype.fetchSimilars = function() {
         const _this = this;
@@ -2321,8 +2445,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         });
     };
     /**
-     * Méthode récupérant les similaires du film
-     * @return {Movie} L'objet Movie
+     * fetchSimilars - Méthode récupérant les similaires du film
+     * @return {Promise<Movie>} L'objet Movie
      */
     Movie.prototype.fetchSimilars = function() {
         const _this = this;
@@ -2341,7 +2465,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         });
     };
-
+    /* Initialize the cache */
+    cache = new Cache();
     /**
      * Paramétrage de la super classe Media
      */
@@ -2560,7 +2685,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             countFilter("pays");
         });
         const baseUrl = generate_route("shows");
-        let hash = url.substr(baseUrl.length);
+        let hash = url.substring(baseUrl.length);
         if (hash.length === 0) {
             return;
         }
@@ -3104,14 +3229,21 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 e.preventDefault();
                 dialog.show();
             });
-            $('.dialog-close').click(function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                dialog.hide();
-            });
             dialog
-                .on('show', function() { html.style.overflowY = 'hidden'; $('#dialog-compare').css('z-index', '1005').css('overflow', 'scroll');})
-                .on('hide', function() { html.style.overflowY = ''; $('#dialog-compare').css('z-index', '0').css('overflow', 'none');});
+                .on('show', function() {
+                    html.style.overflowY = 'hidden';
+                    $('#dialog-compare').css('z-index', '1005').css('overflow', 'scroll');
+                    $('.dialog-close').click(function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        dialog.hide();
+                    });
+                })
+                .on('hide', function() {
+                    html.style.overflowY = '';
+                    $('#dialog-compare').css('z-index', '0').css('overflow', 'none');
+                    $('.dialog-close').off('click');
+                });
         });
     }
 
@@ -3403,10 +3535,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             );
             // On ferme et désactive les autres popups lorsque celle des options est ouverte
             $('#updateEpisodeList .updateElement').on('show.bs.popover', function () {
-                $('#episodes .slide__image').popover('hide');
-                $('#episodes .slide__image').popover('disable');
+                const $updateElement = $('#episodes .slide__image');
+                $updateElement.popover('hide');
+                $updateElement.popover('disable');
             });
             // On réactive les autres popus lorsque celle des options se ferme
+            // Et on supprime les listeners de la popup
             $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
                 $('#episodes .slide__image').popover('enable');
                 $('.optionsUpAuto .badge').off('click');
@@ -3498,7 +3632,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             };
 
             // On ajoute la description des épisodes dans des Popup
-            promise.then((objShow) => {
+            promise.then(() => {
                 let intTime = setInterval(function() { // En attente du chargement des scripts JS
                     if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
                     else clearInterval(intTime);
@@ -3507,7 +3641,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     let $vignette, episode, description;
                     for (let v = 0; v < vignettes.length; v++) {
                         $vignette = $(vignettes.get(v));
-                        episode = objShow.episodes[v];
+                        episode = res.episodes[v];
                         episode.elt = $vignette.parents('.slide_flex');
                         episode.save();
                         description = episode.description;
@@ -3920,12 +4054,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     if (debug) {
                         similar.wrench();
                     }
-                    // On vérifie la présence de l'image du similar
-                    similar.checkImg();
-                    // On ajoute le bandeau viewed sur le similar
-                    similar.addViewed();
-                    // On ajoute le code HTML pour le rendu de la note
-                    similar.renderStars();
+                    similar
+                        // On vérifie la présence de l'image du similar
+                        .checkImg()
+                        // On ajoute le bandeau viewed sur le similar
+                        .addViewed()
+                        // On ajoute le code HTML pour le rendu de la note
+                        .renderStars();
                     // On ajoute la popover sur le similar
                     $link.popover({
                         container: $link,
@@ -4036,7 +4171,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return;
         }
 
-        Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
+        Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: false, subtitles: 'all'})
         .then(data => {
             for (let t = 0; t < len; t++) {
                 const container = $(containersEpisode.get(t));
@@ -4075,7 +4210,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                       len = containersEpisode.length;
                 self.removeClass('finish');
                 let countIntTime = 0;
-                Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: true, subtitles: 'all'})
+                Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: false, subtitles: 'all'})
                 .then(data => {
                     let intTime = setInterval(function() {
                         if (++countIntTime > 60) {
@@ -4085,28 +4220,30 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             if (debug) console.groupEnd('Agenda updateEpisodes');
                             return;
                         }
-                        if (typeof moment != 'function') { return; }
+                        if (typeof moment !== 'function') { return; }
                         else clearInterval(intTime);
 
                         moment.locale('fr');
-                        let newShowIds = {};
+                        let newShowIds = {}, show;
                         if (debug) console.log('updateAgenda updateEpisodes', data);
                         for (let s = 0; s < data.shows.length; s++) {
-                            newShowIds[data.shows[s].id] = {code: data.shows[s].unseen[0].code.toLowerCase()};
-                            if (currentShowIds[data.shows[s].id] === undefined) {
-                                if (debug) console.log('Une nouvelle série est arrivée', data.shows[s]);
+                            show = data.shows[s];
+                            newShowIds[show.id] = {code: show.unseen[0].code.toLowerCase()};
+                            if (currentShowIds[show.id] === undefined) {
+                                if (debug) console.log('Une nouvelle série est arrivée', show);
                                 // Il s'agit d'une nouvelle série
                                 // TODO Ajouter un nouveau container
-                                let newContainer = $(buildContainer(data.shows[s].unseen[0]));
-                                renderNote(data.shows[s].unseen[0].note.mean, newContainer);
+                                let newContainer = $(buildContainer(show.unseen[0]));
+                                renderNote(show.unseen[0].note.mean, newContainer);
                                 $(containersEpisode.get(s)).parent().after(newContainer);
                             }
                         }
                         if (debug) console.log('Iteration principale');
+                        let container, unseen;
                         // Itération principale sur les containers
                         for (let e = 0; e < len; e++) {
-                            let container = $(containersEpisode.get(e)),
-                                unseen;
+                            container = $(containersEpisode.get(e));
+                            unseen = null;
                             // Si la serie n'est plus dans la liste
                             if (newShowIds[container.data('showId')] === undefined) {
                                 if (debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
@@ -4123,7 +4260,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     }
                                 }
                             }
-                            if (container.data('code') !== unseen.code.toLowerCase()) {
+                            if (unseen && container.data('code') !== unseen.code.toLowerCase()) {
                                 if (debug) console.log('Episode à mettre à jour', unseen);
                                 // Mettre à jour l'épisode
                                 let mainLink = $('a.mainLink', container),
@@ -4378,15 +4515,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         if (! userIdentified() || betaseries_api_user_key === '') return;
 
         let series = $('#member_shows div.showItem.cf');
-        if (series.length < 1) return;
+        if (series.length <= 0) return;
 
         series.each(function(index, serie) {
             let id = $(serie).data('id'),
-                infos = $($(serie).find('.infos'));
-            Media.callApi('GET', 'shows', 'display', {'id': id})
-            .then(function(data) {
-                let statut = (data.show.status == 'Continuing') ? 'En cours' : 'Terminée';
-                infos.append(`<br>Statut: ${statut}`);
+                infos = $(serie).find('.infos');
+            // Media.callApi('GET', 'shows', 'display', {'id': id})
+            Show.fetch(id).then(function(show) {
+                infos.append(`<br>Statut: ${(show.isEnded()) ? 'Terminée' : 'En cours'}`);
             }, (err) => {
                 notification('Erreur de modification d\'une série', 'addStatusToGestionSeries: ' + err);
             });
