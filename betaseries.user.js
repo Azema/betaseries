@@ -290,9 +290,17 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         static token = null; // Le token d'authentification de l'API
         static userKey = null; // La clé d'utilisation de l'API
         static counter = 0; // Le nombre d'appels à l'API
-        static serverBaseUrl = null; // L'URL de base du serveur contenant les ressources statiques
+        static serverBaseUrl = ''; // L'URL de base du serveur contenant les ressources statiques
         static notification = function() {} // Fonction de notification sur la page Web
         static userIdentified = function() {} // Fonction pour vérifier que le membre est connecté
+        /**
+         * Types d'évenements gérés par cette classe
+         * @type {Object}
+         */
+        static EventTypes = {
+            UPDATE: 'update',
+            SAVE: 'save'
+        };
 
         /**
          * Constructeur de la classe abstraite Media
@@ -306,6 +314,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             this._type = {singular: 'unknown', plural: 'unknown'};
             this.elt = elt;
+            this._listeners = {};
             return this.init(data);
         }
         /**
@@ -323,6 +332,49 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 this.objNote = this.note;
             }
             return this;
+        }
+        /**
+         * Permet d'ajouter un listener sur un type d'évenement
+         * @param  {string}   name Le type d'évenement
+         * @param  {Function} fn   La fonction à appeler
+         * @return {Show}          L'instance Show
+         */
+        addListener(name, fn) {
+            if (Object.values(Media.EventTypes).indexOf(name) < 0) {
+                throw new Error(`${name} ne fait pas partit des events gérés`);
+            }
+            if (this._listeners[name] === undefined) {
+                this._listeners[name] = [];
+            }
+            this._listeners[name].push(fn);
+            return this;
+        }
+        /**
+         * Permet de supprimer un listener sur un type d'évenement
+         * @param  {string}   name Le type d'évenement
+         * @param  {Function} fn   La fonction qui était appelée
+         * @return {Show}          L'instance Show
+         */
+        removeListener(name, fn) {
+            if (this._listeners[name] !== undefined) {
+                for (let l = 0; l < this._listeners[name].length; l++) {
+                    if (this._listeners[name][l] === fn)
+                        this._listeners[name].splice(l, 1);
+                }
+            }
+            return this;
+        }
+        /**
+         * Appel les listeners pour un type d'évenement
+         * @param  {string} name Le type d'évenement
+         * @return {Show}        L'instance Show
+         */
+        _callListeners(name) {
+            if (this._listeners[name] !== undefined) {
+                for (let l = 0; l < this._listeners[name].length; l++) {
+                    this._listeners[name][l].call(this, this);
+                }
+            }
         }
         get elt() {
             return this._elt;
@@ -364,6 +416,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         save() {
             if (Media.cache instanceof Cache) {
                 Media.cache.set(this._type.plural, this.id, this);
+                this._callListeners(Media.EventTypes.SAVE);
             }
             return this;
         }
@@ -454,6 +507,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         similars;
         /**
          * Retourne les similars associés au media
+         * @abstract
          * @return {Promise<Media>}
          */
         fetchSimilars() {}
@@ -851,6 +905,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     _this.updateRender(() => {
                         resolve(_this);
                         cb();
+                        _this._callListeners(Media.EventTypes.UPDATE);
                     });
                 })
                 .catch(err => {
@@ -1660,7 +1715,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     _this
                         .init(data.episode)
                         .updateRender(status, true)
-                        .save();
+                        .save()
+                        ._callListeners();
                 })
                 .catch(err => {
                     if (Media.debug) console.error('updateStatus error %s', err);
@@ -3592,6 +3648,25 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
 
+        /*
+         * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE,
+         * pour mettre à jour l'update auto des épisodes
+         */
+        res.addListener(Media.EventTypes.UPDATE, function(show) {
+            if (debug) console.log('Listener called');
+            // Si il n'y a plus d'épisodes à regarder sur la série
+            if (show.user.remaining <= 0) {
+                let objUpAuto = new UpdateAuto(show);
+                // Si la série est terminée
+                if (show.isEnded()) {
+                    // On supprime la série des options d'update
+                    objUpAuto.delete();
+                } else {
+                    // On désactive la mise à jour auto
+                    objUpAuto.stop();
+                }
+            }
+        });
         // On ajoute les cases à cocher sur les vignettes courantes
         addCheckSeen();
 
@@ -3759,18 +3834,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
                             }
                             res.update(true).then(() => {
-                                // Si il n'y a plus d'épisodes à regarder sur la série
-                                if (res.user.remaining <= 0) {
-                                    let objUpAuto = new UpdateAuto(res);
-                                    // Si la série est terminée
-                                    if (res.isEnded()) {
-                                        // On supprime la série des options d'update
-                                        objUpAuto.delete();
-                                    } else {
-                                        // On désactive la mise à jour auto
-                                        objUpAuto.stop();
-                                    }
-                                }
                                 self.addClass('finish');
                                 fnLazy.init(); // On affiche les images lazyload
                                 if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
