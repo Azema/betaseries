@@ -510,12 +510,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @abstract
          * @return {Promise<Media>}
          */
-        fetchSimilars() {}
+        fetchSimilars() {
+            throw new Error('method abstraite, vous devez l\'implémenter');
+        }
         /**
          * Retourne le similar correspondant à l'identifiant
-         * @return {Similar}
+         * @abstract
+         * @param  {number} id L'identifiant du similar
+         * @return {Similar}   Le similar
          */
-        getSimilar(id) {}
+        getSimilar(id) {
+            throw new Error('method abstraite, vous devez l\'implémenter');
+        }
         /**
          * Fonction d'authentification sur l'API BetaSeries
          *
