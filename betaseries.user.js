@@ -44,10 +44,50 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
           url = location.pathname,
           noop = function(){},
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
-          tableCSS = serverBaseUrl + '/css/table.min.css',
-          integrityStyle = 'sha384-z4aam29xkOKmgpOUGhk9kS8/SutkQeUtEBBXm2NYiZFc2CJSvH5hothze+P0/dz8',
-          integrityPopover = 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg',
-          integrityTable = 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p',
+          scriptsAndStyles = {
+              "moment": {
+                  type: 'script',
+                  id: 'jsmomment',
+                  src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js',
+                  integrity: 'sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=='
+              },
+              "localefr": {
+                  type: 'script',
+                  id: 'jslocalefr',
+                  src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js',
+                  integrity: 'sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw=='
+              },
+              "popover": {
+                  type: 'style',
+                  id: 'csspopover',
+                  href: `${serverBaseUrl}/css/popover.min.css`,
+                  integrity: 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg'
+              },
+              "bootstrap": {
+                  type: 'script',
+                  id: 'jsbootstrap',
+                  src: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js',
+                  integrity: 'sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl'
+              },
+              "tablecss": {
+                  type: 'style',
+                  id: 'tablecss',
+                  href: `${serverBaseUrl}/css/table.min.css`,
+                  integrity: 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p'
+              },
+              "stylehome": {
+                  type: 'style',
+                  id: 'stylehome',
+                  href: `${serverBaseUrl}/css/style.min.css`,
+                  integrity: 'sha384-z4aam29xkOKmgpOUGhk9kS8/SutkQeUtEBBXm2NYiZFc2CJSvH5hothze+P0/dz8'
+              },
+              "awesome": {
+                  type: 'style',
+                  id: 'awesome',
+                  href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
+                  integrity: 'sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=='
+              }
+          },
           // URI des images et description des classifications TV et films
           ratings = {
               'D-10': {
@@ -265,12 +305,33 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     }
 
     /**
-     * @class Classe abstraite des différents médias
+     * @class Media - Classe abstraite des différents médias
+     * @property {Number} id            Identifant du média
+     * @property {String} title         Titre du média
+     * @property {Number} nbCharacters  Nombre d'acteurs
+     * @property {Object[]} characters  Liste des acteurs
+     * @property {Number} nbComments    Nombre de commentaires
+     * @property {Object[]} comments    Liste des commentaires
+     * @property {Number} nbSimilars    Nombre de similars
+     * @property {Similar[]} similars   Liste des similars
+     * @property {String} resource_url  URL d'accès au média
+     * @property {Object} user          Objet contenant les infos du membre connecté pour ce média
      */
     class Media {
+        /**
+         * Flag de debug pour le dev
+         * @type {boolean}
+         */
         static debug = false;
+        /**
+         * L'objet cache du script pour stocker les données
+         * @type {Cache}
+         */
         static cache = null;
-        // Objet contenant les informations de l'API
+        /**
+         * Objet contenant les informations de l'API
+         * @type {Object}
+         */
         static api = {
             "url": 'https://api.betaseries.com',
             "versions": {"current": '3.0', "last": '3.0'},
@@ -287,12 +348,36 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 "shows"   : ['display', 'episodes', 'list', 'search', 'similars']
             }
         };
-        static token = null; // Le token d'authentification de l'API
-        static userKey = null; // La clé d'utilisation de l'API
-        static counter = 0; // Le nombre d'appels à l'API
-        static serverBaseUrl = ''; // L'URL de base du serveur contenant les ressources statiques
-        static notification = function() {} // Fonction de notification sur la page Web
-        static userIdentified = function() {} // Fonction pour vérifier que le membre est connecté
+        /**
+         * Le token d'authentification de l'API
+         * @type {String}
+         */
+        static token = null;
+        /**
+         * La clé d'utilisation de l'API
+         * @type {String}
+         */
+        static userKey = null;
+        /**
+         * Le nombre d'appels à l'API
+         * @type {Number}
+         */
+        static counter = 0;
+        /**
+         * L'URL de base du serveur contenant les ressources statiques
+         * @type {String}
+         */
+        static serverBaseUrl = '';
+        /**
+         * Fonction de notification sur la page Web
+         * @type {Function}
+         */
+        static notification = function() {}
+        /**
+         * Fonction pour vérifier que le membre est connecté
+         * @type {Function}
+         */
+        static userIdentified = function() {}
         /**
          * Types d'évenements gérés par cette classe
          * @type {Object}
@@ -312,8 +397,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (typeof data !== 'object') {
                 throw new Error('data is not an object');
             }
+            /**
+             * @type {Object}
+             * @property {String} [singular] Type d'objet au singulier
+             * @property {String} [plural] Type d'objet au pluriel
+             */
             this._type = {singular: 'unknown', plural: 'unknown'};
+            /**
+             * @type {DOMElement}
+             */
             this.elt = elt;
+            /**
+             * @type {Object}
+             * @private
+             */
             this._listeners = {};
             return this.init(data);
         }
@@ -340,6 +437,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {Show}          L'instance Show
          */
         addListener(name, fn) {
+            // On vérifie que le type d'event est pris en charge
             if (Object.values(Media.EventTypes).indexOf(name) < 0) {
                 throw new Error(`${name} ne fait pas partit des events gérés`);
             }
@@ -376,9 +474,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 }
             }
         }
+        /**
+         * get elt - Retourne le DOMElement jQuery associé au média
+         *
+         * @return {DOMElement}  Le DOMElement associé au média
+         */
         get elt() {
             return this._elt;
         }
+        /**
+         * set elt - Définit le DOMElement associé au média
+         *
+         * @param  {DOMElement} elt Le DOMElement associé au média
+         * @return {void}
+         */
         set elt (elt) {
             if (elt && elt.jquery === undefined) {
                 elt = $(elt);
@@ -501,11 +610,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return this;
         }
         /**
-         * Tableau de similar
-         * @type Similar[]
-         */
-        similars;
-        /**
          * Retourne les similars associés au media
          * @abstract
          * @return {Promise<Media>}
@@ -519,6 +623,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @param  {number} id L'identifiant du similar
          * @return {Similar}   Le similar
          */
+        /* eslint-disable-next-line no-unused-vars */
         getSimilar(id) {
             throw new Error('method abstraite, vous devez l\'implémenter');
         }
@@ -2594,16 +2699,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     // On affiche la version du script
     if (debug) console.log('UserScript BetaSeries v%s', GM_info.script.version);
     // Ajout des feuilles de styles pour le userscript
-    $('head').append(`
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-              integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=="
-              crossorigin="anonymous" referrerpolicy="no-referrer" />
-        <link rel="stylesheet"
-              href="${serverBaseUrl}/css/style.min.css"
-              integrity="${integrityStyle}"
-              crossorigin="anonymous" referrerpolicy="no-referrer" />
-    `);
+    addScriptAndLink(['awesome', 'stylehome']);
+
     if (typeof lazyLoad === 'undefined') {
         let notLoop = 0;
         let timerLazy = setInterval(function() {
@@ -2776,6 +2873,47 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         $('.userscript-notifications .title').html(title);
         $('.userscript-notifications .text').html(text);
         notifContainer.slideDown().delay(5000).slideUp();
+    }
+
+    /**
+     * addScriptAndLink - Permet d'ajouter un script ou un link sur la page Web
+     *
+     * @param  {String|String[]} name Le ou les identifiants des éléments à charger
+     * @return {void}
+     */
+    function addScriptAndLink(name) {
+        if (name instanceof Array) {
+            if (name.length > 1) {
+                for (let n = 0; n < name.length; n++) {
+                    addScriptAndLink(name[n]);
+                }
+                return;
+            } else {
+                name = name[0];
+            }
+        }
+        // On vérifie que le nom est connu
+        if (! scriptsAndStyles || !(name in scriptsAndStyles)) {
+            throw new Error(`${name} ne fait pas partit des données de scripts ou de styles`);
+        }
+        let element, data = scriptsAndStyles[name];
+        if (data.type === 'script') {
+            // https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
+            element = `
+                <script src="${data.src}"
+                        id="${data.id}"
+                        integrity="${data.integrity}"
+                        crossorigin="anonymous" referrerpolicy="no-referrer">
+                </script>`;
+        } else if (data.type === 'style') {
+            element = `
+                <link rel="stylesheet"
+                      id="${data.id}"
+                      href="${data.href}"
+                      integrity="${data.integrity}"
+                      crossorigin="anonymous" referrerpolicy="no-referrer" />`;
+        }
+        $('head').append(element);
     }
 
     /**
@@ -2963,13 +3101,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let titles = $('.maincontent h2'),
             methods = {};
         // Ajout du style CSS pour les tables
-        $('head').append(`
-            <link rel="stylesheet"
-                  href="${tableCSS}"
-                  integrity="${integrityTable}"
-                  crossorigin="anonymous"
-                  referrerpolicy="no-referrer" />
-        `);
+        addScriptAndLink('tablecss');
         /**
          * Construit une cellule de table HTML pour une methode
          *
@@ -3306,12 +3438,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         "time_to_spend_movies": 'Temps restant devant les films à regarder'
                     }
                 };
-            $('head').append(`
-                <link rel="stylesheet"
-                      href="${tableCSS}"
-                      integrity="${integrityTable}"
-                      crossorigin="anonymous" referrerpolicy="no-referrer" />
-            `);
+            addScriptAndLink('tablecss');
             $('body').append(dialogHTML);
             //if (debug) console.log(currentUser, otherMember, trads);
             for (const [key, value] of Object.entries(trads)) {
@@ -3490,7 +3617,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             if (++waitEpisodes >= 100) {
                 clearInterval(timer);
                 notification('Wait Episodes List', 'Les vignettes des saisons et des épisodes n\'ont pas été trouvées.');
-                errorCb();
+                errorCb('timeout');
                 return;
             }
             let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
@@ -3738,17 +3865,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             let promise = res.fetchEpisodes(parseInt(seasonNum, 10), true); // Contient la promesse de récupérer les épisodes de la saison courante
             // On ajoute le CSS et le Javascript pour les popup
             if ($('#csspopover').length === 0 && $('#jsbootstrap').length === 0) {
-                $('head').append(`
-                    <link rel="stylesheet"
-                          id="csspopover"
-                          href="${serverBaseUrl}/css/popover.min.css"
-                          integrity="${integrityPopover}"
-                          crossorigin="anonymous" />
-                    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
-                            id="jsbootstrap"
-                            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
-                            crossorigin="anonymous"></script>
-                `);
+                addScriptAndLink(['popover', 'bootstrap']);
             }
 
             /**
@@ -3833,13 +3950,23 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     $('#episodes .checkSeen').hover(
                         // IN
                         e => {
-                            $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.2)');
-                            $(e.currentTarget).parent('.slide__image').popover('hide');
+                            $(e.currentTarget)
+                                .siblings('.overflowHidden')
+                                .find('img.js-lazy-image')
+                                .css('transform', 'scale(1.2)');
+                            $(e.currentTarget)
+                                .parent('.slide__image')
+                                .popover('hide');
                         },
                         // OUT
                         e => {
-                            $(e.currentTarget).siblings('.overflowHidden').find('img.js-lazy-image').css('transform', 'scale(1.0)');
-                            $(e.currentTarget).parent('.slide__image').popover('show');
+                            $(e.currentTarget)
+                                .siblings('.overflowHidden')
+                                .find('img.js-lazy-image')
+                                .css('transform', 'scale(1.0)');
+                            $(e.currentTarget)
+                                .parent('.slide__image')
+                                .popover('show');
                         }
                     );
                 }, 500);
@@ -3926,10 +4053,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     addCheckSeen();
                     if (debug) console.groupEnd('season click');
                 }, () => {
-                    if (debug) {
-                        console.error('Season click Timeout');
-                        console.groupEnd('season click');
-                    }
+                    console.error('Season click Timeout');
+                    if (debug) console.groupEnd('season click');
                 }
             );
         });
@@ -4093,17 +4218,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         if ($('#updateSimilarsBlock').length < 1) {
             // On ajoute les ressources CSS et JS nécessaires
             if ($('#csspopover').length <= 0 && $('#jsbootstrap').length <= 0) {
-                $('head').append(`
-                    <link rel="stylesheet"
-                          id="csspopover"
-                          href="${serverBaseUrl}/css/popover.min.css"
-                          integrity="${integrityPopover}"
-                          crossorigin="anonymous" />
-                    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
-                            id="jsbootstrap"
-                            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
-                            crossorigin="anonymous"></script>
-                `);
+                addScriptAndLink(['popover', 'bootstrap']);
             }
             // On ajoute le bouton de mise à jour des similaires
             $('#similars .blockTitles').append(`
@@ -4136,7 +4251,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 $('#similars a.slide__image').each((i, elt) => {
                     $(elt).popover('dispose');
                 });
-                // On met à jour les series similaires
+                // On met à jour les series/films similaires
                 similarsViewed(res);
             });
         }
@@ -4312,16 +4427,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   <img src="${serverBaseUrl}/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
                 </div>
             `);
-            $('head').append(`
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"
-                        integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=="
-                        crossorigin="anonymous" referrerpolicy="no-referrer">
-                </script>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js"
-                        integrity="sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw=="
-                        crossorigin="anonymous" referrerpolicy="no-referrer" async="true" defer="true">
-                </script>
-            `);
+            addScriptAndLink('moment');
+            setTimeout(() => {
+                addScriptAndLink('localefr');
+            }, 250);
 
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
