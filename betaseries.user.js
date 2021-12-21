@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         betaseries
+// @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.0.16
+// @version      1.1.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -19,2696 +19,343 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // ==/UserScript==
-
-/* global A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans lazyLoad
-   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT hideButtonReset moment PopupAlert */
-/* jslint unparam: true, eqnull:true, unused:true */
-
 'use strict';
 
+/* globals Base:false, CacheUS: false, Episode: false, Media: false, Movie: false, Show: false,
+   UpdateAuto: false, EventTypes: false, HTTP_VERBS: false, MediaType: false, CommentBS: false,
+
+   betaseries_api_user_token:  true, betaseries_user_id: false, trans: false, lazyLoad: false, deleteFilterOthersCountries: false, generate_route: false,
+   CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
+   viewMoreFriends: false, bootstrap: false, PopupAlert: false, moment, jQuery: false
+ */
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
 /************************************************************************************************/
-
 /* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
 let betaseries_api_user_key = '';
 /* Ajouter ici votre clé d'API V3 à themoviedb */
 let themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
-
 /************************************************************************************************/
-(function($) {
 
-    const debug = false,
-          url = location.pathname,
-          noop = function(){},
+function loadError(oError) {
+    throw new URIError("The script " + oError.target.src + " didn't load correctly.");
+}
+
+function affixScriptToHead(url, onloadFunction) {
+    var newScript = document.createElement("script");
+    newScript.onerror = loadError;
+    if (onloadFunction) { newScript.onload = () => { onloadFunction(jQuery); }}
+    document.head.appendChild(newScript);
+    newScript.src = url;
+}
+const loadCSS = function( href, before, media, attributes, callback, onerror ) {
+    // Arguments explained:
+    // `href` [REQUIRED] is the URL for your CSS file.
+    // `before` [OPTIONAL] is the element the script should use as a reference for injecting our stylesheet <link> before
+    // By default, loadCSS attempts to inject the link after the last stylesheet or script in the DOM. However, you might desire a more specific location in your document.
+    // `media` [OPTIONAL] is the media type or query of the stylesheet. By default it will be 'all'
+    // `attributes` [OPTIONAL] is the Object of attribute name/attribute value pairs to set on the stylesheet's DOM Element.
+    const doc = window.document;
+    const ss = doc.createElement( "link" );
+    let ref;
+    if( before ){
+        ref = before;
+    }
+    else {
+        const refs = ( doc.body || doc.getElementsByTagName( "head" )[ 0 ] ).childNodes;
+        ref = refs[ refs.length - 1];
+    }
+
+    const sheets = doc.styleSheets;
+    // Set any of the provided attributes to the stylesheet DOM Element.
+    if( attributes ){
+        for( let attributeName in attributes ){
+            if ( attributes[attributeName] !== undefined ){
+                ss.setAttribute( attributeName, attributes[attributeName] );
+            }
+        }
+    }
+    ss.rel = "stylesheet";
+    ss.href = href;
+    // temporarily set media to something inapplicable to ensure it'll fetch without blocking render
+    ss.media = "only x";
+
+    // wait until body is defined before injecting link. This ensures a non-blocking load in IE11.
+    function ready( cb ){
+        if( doc.body ){
+            return cb();
+        }
+        setTimeout(function(){
+            ready( cb );
+        });
+    }
+    // Inject link
+    // Note: the ternary preserves the existing behavior of "before" argument, but we could choose to change the argument to "after" in a later release and standardize on ref.nextSibling for all refs
+    // Note: `insertBefore` is used instead of `appendChild`, for safety re: http://www.paulirish.com/2011/surefire-dom-element-insertion/
+    ready( function(){
+        ref.parentNode.insertBefore( ss, ( before ? ref : ref.nextSibling ) );
+    });
+    // A method (exposed on return object for external use) that mimics onload by polling document.styleSheets until it includes the new sheet.
+    var onloadcssdefined = function( cb ){
+        const resolvedHref = ss.href;
+        let i = sheets.length;
+        while( i-- ){
+            if( sheets[ i ].href === resolvedHref ){
+                return cb();
+            }
+        }
+        setTimeout(function() {
+            onloadcssdefined( cb );
+        });
+    };
+
+    let called = false;
+	function newcb(){
+        if ( ss.addEventListener ) {
+            ss.removeEventListener( "load", newcb );
+        }
+        if ( !called && callback ) {
+            called = true;
+            callback.call( ss );
+        }
+        ss.media = media || "all";
+	}
+
+    // once loaded, set link's media back to `all` so that the stylesheet applies once it loads
+    if ( ss.addEventListener ) {
+        ss.addEventListener( "load", newcb);
+        if (onerror) { ss.addEventListener('error', onerror); }
+    }
+    ss.onloadcssdefined = onloadcssdefined;
+    onloadcssdefined( newcb );
+    return ss;
+};
+const loadJS = function( src, before, media, attributes, callback, onerror ) {
+    // Arguments explained:
+    // `href` [REQUIRED] is the URL for your CSS file.
+    // `before` [OPTIONAL] is the element the script should use as a reference for injecting our stylesheet <link> before
+    // By default, loadCSS attempts to inject the link after the last stylesheet or script in the DOM. However, you might desire a more specific location in your document.
+    // `media` [OPTIONAL] is the media type or query of the stylesheet. By default it will be 'all'
+    // `attributes` [OPTIONAL] is the Object of attribute name/attribute value pairs to set on the stylesheet's DOM Element.
+    const doc = window.document;
+    const ss = doc.createElement( "script" );
+    let ref;
+    if( before ){
+        ref = before;
+    }
+    else {
+        const refs = ( doc.body || doc.getElementsByTagName( "head" )[ 0 ] ).childNodes;
+        ref = refs[ refs.length - 1];
+    }
+
+    const scripts = doc.scripts;
+    // Set any of the provided attributes to the stylesheet DOM Element.
+    if( attributes ){
+        for( let attributeName in attributes ){
+            if ( attributes[attributeName] !== undefined ){
+                ss.setAttribute( attributeName, attributes[attributeName] );
+            }
+        }
+    }
+    ss.src = src;
+
+    // wait until body is defined before injecting link. This ensures a non-blocking load in IE11.
+    function ready( cb ){
+        if( doc.body ){
+            return cb();
+        }
+        setTimeout(function(){
+            ready( cb );
+        });
+    }
+    // Inject link
+    // Note: the ternary preserves the existing behavior of "before" argument, but we could choose to change the argument to "after" in a later release and standardize on ref.nextSibling for all refs
+    // Note: `insertBefore` is used instead of `appendChild`, for safety re: http://www.paulirish.com/2011/surefire-dom-element-insertion/
+    ready( function(){
+        ref.parentNode.insertBefore( ss, ( before ? ref : ref.nextSibling ) );
+    });
+    // A method (exposed on return object for external use) that mimics onload by polling document.styleSheets until it includes the new sheet.
+    var onloadjsdefined = function( cb ){
+        const resolvedSrc = ss.src;
+        let i = scripts.length;
+        while ( i-- ) {
+            if ( scripts[ i ].src === resolvedSrc ) {
+                return cb();
+            }
+        }
+        setTimeout(function() {
+            onloadjsdefined( cb );
+        });
+    };
+
+    let called = false;
+	function newcb(){
+        if ( ss.addEventListener ) {
+            ss.removeEventListener( "load", newcb );
+        }
+        if ( !called && callback ) {
+            called = true;
+            callback.call( ss );
+        }
+	}
+
+    // once loaded, set link's media back to `all` so that the stylesheet applies once it loads
+    if ( ss.addEventListener ) {
+        ss.addEventListener( "load", newcb);
+        if (onerror) { ss.addEventListener('error', onerror); }
+    }
+    ss.onloadjsdefined = onloadjsdefined;
+    onloadjsdefined( newcb );
+    return ss;
+};
+const launchScript = function($) {
+    const debug = false, 
+          url = location.pathname, 
+          noop = function () {}, 
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
-          scriptsAndStyles = {
-              "moment": {
-                  type: 'script',
-                  id: 'jsmomment',
-                  src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js',
-                  integrity: 'sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=='
-              },
-              "localefr": {
-                  type: 'script',
-                  id: 'jslocalefr',
-                  src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js',
-                  integrity: 'sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw=='
-              },
-              "popover": {
-                  type: 'style',
-                  id: 'csspopover',
-                  href: `${serverBaseUrl}/css/popover.min.css`,
-                  integrity: 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg'
-              },
-              "bootstrap": {
-                  type: 'script',
-                  id: 'jsbootstrap',
-                  src: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js',
-                  integrity: 'sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl'
-              },
-              "tablecss": {
-                  type: 'style',
-                  id: 'tablecss',
-                  href: `${serverBaseUrl}/css/table.min.css`,
-                  integrity: 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p'
-              },
-              "stylehome": {
-                  type: 'style',
-                  id: 'stylehome',
-                  href: `${serverBaseUrl}/css/style.min.css`,
-                  integrity: 'sha384-z4aam29xkOKmgpOUGhk9kS8/SutkQeUtEBBXm2NYiZFc2CJSvH5hothze+P0/dz8'
-              },
-              "awesome": {
-                  type: 'style',
-                  id: 'awesome',
-                  href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
-                  integrity: 'sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=='
-              }
-          },
-          // URI des images et description des classifications TV et films
-          ratings = {
-              'D-10': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
-                  title: "Déconseillé au moins de 10 ans"
-              },
-              'D-12': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
-                  title: 'Déconseillé au moins de 12 ans'
-              },
-              'D-16': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
-                  title: 'Déconseillé au moins de 16 ans'
-              },
-              'D-18': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
-                  title: 'Ce programme est uniquement réservé aux adultes'
-              },
-              'TV-Y': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
-                  title: 'Ce programme est évalué comme étant approprié aux enfants'
-              },
-              'TV-Y7': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
-                  title: 'Ce programme est désigné pour les enfants âgés de 7 ans et plus'
-              },
-              'TV-G': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
-                  title: 'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants'
-              },
-              'TV-PG': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
-                  title: 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants'
-              },
-              'TV-14': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
-                  title: 'Ce programme est déconseillé aux enfants de moins de 14 ans'
-              },
-              'TV-MA': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
-                  title: 'Ce programme est uniquement réservé aux adultes'
-              },
-              'G': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
-                  title: 'Tous publics'
-              },
-              'PG': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
-                  title: 'Accord parental souhaitable'
-              },
-              'PG-13': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
-                  title: 'Accord parental recommandé, film déconseillé aux moins de 13 ans'
-              },
-              'R': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
-                  title: 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte'
-              },
-              'NC-17': {
-                  img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
-                  title: 'Interdit aux enfants de 17 ans et moins'
-              }
-          };
-    let timer, timerUA, currentUser, cache,
-        dialog, fnLazy;
-
-    /**
-     * @class Gestion du Cache pour le script
-     */
-    class Cache {
-
-        constructor() {
-            this._data = {shows: {}, episodes: {}, movies: {}, members: {}};
+    // Objet contenant les scripts et feuilles de style utilisées par le userscript
+    scriptsAndStyles = {
+        "moment": {
+            type: 'script',
+            id: 'jsmomment',
+            src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js',
+            integrity: 'sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=='
+        },
+        "localefr": {
+            type: 'script',
+            id: 'jslocalefr',
+            src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js',
+            integrity: 'sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw=='
+        },
+        "popover": {
+            type: 'style',
+            id: 'csspopover',
+            href: `${serverBaseUrl}/css/popover.min.css`,
+            integrity: 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg'
+        },
+        "bootstrap": {
+            type: 'script',
+            id: 'jsbootstrap',
+            src: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js',
+            integrity: 'sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl'
+        },
+        "tablecss": {
+            type: 'style',
+            id: 'tablecss',
+            href: `${serverBaseUrl}/css/table.min.css`,
+            integrity: 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p'
+        },
+        "stylehome": {
+            type: 'style',
+            id: 'stylehome',
+            href: `${serverBaseUrl}/css/style.min.css`,
+            integrity: 'sha384-z4aam29xkOKmgpOUGhk9kS8/SutkQeUtEBBXm2NYiZFc2CJSvH5hothze+P0/dz8'
+        },
+        "awesome": {
+            type: 'style',
+            id: 'awesome',
+            href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
+            integrity: 'sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=='
+        }
+    },
+    // URI des images et description des classifications TV et films
+    ratings = {
+        'D-10': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
+            title: "Déconseillé au moins de 10 ans"
+        },
+        'D-12': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
+            title: 'Déconseillé au moins de 12 ans'
+        },
+        'D-16': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
+            title: 'Déconseillé au moins de 16 ans'
+        },
+        'D-18': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
+            title: 'Ce programme est uniquement réservé aux adultes'
+        },
+        'TV-Y': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
+            title: 'Ce programme est évalué comme étant approprié aux enfants'
+        },
+        'TV-Y7': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
+            title: 'Ce programme est désigné pour les enfants âgés de 7 ans et plus'
+        },
+        'TV-G': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
+            title: 'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants'
+        },
+        'TV-PG': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
+            title: 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants'
+        },
+        'TV-14': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
+            title: 'Ce programme est déconseillé aux enfants de moins de 14 ans'
+        },
+        'TV-MA': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
+            title: 'Ce programme est uniquement réservé aux adultes'
+        },
+        'G': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
+            title: 'Tous publics'
+        },
+        'PG': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
+            title: 'Accord parental souhaitable'
+        },
+        'PG-13': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
+            title: 'Accord parental recommandé, film déconseillé aux moins de 13 ans'
+        },
+        'R': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
+            title: 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte'
+        },
+        'NC-17': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
+            title: 'Interdit aux enfants de 17 ans et moins'
         }
-
-        /**
-         * Returns an Array of all currently set keys.
-         * @returns {Array} cache keys
-         */
-        keys(type = null) {
-            if (! type) return Object.keys(this._data);
-            return Object.keys(this._data[type]);
-        }
-
-        /**
-         * Checks if a key is currently set in the cache.
-         * @param {String} type Le type de ressource
-         * @param {String} key  the key to look for
-         * @returns {boolean} true if set, false otherwise
-         */
-        has(type, key) {
-            return (this._data[type] !== undefined && this._data[type][key] !== undefined);
-        }
-
-        /**
-         * Clears all cache entries.
-         * @param {String} [type=null] Le type de ressource à nettoyer
-         */
-        clear(type = null) {
-            if (debug) console.log('Nettoyage du cache', type);
-            // On nettoie juste un type de ressource
-            if (type && this._data[type] !== undefined) {
-                for (let key in this._data[type]) {
-                    delete this._data[type][key];
-                }
-            }
-            // On nettoie l'ensemble du cache
-            else {
-                this._data = {shows: {}, episodes: {}, movies: {}, members: {}};
-            }
-        }
-
-        /**
-         * Gets the cache entry for the given key.
-         * @param {String} type Le type de ressource
-         * @param {String} key  the cache key
-         * @returns {*} the cache entry if set, or undefined otherwise
-         */
-        get(type, key, caller=null) {
-            if (this.has(type, key)) {
-                if (caller !== null && debug) { console.log('[%s]: Retourne la ressource (%s) du cache', caller, type, {key: key}); }
-                else if (debug) console.log('Retourne la ressource (%s) du cache', type, {key: key});
-                return this._data[type][key];
-            }
-            return null;
-        }
-
-        /**
-         * Returns the cache entry if set, or a default value otherwise.
-         * @param {String} type Le type de ressource
-         * @param {String} key  the key to retrieve
-         * @param {*}      def  the default value to return if unset
-         * @returns {*} the cache entry if set, or the default value provided.
-         */
-        getOrDefault(type, key, def) {
-            if (debug) console.log('Retourne la ressource (%s) du cache ou valeur par défaut', type, {key: key, default: def});
-            return this.has(type, key) ? this.get(type, key) : def;
-        }
-
-        /**
-         * Sets a cache entry with the provided key and value.
-         * @param {String} type  Le type de ressource
-         * @param {String} key   the key to set
-         * @param {*}      value the value to set
-         */
-        set(type, key, value) {
-            // if (debug) console.log('Ajout de la ressource (%s) en cache', type, {key: key, val: value});
-            if (this._data[type] !== undefined) {
-                this._data[type][key] = value;
-            }
-        }
-
-        /**
-         * Removes the cache entry for the given key.
-         * @param {String} type  Le type de ressource
-         * @param {String} key the key to remove
-         */
-        remove(type, key) {
-            if (debug) console.log('Suppression de la ressource (%s) du cache', type, {key: key});
-            if (this.has(type, key)) {
-                delete this._data[type][key];
-            }
-        }
-    }
-
-    class Note {
-        /**
-         * Le constructeur de la classe Note
-         * @param  {Object} data Les données de la note
-         * @return {Note}
-         */
-        constructor(data) {
-            if (typeof data !== 'object') {
-                throw new Error('data is not an object');
-            }
-            return this.init(data);
-        }
-        /**
-         * Initialize l'objet avec les données
-         * @param  {Object} data Les données de la série
-         * @return {Media}
-         */
-        init(data) {
-            if (data) {
-                Object.assign(this, data);
-            }
-            return this;
-        }
-        /**
-         * Retourne la note moyenne sous forme de pourcentage
-         * @return {number}
-         */
-        getPercentage() {
-            return Math.round(((this.mean / 5) * 100) / 10) * 10;
-        }
-        /**
-         * Retourne l'objet Note sous forme de String
-         *
-         * @return {String}
-         */
-        toSring() {
-            const votes = 'vote' + (parseInt(this.total, 10) > 1 ? 's' : ''),
-                  // On met en forme le nombre de votes
-                  total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true})
-                            .format(this.total),
-                  // On limite le nombre de chiffre après la virgule
-                  note = parseFloat(this.mean).toFixed(1);
-            let toString = `${total} ${votes} : ${note} / 5`;
-            // On ajoute la note du membre connecté, si il a voté
-            if (this.user > 0) {
-                toString += `, votre note: ${this.user}`;
-            }
-            return toString;
-        }
-    }
-
-    /**
-     * @class Media - Classe abstraite des différents médias
-     * @property {Number} id            Identifant du média
-     * @property {String} title         Titre du média
-     * @property {Number} nbCharacters  Nombre d'acteurs
-     * @property {Object[]} characters  Liste des acteurs
-     * @property {Number} nbComments    Nombre de commentaires
-     * @property {Object[]} comments    Liste des commentaires
-     * @property {Number} nbSimilars    Nombre de similars
-     * @property {Similar[]} similars   Liste des similars
-     * @property {String} resource_url  URL d'accès au média
-     * @property {Object} user          Objet contenant les infos du membre connecté pour ce média
-     */
-    class Media {
-        /**
-         * Flag de debug pour le dev
-         * @type {boolean}
-         */
-        static debug = false;
-        /**
-         * L'objet cache du script pour stocker les données
-         * @type {Cache}
-         */
-        static cache = null;
-        /**
-         * Objet contenant les informations de l'API
-         * @type {Object}
-         */
-        static api = {
-            "url": 'https://api.betaseries.com',
-            "versions": {"current": '3.0', "last": '3.0'},
-            "resources": [ // Les ressources disponibles dans l'API
-                'badges', 'comments', 'episodes', 'friends', 'members', 'messages',
-                'movies', 'news', 'oauth', 'pictures', 'planning', 'platforms',
-                'polls', 'reports', 'search', 'seasons', 'shows', 'subtitles',
-                'timeline'
-            ],
-            "check": { // Les endpoints qui nécessite de vérifier la volidité du token
-                "episodes": ['display', 'list', 'search'],
-                "movies"  : ['list', 'movie', 'search', 'similars'],
-                "search"  : ['all', 'movies', 'shows'],
-                "shows"   : ['display', 'episodes', 'list', 'search', 'similars']
-            }
-        };
-        /**
-         * Le token d'authentification de l'API
-         * @type {String}
-         */
-        static token = null;
-        /**
-         * La clé d'utilisation de l'API
-         * @type {String}
-         */
-        static userKey = null;
-        /**
-         * Le nombre d'appels à l'API
-         * @type {Number}
-         */
-        static counter = 0;
-        /**
-         * L'URL de base du serveur contenant les ressources statiques
-         * @type {String}
-         */
-        static serverBaseUrl = '';
-        /**
-         * Fonction de notification sur la page Web
-         * @type {Function}
-         */
-        static notification = function() {}
-        /**
-         * Fonction pour vérifier que le membre est connecté
-         * @type {Function}
-         */
-        static userIdentified = function() {}
-        /**
-         * Types d'évenements gérés par cette classe
-         * @type {Object}
-         */
-        static EventTypes = {
-            UPDATE: 'update',
-            SAVE: 'save'
-        };
-
-        /**
-         * Constructeur de la classe abstraite Media
-         * @param  {Object} data Les données de la ressource
-         * @param  {Object} elt  Le DOMElement jQuery
-         * @return {Media}
-         */
-        constructor(data, elt) {
-            if (typeof data !== 'object') {
-                throw new Error('data is not an object');
-            }
-            /**
-             * @type {Object}
-             * @property {String} [singular] Type d'objet au singulier
-             * @property {String} [plural] Type d'objet au pluriel
-             */
-            this._type = {singular: 'unknown', plural: 'unknown'};
-            /**
-             * @type {DOMElement}
-             */
-            this.elt = elt;
-            /**
-             * @type {Object}
-             * @private
-             */
-            this._listeners = {};
-            return this.init(data);
-        }
-        /**
-         * Initialize l'objet avec les données
-         * @param  {Object} data Les données de la série
-         * @return {Media}
-         */
-        init(data) {
-            if (data) {
-                Object.assign(this, data);
-            }
-            if (this.notes !== undefined) {
-                this.objNote = this.notes;
-            } else if (this.note !== undefined) {
-                this.objNote = this.note;
-            }
-            return this;
-        }
-        /**
-         * Permet d'ajouter un listener sur un type d'évenement
-         * @param  {string}   name Le type d'évenement
-         * @param  {Function} fn   La fonction à appeler
-         * @return {Show}          L'instance Show
-         */
-        addListener(name, fn) {
-            // On vérifie que le type d'event est pris en charge
-            if (Object.values(Media.EventTypes).indexOf(name) < 0) {
-                throw new Error(`${name} ne fait pas partit des events gérés`);
-            }
-            if (this._listeners[name] === undefined) {
-                this._listeners[name] = [];
-            }
-            this._listeners[name].push(fn);
-            return this;
-        }
-        /**
-         * Permet de supprimer un listener sur un type d'évenement
-         * @param  {string}   name Le type d'évenement
-         * @param  {Function} fn   La fonction qui était appelée
-         * @return {Show}          L'instance Show
-         */
-        removeListener(name, fn) {
-            if (this._listeners[name] !== undefined) {
-                for (let l = 0; l < this._listeners[name].length; l++) {
-                    if (this._listeners[name][l] === fn)
-                        this._listeners[name].splice(l, 1);
-                }
-            }
-            return this;
-        }
-        /**
-         * Appel les listeners pour un type d'évenement
-         * @param  {string} name Le type d'évenement
-         * @return {Show}        L'instance Show
-         */
-        _callListeners(name) {
-            if (this._listeners[name] !== undefined) {
-                for (let l = 0; l < this._listeners[name].length; l++) {
-                    this._listeners[name][l].call(this, this);
-                }
-            }
-        }
-        /**
-         * get elt - Retourne le DOMElement jQuery associé au média
-         *
-         * @return {DOMElement}  Le DOMElement associé au média
-         */
-        get elt() {
-            return this._elt;
-        }
-        /**
-         * set elt - Définit le DOMElement associé au média
-         *
-         * @param  {DOMElement} elt Le DOMElement associé au média
-         * @return {void}
-         */
-        set elt (elt) {
-            if (elt && elt.jquery === undefined) {
-                elt = $(elt);
-            }
-            this._elt = elt;
-            if (this._elt) {
-                this._eltId = this._elt.attr('id');
-            }
-        }
-        /**
-         * Retourne l'objet note de la ressource
-         * @return {Note}
-         */
-        get objNote() {
-            return this._objNote;
-        }
-        /**
-         * Modifie l'objet Note
-         * @param  {Object} note Les données de la note
-         * @return {void}
-         */
-        set objNote(note) {
-            if (note instanceof Note) {
-                this._objNote = note;
-            } else if (this._objNote instanceof Note) {
-                this._objNote.init(note);
-            } else {
-                this._objNote = new Note(note);
-            }
-        }
-        /**
-         * Sauvegarde l'objet en cache
-         * @return {Media} This
-         */
-        save() {
-            if (Media.cache instanceof Cache) {
-                Media.cache.set(this._type.plural, this.id, this);
-                this._callListeners(Media.EventTypes.SAVE);
-            }
-            return this;
-        }
-        /**
-         * Décode le titre de la page
-         * @return {Media} This
-         */
-        decodeTitle() {
-            let $elt = this.elt.find('.blockInformations__title'),
-                title = $elt.text();
-
-            if (/&#/.test(title)) {
-                $elt.text($('<textarea />').html(title).text());
-            }
-        }
-        /**
-         * Ajoute le nombre de votes à la note dans l'attribut title de la balise
-         * contenant la représentation de la note de la ressource
-         *
-         * @param  {Boolean} change  Indique si on doit changer l'attribut title du DOMElement
-         * @return {String}         Le titre modifié de la note
-         */
-        changeTitleNote(change = true) {
-            const $elt = this.elt.find('.js-render-stars');
-            if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
-                if (change) $elt.attr('title', 'Aucun vote');
-                return;
-            }
-
-            const votes = 'vote' + (parseInt(this.objNote.total, 10) > 1 ? 's' : ''),
-                  // On met en forme le nombre de votes
-                  total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true})
-                            .format(this.objNote.total),
-                  // On limite le nombre de chiffre après la virgule
-                  note = parseFloat(this.objNote.mean).toFixed(1);
-            let title = `${total} ${votes} : ${note} / 5`;
-            // On ajoute la note du membre connecté, si il a voté
-            if (Media.userIdentified() && this.objNote.user > 0) {
-                title += `, votre note: ${this.objNote.user}`;
-            }
-            if (change) {
-                $elt.attr('title', title);
-            }
-            return title;
-        }
-        /**
-         * Ajoute le nombre de votes à la note de la ressource
-         * @return {Media}
-         */
-        addNumberVoters() {
-            const _this = this;
-            const votes = $('.stars.js-render-stars'); // ElementHTML ayant pour attribut le titre avec la note de la série
-
-            if (Media.debug) console.log('addNumberVoters');
-
-            // if (debug) console.log('addNumberVoters Media.callApi', data);
-            const title = this.changeTitleNote(true);
-            // On ajoute un observer sur l'attribut title de la note, en cas de changement lors d'un vote
-            new MutationObserver((mutationsList) => {
-                let mutation;
-                const changeTitleMutation = () => {
-                    // On met à jour le nombre de votants, ainsi que la note du membre connecté
-                    const upTitle = _this.changeTitleNote(false);
-                    // On évite une boucle infinie
-                    if (upTitle !== title) {
-                        votes.attr('title', upTitle);
-                    }
-                };
-                for (mutation of mutationsList) {
-                    // On vérifie si le titre a été modifié
-                    if (! /vote/.test(mutation.target.title)) {
-                        changeTitleMutation();
-                    }
-                }
-            }).observe(votes.get(0), {
-                attributes: true,
-                childList: false,
-                characterData: false,
-                subtree: false,
-                attributeFilter: ['title']
-            });
-            return this;
-        }
-        /**
-         * Retourne les similars associés au media
-         * @abstract
-         * @return {Promise<Media>}
-         */
-        fetchSimilars() {
-            throw new Error('method abstraite, vous devez l\'implémenter');
-        }
-        /**
-         * Retourne le similar correspondant à l'identifiant
-         * @abstract
-         * @param  {number} id L'identifiant du similar
-         * @return {Similar}   Le similar
-         */
-        /* eslint-disable-next-line no-unused-vars */
-        getSimilar(id) {
-            throw new Error('method abstraite, vous devez l\'implémenter');
-        }
-        /**
-         * Fonction d'authentification sur l'API BetaSeries
-         *
-         * @return {Promise}
-         */
-        static authenticate() {
-            if (Media.debug) console.log('authenticate');
-            $('body').append(`
-                <div id="containerIframe">
-                  <iframe id="userscript"
-                          name="userscript"
-                          title="Connexion à BetaSeries"
-                          width="50%"
-                          height="400"
-                          src="${Media.serverBaseUrl}/index.html"
-                          style="background:white;margin:auto;">
-                  </iframe>
-                </div>'
-            `);
-            return new Promise((resolve, reject) => {
-                function receiveMessage(event) {
-                    const origin = new URL(Media.serverBaseUrl).origin;
-                    // if (debug) console.log('receiveMessage', event);
-                    if (event.origin !== origin) {
-                        if (Media.debug) console.error('receiveMessage {origin: %s}', event.origin, event);
-                        reject('event.origin is not %s', origin);
-                        return;
-                    }
-                    if (event.data.message === 'access_token') {
-                        Media.token = event.data.value;
-                        $('#containerIframe').remove();
-                        resolve(event.data.message);
-                        window.removeEventListener("message", receiveMessage, false);
-                    } else {
-                        console.error('Erreur de récuperation du token', event);
-                        reject(event.data);
-                        Media.notification('Erreur de récupération du token', 'Pas de message');
-                        window.removeEventListener("message", receiveMessage, false);
-                    }
-                }
-                window.addEventListener("message", receiveMessage, false);
-            });
-        }
-        /**
-         * Fonction servant à appeler l'API de BetaSeries
-         *
-         * @param  {String}   type              Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-         * @param  {String}   resource          La ressource de l'API (ex: shows, seasons, episodes...)
-         * @param  {String}   action            L'action à appliquer sur la ressource (ex: search, list...)
-         * @param  {Object}   args              Un objet (clef, valeur) à transmettre dans la requête
-         * @param  {bool}     [force=false]     Indique si on doit utiliser le cache ou non (Par défaut: false)
-         * @return {Promise}
-         */
-        static callApi(type, resource, action, args, force = false) {
-            if (Media.api && Media.api.resources.indexOf(resource) === -1) {
-                throw new Error(`Ressource (${resource}) inconnue dans l'API.`);
-            }
-            if (! Media.token || ! Media.userKey) {
-                throw new Error('Token and userKey are required');
-            }
-            let check = false,
-                // Les en-têtes pour l'API
-                myHeaders = {
-                    'Accept'                : 'application/json',
-                    'X-BetaSeries-Version'  : Media.api.versions.current,
-                    'X-BetaSeries-Token'    : Media.token,
-                    'X-BetaSeries-Key'      : Media.userKey
-                },
-                checkKeys = Object.keys(Media.api.check);
-
-            if (Media.debug) {
-                console.log('Media.callApi', {
-                    type: type,
-                    resource: resource,
-                    action: action,
-                    args: args,
-                    force: force
-                });
-            }
-
-            // On retourne la ressource en cache si elle y est présente
-            if (Media.cache && ! force && type === 'GET' && args && 'id' in args &&
-                Media.cache.has(resource, args.id))
-            {
-                //if (debug) console.log('Media.callApi retourne la ressource du cache (%s: %d)', resource, args.id);
-                return new Promise((resolve) => {
-                    resolve(Media.cache.get(resource, args.id, 'Media.callApi'));
-                });
-            }
-
-            // On check si on doit vérifier la validité du token
-            // (https://www.betaseries.com/bugs/api/461)
-            if (Media.userIdentified() && checkKeys.indexOf(resource) !== -1 &&
-                Media.api.check[resource].indexOf(action) !== -1)
-            {
-                check = true;
-            }
-
-            function fetchUri(resolve, reject) {
-                let initFetch = { // objet qui contient les paramètres de la requête
-                    method: type,
-                    headers: myHeaders,
-                    mode: 'cors',
-                    cache: 'no-cache'
-                };
-                let uri = `${Media.api.url}/${resource}/${action}`;
-                const keys = Object.keys(args);
-                // On crée l'URL de la requête de type GET avec les paramètres
-                if (type === 'GET' && keys.length > 0) {
-                    let params = [];
-                    for (let key of keys) {
-                        params.push(key + '=' + encodeURIComponent(args[key]));
-                    }
-                    uri += '?' + params.join('&');
-                } else if (keys.length > 0) {
-                    initFetch.body = new URLSearchParams(args);
-                }
-
-                fetch(uri, initFetch).then(response => {
-                    Media.counter++; // Incrément du compteur de requêtes à l'API
-                    if (Media.debug) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
-                    // On récupère les données et les transforme en objet
-                    response.json().then((data) => {
-                        if (Media.debug) console.log('fetch (%s %s) data', type, uri, data);
-                        // On gère le retour d'erreurs de l'API
-                        if (data.errors !== undefined && data.errors.length > 0) {
-                            const code = data.errors[0].code,
-                                  text = data.errors[0].text;
-                            if (code === 2005 ||
-                                (response.status === 400 && code === 0 &&
-                                    text === "L'utilisateur a déjà marqué cet épisode comme vu."))
-                            {
-                                reject('changeStatus');
-                            } else if (code == 2001) {
-                                // Appel de l'authentification pour obtenir un token valide
-                                Media.authenticate().then(() => {
-                                    Media.callApi(type, resource, action, args, force)
-                                        .then(data => resolve(data), err => reject(err));
-                                }, (err) => {
-                                    reject(err);
-                                });
-                            } else {
-                                reject(data.errors[0]);
-                            }
-                            return;
-                        }
-                        // On gère les erreurs réseau
-                        if (!response.ok) {
-                            console.error('Fetch erreur network', response);
-                            reject(response);
-                            return;
-                        }
-                        resolve(data);
-                    });
-                }).catch(error => {
-                    if (Media.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
-                    console.error(error);
-                    reject(error.message);
-                });
-            }
-            return new Promise((resolve, reject) => {
-                if (check) {
-                    let paramsFetch = {
-                        method: 'GET',
-                        headers: myHeaders,
-                        mode: 'cors',
-                        cache: 'no-cache'
-                    };
-                    if (Media.debug) console.info('%ccall /members/is_active', 'color:blue');
-                    fetch(`${Media.api.url}/members/is_active`, paramsFetch).then(resp => {
-                        Media.counter++; // Incrément du compteur de requêtes à l'API
-                        if ( ! resp.ok) {
-                            // Appel de l'authentification pour obtenir un token valide
-                            Media.authenticate().then(() => {
-                                // On met à jour le token pour le prochain appel à l'API
-                                myHeaders['X-BetaSeries-Token'] = Media.token;
-                                fetchUri(resolve, reject);
-                            }).catch(err => reject(err) );
-                            return;
-                        }
-                        fetchUri(resolve, reject);
-                    }).catch(error => {
-                        if (Media.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
-                        console.error(error);
-                        reject(error.message);
-                    });
-                } else {
-                    fetchUri(resolve, reject);
-                }
-            });
-        }
-    }
-
-    /**
-     * @class Classe représentant les séries
-     */
-    class Show extends Media {
-        /**
-         * Liste d'épisodes
-         * @type Episode[]
-         */
-        episodes;
-        /**
-         * Constructeur de la classe Show
-         * @param  {Object} data Les données de la ressource
-         * @return {Show}        La ressource
-         */
-        constructor(data) {
-            super(data, $('.blockInformations'));
-            this._type = {singular: 'show', plural: 'shows'};
-            return this.save();
-        }
-        /**
-         * Initialize l'objet avec les données
-         * @param  {Object} data Les données de la série
-         * @return {Show}        La ressource
-         */
-        init(data) {
-            // On sauvegarde les épisodes et les similars
-            const _episodes = this.episodes;
-            const _similars = this.similars;
-            const _comments = this.comments;
-            super.init(data);
-            this.nbComments = parseInt(this.comments, 10);
-            this.comments = [];
-            if (_comments) {
-                this.comments = _comments;
-            }
-            this.nbSeasons = parseInt(this.seasons, 10);
-            this.seasons = this.seasons_details;
-            this.nbEpisodes = parseInt(this.episodes, 10);
-            this.episodes = [];
-            if (_episodes) {
-                this.episodes = _episodes;
-            }
-            this.nbSimilars = parseInt(this.similars, 10);
-            this.similars = [];
-            if (_similars) {
-                this.similars = _similars;
-            }
-            this.length = parseInt(this.length, 10);
-            this.followers = parseInt(this.followers, 10);
-            this.characters = parseInt(this.characters, 10);
-            return this;
-        }
-        /**
-         * Methode static servant à retourner un objet show
-         * à partir de son ID
-         * @param  {number} id             L'identifiant de la série
-         * @param  {boolean} [force=false] Indique si on utilise le cache ou non
-         * @return {Promise<Show>}
-         */
-        static fetch(id, force = false) {
-            return new Promise((resolve, reject) => {
-                Media.callApi('GET', 'shows', 'display', {id: id}, force)
-                .then((data) => {
-                    resolve(new Show(data));
-                }).catch((err) => {
-                    reject(err);
-                })
-            });
-        }
-        /**
-         * Récupère les données de la série sur l'API
-         * @param  {boolean} [force=true] Indique si on utilise les données en cache
-         * @return {Promise<Object>}      Les données de la série
-         */
-        fetch(force = true) {
-            return Media.callApi('GET', 'shows', 'display', {id: this.id}, force, false);
-        }
-        /**
-         * isEnded - Indique si la série est terminée
-         *
-         * @return {boolean}  Terminée ou non
-         */
-        isEnded() {
-            return (this.status.toLowerCase() === 'ended') ? true : false;
-        }
-        /**
-         * isArchived - Indique si la série est archivée
-         *
-         * @return {boolean}  Archivée ou non
-         */
-        isArchived() {
-            return this.user.archived;
-        }
-        /**
-         * Add Show to account member
-         * @return {Promise} Promise of show
-         */
-        addToAccount() {
-            const _this = this;
-            if (this.in_account) return new Promise(resolve => resolve(_this));
-
-            return new Promise((resolve, reject) => {
-                Media.callApi('POST', 'shows', 'show', {id: _this.id})
-                .then(data => {
-                    _this.init(data.show);
-                    _this.save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-        /**
-         * Remove Show from account member
-         * @return {Promise} Promise of show
-         */
-        removeFromAccount() {
-            if (! this.in_account) return new Promise(resolve => resolve());
-
-            const _this = this;
-            return new Promise((resolve, reject) => {
-                Media.callApi('DELETE', 'shows', 'show', {id: this.id})
-                .then(data => {
-                    Object.assign(_this, data.show);
-                    _this.save();
-                    resolve(this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-        /**
-         * Archive la série
-         * @return {Promise} Promise of show
-         */
-        archive() {
-            const _this = this;
-            return new Promise((resolve, reject) => {
-                Media.callApi('POST', 'shows', 'archive', {id: this.id})
-                .then(data => {
-                    _this.init(data.show);
-                    _this.save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-        /**
-         * Désarchive la série
-         * @return {Promise} Promise of show
-         */
-        unarchive() {
-            const _this = this;
-            return new Promise((resolve, reject) => {
-                Media.callApi('DELETE', 'shows', 'archive', {id: this.id})
-                .then(data => {
-                    _this.init(data.show);
-                    _this.save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-        /**
-         * Ajoute la série aux favoris
-         * @return {Promise} Promise of show
-         */
-        favorite() {
-            const _this = this;
-            return new Promise((resolve, reject) => {
-                Media.callApi('POST', 'shows', 'favorite', {id: this.id})
-                .then(data => {
-                    _this.init(data.show);
-                    _this.save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-        /**
-         * Supprime la série des favoris
-         * @return {Promise} Promise of show
-         */
-        unfavorite() {
-            const _this = this;
-            return new Promise((resolve, reject) => {
-                Media.callApi('DELETE', 'shows', 'favorite', {id: this.id})
-                .then(data => {
-                    _this.init(data.show);
-                    _this.save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-        /**
-         * Met à jour les données de la série
-         * @param  {Boolean}  [force=false] Forcer la récupération des données sur l'API
-         * @param  {Function} [cb=noop]     Fonction de callback
-         * @return {Promise<Show>}          Promesse (Show)
-         */
-        update(force = false, cb = noop) {
-            const _this = this;
-            return new Promise((resolve, reject) => {
-                _this.fetch(force).then(data => {
-                    _this.init(data.show);
-                    _this.save();
-                    _this.updateRender(() => {
-                        resolve(_this);
-                        cb();
-                        _this._callListeners(Media.EventTypes.UPDATE);
-                    });
-                })
-                .catch(err => {
-                    Media.notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
-                    reject(err);
-                    cb();
-                });
-            });
-        }
-        /**
-         * Met à jour le rendu de la barre de progression
-         * et du prochain épisode
-         * @param  {Function} cb Fonction de callback
-         * @return {void}
-         */
-        updateRender(cb = noop) {
-            this.updateProgressBar();
-            this.updateNextEpisode();
-            let note = this.objNote;
-            if (Media.debug) {
-                console.log('Next ID et status', {
-                    next: this.user.next.id,
-                    status: this.status,
-                    archived: this.user.archived,
-                    note_user: note.user
-                });
-            }
-            // Si il n'y a plus d'épisodes à regarder
-            if (this.user.remaining === 0) {
-                let promise = new Promise(resolve => { return resolve(); });
-                // On propose d'archiver si la série n'est plus en production
-                if (this.in_account && this.isEnded() && !this.isArchived())
-                {
-                    if (Media.debug) console.log('Série terminée, popup confirmation archivage');
-                    promise = new Promise(resolve => {
-                        new PopupAlert({
-                            title: 'Archivage de la série',
-                            text: 'Voulez-vous archiver cette série terminée ?',
-                            callback_yes: function() {
-                                $('#reactjs-show-actions button.btn-archive').trigger('click');
-                                resolve();
-                            },
-                            callback_no: function() {
-                                resolve();
-                                return true;
-                            }
-                        });
-                    });
-                }
-                // On propose de noter la série
-                if (note.user === 0) {
-                    if (Media.debug) console.log('Proposition de voter pour la série');
-                    promise.then(() => {
-                        new PopupAlert({
-                            title: trans("popin.note.title.show"),
-                            text: "Voulez-vous noter la série ?",
-                            callback_yes: function() {
-                                $('.blockInformations__metadatas .js-render-stars').trigger('click');
-                                return true;
-                            },
-                            callback_no: function() {
-                                return true;
-                            }
-                        });
-                    });
-                }
-                promise.then(() => { cb(); });
-            } else {
-                cb();
-            }
-        }
-        /**
-         * Met à jour la barre de progression de visionnage de la série
-         * @return {void}
-         */
-        updateProgressBar() {
-            if (Media.debug) console.log('updateProgressBar');
-            let progBar = $('.progressBarShow');
-            // On met à jour la barre de progression
-            progBar.css('width', this.user.status.toFixed(1) + '%');
-        }
-        /**
-         * Met à jour le bloc du prochain épisode à voir
-         * @return {void}
-         */
-        updateNextEpisode(cb = noop) {
-            if (Media.debug) console.log('updateNextEpisode');
-            const nextEpisode = $('a.blockNextEpisode');
-
-            if (nextEpisode.length > 0 && this.user.next && this.user.next.id !== null) {
-                if (Media.debug) console.log('nextEpisode et show.user.next OK', this.user);
-                // Modifier l'image
-                const img = nextEpisode.find('img'),
-                      remaining = nextEpisode.find('.remaining div'),
-                      parent = img.parent('div'),
-                      height = img.attr('height'),
-                      width = img.attr('width'),
-                      next = this.user.next,
-                      src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${next.id}&width=${width}&height=${height}`;
-                img.remove();
-                parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
-                // Modifier le titre
-                nextEpisode.find('.titleEpisode').text(`${next.code.toUpperCase()} - ${next.title}`);
-                // Modifier le lien
-                nextEpisode.attr('href', nextEpisode.attr('href').replace(/s\d{2}e\d{2}/, next.code.toLowerCase()));
-                // Modifier le nombre d'épisodes restants
-                remaining.text(remaining.text().trim().replace(/^\d+/, this.user.remaining));
-            }
-            else if (nextEpisode.length <= 0 && this.user.next && this.user.next.id !== null) {
-                if (Media.debug) console.log('No nextEpisode et show.user.next OK', this.user);
-                buildNextEpisode(this);
-            }
-            else if (! this.user.next || this.user.next.id === null) {
-                nextEpisode.remove();
-            }
-            fnLazy.init();
-            cb();
-
-            /**
-             * Construit une vignette pour le prochain épisode à voir
-             * @param  {Object} res  Objet API show
-             * @return {void}
-             */
-            function buildNextEpisode(res) {
-                let height = 70,
-                    width = 124,
-                    src = `https://api.betaseries.com/pictures/episodes?key=${betaseries_api_user_key}&id=${res.user.next.id}&width=${width}&height=${height}`,
-                    serieTitle = res.resource_url.split('/').pop(),
-                    template = `
-                        <a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
-                          <div class="media-left">
-                            <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
-                              <img src="${src}" width="${width}" height="${height}">
-                            </div>
-                          </div>
-                          <div class="media-body">
-                            <div class="title">
-                              <strong>Prochain épisode à regarder</strong>
-                            </div>
-                            <div class="titleEpisode">
-                              ${res.user.next.code.toUpperCase()} - ${res.user.next.title}
-                            </div>
-                            <div class="remaining">
-                              <div class="u-colorWhiteOpacity05">${res.user.remaining} épisode${(res.user.remaining > 1) ? 's' : ''} à regarder</div>
-                            </div>
-                          </div>
-                        </a>`;
-                $('.blockInformations__actions').after(template);
-            }
-        }
-        /**
-         * Retourne l'objet Similar correspondant à l'ID
-         * @param  {Number} id  ID du similar
-         * @return {Similar}    L'objet Similar
-         */
-        getSimilar(id) {
-            if (!this.similars) return null;
-            for (let s = 0; s < this.similars.length; s++) {
-                if (this.similars[s].id === id) {
-                    return this.similars[s];
-                }
-            }
-            return null;
-        }
-        /**
-         * Retourne l'objet Episode correspondant à l'ID
-         * @param  {Number} id  ID de l'épisode
-         * @return {Episode}    L'objet Episode
-         */
-        getEpisode(id) {
-            if (!this.episodes) return null;
-            for (let e = 0; e < this.episodes.length; e++) {
-                if (this.episodes[e].id === id) {
-                    return this.episodes[e];
-                }
-            }
-            return null;
-        }
-        /*
-         * On gère l'ajout de la série dans le compte utilisateur
-         *
-         * @param {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
-         */
-        addShowClick(trigEpisode = false) {
-            const _this = this;
-            const vignettes = $('#episodes .slide__image');
-            // Vérifier si le membre a ajouter la série à son compte
-            if (! this.in_account) {
-                // Remplacer le DOMElement supprime l'eventHandler
-                $('#reactjs-show-actions').html(`
-                    <div class="blockInformations__action">
-                      <button class="btn-reset btn-transparent" type="button">
-                        <span class="svgContainer">
-                          <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                          </svg>
-                        </span>
-                      </button>
-                      <div class="label">Ajouter</div>
-                    </div>`
-                );
-                // On ajoute un event click pour masquer les vignettes
-                $('#reactjs-show-actions > div > button').off('click').one('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (Media.debug) console.groupCollapsed('AddShow');
-                    const done = function() {
-                        // On met à jour les boutons Archiver et Favori
-                        changeBtnAdd(_this);
-                        // On met à jour le bloc du prochain épisode à voir
-                        _this.updateNextEpisode(function() {
-                            if (Media.debug) console.groupEnd('AddShow');
-                        });
-                    };
-                    _this.addToAccount()
-                    .then(() => done(), err => {
-                        if (err && err.code !== undefined && err.code === 2003) {
-                            done();
-                            return;
-                        }
-                        Media.notification('Erreur d\'ajout de la série', err);
-                        if (Media.debug) console.groupEnd('AddShow');
-                    });
-                });
-            }
-
-            /**
-             * Ajoute les items du menu Options, ainsi que les boutons Archiver et Favoris
-             * et on ajoute un voile sur les images des épisodes non-vu
-             *
-             * @param  {Show} show L'objet de type Show
-             * @return {void}
-             */
-            function changeBtnAdd(show) {
-                let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
-                if ($optionsLinks.length <= 2) {
-                    let react_id = $('script[id^="/reactjs/"]').get(0).id.split('.')[1],
-                        urlShow = show.resource_url.substring(location.origin.length),
-                        title = show.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
-                        templateOpts = `
-                              <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
-                                showClose: true,
-                                type: "popin-subtitles",
-                                reactModuleId: "reactjs-subtitles",
-                                params: {
-                                  mediaId: "${show.id}",
-                                  type: "show",
-                                  titlePopin: "${title}";
-                                },
-                                callback: function() {
-                                  loadRecommendationModule('subtitles');
-                                  //addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
-                                },
-                              });">Sous-titres</button>
-                              <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${show.id}, 'show');">Signaler un problème</a>
-                              <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${show.id}, '0')">Demander une mise à jour</a>
-                              <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
-
-                              <form class="autocomplete js-autocomplete-form header-navigation-item">
-                                <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
-                                <div class="autocomplete__toShow" hidden="">
-                                  <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
-                                  <div class="autocomplete__response js-display-response"></div>
-                                </div>
-                              </form>
-                              <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
-                    if ($optionsLinks.length === 1) {
-                        templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
-                    }
-                    $('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
-                        .append(templateOpts);
-                }
-
-                // On remplace le bouton Ajouter par les boutons Archiver et Favoris
-                const divs = $('#reactjs-show-actions > div');
-                if (divs.length === 1) {
-                    $('#reactjs-show-actions').remove();
-                    let container = $('.blockInformations__actions'),
-                        method = 'prepend';
-                    // Si le bouton VOD est présent, on place les boutons après
-                    if ($('#dropdownWatchOn').length > 0) {
-                        container = $('#dropdownWatchOn').parent();
-                        method = 'after';
-                    }
-                    container[method](`
-                            <div class="displayFlex alignItemsFlexStart"
-                                 id="reactjs-show-actions"
-                                 data-show-id="${show.id}"
-                                 data-user-hasarchived="${show.user.archived ? '1' : ''}"
-                                 data-show-inaccount="1"
-                                 data-user-id="${betaseries_user_id}"
-                                 data-show-favorised="${show.user.favorited ? '1' : ''}">
-                              <div class="blockInformations__action">
-                                <button class="btn-reset btn-transparent btn-archive" type="button">
-                                  <span class="svgContainer">
-                                    <svg fill="#0d151c" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="m16 8-1.41-1.41-5.59 5.58v-12.17h-2v12.17l-5.58-5.59-1.42 1.42 8 8z"></path>
-                                    </svg>
-                                  </span>
-                                </button>
-                                <div class="label">${trans('show.button.archive.label')}</div>
-                              </div>
-                              <div class="blockInformations__action">
-                                <button class="btn-reset btn-transparent btn-favoris" type="button">
-                                  <span class="svgContainer">
-                                    <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
-                                    </svg>
-                                  </span>
-                                </button>
-                                <div class="label">${trans('show.button.favorite.label')}</div>
-                              </div>
-                            </div>`);
-                    show.elt = $('reactjs-show-actions');
-                    // On ofusque l'image des épisodes non-vu
-                    let vignette;
-                    for (let v = 0; v < vignettes.length; v++) {
-                        vignette = $(vignettes.get(v));
-                        if (vignette.find('.seen').length <= 0) {
-                            vignette.find('img.js-lazy-image').attr('style', 'filter: blur(5px);');
-                        }
-                    }
-                }
-                _this.addEventBtnsArchiveAndFavoris();
-                _this.deleteShowClick();
-            }
-            if (trigEpisode) {
-                this.update(true).then(show => {
-                    changeBtnAdd(show);
-                });
-            }
-        }
-        /**
-         * Gère la suppression de la série du compte utilisateur
-         */
-        deleteShowClick() {
-            const _this = this;
-            let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
-            // Le menu Options est au complet
-            if (this.in_account && $optionsLinks.length > 2) {
-                this.addEventBtnsArchiveAndFavoris();
-                // Gestion de la suppression de la série du compte utilisateur
-                $optionsLinks.last().removeAttr('onclick').off('click').on('click', (e) =>
-                {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const done = function() {
-                        const afterNotif = function() {
-                            // On nettoie les propriétés servant à l'update de l'affichage
-                            _this.user.status = 0;
-                            _this.user.archived = false;
-                            _this.user.favorited = false;
-                            _this.user.remaining = 0;
-                            _this.user.last = "S00E00";
-                            _this.user.next.id = null;
-                            _this.save();
-
-                            // On remet le bouton Ajouter
-                            $('#reactjs-show-actions').html(`
-                                <div class="blockInformations__action">
-                                  <button class="btn-reset btn-transparent btn-add" type="button">
-                                    <span class="svgContainer">
-                                      <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                                      </svg>
-                                    </span>
-                                  </button>
-                                  <div class="label">${trans('show.button.add.label')}</div>
-                                </div>`
-                            );
-                            // On supprime les items du menu Options
-                            $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
-                            // Nettoyage de l'affichage des épisodes
-                            const checks = $('#episodes .slide_flex');
-                            let promise,
-                                update = false; // Flag pour l'update de l'affichage
-                            if (_this.episodes && _this.episodes.length > 0) {
-                                promise = new Promise(resolve => resolve(_this));
-                            } else {
-                                promise = _this.fetchEpisodes();
-                            }
-                            promise.then(() => {
-                                for (let e = 0; e < _this.episodes.length; e++) {
-                                    if (_this.episodes[e].elt === null) {
-                                        _this.episodes[e].elt = $(checks.get(e));
-                                    }
-                                    if (e === _this.episodes.length - 1) update = true;
-                                    if (debug) console.log('clean episode %d', e, update);
-                                    _this.episodes[e].updateRender('notSeen', update);
-                                }
-                                _this.addShowClick();
-                            });
-                        };
-                        new PopupAlert({
-                            title: trans("popup.delete_show_success.title"),
-                            text: trans("popup.delete_show_success.text", { "%title%": _this.title }),
-                            yes: trans("popup.delete_show_success.yes"),
-                            callback_yes: afterNotif
-                        });
-                    };
-                    // Supprimer la série du compte utilisateur
-                    new PopupAlert({
-                        title: trans("popup.delete_show.title", { "%title%": _this.title }),
-                        text: trans("popup.delete_show.text", { "%title%": _this.title }),
-                        callback_yes: function() {
-                            _this.removeFromAccount()
-                            .then(() => done(), err => {
-                                if (err && err.code !== undefined && err.code === 2004) {
-                                    done();
-                                    return;
-                                }
-                                Media.notification('Erreur de suppression de la série', err);
-                            });
-                        },
-                        callback_no: function() {}
-                    });
-                });
-            }
-        }
-        /**
-         * Ajoute un eventHandler sur les boutons Archiver et Favoris
-         */
-        addEventBtnsArchiveAndFavoris() {
-            const _this = this;
-            let btnArchive = $('#reactjs-show-actions button.btn-archive'),
-                btnFavoris = $('#reactjs-show-actions button.btn-favoris');
-            if (btnArchive.length === 0 || btnFavoris.length === 0) {
-                $('#reactjs-show-actions button:first').addClass('btn-archive');
-                btnArchive = $('#reactjs-show-actions button.btn-archive');
-                $('#reactjs-show-actions button:last').addClass('btn-favoris');
-                btnFavoris = $('#reactjs-show-actions button.btn-favoris');
-            }
-            // Event bouton Archiver
-            btnArchive.off('click').click((e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                if (Media.debug) console.groupCollapsed('show-archive');
-                // Met à jour le bouton d'archivage de la série
-                function updateBtnArchive(promise, transform, label, notif) {
-                    promise.then(() => {
-                        const parent = $(e.currentTarget).parent();
-                        $('span', e.currentTarget).css('transform', transform);
-                        $('.label', parent).text(trans(label));
-                        if (Media.debug) console.groupEnd('show-archive');
-                    }, err => {
-                        Media.notification(notif, err);
-                        if (Media.debug) console.groupEnd('show-archive');
-                    });
-                }
-                if (! _this.user.archived) {
-                    updateBtnArchive(
-                        _this.archive(), 'rotate(180deg)',
-                        'show.button.unarchive.label', 'Erreur d\'archivage de la série'
-                    );
-                } else {
-                    updateBtnArchive(
-                        _this.unarchive(), 'rotate(0deg)',
-                        'show.button.archive.label', 'Erreur désarchivage de la série'
-                    );
-                }
-            });
-            // Event bouton Favoris
-            btnFavoris.off('click').click((e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                if (Media.debug) console.groupCollapsed('show-favoris');
-                if (! _this.user.favorited) {
-                    _this.favorite()
-                    .then(() => {
-                        $(e.currentTarget).children('span').replaceWith(`
-                              <span class="svgContainer">
-                                <svg width="21" height="19" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M15.156.91a5.887 5.887 0 0 0-4.406 2.026A5.887 5.887 0 0 0 6.344.909C3.328.91.958 3.256.958 6.242c0 3.666 3.33 6.653 8.372 11.19l1.42 1.271 1.42-1.28c5.042-4.528 8.372-7.515 8.372-11.18 0-2.987-2.37-5.334-5.386-5.334z"></path>
-                                </svg>
-                              </span>`);
-                        if (Media.debug) console.groupEnd('show-favoris');
-                    }, err => {
-                        Media.notification('Erreur de favoris de la série', err);
-                        if (Media.debug) console.groupEnd('show-favoris');
-                    });
-                } else {
-                    _this.unfavorite()
-                    .then(() => {
-                        $(e.currentTarget).children('span').replaceWith(`
-                              <span class="svgContainer">
-                                <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
-                                </svg>
-                              </span>`);
-                        if (Media.debug) console.groupEnd('show-favoris');
-                    }, err => {
-                        Media.notification('Erreur de favoris de la série', err);
-                        if (Media.debug) console.groupEnd('show-favoris');
-                    });
-                }
-            });
-        }
-        /**
-         * Ajoute la classification dans les détails de la ressource
-         */
-        addRating() {
-            if (Media.debug) console.log('addRating');
-
-            if (this.rating) {
-                let rating = ratings[this.rating] !== undefined ? ratings[this.rating] : '';
-                if (rating !== '') {
-                    // On ajoute la classification
-                    $('.blockInformations__details')
-                    .append(
-                        `<li id="rating"><strong>Classification</strong>
-                            <img src="${rating.img}" title="${rating.title}"/>
-                        </li>`
-                    );
-                }
-            }
-        }
-    }
-
-    /**
-     * @class Classe représentant les films
-     */
-    class Movie extends Media {
-        /**
-         * Constructeur de la classe Movie
-         * @param  {Object} data Les données de la ressource
-         * @return {Movie}        La ressource
-         */
-        constructor(data) {
-            super(data, $('.blockInformations'));
-            this._type = {singular: 'movie', plural: 'movies'};
-            return this.save();
-        }
-        /**
-         * Initialize l'objet avec les données
-         * @param  {Object} data Les données de la série
-         * @return {Movie}
-         */
-        init(data) {
-            // On sauvegarde les épisodes et les similars
-            const _similars = this.similars;
-            const _comments = this.comments;
-            const _characters = this.characters;
-            super.init(data);
-            this.nbSimilars = this.similars;
-            this.similars = [];
-            if (_similars && this.similars === _similars.length) {
-                this.similars = _similars;
-            }
-            this.nbComments = this.comments;
-            this.comments = [];
-            if (_comments && this.comments === _comments.length) {
-                this.comments = _comments;
-            }
-            this.nbCharacters = this.characters;
-            this.characters = [];
-            if (_characters && this.characters === _characters.length) {
-                this.characters = _characters;
-            }
-            return this;
-        }
-        get description() {
-            return this.synopsis;
-        }
-        get in_account() {
-            return this.user.in_account;
-        }
-        /**
-         * Methode static servant à retourner un objet Movie
-         * à partir de son ID
-         * @param  {number} id             L'identifiant du film
-         * @param  {boolean} [force=false] Indique si on utilise le cache ou non
-         * @return {Promise<Movie>}
-         */
-        static fetch(id, force = false) {
-            return new Promise((resolve, reject) => {
-                Media.callApi('GET', 'movies', 'movie', {id: id}, force)
-                .then((data) => {
-                    resolve(new Movie(data));
-                }).catch((err) => {
-                    reject(err);
-                })
-            });
-        }
-        /**
-         * Récupère les données du film sur l'API
-         * @param  {boolean} [force=true] Indique si on utilise les données en cache
-         * @return {Promise<Object>}       Les données du film
-         */
-        fetch(force = true) {
-            return Media.callApi('GET', 'movies', 'movie', {id: this.id}, force, false);
-        }
-        /**
-         * Retourne l'objet Similar correspondant à l'ID
-         * @param  {Number} id  ID du similar
-         * @return {Similar}    L'objet Similar
-         */
-        getSimilar(id) {
-            if (!this.similars) return null;
-            for (let s = 0; s < this.similars.length; s++) {
-                if (this.similars[s].id === id) {
-                    return this.similars[s];
-                }
-            }
-            return null;
-        }
-        /**
-         * Add Movie to account member
-         * @return {Promise<Movie>} Promise of movie
-         */
-        addToAccount(state) {
-            const _this = this;
-            if (this.in_account) return new Promise(resolve => resolve(_this));
-
-            return new Promise((resolve, reject) => {
-                Media.callApi('POST', 'movies', 'movie', {id: _this.id, state: state})
-                .then(data => {
-                    _this.init(data.movie);
-                    _this.save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-        /**
-         * Remove movie from account member
-         * @return {Promise<Movie>} Promise of movie
-         */
-        removeFromAccount() {
-            const _this = this;
-            if (!this.in_account) return new Promise(resolve => resolve(_this));
-
-            return new Promise((resolve, reject) => {
-                Media.callApi('DELETE', 'movies', 'movie', {id: _this.id})
-                .then(data => {
-                    _this.init(data.movie);
-                    _this.save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-    }
-
-    /**
-     * @class Classe représentant les épisodes
-     */
-    class Episode extends Media {
-        /**
-         * Constructeur de la classe Episode
-         * @param  {Object} data  Les données de la ressource
-         * @return {Episode}      La ressource
-         */
-        constructor(data, elt) {
-            elt = elt || $('.blockInformations');
-            super(data, elt);
-            this._type = {singular: 'episode', plural: 'episodes'};
-            if (!(data.show instanceof Show)) {
-                if (cache.has('shows', this.show.id)) {
-                    this.show = cache.get('shows', this.show.id);
-                } else {
-                    // fetch show
-                }
-            }
-            return this.save();
-        }
-        /**
-         * Initialize l'objet avec les données
-         * @param  {Object} data  Les données de l'épisode
-         * @return {Episode}
-         */
-        init(data) {
-            const _show = this.show;
-            super.init(data);
-            if (_show instanceof Show) {
-                this.show = _show;
-            }
-            return this;
-        }
-        /**
-         * Ajoute le titre de l'épisode à l'attribut Title
-         * du DOMElement correspondant au titre de l'épisode
-         * sur la page Web
-         *
-         * @return {Episode} L'épisode
-         */
-        addAttrTitle() {
-            // Ajout de l'attribut title pour obtenir le nom complet de l'épisode, lorsqu'il est tronqué
-            this.elt.find('.slide__title').attr('title', this.title);
-            return this;
-        }
-        /**
-         * Met à jour le DOMElement .checkSeen avec les
-         * données de l'épisode (id, pos, special)
-         * @param  {number} pos  La position de l'épisode dans la liste
-         * @return {Episode}
-         */
-        initCheckSeen(pos) {
-            const $checkbox = this.elt.find('.checkSeen');
-            if ($checkbox.length > 0 && this.user.seen) {
-                // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
-                $checkbox.attr('id', 'episode-' + this.id);
-                $checkbox.attr('data-id', this.id);
-                $checkbox.attr('data-pos', pos);
-                $checkbox.attr('data-special', this.special);
-                $checkbox.attr('title', trans("member_shows.remove"));
-                $checkbox.addClass('seen');
-            } else if ($checkbox.length <= 0 && !this.user.seen && !this.user.hidden) {
-                // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
-                this.elt.find('.slide__image')
-                    .append(`<div id="episode-${this.id}"
-                                  class="checkSeen"
-                                  data-id="${this.id}"
-                                  data-pos="${pos}"
-                                  data-special="${this.special}"
-                                  style="background: rgba(13,21,28,.2);"
-                                  title="${trans("member_shows.markas")}"></div>`
-                );
-                this.elt.find('.slide__image img.js-lazy-image').attr('style', 'filter: blur(5px);');
-            } else if ($checkbox.length > 0 && this.user.hidden) {
-                $checkbox.remove();
-            }
-            return this;
-        }
-        /**
-         * Met à jour les infos de la vignette et appelle la fonction d'update du rendu
-         * @param  {number} pos La position de l'épisode dans la liste
-         * @return {boolean}    Indique si il y a eu un changement
-         */
-        updateCheckSeen(pos) {
-            const $checkSeen = this.elt.find('.checkSeen');
-            let changed = false;
-            if ($checkSeen.length > 0 && $checkSeen.attr('id') === undefined) {
-                if (Media.debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
-                // On ajoute l'attribut ID
-                $checkSeen.attr('id', 'episode-' + this.id);
-                $checkSeen.data('pos', pos);
-            }
-            // if (debug) console.log('updateCheckSeen', {seen: this.user.seen, elt: this.elt, checkSeen: $checkSeen.length, classSeen: $checkSeen.hasClass('seen'), pos: pos, Episode: this});
-            // Si le membre a vu l'épisode et qu'il n'est pas indiqué, on change le statut
-            if (this.user.seen && $checkSeen.length > 0 && !$checkSeen.hasClass('seen')) {
-                if (Media.debug) console.log('Changement du statut (seen) de l\'épisode %s', this.code);
-                this.updateRender('seen', false);
-                changed = true;
-            }
-            // Si le membre n'a pas vu l'épisode et qu'il n'est pas indiqué, on change le statut
-            else if (!this.user.seen && $checkSeen.length > 0 && $checkSeen.hasClass('seen')) {
-                if (Media.debug) console.log('Changement du statut (notSeen) de l\'épisode %s', this.code);
-                this.updateRender('notSeen', false);
-                changed = true;
-            }
-            else if (this.user.hidden && $checkSeen.length > 0) {
-                $checkSeen.remove();
-                changed = true;
-            }
-            return changed;
-        }
-        /**
-         * Retourne le code HTML du titre de la popup
-         * pour l'affichage de la description
-         * @return {string}
-         */
-        getTitlePopup() {
-            return `<span style="color: var(--link_color);">Synopsis épisode ${this.code}</span>`;
-        }
-        /**
-         * Modifie le statut d'un épisode sur l'API
-         * @param  {String} status    Le nouveau statut de l'épisode
-         * @param  {String} method    Verbe HTTP utilisé pour la requête à l'API
-         * @return {void}
-         */
-        updateStatus(status, method) {
-            const _this = this;
-            const pos = this.elt.find('.checkSeen').data('pos');
-            let promise = new Promise(resolve => { resolve(false); });
-            let args = {id: this.id};
-
-            if (method === 'POST') {
-                let createPromise = () => {
-                    return new Promise(resolve => {
-                        new PopupAlert({
-                            title: 'Episodes vus',
-                            text: 'Doit-on cocher les épisodes précédents comme vu ?',
-                            callback_yes: () => {
-                                resolve(true);
-                            },
-                            callback_no: () => {
-                                resolve(false);
-                            }
-                        });
-                    });
-                };
-                const vignettes = $('#episodes .checkSeen');
-                // On verifie si les épisodes précédents ont bien été indiqués comme vu
-                for (let v = 0; v < pos; v++) {
-                    if (! $(vignettes.get(v)).hasClass('seen')) {
-                        promise = createPromise();
-                        break;
-                    }
-                }
-            }
-
-            promise.then(response => {
-                if (method === 'POST' && !response) {
-                    args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
-                }
-
-                Media.callApi(method, 'episodes', 'watched', args).then(data =>
-                {
-                    if (Media.debug) console.log('updateStatus %s episodes/watched', method, data);
-                    if (! (_this.show instanceof Show) && cache.has('shows', _this.show.id)) {
-                        _this.show = cache.get('shows', _this.show.id);
-                    }
-                    // Si un épisode est vu et que la série n'a pas été ajoutée
-                    // au compte du membre connecté
-                    if (! _this.show.in_account && data.episode.show.in_account) {
-                        _this.show.in_account = true;
-                        _this.show
-                            .save()
-                            .addShowClick(true);
-                    }
-                    // On met à jour l'objet Episode
-                    if (method === 'POST' && response && pos) {
-                        const $vignettes = $('#episodes .slide_flex');
-                        let episode;
-                        for (let e = 0; e < pos; e++) {
-                            episode = _this.show.episodes[e];
-                            if (episode.elt === null) {
-                                episode.elt = $vignettes.get(e);
-                            }
-                            if (! episode.user.seen) {
-                                episode.user.seen = true;
-                                episode
-                                    .updateRender('seen', false)
-                                    .save();
-                            }
-                        }
-                    }
-                    _this
-                        .init(data.episode)
-                        .updateRender(status, true)
-                        .save()
-                        ._callListeners();
-                })
-                .catch(err => {
-                    if (Media.debug) console.error('updateStatus error %s', err);
-                    if (err && err == 'changeStatus') {
-                        if (Media.debug) console.log('updateStatus error %s changeStatus', method);
-                        _this.updateRender(status);
-                    } else {
-                        _this.toggleSpinner(false);
-                        Media.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
-                    }
-                });
-            });
-        }
-        /**
-         * Change le statut visuel de la vignette sur le site
-         * @param  {String} newStatus     Le nouveau statut de l'épisode
-         * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
-         * @return {Episode}
-         */
-        updateRender(newStatus, update = true) {
-            const _this = this;
-            const $elt = this.elt.find('.checkSeen');
-            const lenEpisodes = $('#episodes .checkSeen').length;
-            const lenNotSpecial = $('#episodes .checkSeen[data-special="0"]').length;
-            if (Media.debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
-            if (newStatus === 'seen') {
-                $elt.css('background', ''); // On ajoute le check dans la case à cocher
-                $elt.addClass('seen'); // On ajoute la classe 'seen'
-                $elt.attr('title', trans("member_shows.remove"));
-                // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
-                $elt.parent('div.slide__image').find('img').removeAttr('style');
-                $elt.parents('div.slide_flex').removeClass('slide--notSeen');
-
-                const moveSeason = function() {
-                    const slideCurrent = $('#seasons div.slide--current');
-                    // On check la saison
-                    slideCurrent.find('.slide__image').prepend('<div class="checkSeen"></div>');
-                    slideCurrent
-                        .removeClass('slide--notSeen')
-                        .addClass('slide--seen');
-                    if (Media.debug) console.log('Tous les épisodes de la saison ont été vus', slideCurrent);
-                    // Si il y a une saison suivante, on la sélectionne
-                    if (slideCurrent.next().length > 0) {
-                        if (Media.debug) console.log('Il y a une autre saison');
-                        slideCurrent.next().trigger('click');
-                        slideCurrent
-                            .removeClass('slide--current');
-                    }
-                };
-                const lenSeen = $('#episodes .seen').length;
-                //if (debug) console.log('Episode.updateRender', {lenEpisodes: lenEpisodes, lenNotSpecial: lenNotSpecial, lenSeen: lenSeen});
-                // Si tous les épisodes de la saison ont été vus
-                if (lenSeen === lenEpisodes) {
-                    moveSeason();
-                } else if (lenSeen === lenNotSpecial) {
-                    new PopupAlert({
-                        title: 'Fin de la saison',
-                        text: 'Tous les épisodes de la saison, hors spéciaux, ont été vu.<br/>Voulez-vous passer à la saison suivante ?',
-                        callback_yes: () => {
-                            moveSeason();
-                        },
-                        callback_no: () => {
-                            return true;
-                        }
-                    });
-                }
-            } else {
-                $elt.css('background', 'rgba(13,21,28,.2)'); // On enlève le check dans la case à cocher
-                $elt.removeClass('seen'); // On supprime la classe 'seen'
-                $elt.attr('title', trans("member_shows.markas"));
-                // On remet le voile masquant sur la vignette de l'épisode
-                $elt.parent('div.slide__image')
-                    .find('img')
-                    .attr('style', 'filter: blur(5px);');
-
-                const contVignette = $elt.parents('div.slide_flex');
-                if (!contVignette.hasClass('slide--notSeen')) {
-                    contVignette.addClass('slide--notSeen');
-                }
-
-                if ($('#episodes .seen').length < lenEpisodes) {
-                    $('#seasons div.slide--current .checkSeen').remove();
-                    $('#seasons div.slide--current').removeClass('slide--seen');
-                    $('#seasons div.slide--current').addClass('slide--notSeen');
-                }
-            }
-            if (update) {
-                if (this.show instanceof Show) {
-                    this.show.update(true).then(() => {
-                        _this.toggleSpinner(false);
-                    });
-                } else {
-                    console.warn('Episode.show is not an instance of class Show', this.show);
-                }
-            }
-            return this;
-        }
-        /**
-         * Affiche/masque le spinner de modification des épisodes
-         *
-         * @param  {Object}   $elt     L'objet jQuery correspondant à l'épisode
-         * @param  {boolean}  display  Le flag indiquant si afficher ou masquer
-         * @return {Episode}
-         */
-        toggleSpinner(display) {
-            if (! display) {
-                $('.spinner').remove();
-                fnLazy.init();
-                if (Media.debug) console.log('toggleSpinner');
-                if (Media.debug) console.groupEnd('episode checkSeen');
-            } else {
-                if (Media.debug) console.groupCollapsed('episode checkSeen');
-                if (Media.debug) console.log('toggleSpinner');
-                this.elt.find('.slide__image').prepend(`
-                    <div class="spinner">
-                        <div class="spinner-item"></div>
-                        <div class="spinner-item"></div>
-                        <div class="spinner-item"></div>
-                    </div>`
-                );
-            }
-            return this;
-        }
-    }
-
-    /**
-     * @class Classe représentant les similaires de type séries et films
-     */
-    class Similar extends Media {
-        /**
-         * Constructeur de la classe Similar
-         * @param  {Object} data Les données de la ressource
-         * @return {Similar}        La ressource
-         */
-        constructor(data, elt, type) {
-            if (type.singular === 'show') {
-                data._description = data.description;
-                delete data.description;
-                data._in_account = data.in_account;
-                delete data.in_account;
-            } else {
-                data._in_account = data.user.in_account;
-                data._description = data.synopsis;
-                delete data.synopsis;
-            }
-            super(data, elt);
-            this._type = type;
-            return this.save();
-        }
-        /**
-         * Initialize l'objet avec les données
-         * @param  {Object} data  Les données de l'épisode
-         * @return {Similar}
-         */
-        init(data) {
-            if (this._type.singular === 'show') {
-                data._description = data.description;
-                delete data.description;
-                data._in_account = data.in_account;
-                delete data.in_account;
-            } else if (this._type.singular === 'movie') {
-                data._in_account = data.user.in_account;
-                data._description = data.synopsis;
-                delete data.synopsis;
-            }
-            super.init(data);
-            return this;
-        }
-        /**
-         * Indique si le membre connecté à ajouté le similar à son compte
-         * @return {boolean}
-         */
-        get in_account() {
-            return this._in_account;
-        }
-        set in_account(val) {
-            this._in_account = val;
-        }
-        /**
-         * Retourne la description de la ressource
-         * @return {string}
-         */
-        get description() {
-            return this._description;
-        }
-        /**
-         * Modifie la description de la ressource
-         * @param  {string} synopsis Le texte de la description
-         * @return {void}
-         */
-        set description(synopsis) {
-            this._description = synopsis;
-        }
-        /**
-         * Ajoute le bandeau Viewed sur le poster du similar
-         * @return {Similar}
-         */
-        addViewed() {
-            // Si la série a été vue ou commencée
-            if (this.user.status &&
-                (
-                    (this._type.singular === 'movie' && this.user.status === 1) ||
-                    (this._type.singular === 'show' && this.user.status > 0))
-                )
-            {
-                // On ajoute le bandeau "Viewed"
-                this.elt.find('a.slide__image').prepend(
-                    `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
-                );
-            }
-            return this;
-        }
-        /**
-         * Ajoute l'icône wrench à côté du titre du similar
-         * pour permettre de visualiser les données du similar
-         * @return {Similar}
-         */
-        wrench() {
-            const $title = this.elt.find('.slide__title'),
-                  _this = this;
-            $title.html($title.html() +
-              `<i class="fa fa-wrench popover-wrench"
-                  aria-hidden="true"
-                  style="margin-left:5px;cursor:pointer;"
-                  data-id="${_this.id}"
-                  data-type="${_this._type.singular}">
-               </i>`
-            );
-
-            $title.find('.popover-wrench').click((e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                const $dataRes = $('#dialog-resource .data-resource'), // DOMElement contenant le rendu JSON de la ressource
-                      html = document.documentElement;
-                const onShow = function() {
-                    html.style.overflowY = 'hidden';
-                    $('#dialog-resource')
-                        .css('z-index', '1005')
-                        .css('overflow', 'scroll');
-                };
-                const onHide = function() {
-                    html.style.overflowY = '';
-                    $('#dialog-resource')
-                        .css('z-index', '0')
-                        .css('overflow', 'none');
-                };
-
-                //if (debug) console.log('Popover Wrench', eltId, self);
-                this.fetch().then(function(data) {
-                    $dataRes.empty().append(renderjson.set_show_to_level(2)(data[_this._type.singular]));
-                    $('#dialog-resource-title span.counter').empty().text('(' + Media.counter + ' appels API)');
-                    $('#dialog-resource').show(400, onShow);
-                    $('#dialog-resource .close').click(e => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        $('#dialog-resource').hide(400, onHide);
-                    });
-                });
-            });
-            return this;
-        }
-        /**
-         * Retourne le contenu HTML pour la popup
-         * de présentation du similar
-         * @return {string}
-         */
-        getContentPopup() {
-            const _this = this,
-                  status = this.status == 'Ended' ? 'Terminée' : 'En cours',
-                  seen = (this.user.status > 0) ? 'Vu à <strong>' + this.user.status + '%</strong>' : 'Pas vu';
-            //if (debug) console.log('similars tempContentPopup', objRes);
-            let description = this.description;
-            if (description.length > 200) {
-                description = description.substring(0, 200) + '…';
-            }
-            let template = '';
-            function _renderCreation() {
-                let html = '';
-                if (_this.creation || _this.country || _this.production_year) {
-                    html += '<p>';
-                    if (_this.creation) {
-                        html += `<u>Création:</u> <strong>${_this.creation}</strong>`;
-                    }
-                    if (_this.production_year) {
-                        html += `<u>Production:</u> <strong>${_this.production_year}</strong>`;
-                    }
-                    if (_this.country) {
-                        html += `, <u>Pays:</u> <strong>${_this.country}</strong>`;
-                    }
-                    html += '</p>';
-                }
-                return html;
-            }
-            function _renderGenres() {
-                if (_this.genres && _this.genres.length > 0) {
-                    return '<p><u>Genres:</u> ' + Object.values(_this.genres || []).join(', ') + '</p>';
-                }
-                return '';
-            }
-            template = '<div>';
-            if (this._type.singular === 'show') {
-                template += `<p><strong>${this.seasons}</strong> saison${(this.seasons > 1 ? 's':'')}, <strong>${this.episodes}</strong> épisodes, `;
-                if (this.objNote.total > 0) {
-                    template += `<strong>${this.objNote.total}</strong> votes`;
-                    if (this.objNote.user > 0) {
-                        template += `, votre note: ${this.objNote.user}`;
-                    }
-                    template += '</p>';
-                } else {
-                    template += 'Aucun vote</p>';
-                }
-                if (! this.in_account) {
-                    template += '<p><a href="javascript:;" class="addShow">Ajouter</a></p>';
-                }
-                template += _renderGenres();
-                template += _renderCreation();
-                let archived = '';
-                if (this.user.status > 0 && this.user.archived === true) {
-                    archived = ', Archivée: <i class="fa fa-check-circle-o" aria-hidden="true"></i>';
-                } else if (this.user.status > 0) {
-                    archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
-                }
-                if (this.showrunner && this.showrunner.length > 0) {
-                    template += `<p><u>Show Runner:</u> <strong>${this.showrunner.name}</strong></p>`;
-                }
-                template += `<p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>`;
-            }
-            // movie
-            else {
-                template += '<p>';
-                if (this.objNote.total > 0) {
-                    template += `<strong>${this.objNote.total}</strong> votes`;
-                    if (this.objNote.user > 0) {
-                        template += `, votre note: ${this.objNote.user}`;
-                    }
-                } else {
-                    template += 'Aucun vote';
-                }
-                template += '</p>';
-                // Ajouter une case à cocher pour l'état "Vu"
-                template += `<p><label for="seen">Vu</label>
-                    <input type="checkbox" class="movie movieSeen" name="seen" data-movie="${this.id}" ${this.user.status === 1 ? 'checked' : ''} style="margin-right:5px;"></input>`;
-                // Ajouter une case à cocher pour l'état "A voir"
-                template += `<label for="mustSee">A voir</label>
-                    <input type="checkbox" class="movie movieMustSee" name="mustSee" data-movie="${this.id}" ${this.user.status === 0 ? 'checked' : ''} style="margin-right:5px;"></input>`;
-                // Ajouter une case à cocher pour l'état "Ne pas voir"
-                template += `<label for="notSee">Ne pas voir</label>
-                    <input type="checkbox" class="movie movieNotSee" name="notSee" data-movie="${this.id}"  ${this.user.status === 2 ? 'checked' : ''}></input></p>`;
-                template += _renderGenres();
-                template += _renderCreation();
-                if (this.director) {
-                    template += `<p><u>Réalisateur:</u> <strong>${this.director}</strong></p>`;
-                }
-            }
-            return template + `<p>${description}</p></div>`;
-        }
-        /**
-         * Retourne le contenu HTML du titre de la popup
-         * @return {string}
-         */
-        getTitlePopup() {
-            if (debug) console.log('getTitlePopup', this);
-            let title = this.title;
-            if (this.objNote.total > 0) {
-                title += ' <span style="font-size: 0.8em;color:#000;">' +
-                        parseFloat(this.objNote.mean).toFixed(2) + ' / 5</span>';
-            }
-            return title;
-        }
-        /**
-         * Met à jour l'attribut title de la note du similar
-         * @param  {Boolean} change Indique si il faut modifier l'attribut
-         * @return {string}         La valeur modifiée de l'attribut title
-         */
-        updateTitleNote(change = true) {
-            const $elt = this._elt.find('.stars-outer');
-            if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
-                if (change) $elt.attr('title', 'Aucun vote');
-                return '';
-            }
-
-            const title = this.objNote.toString();
-            if (change) {
-                $elt.attr('title', title);
-            }
-            return title;
-        }
-        /**
-         * Ajoute la note, sous forme d'étoiles, du similar sous son titre
-         * @return {Similar}
-         */
-        renderStars() {
-            // On ajoute le code HTML pour le rendu de la note
-            this._elt.find('.slide__title').after(
-                '<div class="stars-outer"><div class="stars-inner"></div></div>'
-            );
-            this.updateTitleNote();
-            let percent = this.objNote.getPercentage();
-            this._elt.find('.stars-inner').width(percent + '%');
-            return this;
-        }
-        /**
-         * Décode les HTMLEntities dans le titre du similar
-         * @return {Similar}
-         */
-        decodeTitle() {
-            let $elt = this._elt.find('.slide__title'),
-                title = $elt.text();
-
-            if (/&#/.test(title)) {
-                $elt.text($('<textarea />').html(title).text());
-            }
-            return this;
-        }
-        /**
-         * Vérifie la présence de l'image du similar
-         * et tente d'en trouver une si celle-ci n'est pas présente
-         * @return {Similar}
-         */
-        checkImg() {
-            const $img = this._elt.find('img.js-lazy-image'),
-                  _this = this;
-            if ($img.length <= 0) {
-                if (this._type === 'show' && this.thetvdb_id && this.thetvdb_id > 0) {
-                    // On tente de remplacer le block div 404 par une image
-                    this._elt.find('div.block404').replaceWith(`
-                        <img class="js-lazy-image u-opacityBackground fade-in"
-                             width="125"
-                             height="188"
-                             alt="Poster de ${this.title}"
-                             data-src="https://artworks.thetvdb.com/banners/posters/${this.thetvdb_id}-1.jpg"/>`
-                    );
-                    fnLazy.init();
-                }
-                else if (this._type === 'movie' && this.tmdb_id && this.tmdb_id > 0) {
-                    if (themoviedb_api_user_key.length <= 0) return;
-                    const uriApiTmdb = `https://api.themoviedb.org/3/movie/${this.tmdb_id}?api_key=${themoviedb_api_user_key}&language=fr-FR`;
-                    fetch(uriApiTmdb).then(response => {
-                        if (!response.ok) return null;
-                        return response.json();
-                    }).then(data => {
-                        if (data !== null && data.poster_path !== undefined && data.poster_path !== null) {
-                            _this._elt.find('div.block404').replaceWith(`
-                                <img class="js-lazy-image u-opacityBackground fade-in"
-                                     width="125"
-                                     height="188"
-                                     alt="Poster de ${_this.title}"
-                                     data-src="https://image.tmdb.org/t/p/original${data.poster_path}"/>`
-                            );
-                            fnLazy.init();
-                        }
-                    });
-                }
-            }
-            return this;
-        }
-        /**
-         * Add Show to account member
-         * @return {Promise<Similar>} Promise of show
-         */
-        addToAccount(state = 0) {
-            const _this = this;
-            if (this.in_account) return new Promise(resolve => resolve(_this));
-            let params = {id: this.id};
-            if (this._type.singular === 'movie') {
-                params.state = state;
-            }
-            return new Promise((resolve, reject) => {
-                Media.callApi('POST', _this._type.plural, _this.type.singular, params)
-                .then(data => {
-                    _this.init(data[_this._type.singular]).save();
-                    resolve(_this);
-                }, err => {
-                    reject(err);
-                });
-            });
-        }
-    }
-
-    class UpdateAuto {
-        /**
-         * Instance unique de la classe UpdateAuto
-         * @type UpdateAuto
-         */
-        static instance = null;
-        /**
-         * Indique si une instance de la classe existe déjà
-         * @type boolean
-         */
-        static exists = false;
-        /**
-         * Contient l'identifiant du timer interval de la tâche
-         * @type number
-         */
-        static timer = null;
-
-        /**
-         * constructor - Constructeur type Singleton de la classe
-         *
-         * @param  {Show} objShow  Un objet de type Show
-         * @return {UpdateAuto}    L'instance unique UpdateAuto
-         */
-        constructor(objShow) {
-            if (! (objShow instanceof Show)) {
-                throw new TypeError('Show must be an instance of class Show');
-            }
-            if (UpdateAuto.exists) {
-                return UpdateAuto.instance;
-            }
-            this._objShow = objShow;
-            this._showId = objShow.id;
-            this._init(objShow.id);
-            UpdateAuto.instance = this;
-            UpdateAuto.exists = true;
-            return this;
-        }
-
-        /**
-         * _init - Initialize les données de l'objet
-         *
-         * @param  {type} showId L'identifiant de la série
-         * @return {UpdateAuto}  L'instance unique UpdateAuto
-         */
-        _init(showId) {
-            let objUpAuto = GM_getValue('objUpAuto');
-            this._exist = false;
-            if (objUpAuto[showId] !== undefined) {
-                this._exist = true;
-                this._status = objUpAuto[showId].status;
-                this._auto = objUpAuto[showId].auto;
-                this._interval = objUpAuto[showId].interval;
-            } else {
-                this._status = false; // Statut de la tâche d'update
-                this._auto = false; // Autorise l'activation de la tâche d'update des épisodes
-                this._interval = 0; // Intervalle de temps entre les mises à jour
-            }
-            this.changeColorBtn();
-            return this;
-        }
-
-        /**
-         * _save - Sauvegarde les options de la tâche d'update
-         * auto dans l'espace de stockage de Tampermonkey
-         *
-         * @return {UpdateAuto} L'instance unique UpdateAuto
-         */
-        _save() {
-            let objUpAuto = GM_getValue('objUpAuto');
-            let obj = {
-                status: this._status,
-                auto: this._auto,
-                interval: this._interval
-            };
-            objUpAuto[this._showId] = obj;
-            GM_setValue('objUpAuto', objUpAuto);
-            this._exist = true;
-            this.changeColorBtn();
-            return this;
-        }
-
-        /**
-         * get status - Retourne le statut de la tâche d'update auto
-         * des épisodes
-         *
-         * @return {boolean}  Le statut
-         */
-        get status() {
-            return this._status;
-        }
-
-        /**
-         * set status - Modifie le statut de la tâche d'update auto
-         * des épisodes
-         *
-         * @param  {boolean} status Le statut de la tâche
-         * @return {void}
-         */
-        set status(status) {
-            this._status = status;
-            this._save();
-        }
-
-        /**
-         * get auto - Flag indiquant l'autorisation de pouvoir lancer
-         * la tâche d'update auto
-         *
-         * @return {boolean}  Flag d'autorisation
-         */
-        get auto() {
-            return this._auto;
-        }
-
-        /**
-         * set auto - Modifie l'autorisation de lancer la tâche
-         * d'update auto
-         *
-         * @param  {boolean} auto Le flag
-         * @return {void}
-         */
-        set auto(auto) {
-            this._auto = auto;
-            this._save();
-        }
-
-        /**
-         * get interval - Retourne l'intervalle de temps entre
-         * chaque update auto
-         *
-         * @return {number}  L'intervalle de temps en minutes
-         */
-        get interval() {
-            return this._interval;
-        }
-
-        /**
-         * set interval - Définit l'intervalle de temps, en minutes,
-         * entre chaque update auto
-         *
-         * @param  {number} val L'intervalle de temps en minutes
-         * @return {void}
-         */
-        set interval(val) {
-            this._interval = val;
-            this._save();
-        }
-
-        /**
-         * changeColorBtn - Modifie la couleur du bouton d'update
-         * des épisodes sur la page Web
-         *
-         * @return {UpdateAuto} L'instance unique UpdateAuto
-         */
-        changeColorBtn() {
-            let color = '#fff';
-            if (! this._exist) {
-                color = '#6c757d'; // grey
-            } else if (this._status && this._auto) {
-                color = 'green';
-            } else if (this._auto && ! this._status) {
-                color = 'orange';
-            } else if (! this._auto && ! this._status) {
-                color = 'red';
-            }
-            $('.updateEpisodes').css('color', color);
-            return this;
-        }
-
-        /**
-         * stop - Permet de stopper la tâche d'update auto et
-         * aussi de modifier le flag et l'intervalle en fonction
-         * de l'état de la série
-         *
-         * @return {UpdateAuto} L'instance unique UpdateAuto
-         */
-        stop() {
-            if (this._objShow.user.remaining <= 0 && this._objShow.isEnded()) {
-                this._auto = false;
-                this._interval = 0;
-            } else if (this._objShow.user.remaining <= 0) {
-                this._auto = false;
-            }
-            this.status = false;
-            clearInterval(UpdateAuto.timer);
-            UpdateAuto.timer = null;
-            return this;
-        }
-
-        /**
-         * delete - Supprime les options d'update auto
-         * de la série de l'espace de stockage
-         *
-         * @return {UpdateAuto} L'instance unique UpdateAuto
-         */
-        delete() {
-            this.stop();
-            let objUpAuto = GM_getValue('objUpAuto');
-            if (objUpAuto[this._showId] !== undefined) {
-                delete objUpAuto[this._showId];
-                GM_setValue('objUpAuto', objUpAuto);
-            }
-            return this;
-        }
-
-        /**
-         * launch - Permet de lancer la tâche d'update auto
-         * des épisodes
-         *
-         * @return {UpdateAuto} L'instance unique UpdateAuto
-         */
-        launch() {
-            // Si les options sont modifiées pour arrêter la tâche
-            // et que le statut est en cours
-            if (this._status && (!this._auto || this._interval <= 0)) {
-                if (debug) console.log('close interval updateEpisodeListAuto');
-                return this.stop();
-            }
-            // Si les options modifiées pour lancer
-            else if (this._auto && this._interval > 0) {
-                if (this._objShow.user.remaining <= 0) {
-                    this.stop();
-                    return this;
-                }
-                this.status = true;
-                if (UpdateAuto.timer) {
-                    if (debug) console.log('close old interval timer');
-                    clearInterval(UpdateAuto.timer);
-                }
-                const _this = this;
-                UpdateAuto.timer = setInterval(function() {
-                    if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, _this._objShow));
-                    if (! _this._auto || _this._objShow.user.remaining <= 0) {
-                        if (debug) console.log('Arrêt de la mise à jour auto des épisodes');
-                        _this.stop();
-                        return;
-                    }
-                    if (debug) console.log('update episode list');
-                    const btnUpEpisodeList = $('.updateEpisodes');
-                    if (btnUpEpisodeList.length > 0) {
-                        btnUpEpisodeList.trigger('click');
-                        if ( ! _this._status) {
-                            _this.status = true;
-                        }
-                    }
-                }, (this._interval * 60) * 1000);
-            }
-            return this;
-        }
-    }
-
-    /*
-            Méthodes déplacées pour le bon chargement des classes
-            les appels à d'autres classes dans une classe pose
-            problème pour le chargement de celles-ci.
-     */
-    /**
-     * Méthode récupérant les épisodes de la série pour une saison
-     * @param  {number}  season Le numéro de la saison
-     * @return {Promise<Show>}  L'objet Show
-     */
-    Show.prototype.fetchEpisodes = function(season) {
-        // if (debug) console.log('Show fetchEpisodes', {season: season, force: force, object: this});
-        if (!season) {
-            throw new Error('season required');
-        }
-        const _this = this;
-        return new Promise((resolve, reject) => {
-            Media.callApi('GET', 'shows', 'episodes', {thetvdb_id: this.thetvdb_id, season: season}, true)
-            .then(data => {
-                _this.current_season = season;
-                _this.episodes = [];
-                for (let e = 0; e < data.episodes.length; e++) {
-                    data.episodes[e].show = _this;
-                    _this.episodes.push(new Episode(data.episodes[e], null));
-                }
-                _this.save();
-                resolve(_this);
-            }, err => {
-                reject(err);
-            });
-        });
     };
-    /**
-     * fetchSimilars - Méthode récupérant les similaires de la série
-     * @return {Promise<Show>}  L'objet Show
-     */
-    Show.prototype.fetchSimilars = function() {
-        const _this = this;
-        this.similars = [];
-        return new Promise((resolve, reject) => {
-            Media.callApi('GET', 'shows', 'similars', {thetvdb_id: this.thetvdb_id, details: true}, true)
-            .then(data => {
-                if (data.similars.length > 0) {
-                    for (let s = 0; s < data.similars.length; s++) {
-                        _this.similars.push(new Similar(data.similars[s].show, null, _this._type));
-                    }
-                }
-                _this.save();
-                resolve(_this);
-            }, err => {
-                reject(err);
-            });
-        });
-    };
-    /**
-     * fetchSimilars - Méthode récupérant les similaires du film
-     * @return {Promise<Movie>} L'objet Movie
-     */
-    Movie.prototype.fetchSimilars = function() {
-        const _this = this;
-        this.similars = [];
-        return new Promise((resolve, reject) => {
-            Media.callApi('GET', 'movies', 'similars', {id: this.id, details: true}, true)
-            .then(data => {
-                if (data.similars.length > 0) {
-                    for (let s = 0; s < data.similars.length; s++) {
-                        _this.similars.push(new Similar(data.similars[s].movie, null, _this._type));
-                    }
-                }
-                resolve(_this);
-            }, err => {
-                reject(err);
-            });
-        });
-    };
+    let timer, timerUA, currentUser, cache, fnLazy;
     /* Initialize the cache */
-    cache = new Cache();
+    cache = new CacheUS();
     /**
-     * Paramétrage de la super classe Media
+     * Paramétrage de la super classe abstraite Base et UpdateAuto
      */
-    Media.debug = debug;
-    Media.cache = cache;
-    Media.notification = notification;
-    Media.userIdentified = userIdentified;
-    Media.token = betaseries_api_user_token;
-    Media.userKey = betaseries_api_user_key;
-    Media.serverBaseUrl = serverBaseUrl;
+    Base.debug = debug;
+    Base.cache = cache;
+    Base.notification = notification;
+    Base.userIdentified = userIdentified;
+    Base.token = betaseries_api_user_token;
+    Base.userKey = betaseries_api_user_key;
+    Base.userId = betaseries_user_id;
+    Base.trans = trans;
+    Base.ratings = ratings;
+    Base.themoviedb_api_user_key = themoviedb_api_user_key;
+    Base.serverBaseUrl = serverBaseUrl;
+    UpdateAuto.getValue = GM_getValue;
+    UpdateAuto.setValue = GM_setValue;
 
     // On affiche la version du script
     if (debug) console.log('UserScript BetaSeries v%s', GM_info.script.version);
-    // Ajout des feuilles de styles pour le userscript
-    addScriptAndLink(['awesome', 'stylehome']);
 
+    // Ajout des feuilles de styles pour le userscript
+    addScriptAndLink(['awesome', 'stylehome'], () => console.info('Styles loaded'));
     if (typeof lazyLoad === 'undefined') {
         let notLoop = 0;
-        let timerLazy = setInterval(function() {
+        let timerLazy = setInterval(function () {
             // Pour eviter une boucle infinie
             if (++notLoop >= 20) {
                 clearInterval(timerLazy);
                 // Ca ne fera pas le job, mais ça ne déclenchera pas d'erreur
-                fnLazy = {init: function(){console.warn('fake lazyLoad');}};
+                fnLazy = { init: function () { console.warn('fake lazyLoad'); } };
                 return;
             }
             if (typeof lazyLoad !== 'undefined') {
@@ -2717,15 +364,15 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 timerLazy = null;
             }
         }, 500);
-    } else {
+    }
+    else {
         fnLazy = new lazyLoad({});
     }
-
     checkApiVersion();
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour instancier un objet Media
-        getResource(true).then(objRes => {
+        getResource(true).then((objRes) => {
             if (debug) console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
             if (debug) addBtnDev(); // On ajoute le bouton de Dev
             removeAds(); // On retire les pubs
@@ -2733,6 +380,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             objRes.decodeTitle(); // On décode le titre de la ressource
             objRes.addNumberVoters(); // On ajoute le nombre de votes à la note
             upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
+            comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
+            replaceVoteFn(objRes);
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 // On ajoute la gestion des épisodes
@@ -2749,7 +398,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         if (regexUser.test(url)) {
             // On récupère les infos du membre connecté
             getMember()
-            .then(function(member) {
+                .then(function (member) {
                 currentUser = member;
                 let login = url.split('/')[2];
                 // On ajoute la fonction de comparaison des membres
@@ -2757,7 +406,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     compareMembers();
                 }
             });
-        } else {
+        }
+        else {
             searchFriends();
         }
     }
@@ -2765,7 +415,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     else if (/^\/api/.test(url)) {
         if (/\/methodes/.test(url)) {
             sommaireDevApi();
-        } else if (/\/console/.test(url)) {
+        }
+        else if (/\/console/.test(url)) {
             updateApiConsole();
         }
     }
@@ -2776,7 +427,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         seriesFilterPays();
         if (/agenda/.test(url)) {
             let countTimer = 0;
-            timerUA = setInterval(function() {
+            timerUA = setInterval(function () {
                 if (++countTimer > 50) {
                     clearInterval(timerUA);
                     notification('Erreur Update Agenda', 'Le timer de chargement a dépassé le temps max autorisé.');
@@ -2786,18 +437,19 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }, 1000);
         }
     }
-
     // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
     // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
     const observer = new MutationObserver(mutationsList => {
-        let updateTitle = (i, e) => {if (isTruncated(e)) {$(e).parents('a').attr('title', $(e).text());}};
+        let updateTitle = (i, e) => { if (isTruncated(e)) {
+            $(e).parents('a').attr('title', $(e).text());
+        } };
         for (let mutation of mutationsList) {
             if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
-                let node = mutation.addedNodes[0],
-                    $node = $(node);
+                let node = mutation.addedNodes[0], $node = $(node);
                 if ($node.hasClass('col-md-4')) {
                     $('.mainLink', $node).each(updateTitle);
-                } else if ($node.hasClass('js-searchResult')) {
+                }
+                else if ($node.hasClass('js-searchResult')) {
                     let title = $('.mainLink', $node).get(0);
                     if (isTruncated(title)) {
                         $node.attr('title', $(title).text());
@@ -2807,7 +459,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         }
     });
     observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
-
     /**
      * Verifie si l'élément est tronqué, généralement, du texte
      * @params {Object} Objet DOMElement
@@ -2816,7 +467,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     function isTruncated(el) {
         return el.scrollWidth > el.clientWidth;
     }
-
     /**
      * Verifie si l'utilisateur est connecté
      * @return {boolean}
@@ -2824,31 +474,27 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     function userIdentified() {
         return typeof betaseries_api_user_token !== 'undefined';
     }
-
     /**
      * Cette fonction vérifie la dernière version de l'API
      */
     function checkApiVersion() {
-        fetch(location.origin + '/api/versions').then(response => {
-            if (!response.ok) {
-                return false;
+        fetch(location.origin + '/api/versions').then((resp) => {
+            if (!resp.ok) {
+                return '';
             }
-            return response.text();
+            return resp.text();
         }).then(html => {
-            if (html) {
+            if (html && html.length > 0) {
                 // Convert the HTML string into a document object
-                let parser = new DOMParser(),
-                    doc = parser.parseFromString(html, 'text/html');
+                let parser = new DOMParser(), doc = parser.parseFromString(html, 'text/html');
                 // $('.maincontent > ul > li > strong').last().text().trim().split(' ')[1]
-                const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(),
-                      lastF = parseFloat(latest);
+                const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(), lastF = parseFloat(latest);
                 if (!Number.isNaN(lastF) && lastF > parseFloat(Media.api.versions.last)) {
                     window.alert("L'API possède une nouvelle version: " + latest);
                 }
             }
         });
     }
-
     /**
      * Permet d'afficher les messages d'erreur liés au script
      *
@@ -2861,9 +507,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let notifContainer = $('.userscript-notifications');
         // On ajoute notre zone de notifications
         if ($('.userscript-notifications').length <= 0) {
-            $('#fb-root').after(
-                '<div class="userscript-notifications"><h3><span class="title"></span><i class="fa fa-times" aria-hidden="true"></i></h3><p class="text"></p></div>'
-            );
+            $('#fb-root').after('<div class="userscript-notifications"><h3><span class="title"></span><i class="fa fa-times" aria-hidden="true"></i></h3><p class="text"></p></div>');
             notifContainer = $('.userscript-notifications');
             $('.userscript-notifications .fa-times').click(() => {
                 $('.userscript-notifications').slideUp();
@@ -2874,48 +518,70 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         $('.userscript-notifications .text').html(text);
         notifContainer.slideDown().delay(5000).slideUp();
     }
-
     /**
      * addScriptAndLink - Permet d'ajouter un script ou un link sur la page Web
      *
      * @param  {String|String[]} name Le ou les identifiants des éléments à charger
      * @return {void}
      */
-    function addScriptAndLink(name) {
+    function addScriptAndLink(name, onloadFunction = noop) {
         if (name instanceof Array) {
             if (name.length > 1) {
                 for (let n = 0; n < name.length; n++) {
-                    addScriptAndLink(name[n]);
+                    if (n === name.length - 1) {
+                        addScriptAndLink(name[n], onloadFunction);
+                    } else {
+                        addScriptAndLink(name[n]);
+                    }
                 }
                 return;
-            } else {
+            }
+            else {
                 name = name[0];
             }
         }
         // On vérifie que le nom est connu
-        if (! scriptsAndStyles || !(name in scriptsAndStyles)) {
+        if (!scriptsAndStyles || !(name in scriptsAndStyles)) {
             throw new Error(`${name} ne fait pas partit des données de scripts ou de styles`);
         }
-        let element, data = scriptsAndStyles[name];
-        if (data.type === 'script') {
-            // https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
-            element = `
-                <script src="${data.src}"
-                        id="${data.id}"
-                        integrity="${data.integrity}"
-                        crossorigin="anonymous" referrerpolicy="no-referrer">
-                </script>`;
-        } else if (data.type === 'style') {
-            element = `
-                <link rel="stylesheet"
-                      id="${data.id}"
-                      href="${data.href}"
-                      integrity="${data.integrity}"
-                      crossorigin="anonymous" referrerpolicy="no-referrer" />`;
+        const data = scriptsAndStyles[name];
+        // On vérifie si il est déjà chargé
+        if ($('#' + data.id).length === 1) {
+            return onloadFunction();
         }
-        $('head').append(element);
+        if (data.type === 'script') {
+            const loadErrorScript = function(oError) {
+                if (debug) console.log('loadErrorScript error', oError);
+                console.error("The script " + oError.target.src + " didn't load correctly.");
+            }
+            // $('head').append(`<script id="${data.id}"
+            //                           integrity="${data.integrity}"
+            //                           src="${data.src}"
+            //                           crossorigin="anonymous"
+            //                           referrerpolicy="no-referrer"></script>`);
+            // const newScript = document.querySelector("#" + data.id);
+            // newScript.onerror = loadErrorScript;
+            // newScript.onload = onloadFunction;
+            loadJS(data.src, null, null, {
+                integrity: data.integrity,
+                id: data.id,
+                crossorigin: 'anonymous',
+                referrerpolicy: 'no-referrer'
+            }, onloadFunction, loadErrorScript);
+        }
+        else if (data.type === 'style') {
+            const loadErrorStyle = function(oError) {
+                if (debug) console.log('loadErrorStyle error', oError);
+                console.error("The style " + oError.target.href + " didn't load correctly.");
+            }
+            loadCSS( data.href, null, null, {
+                integrity: data.integrity,
+                id: data.id,
+                crossorigin: 'anonymous',
+                referrerpolicy: 'no-referrer'
+            }, onloadFunction, loadErrorStyle );
+        }
     }
-
     /**
      * Fonction modifiant le fonctionnement du filtre pays
      * pour permettre d'ajouter plusieurs pays sur la page des séries
@@ -2926,11 +592,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         let $input = $('.filter-container-others-countries input');
         // Supprimer l'attribut onclick de l'input other-countries
         $input.removeAttr('onchange');
-        $input.on('change', function() {
-            let hasSelect = $('option[value="' + $input.val() + '"]'),
-                btnTemp = '<button type="button" class="btn-reset btn-btn filter-btn active" id="' +
-                           hasSelect.attr("id") + '" onclick="searchOption(this);">' +
-                           hasSelect.attr("value") + '</button>';
+        $input.on('change', function () {
+            let hasSelect = $('option[value="' + $input.val() + '"]'), btnTemp = '<button type="button" class="btn-reset btn-btn filter-btn active" id="' +
+                hasSelect.attr("id") + '" onclick="searchOption(this);">' +
+                hasSelect.attr("value") + '</button>';
             $('#pays > button').last().after(btnTemp);
             deleteFilterOthersCountries();
             countFilter("pays");
@@ -2941,23 +606,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             return;
         }
         const data = hash.split('/');
-        if (!data.find((el)=>el.match(/^tri-|sort-/g))) {
+        if (!data.find((el) => el.match(/^tri-|sort-/g))) {
             data.push(CONSTANTE_FILTER.tri + "-" + CONSTANTE_SORT.popularite);
         }
         for (let i in data) {
-            const splitData = data[i].split('-'),
-                  filter = splitData.shift(),
-                  dataFilter = decodeURIComponent(splitData.join('-'));
+            const splitData = data[i].split('-'), filter = splitData.shift(), dataFilter = decodeURIComponent(splitData.join('-'));
             if (filter && dataFilter &&
-                (filter === CONSTANTE_FILTER.paspays || filter === CONSTANTE_FILTER.pays))
-            {
-                const hasActive = filter === CONSTANTE_FILTER.pays,
-                      hasButton = $("#left #pays > button#" + dataFilter.toUpperCase()),
-                      optionExist = $('datalist[id="other-countries"] option[id="' + dataFilter.toUpperCase() + '"]');
+                (filter === CONSTANTE_FILTER.paspays || filter === CONSTANTE_FILTER.pays)) {
+                const hasActive = filter === CONSTANTE_FILTER.pays, hasButton = $("#left #pays > button#" + dataFilter.toUpperCase()), optionExist = $('datalist[id="other-countries"] option[id="' + dataFilter.toUpperCase() + '"]');
                 if (hasButton.length <= 0 && optionExist) {
                     let btnTemp = '<button type="button" class="btn-reset btn-btn filter-btn' + (hasActive ? ' active' : ' hactive') +
-                                   '" id="' + dataFilter.toUpperCase() + '" onclick="searchOption(this);">' +
-                                   optionExist.attr('value') + '</button>';
+                        '" id="' + dataFilter.toUpperCase() + '" onclick="searchOption(this);">' +
+                        optionExist.attr('value') + '</button>';
                     $('#pays > button').last().after(btnTemp);
                     optionExist.remove();
                     deleteFilterOthersCountries();
@@ -2968,10 +628,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         function countFilter(target) {
             const current = $('#count_' + target);
             if (current.length > 0) {
-                let len = $('#pays > button.hactive, #pays > button.active').length,
-                    display = 'none';
+                let len = $('#pays > button.hactive, #pays > button.active').length, display = 'none';
                 current.text(len);
-
                 if (len >= 1) {
                     display = 'block';
                 }
@@ -2980,7 +638,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
         }
     }
-
     /**
      * Fonction d'ajout d'un paginateur en haut de liste des séries
      * @return {void}
@@ -2994,7 +651,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             // On copie colle le paginateur en haut de la liste des séries
             $('#results-shows').prepend($('#pagination-shows').clone(true, true));
             // On observe les modifications dans le noeud du paginateur
-            $('#results-shows').on('DOMSubtreeModified', '#pagination-shows', function(){
+            $('#results-shows').on('DOMSubtreeModified', '#pagination-shows', function () {
                 if (!loaded) {
                     waitPagination();
                     loaded = true;
@@ -3002,7 +659,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }, 500);
     }
-
     /**
      * Ajoute des améliorations sur la page de la console de l'API
      */
@@ -3027,8 +683,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             $('#api-params .remove').remove();
             // En attente de la documentation de l'API
             timer = setInterval(() => {
-                if ($('#doc code') <= 0) return;
-
+                if ($('#doc code').length <= 0) return;
                 clearInterval(timer); // On supprime le timer
                 let paramsDoc = $('#doc > ul > li > code');
                 if (debug) console.log('paramsDoc', paramsDoc);
@@ -3065,22 +720,24 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 if (self.hasClass('fa-unlock')) {
                     self.removeClass('fa-unlock').addClass('fa-lock');
                     self.parent('.api-params').removeClass('remove').addClass('lock');
-                } else {
+                }
+                else {
                     self.removeClass('fa-lock').addClass('fa-unlock');
                     self.parent('.api-params').addClass('remove').removeClass('lock');
                 }
             });
         }
         function addToggleShowResult() {
-            let result = $('#result');
+            let $result = $('#result');
             // On ajoute un titre pour la section de résultat de la requête
-            result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa fa-chevron-circle-down" aria-hidden="true"></i></span></h2>');
+            $result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa fa-chevron-circle-down" aria-hidden="true"></i></span></h2>');
             $('.toggle').click(() => {
                 // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
-                result.toggle('400', () => {
-                    if (result.is(':hidden')) {
+                $result.toggle(400, () => {
+                    if ($result.is(':hidden')) {
                         $('.toggle i').removeClass('fa-chevron-circle-up').addClass('fa-chevron-circle-down');
-                    } else {
+                    }
+                    else {
                         $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
                     }
                 });
@@ -3091,15 +748,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }
     }
-
     /*
      * Ajoute un sommaire sur les pages de documentation des méthodes de l'API
      * Le sommaire est constitué des liens vers les fonctions des méthodes.
      */
     function sommaireDevApi() {
         if (debug) console.log('build sommaire');
-        let titles = $('.maincontent h2'),
-            methods = {};
+        let titles = $('.maincontent h2'), methods = {};
         // Ajout du style CSS pour les tables
         addScriptAndLink('tablecss');
         /**
@@ -3112,8 +767,9 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         function buildCell(verb, key) {
             let cell = '<td>';
             if (verb in methods[key]) {
-                cell += '<i data-id="' + methods[key][verb].id + '" class="linkSommaire fa fa-check fa-2x" title="' +
-                        methods[key][verb].title + '"></i>';
+                cell += `<i data-id="${methods[key][verb].id}"
+                            class="linkSommaire fa fa-check fa-2x"
+                            title="${methods[key][verb].title}"></i>`;
             }
             return cell + '</td>';
         }
@@ -3124,7 +780,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {String}     La ligne HTML
          */
         function buildRow(key) {
-            let row = '<tr><th scope="row" class="fonction">' + methods[key].title + '</th>';
+            let row = `<tr><th scope="row" class="fonction">${methods[key].title}</th>`;
             row += buildCell('GET', key);
             row += buildCell('POST', key);
             row += buildCell('PUT', key);
@@ -3136,66 +792,58 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
          * @return {Object} L'objet jQuery de la table HTML
          */
         function buildTable() {
-            let $table = $('<div id="sommaire" class="table-responsive" style="display:none;">' +
-                            '<table class="table table-dark table-striped table-bordered">' +
-                                '<thead class="thead-dark">' +
-                                    '<tr>' +
-                                        '<th colspan="5" scope="col" class="col-lg-12 liTitle">Sommaire</th>' +
-                                    '</tr><tr>' +
-                                        '<th scope="col" class="col-lg-3">Fonction</th>' +
-                                        '<th scope="col" class="col-lg-2">GET</th>' +
-                                        '<th scope="col" class="col-lg-2">POST</th>' +
-                                        '<th scope="col" class="col-lg-2">PUT</th>' +
-                                        '<th scope="col" class="col-lg-2">DELETE</th>' +
-                                    '</tr>' +
-                                '</thead>' +
-                                '<tbody></tbody>' +
-                            '</table></div>'),
-                $tbody = $table.find('tbody');
-
+            let $table = $(`
+                <div id="sommaire" class="table-responsive" style="display:none;">
+                    <table class="table table-dark table-striped table-bordered">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th colspan="5" scope="col" class="col-lg-12 liTitle">Sommaire</th>
+                            </tr>
+                            <tr>
+                                <th scope="col" class="col-lg-3">Fonction</th>
+                                <th scope="col" class="col-lg-2">GET</th>
+                                <th scope="col" class="col-lg-2">POST</th>
+                                <th scope="col" class="col-lg-2">PUT</th>
+                                <th scope="col" class="col-lg-2">DELETE</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>`), $tbody = $table.find('tbody');
             for (let key in methods) {
                 $tbody.append(buildRow(key));
             }
             return $table;
         }
-
         for (let t = 0; t < titles.length; t++) {
             // ajouter les ID aux titres des methodes, ainsi qu'un chevron pour renvoyer au sommaire
-            let $title = $(titles.get(t)),
-                id = $title.text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-'),
-                txt = $title.text().trim().split(' ')[1],
-                desc = $title.next('p').text(),
-                key = txt.toLowerCase().replace(/\//, ''),
-                verb = $title.text().trim().split(' ')[0].toUpperCase();
+            let $title = $(titles.get(t)), id = $title.text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-'), txt = $title.text().trim().split(' ')[1], desc = $title.next('p').text(), key = txt.toLowerCase().replace(/\//, ''), verb = $title.text().trim().split(' ')[0].toUpperCase();
             $title.attr('id', id);
             $title.append('<i class="fa fa-chevron-circle-up" aria-hidden="true" title="Retour au sommaire"></i>');
-            if (! (key in methods)) methods[key] = {title: txt};
-            methods[key][verb] = {id: id, title: desc};
+            if (!(key in methods)) methods[key] = { title: txt };
+            methods[key][verb] = { id: id, title: desc };
         }
         // Construire un sommaire des fonctions
         //if (debug) console.log('methods', methods);
         $('.maincontent h1').after(buildTable());
-        $('#sommaire').show('fast');
-
-        $('.linkSommaire').click(function(e) {
+        $('#sommaire').fadeIn();
+        $('.linkSommaire').click((e) => {
             e.stopPropagation();
             e.preventDefault();
             $('#' + $(e.currentTarget).data('id')).get(0).scrollIntoView(true);
         });
-        $('.fa-chevron-circle-up').click(function(e) {
+        $('.fa-chevron-circle-up').click(function (e) {
             e.stopPropagation();
             e.preventDefault();
             document.getElementById('sommaire').scrollIntoView(true);
         });
     }
-
     /**
      * Ajoute un bouton pour le dev pour afficher les données de la ressource
      * dans une modal
      */
     function addBtnDev() {
-        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>',
-              dialogHTML = `
+        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>', dialogHTML = `
               <style>
                 .dialog-container .close {
                   float: right;
@@ -3234,16 +882,15 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 </div>`;
         $('.blockInformations__actions').append(btnHTML);
         $('body').append(dialogHTML);
-        dialog = $('#dialog-resource');
+        let $dialog = $('#dialog-resource');
         const html = document.documentElement;
-
-        const onShow = function() {
+        const onShow = function () {
             html.style.overflowY = 'hidden';
             $('#dialog-resource')
                 .css('z-index', '1005')
                 .css('overflow', 'scroll');
         };
-        const onHide = function() {
+        const onHide = function () {
             html.style.overflowY = '';
             $('#dialog-resource')
                 .css('z-index', '0')
@@ -3253,47 +900,42 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             e.stopPropagation();
             e.preventDefault();
             let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-                $dataRes = $('#dialog-resource .data-resource'); // DOMElement contenant le rendu JSON de la ressource
-
-            getResourceData().then(function(data) {
+            $dataRes = $('#dialog-resource .data-resource'); // DOMElement contenant le rendu JSON de la ressource
+            getResourceData().then(function (data) {
                 // if (debug) console.log('addBtnDev promise return', data);
                 $dataRes.empty().append(renderjson.set_show_to_level(2)(data[type.singular]));
                 $('#dialog-resource-title span.counter').empty().text('(' + Media.counter + ' appels API)');
-                dialog.show(400, onShow);
+                $dialog.show(400, onShow);
             }, (err) => {
                 notification('Erreur de récupération de la ressource', 'addBtnDev: ' + err);
             });
         });
-        $('.dialog button.close').click(function(e) {
+        $('.dialog button.close').click(function (e) {
             e.stopPropagation();
             e.preventDefault();
-            dialog.hide(400, onHide);
+            $dialog.hide(400, onHide);
         });
     }
-
     /**
      * Cette fonction permet de retourner la ressource principale sous forme d'objet
      * @param  {boolean} [nocache=false] Flag indiquant si il faut utiliser les données en cache
      * @param  {number}  [id=null]       Identifiant de la ressource
-     * @return {Promise<Media>}
+     * @return {Promise<Base>}
      */
     function getResource(nocache = false, id = null) {
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-              fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        fonction = type.singular === 'show' || type.singular === 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
         id = (id === null) ? getResourceId() : id;
         if (debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
-
         return new Promise((resolve, reject) => {
-            Media.callApi('GET', type.plural, fonction, {'id': id}, nocache)
-            .then(data => {
-                resolve(new type.class(data[type.singular]));
+            Base.callApi('GET', type.plural, fonction, { 'id': id }, nocache)
+                .then(data => {
+                resolve(new type.class(data[type.singular], $('.blockInformations')));
             }, err => {
                 reject(err);
             });
-
         });
     }
-
     /**
      * Cette fonction permet de récupérer les données API de la ressource principale
      * @param  {boolean} [nocache=true]  Flag indiquant si il faut utiliser les données en cache
@@ -3302,13 +944,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function getResourceData(nocache = true, id = null) {
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-              fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
+        fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
         id = (id === null) ? getResourceId() : id;
         if (debug) console.log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
-
-        return Media.callApi('GET', type.plural, fonction, {'id': id}, nocache);
+        return Base.callApi('GET', type.plural, fonction, { 'id': id }, nocache);
     }
-
     /**
      * Retourne la ressource associée au type de page
      *
@@ -3317,26 +957,24 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function getApiResource(pageType) {
         let methods = {
-            'serie': {singular: 'show', plural: 'shows', "class": Show},
-            'film': {singular: 'movie', plural: 'movies', "class": Movie},
-            'episode': {singular: 'episode', plural: 'episodes', "class": Episode}
+            'serie': { singular: 'show', plural: 'shows', "class": Show },
+            'film': { singular: 'movie', plural: 'movies', "class": Movie },
+            'episode': { singular: 'episode', plural: 'episodes', "class": Episode }
         };
         if (pageType in methods) {
             return methods[pageType];
         }
         return null;
     }
-
     /**
      * Retourne l'identifiant de la ressource de la page
-     * @return {Number} L'identifiant de la ressource
+     * @return {number} L'identifiant de la ressource
      */
     function getResourceId() {
         const type = getApiResource(url.split('/')[1]), // Le type de ressource
-              eltActions = $(`#reactjs-${type.singular}-actions`); // Le noeud contenant l'ID
-        return (eltActions.length == 1) ? eltActions.data(`${type.singular}-id`) : null;
+        eltActions = $(`#reactjs-${type.singular}-actions`); // Le noeud contenant l'ID
+        return (eltActions.length === 1) ? parseInt(eltActions.data(`${type.singular}-id`), 10) : 0;
     }
-
     /**
      * Retourne les infos d'un membre
      *
@@ -3345,13 +983,12 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function getMember(id = null) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified() || betaseries_api_user_key === '') return;
-
+        if (!userIdentified() || betaseries_api_user_key === '') return;
         let args = {};
         if (id) args.id = id;
         return new Promise((resolve) => {
-            Media.callApi('GET', 'members', 'infos', args)
-            .then(function(data) {
+            Base.callApi('GET', 'members', 'infos', args)
+                .then(data => {
                 // On retourne les infos du membre
                 resolve(data.member);
             }, (err) => {
@@ -3359,14 +996,13 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         });
     }
-
     /**
      * Compare le membre courant avec un autre membre
      */
     function compareMembers() {
-        let id = $('#temps').data('loginid');
+        let id = parseInt($('#temps').data('loginid'), 10);
         getMember(id).
-        then(function(member) {
+            then(function (member) {
             let otherMember = member;
             const dialogHTML = `
                 <div
@@ -3401,43 +1037,42 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                       </table>
                     </div>
                   </div>
-                </div>`,
-                trads = {
-                    "id": 'ID',
-                    "login": "Login",
-                    "xp": 'Pts d\'expérience',
-                    "subscription": 'Année d\'inscription',
-                    stats: {
-                        "friends": 'Amis',
-                        "shows": 'Séries',
-                        "seasons": 'Saisons',
-                        "episodes": 'Episodes',
-                        "comments": 'Commentaires',
-                        "progress": 'Progression de visionnage',
-                        "episodes_to_watch": 'Nb d\'épisodes à regarder',
-                        "time_on_tv": 'Temps devant la TV',
-                        "time_to_spend": 'Temps restant devant des séries à regarder',
-                        "movies": 'Nb de films',
-                        "badges": 'Nb de badges',
-                        "member_since_days": 'Membre depuis (jours)',
-                        "friends_of_friends": 'Les amis du réseau étendu',
-                        "episodes_per_month": 'Nb d\'épisodes par mois',
-                        "favorite_day": 'Jour favori',
-                        "five_stars_percent": '% de votes 5 étoiles',
-                        "four-five_stars_total": 'Nb de votes 4 ou 5 étoiles',
-                        "streak_days": 'Nb de jours consécutifs à regarder des épisodes',
-                        "favorite_genre": 'Genre favori',
-                        "written_words": 'Nb de mots écrits sur BetaSeries',
-                        "without_days": 'Nb jours d\'abstinence',
-                        "shows_finished": 'Nb de séries terminées',
-                        "shows_current": 'Nb de séries en cours',
-                        "shows_to_watch": 'Nb de séries à voir',
-                        "shows_abandoned": 'Nb de séries abandonnées',
-                        "movies_to_watch": 'Nb de films à voir',
-                        "time_on_movies": 'Temps devant les films',
-                        "time_to_spend_movies": 'Temps restant devant les films à regarder'
-                    }
-                };
+                </div>`, trads = {
+                "id": 'ID',
+                "login": "Login",
+                "xp": 'Pts d\'expérience',
+                "subscription": 'Année d\'inscription',
+                stats: {
+                    "friends": 'Amis',
+                    "shows": 'Séries',
+                    "seasons": 'Saisons',
+                    "episodes": 'Episodes',
+                    "comments": 'Commentaires',
+                    "progress": 'Progression de visionnage',
+                    "episodes_to_watch": 'Nb d\'épisodes à regarder',
+                    "time_on_tv": 'Temps devant la TV',
+                    "time_to_spend": 'Temps restant devant des séries à regarder',
+                    "movies": 'Nb de films',
+                    "badges": 'Nb de badges',
+                    "member_since_days": 'Membre depuis (jours)',
+                    "friends_of_friends": 'Les amis du réseau étendu',
+                    "episodes_per_month": 'Nb d\'épisodes par mois',
+                    "favorite_day": 'Jour favori',
+                    "five_stars_percent": '% de votes 5 étoiles',
+                    "four-five_stars_total": 'Nb de votes 4 ou 5 étoiles',
+                    "streak_days": 'Nb de jours consécutifs à regarder des épisodes',
+                    "favorite_genre": 'Genre favori',
+                    "written_words": 'Nb de mots écrits sur BetaSeries',
+                    "without_days": 'Nb jours d\'abstinence',
+                    "shows_finished": 'Nb de séries terminées',
+                    "shows_current": 'Nb de séries en cours',
+                    "shows_to_watch": 'Nb de séries à voir',
+                    "shows_abandoned": 'Nb de séries abandonnées',
+                    "movies_to_watch": 'Nb de films à voir',
+                    "time_on_movies": 'Temps devant les films',
+                    "time_to_spend_movies": 'Temps restant devant les films à regarder'
+                }
+            };
             addScriptAndLink('tablecss');
             $('body').append(dialogHTML);
             //if (debug) console.log(currentUser, otherMember, trads);
@@ -3448,65 +1083,54 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             currentUser[key][subkey] = humanizeDuration((currentUser[key][subkey] * 60 * 1000), { language: currentUser.locale });
                             otherMember[key][subkey] = humanizeDuration((otherMember[key][subkey] * 60 * 1000), { language: currentUser.locale });
                         }
-                        $('#dialog-compare table tbody').append(
-                            '<tr><td>' + subvalue + '</td><td>' + currentUser[key][subkey] + '</td><td>' + otherMember[key][subkey] + '</td></tr>'
-                        );
+                        $('#dialog-compare table tbody').append('<tr><td>' + subvalue + '</td><td>' + currentUser[key][subkey] + '</td><td>' + otherMember[key][subkey] + '</td></tr>');
                     }
-                } else {
-                    $('#dialog-compare table tbody').append(
-                        '<tr><td>' + value + '</td><td>' + currentUser[key] + '</td><td>' + otherMember[key] + '</td></tr>'
-                    );
+                }
+                else {
+                    $('#dialog-compare table tbody').append('<tr><td>' + value + '</td><td>' + currentUser[key] + '</td><td>' + otherMember[key] + '</td></tr>');
                 }
             }
             $('.other-user').append(otherMember.login);
-            const dialog = new A11yDialog(document.querySelector('#dialog-compare')),
-                  html = document.documentElement;
+            const dialog = new A11yDialog(document.querySelector('#dialog-compare')), html = document.documentElement;
             $('#stats_container h1')
                 .css('display', 'inline-block')
                 .after('<button type="button" class="button blue" data-a11y-dialog-show="dialog-compare">Se comparer à ce membre</button>');
-            $('button.button.blue').click(function(e) {
+            $('button.button.blue').click(function (e) {
                 e.stopPropagation();
                 e.preventDefault();
                 dialog.show();
             });
             dialog
-                .on('show', function() {
-                    html.style.overflowY = 'hidden';
-                    $('#dialog-compare').css('z-index', '1005').css('overflow', 'scroll');
-                    $('.dialog-close').click(function(e) {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        dialog.hide();
-                    });
-                })
-                .on('hide', function() {
-                    html.style.overflowY = '';
-                    $('#dialog-compare').css('z-index', '0').css('overflow', 'none');
-                    $('.dialog-close').off('click');
+                .on('show', function () {
+                html.style.overflowY = 'hidden';
+                $('#dialog-compare').css('z-index', '1005').css('overflow', 'scroll');
+                $('.dialog-close').click(function (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    dialog.hide();
                 });
+            })
+                .on('hide', function () {
+                html.style.overflowY = '';
+                $('#dialog-compare').css('z-index', '0').css('overflow', 'none');
+                $('.dialog-close').off('click');
+            });
         });
     }
-
     /**
      * Ajoute un champ de recherche sur la page des amis d'un membre
      * @return {void}
      */
     function searchFriends() {
         // Ajouter un champ de recherche
-        $('.maincontent h1').append(
-            '<input id="searchFriends" placeholder="Recherche d\'amis" list="friendsdata" autocomplete="off"/>' +
-            '<i class="fa fa-times clearSearch" aria-hidden="true" style="display:none;" title="Effacer la recherche"></i>'
-        );
+        $('.maincontent h1').append('<input id="searchFriends" placeholder="Recherche d\'amis" list="friendsdata" autocomplete="off"/>' +
+            '<i class="fa fa-times clearSearch" aria-hidden="true" style="display:none;" title="Effacer la recherche"></i>');
         // Recuperer les identifiants et liens des membres
-        let links = $('.timeline-item .infos a'),
-            objFriends = {},
-            idFriends = [],
-            datalist = '<datalist id="friendsdata">';
+        let $links = $('.timeline-item .infos a'), objFriends = {}, idFriends = [], datalist = '<datalist id="friendsdata">';
         // On recupere les infos des amis
-        for (let i = 0; i < links.length; i++) {
-            let elt = $(links.get(i)),
-                text = elt.text().trim();
-            objFriends[text.toLowerCase()] = {link: elt.attr('href'), name: text};
+        for (let i = 0; i < $links.length; i++) {
+            let elt = $($links.get(i)), text = elt.text().trim();
+            objFriends[text.toLowerCase()] = { link: elt.attr('href'), name: text };
         }
         // On stocke les identifiants dans un tableau que l'on tri
         idFriends = Object.keys(objFriends);
@@ -3518,13 +1142,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         $('.maincontent').append(datalist + '</datalist>');
         // On affiche toute la liste des amis
         viewMoreFriends();
-        $('#searchFriends').on('keypress', () => {
-            if ($('#searchFriends').val().trim().length > 0) {
+        const $inpSearchFriends = $('#searchFriends');
+        $inpSearchFriends.on('keypress', () => {
+            if ($inpSearchFriends.val().toString().trim().length > 0) {
                 $('.clearSearch').show();
             }
         });
-        $('#searchFriends').on('input', () => {
-            let val = $('#searchFriends').val().trim().toLowerCase();
+        $inpSearchFriends.on('input', () => {
+            let val = $inpSearchFriends.val().toString().trim().toLowerCase();
             if (debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
             if (val === '' || idFriends.indexOf(val) === -1) {
                 $('.timeline-item').show();
@@ -3544,19 +1169,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             $('.clearSearch').hide();
         });
     }
-
     /**
      * Masque les pubs
      */
     function removeAds() {
-        setTimeout(function() {
+        setTimeout(function () {
             $('script[src*="securepubads"]').remove();
             $('script[src*="static-od.com"]').remove();
             $('script[src*="ad.doubleclick.net"]').remove();
             $('script[src*="sddan.com"]').remove();
         }, 500);
         $('.parent-ad-desktop').attr('style', 'display: none !important');
-        setInterval(function() {
+        setInterval(function () {
             let $frame;
             $('iframe[name!="userscript"]').each((i, elt) => {
                 $frame = $(elt);
@@ -3568,51 +1192,48 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         $('.blockPartner').attr('style', 'display: none !important');
         //$('.breadcrumb').hide();
     }
-
     /**
      * Améliore l'affichage de la description de la ressource
      *
      * @return {void}
      */
     function upgradeSynopsis() {
-        let span = $('.blockInformations__synopsis span'),
-            $btnMore = $('a.js-show-fulltext');
+        let $span = $('.blockInformations__synopsis span'), $btnMore = $('a.js-show-fulltext');
         if ($btnMore.length <= 0) {
             return;
         }
         // On ajoute le bouton Moins et son event click
-        span.append('<button role="button" class="u-colorWhiteOpacity05 js-show-truncatetext textTransformUpperCase cursorPointer"></button>');
+        $span.append('<button role="button" class="u-colorWhiteOpacity05 js-show-truncatetext textTransformUpperCase cursorPointer"></button>');
         const $btnLess = $('button.js-show-truncatetext');
         $btnLess.click((e) => {
             e.stopPropagation();
             e.preventDefault();
-            if (span.hasClass('sr-only')) return;
+            if ($span.hasClass('sr-only')) return;
             // Toggle display synopsis
             $btnMore.show();
-            span.addClass('sr-only');
+            $span.addClass('sr-only');
         });
         // On remplace le lien Plus par un bouton
         $btnMore.replaceWith('<button role="button" class="u-colorWhiteOpacity05 js-show-fulltext textTransformUpperCase cursorPointer"></button>');
         $btnMore = $('button.js-show-fulltext');
-        $btnMore.on('click', e => {
+        $btnMore.on('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!span.hasClass('sr-only')) return;
+            if (!$span.hasClass('sr-only')) return;
             $btnMore.hide();
-            span.removeClass('sr-only');
+            $span.removeClass('sr-only');
         });
     }
-
     /**
      * Patiente le temps du chargment des saisons et des épisodes
      * @param  {Function} cb Fonction de callback en cas de success
      * @param  {Function} cb Fonction de callback en cas d'error
      * @return {void}
      */
-    function waitSeasonsAndEpisodesLoaded(successCb, errorCb = noop) {
+    function waitSeasonsAndEpisodesLoaded(successCb, errorCb = Base.noop) {
         let waitEpisodes = 0;
         // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
-        timer = setInterval(function() {
+        timer = setInterval(function () {
             // On évite une boucle infinie
             if (++waitEpisodes >= 100) {
                 clearInterval(timer);
@@ -3620,44 +1241,31 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 errorCb('timeout');
                 return;
             }
-            let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10),
-                episodes = $('#episodes .slide_flex');
-
+            let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10), $episodes = $('#episodes .slide_flex');
             // On vérifie que les saisons et les episodes soient chargés sur la page
-            if (episodes.length <= 0 || episodes.length < len) {
+            if ($episodes.length <= 0 || $episodes.length < len) {
                 if (debug) console.log('waitSeasonsAndEpisodesLoaded: En attente du chargement des vignettes');
                 return;
             }
-            if (debug) console.log('waitSeasonsAndEpisodesLoaded, nbVignettes (%d, %d)', episodes.length, len);
+            if (debug) console.log('waitSeasonsAndEpisodesLoaded, nbVignettes (%d, %d)', $episodes.length, len);
             clearInterval(timer);
             successCb();
         }, 500);
     }
-
     /**
      * Gère la mise à jour auto des épisodes de la saison courante
      * @param  {Show} show L'objet de type Show
      * @return {void}
      */
     function updateAutoEpisodeList(show) {
-        let objUpAuto = new UpdateAuto(show);
-
+        let objUpAuto = UpdateAuto.getInstance(show);
         /**
          * Fonction retournant le contenu de la Popup des options update
          * de la liste des épisodes
          * @return {String} Contenu HTML de la PopUp des options update
          */
-        const contentUp = function() {
-            const intervals = [
-                    {val: 0, label: 'Jamais'},
-                    {val: 1, label: '1 min.'},
-                    {val: 5, label: '5 min.'},
-                    {val: 10, label: '10 min.'},
-                    {val: 15, label: '15 min.'},
-                    {val: 30, label: '30 min.'},
-                    {val: 45, label: '45 min.'},
-                    {val: 60, label: '60 min.'}
-                ];
+        const contentUp = function () {
+            const intervals = UpdateAuto.intervals;
             let contentUpdate = `
                     <style>
                         .alert {
@@ -3695,26 +1303,24 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 ${!show.in_account ? ' disabled="true"' : ''}>`;
             for (let i = 0; i < intervals.length; i++) {
                 contentUpdate += `<option value="${intervals[i].val}"
-                    ${objUpAuto.interval === intervals[i].val ? 'selected="true"': ''}>
+                    ${objUpAuto.interval === intervals[i].val ? 'selected="true"' : ''}>
                     ${intervals[i].label}</option>`;
             }
             contentUpdate += `</select></div>
-                    ${!show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>':''}
+                    ${!show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>' : ''}
                     <button type="submit" class="btn btn-primary"${!show.in_account ? ' disabled="true"' : ''}>Sauver</button>
                     <button type="button" class="close btn btn-danger">Annuler</button>
                 </form>`;
             return contentUpdate;
         };
-
         /**
          * Fonction retournant le titre de la Popup des options pour l'update
          * de la liste des épisodes de la saison courante
+         * @param  {UpdateAuto} objUpAuto
          * @return {String} Contenu HTML du titre de la PopUp des options update
          */
-        const titlePopup = function() {
-            const className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary',
-                  label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running',
-                  help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
+        const titlePopup = function (objUpAuto) {
+            const className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary', label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running', help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
             return `<style>
                         .optionsUpAuto .close {
                             position: absolute;
@@ -3728,26 +1334,31 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         .optionsUpAuto .close:focus {border: none;outline: none;}
                     </style>
                     <div class="optionsUpAuto" style="color:#000;">Options de mise à jour
-                      <span class="badge badge-pill badge-${className}"${objUpAuto.status ? 'title="Arrêter la tâche en cours"':''}>${label}</span>
+                      <span class="badge badge-pill badge-${className}"${objUpAuto.status ? 'title="Arrêter la tâche en cours"' : ''}>${label}</span>
                       <button type="button" class="close" aria-label="Close" title="Fermer">
                         <span aria-hidden="true">&times;</span>
                       </button>
                       <i class="fa fa-question-circle" style="color:blue;margin-left:5px;" aria-hidden="true" title="${help}"></i>
                     </div>`;
         };
-
         // On relance l'update auto des épisodes au chargement de la page
         if (show.in_account && show.user.remaining > 0 && objUpAuto.status) {
             objUpAuto.launch();
-        } else if (objUpAuto.status) {
+        }
+        else if (objUpAuto.status) {
             objUpAuto.stop();
         }
         let notLoop = 0;
-        let intTime = setInterval(function() { // En attente du chargement des scripts JS
-            if (++notLoop >= 20) {clearInterval(intTime); return;}
-            if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
+        let intTime = setInterval(function () {
+            if (++notLoop >= 20) {
+                clearInterval(intTime);
+                return;
+            }
+            if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') {
+                return;
+            }
             else clearInterval(intTime);
-            if (debug) console.log('Loading popover updateEpisodes');
+            if (debug) console.log('Loaded popover updateEpisodes');
             $('#updateEpisodeList .updateElement').popover({
                 container: $('#updateEpisodeList'),
                 // delay: { "show": 500, "hide": 100 },
@@ -3758,21 +1369,20 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 trigger: 'manual',
                 boundary: 'window'
             });
-            let timeoutHover;
+            let timeoutHover = null;
             $('#updateEpisodeList .updateElement').hover(
-                // In
-                function(e) {
-                    e.stopPropagation();
-                    timeoutHover = setTimeout(function() {
-                        $('#updateEpisodeList .updateElement').popover('show');
-                    }, 500);
-                },
-                // Out
-                function(e) {
-                    e.stopPropagation();
-                    clearTimeout(timeoutHover);
-                }
-            );
+            // In
+            function (e) {
+                e.stopPropagation();
+                timeoutHover = setTimeout(function () {
+                    $('#updateEpisodeList .updateElement').popover('show');
+                }, 500);
+            },
+            // Out
+            function (e) {
+                e.stopPropagation();
+                clearTimeout(timeoutHover);
+            });
             // On ferme et désactive les autres popups lorsque celle des options est ouverte
             $('#updateEpisodeList .updateElement').on('show.bs.popover', function () {
                 const $updateElement = $('#episodes .slide__image');
@@ -3787,7 +1397,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 $('#updateEpisodeList button.close').off('click');
                 $('#optionsUpdateEpisodeList button.btn-primary').off('click');
             });
-
             $('#updateEpisodeList .updateElement').on('shown.bs.popover', function () {
                 $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
                 if (objUpAuto.status) {
@@ -3809,8 +1418,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
-                        intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
+                    let checkAuto = $('#updateEpisodeListAuto').is(':checked'), intervalAuto = parseInt($('#updateEpisodeListTime').val().toString(), 10);
                     if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
                     if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
                     if (debug) console.log('updateEpisodeList submit', objUpAuto);
@@ -3820,34 +1428,31 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             });
         }, 500);
     }
-
     /**
      * Ajoute un bouton Vu sur la vignette d'un épisode
      * @param {Show} res L'objet Show de l'API
      */
     function upgradeEpisodes(res) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified() || betaseries_api_user_key === '') return;
-
+        if (!userIdentified() || betaseries_api_user_key === '') return;
         const seasons = $('#seasons .slide_flex');
         let vignettes = getVignettes();
-
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
-
         /*
          * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE,
          * pour mettre à jour l'update auto des épisodes
          */
-        res.addListener(Media.EventTypes.UPDATE, function(show) {
+        res.addListener(EventTypes.UPDATE, function (show) {
             if (debug) console.log('Listener called');
             // Si il n'y a plus d'épisodes à regarder sur la série
             if (show.user.remaining <= 0) {
-                let objUpAuto = new UpdateAuto(show);
+                let objUpAuto = UpdateAuto.getInstance(show);
                 // Si la série est terminée
                 if (show.isEnded()) {
                     // On supprime la série des options d'update
                     objUpAuto.delete();
-                } else {
+                }
+                else {
                     // On désactive la mise à jour auto
                     objUpAuto.stop();
                 }
@@ -3855,57 +1460,51 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
         });
         // On ajoute les cases à cocher sur les vignettes courantes
         addCheckSeen();
-
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckSeen() {
             vignettes = getVignettes();
-
-            const seasonNum = $('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift();
-
-            let promise = res.fetchEpisodes(parseInt(seasonNum, 10), true); // Contient la promesse de récupérer les épisodes de la saison courante
+            const seasonNum = parseInt($('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(), 10);
+            res.setCurrentSeason(seasonNum);
+            let promise = res.currentSeason.fetchEpisodes(); // Contient la promesse de récupérer les épisodes de la saison courante
             // On ajoute le CSS et le Javascript pour les popup
             if ($('#csspopover').length === 0 && $('#jsbootstrap').length === 0) {
                 addScriptAndLink(['popover', 'bootstrap']);
             }
-
             /**
              * Retourne la position de la popup par rapport à l'image du similar
-             * @param  {Object} tip Unknown
+             * @param  {Object} _tip Unknown
              * @param  {Object} elt Le DOM Element du lien du similar
              * @return {String}     La position de la popup
              */
-            let funcPlacement = (tip, elt) => {
+            let funcPlacement = (_tip, elt) => {
                 //if (debug) console.log('funcPlacement', tip, $(tip).width());
-                let rect = elt.getBoundingClientRect(),
-                    width = $(window).width(),
-                    sizePopover = 320;
+                let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
                 return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
             };
-
             // On ajoute la description des épisodes dans des Popup
             promise.then(() => {
-                let intTime = setInterval(function() { // En attente du chargement des scripts JS
-                    if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
+                let intTime = setInterval(function () {
+                    if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') {
+                        return;
+                    }
                     else clearInterval(intTime);
-
                     if (debug) console.log('Add synopsis episode');
-                    let $vignette, episode, description;
+                    let $vignette, objEpisode, description;
                     for (let v = 0; v < vignettes.length; v++) {
                         $vignette = $(vignettes.get(v));
-                        episode = res.episodes[v];
-                        episode.elt = $vignette.parents('.slide_flex');
-                        episode.save();
-                        description = episode.description;
+                        objEpisode = res.currentSeason.episodes[v];
+                        objEpisode.elt = $vignette.parents('.slide_flex');
+                        objEpisode.save();
+                        description = objEpisode.description;
                         if (description.length > 350) {
                             description = description.substring(0, 350) + '…';
-                        } else if (description.length <= 0) {
+                        }
+                        else if (description.length <= 0) {
                             description = 'Aucune description';
                         }
-
                         // Ajout de l'attribut title pour obtenir le nom complet de l'épisode, lorsqu'il est tronqué
-                        episode.addAttrTitle();
-                        episode.initCheckSeen(v);
-
+                        objEpisode.addAttrTitle();
+                        objEpisode.initCheckSeen(v);
                         // Ajoute la synopsis de l'épisode au survol de la vignette
                         $vignette.popover({
                             container: $vignette,
@@ -3919,37 +1518,33 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         });
                     }
                     $('#episodes .slide__image').on('shown.bs.popover', function () {
-                        const $checkSeen = $(this).find('.checkSeen'),
-                              episodeId = $checkSeen.data('id'),
-                              episode = res.getEpisode(episodeId);
+                        const $checkSeen = $(this).find('.checkSeen'), episodeId = parseInt($checkSeen.data('id'), 10), episode = res.currentSeason.getEpisode(episodeId);
                         if (!episode) {
                             console.warn('episode title popup', episodeId, res);
                         }
                         $('#episodes .slide__image .popover-header').html(episode.getTitlePopup());
                     });
                     // On ajoute un event click sur la case 'checkSeen'
-                    $('#episodes .checkSeen').click(function(e) {
+                    $('#episodes .checkSeen').click(function (e) {
                         e.stopPropagation();
                         e.preventDefault();
-                        const $elt = $(e.currentTarget),
-                              episodeId = $elt.data('id'),
-                              episode = res.getEpisode(episodeId);
+                        const $elt = $(e.currentTarget), episodeId = parseInt($elt.data('id'), 10), episode = res.currentSeason.getEpisode(episodeId);
                         if (debug) console.log('click checkSeen', episode, res);
                         episode.toggleSpinner(true);
                         // On vérifie si l'épisode a déjà été vu
                         if ($elt.hasClass('seen')) {
                             // On demande à l'enlever des épisodes vus
-                            episode.updateStatus('notSeen', 'DELETE');
+                            episode.updateStatus('notSeen', HTTP_VERBS.DELETE);
                         }
                         // Sinon, on l'ajoute aux épisodes vus
                         else {
-                            episode.updateStatus('seen', 'POST');
+                            episode.updateStatus('seen', HTTP_VERBS.POST);
                         }
                     });
                     // On ajoute un effet au survol de la case 'checkSeen'
                     $('#episodes .checkSeen').hover(
                         // IN
-                        e => {
+                        (e) => {
                             $(e.currentTarget)
                                 .siblings('.overflowHidden')
                                 .find('img.js-lazy-image')
@@ -3959,7 +1554,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 .popover('hide');
                         },
                         // OUT
-                        e => {
+                        (e) => {
                             $(e.currentTarget)
                                 .siblings('.overflowHidden')
                                 .find('img.js-lazy-image')
@@ -3971,7 +1566,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     );
                 }, 500);
             });
-
             // Ajouter un bouton de mise à jour des épisodes de la saison courante
             if ($('#updateEpisodeList').length < 1) {
                 $('#episodes .blockTitles').prepend(`
@@ -3994,19 +1588,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     const self = $(e.currentTarget);
                     self.removeClass('finish');
                     // Le numéro de la saison courante
-                    const seasonNum = $('#seasons .slide_flex.slide--current .slide__title').text().match(/\d+/).shift();
-                    res.fetchEpisodes(parseInt(seasonNum, 10), true).then(() => {
+                    // const seasonNum = $('#seasons .slide_flex.slide--current .slide__title').text().match(/\d+/).shift();
+                    res.currentSeason.fetchEpisodes().then(() => {
                         // if (debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
                         vignettes = getVignettes();
                         // len = getNbVignettes();
-                        let $vignette, episode, changed = false, retour;
-
+                        let $vignette, objEpisode, changed = false, retour;
                         for (let v = 0; v < vignettes.length; v++) {
                             $vignette = $(vignettes.get(v)); // DOMElement jQuery de l'image de l'épisode
-                            episode = res.episodes[v];
-                            episode.elt = $vignette.parents('.slide_flex'); // Données de l'épisode
+                            objEpisode = res.currentSeason.episodes[v];
+                            objEpisode.elt = $vignette.parents('.slide_flex'); // Données de l'épisode
                             //if (debug) console.log('Episode ID', getEpisodeId($vignette), episode.id);
-                            retour = episode.updateCheckSeen(v);
+                            retour = objEpisode.updateCheckSeen(v);
                             if (!changed) {
                                 changed = retour;
                             }
@@ -4022,57 +1615,54 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             res.update(true).then(() => {
                                 self.addClass('finish');
                                 fnLazy.init(); // On affiche les images lazyload
-                                if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
+                                if (debug) console.groupEnd(); // On clos le groupe de console
                             }, err => {
                                 notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
                                 self.addClass('finish');
                                 console.warn('Show update error', err);
-                                if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
+                                if (debug) console.groupEnd(); // On clos le groupe de console
                             });
-                        } else {
+                        }
+                        else {
                             if (debug) console.log('updateEpisodes no changes');
                             self.addClass('finish'); // On arrete l'animation de mise à jour
-                            if (debug) console.groupEnd('updateEpisodes'); // On clos le groupe de console
+                            if (debug) console.groupEnd(); // On clos le groupe de console
                         }
                     }, (err) => {
                         self.addClass('finish');
-                        if (debug) console.groupEnd('updateEpisodes');
+                        if (debug) console.groupEnd();
                         notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                     });
                 });
             }
         }
-
         // On ajoute un event sur le changement de saison
-        seasons.click(function() {
+        seasons.click(() => {
             if (debug) console.groupCollapsed('season click');
             $('#episodes .checkSeen').off('click');
             // On attend que les vignettes de la saison choisie soient chargées
-            waitSeasonsAndEpisodesLoaded(
-                () => {
-                    addCheckSeen();
-                    if (debug) console.groupEnd('season click');
-                }, () => {
-                    console.error('Season click Timeout');
-                    if (debug) console.groupEnd('season click');
-                }
-            );
+            waitSeasonsAndEpisodesLoaded(() => {
+                addCheckSeen();
+                if (debug) console.groupEnd();
+            }, () => {
+                console.error('Season click Timeout');
+                if (debug) console.groupEnd();
+            });
         });
         // On active les menus dropdown
         $('.dropdown-toggle').dropdown();
         // On gère l'ajout et la suppression de la série dans le compte utilisateur
         if (res.in_account) {
             res.deleteShowClick();
-        } else {
+        }
+        else {
             res.addShowClick();
         }
-
         // On récupère les vignettes des épisodes
         function getVignettes() {
             return $('#episodes .slide__image');
         }
     }
-
     /**
      * Modifie le fonctionnement d'ajout d'un similar
      *
@@ -4082,12 +1672,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function replaceSuggestSimilarHandler($elt, objSimilars = []) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
-
+        if (!userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
         if (debug) console.log('replaceSuggestSimilarHandler');
         const type = getApiResource(url.split('/')[1]), // Le type de ressource
-              resId = getResourceId(); // Identifiant de la ressource
-
+        resId = getResourceId(); // Identifiant de la ressource
         // Gestion d'ajout d'un similar
         $elt.removeAttr('onclick').click(() => {
             new PopupAlert({
@@ -4096,24 +1684,25 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 params: {
                     id: resId
                 },
-                callback: function() {
+                callback: function () {
                     $("#similaire_id_search").focus().on("keyup", (e) => {
-                        let search = $(e.currentTarget).val();
-                        if (search.length > 0 && e.keyCode != 40 && e.keyCode != 38) {
-                            Media.callApi('GET', 'search', type.plural, {autres: 'mine', text: search})
-                            .then((data) => {
+                        let search = $(e.currentTarget).val().toString();
+                        if (search.length > 0 && e.which != 40 && e.which != 38) {
+                            Base.callApi('GET', 'search', type.plural, { autres: 'mine', text: search })
+                                .then((data) => {
                                 const medias = data[type.plural];
                                 $("#search_results .title").remove();
                                 $("#search_results .item").remove();
                                 let media;
                                 for (let s = 0; s < medias.length; s++) {
                                     media = medias[s];
-                                    if (objSimilars.indexOf(media.id) !== -1) { continue; } // Similar déjà proposé
+                                    if (objSimilars.indexOf(media.id) !== -1) {
+                                        continue;
+                                    } // Similar déjà proposé
                                     $('#search_results').append(`
                                         <div class="item">
                                           <p><span data-id="${media.id}" style="cursor:pointer;">${media.title}</span></p>
-                                        </div>`
-                                    );
+                                        </div>`);
                                 }
                                 $('#search_results .item span').click((e) => {
                                     autocompleteSimilar(e.currentTarget);
@@ -4121,19 +1710,21 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             }, (err) => {
                                 notification('Ajout d\'un similar', 'Erreur requête Search: ' + err);
                             });
-                        } else if (e.keyCode != 40 && e.keyCode != 38) {
+                        }
+                        else if (e.which != 40 && e.which != 38) {
                             $("#search_results").empty();
                             $("#similaire_id_search").off("keydown");
                         }
                     });
                     $("#similaire_id_search").off('keydown').on('keydown', (e) => {
                         const current_item = $("#search_results .item.hl");
-                        switch(e.keyCode) {
+                        switch (e.which) {
                             /* Flèche du bas */
                             case 40:
                                 if (current_item.length === 0) {
                                     $("#search_results .item:first").addClass("hl");
-                                } else {
+                                }
+                                else {
                                     let next_item = $("#search_results .item.hl").next("div");
                                     if (next_item.attr("class") === "title") {
                                         next_item = next_item.next("div");
@@ -4142,7 +1733,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     next_item.addClass("hl");
                                 }
                                 break;
-
                             /* Flèche du haut */
                             case 38:
                                 if (current_item.length !== 0) {
@@ -4154,7 +1744,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     prev_item.addClass("hl");
                                 }
                                 break;
-
                             /* Touche Entrée */
                             case 13:
                                 if (debug) console.log('current_item', current_item);
@@ -4162,7 +1751,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                     autocompleteSimilar(current_item.find("span"));
                                 }
                                 break;
-
                             /* Touche Echap */
                             case 27:
                                 $("#search_results").empty();
@@ -4172,11 +1760,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                     });
                 }
             });
-
             function autocompleteSimilar(el) {
-                let titre = $(el).html(),
-                    id = $(el).data("id");
-
+                let titre = $(el).html(), id = $(el).data("id");
                 titre = titre.replace(/&amp;/g, "&");
                 $("#search_results .item").remove();
                 $("#search_results .title").remove();
@@ -4187,7 +1772,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
         });
     }
-
     /**
      * Vérifie si les séries/films similaires ont été vues
      * Nécessite que l'utilisateur soit connecté et que la clé d'API soit renseignée
@@ -4195,22 +1779,18 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
      */
     function similarsViewed(res) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified() || betaseries_api_user_key === '' || ! /(serie|film)/.test(url)) return;
-
-        console.groupCollapsed('similarsViewed');
+        if (!userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
+        if (debug) console.groupCollapsed('similarsViewed');
         let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
-            len = $similars.length; // Le nombre de similaires
-
+        len = $similars.length; // Le nombre de similaires
         if (debug) console.log('nb similars: %d', len, res.nbSimilars);
-
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len === 1 && $($similars.parent().get(0)).find('button').length === 1)) {
             $('.updateSimilars').addClass('finish');
             replaceSuggestSimilarHandler($('#similars div.slides_flex div.slide_flex div.slide__image > button'));
-            console.groupEnd('similarsViewed');
+            console.groupEnd();
             return;
         }
-
         /*
          * On ajoute un bouton de mise à jour des similars
          * et on vérifie qu'il n'existe pas déjà
@@ -4226,8 +1806,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                   <img src="${serverBaseUrl}/img/update.png"
                        class="updateSimilars updateElement"
                        title="Mise à jour des similaires vus"/>
-                </div>`
-            );
+                </div>`);
             // Si le bouton d'ajout de similaire n'est pas présent
             // et que la ressource est dans le compte de l'utilisateur, on ajoute le bouton
             if ($('#similars button.blockTitle-subtitle').length === 0 && res.in_account === true) {
@@ -4238,7 +1817,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             </button>`);
             }
             // On ajoute la gestion de l'event click sur le bouton d'update des similars
-            $('.updateSimilars').click(function(e) {
+            $('.updateSimilars').click(function (e) {
                 e.stopPropagation();
                 e.preventDefault();
                 $(this).removeClass('finish');
@@ -4255,36 +1834,32 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 similarsViewed(res);
             });
         }
-
         let objSimilars = [];
-        res.fetchSimilars().then(function(res) {
-            let intTime = setInterval(function() {
-                if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') { return; }
+        res.fetchSimilars().then(function (res) {
+            let intTime = setInterval(function () {
+                if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') {
+                    return;
+                }
                 else clearInterval(intTime);
                 /**
                  * Retourne la position de la popup par rapport à l'image du similar
-                 * @param  {Object} tip Unknown
-                 * @param  {Object} elt Le DOM Element du lien du similar
-                 * @return {String}     La position de la popup
+                 * @param  {Object}         _tip Unknown
+                 * @param  {HTMLElement}    elt  Le DOM Element du lien du similar
+                 * @return {String}              La position de la popup
                  */
-                let funcPlacement = (tip, elt) => {
+                let funcPlacement = (_tip, elt) => {
                     //if (debug) console.log('funcPlacement', tip, $(tip).width());
-                    let rect = elt.getBoundingClientRect(),
-                        width = $(window).width(),
-                        sizePopover = 320;
+                    let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
-
                 for (let s = 0; s < res.similars.length; s++) {
                     objSimilars.push(res.similars[s].id);
-
                     let $elt = $($similars.get(s)),
                         $link = $elt.siblings('a'),
                         similar = res.similars[s];
-                        similar.elt = $elt.parents('.slide_flex');
-                        similar.save();
-                        // similar = new Similar(resource, $elt.parents('.slide_flex'), type);
-
+                    similar.elt = $elt.parents('.slide_flex');
+                    similar.save();
+                    // similar = new Similar(resource, $elt.parents('.slide_flex'), type);
                     // On décode le titre du similar
                     similar.decodeTitle();
                     // On ajoute l'icone pour visualiser les data JSON du similar
@@ -4303,24 +1878,25 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         container: $link,
                         delay: { "show": 250, "hide": 100 },
                         html: true,
-                        content: ' ', // Mise à jour dans lors de l'event shown
+                        content: ' ',
                         placement: funcPlacement,
-                        title: ' ', // Mise à jour dans lors de l'event shown
+                        title: ' ',
                         trigger: 'hover',
                         fallbackPlacement: ['left', 'right']
                     });
                 }
                 // Event à l'ouverture de la Popover
                 $('#similars a.slide__image').on('shown.bs.popover', function () {
-                    const $wrench = $(this).parent().find('.popover-wrench'),
-                          resId = $wrench.data('id'),
-                          type = $wrench.data('type'),
-                          similar = res.getSimilar(resId);
-                    $('.popover-header').html(similar.getTitlePopup());
-                    $('.popover-body').html(similar.getContentPopup());
+                    const $link = $(this),
+                          resId = parseInt($link.data('id'), 10),
+                          type = $link.data('type'),
+                          objSimilar = res.getSimilar(resId);
+                    if (debug && !objSimilar) console.log('resId[%d], type: %s',resId, type, objSimilar, res);
+                    $('.popover-header').html(objSimilar.getTitlePopup());
+                    $('.popover-body').html(objSimilar.getContentPopup());
                     // On gère les modifs sur les cases à cocher de l'état d'un film similar
-                    if (type === 'movie') {
-                        $('input.movie').change(e => {
+                    if (type === MediaType.movie) {
+                        $('input.movie').change((e) => {
                             e.stopPropagation();
                             e.preventDefault();
                             const $elt = $(e.currentTarget);
@@ -4328,23 +1904,22 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             if (debug) console.log('input.movie change', $elt);
                             if ($elt.is(':checked') && $elt.hasClass('movieSeen')) {
                                 state = 1;
-                            } else if (($elt.is(':checked') && $elt.hasClass('movieMustSee')) ||
-                                       (! $elt.is(':checked') && $elt.hasClass('movieSeen')))
-                            {
+                            }
+                            else if (($elt.is(':checked') && $elt.hasClass('movieMustSee')) ||
+                                (!$elt.is(':checked') && $elt.hasClass('movieSeen'))) {
                                 state = 0;
-                            } else if ($elt.is(':checked') && $elt.hasClass('movieNotSee')) {
+                            }
+                            else if ($elt.is(':checked') && $elt.hasClass('movieNotSee')) {
                                 state = 2;
                             }
                             $('input.movie:not(.' + $elt.get(0).classList[1] + ')').each((i, e) => {
-                                $(e).prop( "checked", false );
+                                $(e).prop("checked", false);
                             });
-
-                            similar.addToAccount(state).then(similar => {
+                            objSimilar.addToAccount(state).then(similar => {
                                 if (state === 1) {
-                                    $elt.parents('a').prepend(
-                                        `<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
-                                    );
-                                } else if ($elt.parents('a').find('.bandViewed').length > 0) {
+                                    $elt.parents('a').prepend(`<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`);
+                                }
+                                else if ($elt.parents('a').find('.bandViewed').length > 0) {
                                     $elt.parents('a').find('.bandViewed').remove();
                                 }
                                 if (debug) console.log('movie mustSee/seen OK', similar);
@@ -4354,39 +1929,130 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                         });
                     }
                     // On gère le click sur le lien d'ajout de la série similar sur le compte de l'utilisateur
-                    else if (type === 'show') {
+                    else if (type === MediaType.show) {
                         $('.popover .addShow').click((e) => {
                             e.stopPropagation();
                             e.preventDefault();
-                            similar.addToAccount().then(() => {
+                            objSimilar.addToAccount().then(() => {
                                 const para = $(e.currentTarget).parent('p');
                                 $(e.currentTarget).remove();
-                                para.text('<span style="color:var(--link-color)">La série a bien été ajoutée à votre compte</span>').delay( 2000 ).fadeIn( 400 );
+                                para.text('<span style="color:var(--link-color)">La série a bien été ajoutée à votre compte</span>').delay(2000).fadeIn(400);
                             }, err => {
                                 console.error('Popover addShow error', err);
                             });
                         });
                     }
                     // On gère le placement de la Popover par rapport à l'image du similar
-                    let popover = $('.popover'),
-                        img = popover.siblings('img.js-lazy-image'),
-                        placement = $('.popover').attr('x-placement'),
-                        space = 0;
+                    let popover = $('.popover'), img = popover.siblings('img.js-lazy-image'), placement = $('.popover').attr('x-placement'), space = 0;
                     if (placement == 'left') {
-                        space = popover.width() + (img.width()/2) + 5;
+                        space = popover.width() + (img.width() / 2) + 5;
                         popover.css('left', `-${space}px`);
                     }
                 });
                 $('.updateSimilars').addClass('finish');
-                console.groupEnd('similarsViewed');
+                console.groupEnd();
             }, 500);
         }, (err) => {
             notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
         });
-
         replaceSuggestSimilarHandler($('#similars button.blockTitle-subtitle'), objSimilars);
     }
-
+    /**
+     * Gère l'affichage des commentaires
+     * @param {Base} res La ressource média
+     */
+    function comments(res) {
+        let promise = new Promise(resolve => resolve());
+        if (res.comments.length <= 0) {
+            promise = res.fetchComments();
+        }
+        // On remplace les boutons des commentaires, pour supprimer les events
+        [].forEach.call(document.querySelectorAll(".js-popinalert-comments"), function(el) {
+            const cId = el.getAttribute('data-comment-id');
+            $(el).replaceWith(`<button type="button" class="btn-reset js-popup-comments zIndex10" data-comment-id="${cId}"></button>`);
+            // if (debug) console.log('eventListener comment retiré');
+        });
+        $('head').append(`
+            <style type="text/css">
+                .iv_ix {
+                    display: inline-block;
+                    position: relative;
+                    top: -1px;
+                    margin-left: 11px;
+                    vertical-align: middle;
+                }
+                .iv_iz:hover .iv_ix{
+                    opacity: 1;
+                    visiblity: visible;
+                }
+                .iv_i1 { display:none; }
+                .iv_iz:hover .iv_i1 { display: inline-block; }
+                .iv_i3 { 
+                    display: flex;
+                    align-items: center;
+                    margin-top: -1px;
+                }
+                @media (max-width:330px) {
+                    .iv_iz .media-left { display: none; }
+                    .iv_iz .media-body { margin-left: 0;}
+                }
+                @media (max-width:424px) {
+                    .iv_i5 { margin-left: 20px; }
+                    .iv_i3 { flex-wrap: wrap; }
+                    .iv_iz img { 
+                        width: 24px;
+                        height: 24px;
+                    }
+                    .iv_iz .stars { display: none; }
+                }
+                @media (min-width:425px) {
+                    .iv_iz { padding-right: 25px; }
+                    .iv_i5 { margin-left: 40px; }
+                    .iv_i3 { 
+                        height: 24px;
+                        line-height: 24px;
+                    }
+                    .iv_ix {
+                        opacity: 0;
+                        visiblity: hidden;
+                    }
+                }
+                @keyframes backgroundFadeOut{0%{background-color:rgba(193,225,250,.3)}80%{background-color:rgba(193,225,250,.3)}to{background-color:transparent}}
+            </style>`
+        );
+        $('#comments .slide__comment').off('click');
+        const $comments = $('#comments .slide__comment .js-popup-comments');
+        $comments.off('click').click(e => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (res.comments.length <= 0) {
+                promise = res.fetchComments();
+            }
+            promise.then(() => {
+                const commentId = parseInt($(e.currentTarget).data('comment-id'), 10),
+                      objComment = res.getComment(commentId);
+                if (!(objComment instanceof CommentBS)) {
+                    notification('Affichage commentaire', "Le commentaire n'a pas été retrouvé");
+                    console.warn('Commentaire introuvable', {commentId, objComment, 'comments': res.comments});
+                    return;
+                }
+                objComment.display();
+            });
+        });
+    }
+    /**
+     * 
+     * @param {Base} res Le média principal
+     */
+    function replaceVoteFn(res) {
+        const $blockMeta = $('.blockInformations__metadatas'),
+              $btnVote = $blockMeta.find('button');
+        $btnVote.removeAttr('onclick').click(e => {
+            e.stopPropagation();
+            e.preventDefault();
+            res.objNote.createPopupForVote();
+        });
+    }
     /**
      * Permet de mettre à jour la liste des épisodes à voir
      * sur la page de l'agenda
@@ -4395,31 +2061,34 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
     function updateAgenda() {
         // Identifier les informations des épisodes à voir
         // Les containers
-        let containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer'),
-            len = containersEpisode.length,
-            currentShowIds = {};
-
+        let $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer'), len = $containersEpisode.length, currentShowIds = {};
         // En attente du chargement des épisodes
         if (len > 0) {
             if (debug) console.log('updateAgenda - nb containers: %d', len);
             clearInterval(timerUA);
-        } else {
+        }
+        else {
             if (debug) console.log('updateAgenda en attente');
             return;
         }
-
-        Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: false, subtitles: 'all'})
-        .then(data => {
+        const params = {
+            limit: 1,
+            order: 'smart',
+            showsLimit: len,
+            released: 1,
+            specials: false,
+            subtitles: 'all'
+        };
+        Base.callApi('GET', 'episodes', 'list', params)
+            .then((data) => {
             for (let t = 0; t < len; t++) {
-                const container = $(containersEpisode.get(t));
-                container
+                $($containersEpisode.get(t))
                     .data('showId', data.shows[t].id)
                     .data('code', data.shows[t].unseen[0].code.toLowerCase());
-                currentShowIds[data.shows[t].id] = {code: data.shows[t].unseen[0].code.toLowerCase()};
+                currentShowIds[data.shows[t].id] = { code: data.shows[t].unseen[0].code.toLowerCase() };
                 //if (debug) console.log('title: %s - code: %s', title, episode);
             }
         });
-
         if ($('.updateElements').length === 0) {
             // On ajoute le bouton de mise à jour des similaires
             $('.maintitle > div:nth-child(1)').after(`
@@ -4431,49 +2100,48 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             setTimeout(() => {
                 addScriptAndLink('localefr');
             }, 250);
-
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 if (debug) console.groupCollapsed('Agenda updateEpisodes');
-                containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer');
-                const self = $(e.currentTarget),
-                      len = containersEpisode.length;
+                $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer');
+                const self = $(e.currentTarget), len = $containersEpisode.length;
                 self.removeClass('finish');
                 let countIntTime = 0;
-                Media.callApi('GET', 'episodes', 'list', {limit: 1, order: 'smart', showsLimit: len, released: 1, specials: false, subtitles: 'all'})
-                .then(data => {
-                    let intTime = setInterval(function() {
+                Media.callApi('GET', 'episodes', 'list', { limit: 1, order: 'smart', showsLimit: len, released: 1, specials: false, subtitles: 'all' })
+                    .then((data) => {
+                    let intTime = setInterval(function () {
                         if (++countIntTime > 60) {
                             clearInterval(intTime);
                             self.addClass('finish');
                             notification('Erreur de mise à jour des épisodes', 'updateAgenda: updateEpisodes.click interval time over');
-                            if (debug) console.groupEnd('Agenda updateEpisodes');
+                            if (debug) console.groupEnd();
                             return;
                         }
-                        if (typeof moment !== 'function') { return; }
+                        if (typeof moment !== 'function') {
+                            return;
+                        }
                         else clearInterval(intTime);
-
                         moment.locale('fr');
                         let newShowIds = {}, show;
                         if (debug) console.log('updateAgenda updateEpisodes', data);
                         for (let s = 0; s < data.shows.length; s++) {
                             show = data.shows[s];
-                            newShowIds[show.id] = {code: show.unseen[0].code.toLowerCase()};
+                            newShowIds[show.id] = { code: show.unseen[0].code.toLowerCase() };
                             if (currentShowIds[show.id] === undefined) {
                                 if (debug) console.log('Une nouvelle série est arrivée', show);
                                 // Il s'agit d'une nouvelle série
                                 // TODO Ajouter un nouveau container
                                 let newContainer = $(buildContainer(show.unseen[0]));
                                 renderNote(show.unseen[0].note.mean, newContainer);
-                                $(containersEpisode.get(s)).parent().after(newContainer);
+                                $($containersEpisode.get(s)).parent().after(newContainer);
                             }
                         }
                         if (debug) console.log('Iteration principale');
                         let container, unseen;
                         // Itération principale sur les containers
                         for (let e = 0; e < len; e++) {
-                            container = $(containersEpisode.get(e));
+                            container = $($containersEpisode.get(e));
                             unseen = null;
                             // Si la serie n'est plus dans la liste
                             if (newShowIds[container.data('showId')] === undefined) {
@@ -4483,7 +2151,8 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             }
                             if (container.data('showId') == data.shows[e].id) {
                                 unseen = data.shows[e].unseen[0];
-                            } else {
+                            }
+                            else {
                                 for (let u = 0; u < len; u++) {
                                     if (container.data('showId') == data.shows[u].id) {
                                         unseen = data.shows[u].unseen[0];
@@ -4494,8 +2163,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                             if (unseen && container.data('code') !== unseen.code.toLowerCase()) {
                                 if (debug) console.log('Episode à mettre à jour', unseen);
                                 // Mettre à jour l'épisode
-                                let mainLink = $('a.mainLink', container),
-                                    text = unseen.code + ' - ' + unseen.title;
+                                let mainLink = $('a.mainLink', container), text = unseen.code + ' - ' + unseen.title;
                                 // On met à jour le titre et le lien de l'épisode
                                 mainLink.attr('href', mainLink.attr('href').replace(/s\d{2}e\d{2}/, unseen.code.toLowerCase()));
                                 mainLink.attr('title', `Accéder à la fiche de l'épisode ${text}`);
@@ -4508,21 +2176,21 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                                 $('.media-left > .m_ab > .m_ag', container).css('width', String(unseen.show.progress) + '%');
                                 // On met à jour la note
                                 renderNote(unseen.note.mean, container);
-                            } else {
+                            }
+                            else {
                                 console.log('Episode Show unchanged', unseen);
                             }
                         }
                         fnLazy.init();
                         self.addClass('finish');
-                        if (debug) console.groupEnd('Agenda updateEpisodes');
+                        if (debug) console.groupEnd();
                     }, 500);
                 }, (err) => {
                     notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
-                    if (debug) console.groupEnd('Agenda updateEpisodes');
+                    if (debug) console.groupEnd();
                 });
             });
         }
-
         /**
          * Permet d'afficher une note avec des étoiles
          * @param  {Number} note      La note à afficher
@@ -4540,7 +2208,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             Array.from({
                 length: 5
             }, (index, number) => {
-                typeSvg = note <= number ? "empty" : (note < number+1) ? 'half' : "full";
+                typeSvg = note <= number ? "empty" : (note < number + 1) ? 'half' : "full";
                 renderStars.append(`
                     <svg viewBox="0 0 100 100" class="star-svg">
                       <use xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -4550,7 +2218,6 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 `);
             });
         }
-
         /**
          * Permet de construire le container d'un episode
          * @param  {Object} unseen Correspond à l'objet Episode non vu
@@ -4560,10 +2227,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             let description = unseen.description;
             if (description.length <= 0) {
                 description = 'Aucune description';
-            } else if (description.length > 145) {
+            }
+            else if (description.length > 145) {
                 description = description.substring(0, 145) + '…';
             }
-
             const urlShow = unseen.resource_url.replace('episode', 'serie').replace(/\/s\d{2}e\d{2}$/, '');
             let template = `
             <div class="a6_ba displayFlex justifyContentSpaceBetween" style="opacity: 1; transition: opacity 300ms ease-out 0s, transform;">
@@ -4574,10 +2241,10 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 <div class="a6_bc media-body alignSelfStretch displayFlex flexDirectionColumn">
                   <div class="media">
                     <div class="media-body minWidth0 alignSelfStretch displayFlex flexDirectionColumn alignItemsFlexStart">
-                      <a class="a6_bp displayBlock nd" href="${urlShow}" title="${trans("agenda.episodes_watch.show_link_title", {title: unseen.show.title})}">
+                      <a class="a6_bp displayBlock nd" href="${urlShow}" title="${trans("agenda.episodes_watch.show_link_title", { title: unseen.show.title })}">
                         <strong>${unseen.show.title}</strong>
                       </a>
-                      <a class="a6_bp a6_ak mainLink displayBlock nd" href="${unseen.resource_url}" title="${trans("agenda.episodes_watch.episode_link_title", {code: unseen.code.toUpperCase(), title: unseen.title})}">${unseen.code.toUpperCase()} - ${unseen.title}</a>
+                      <a class="a6_bp a6_ak mainLink displayBlock nd" href="${unseen.resource_url}" title="${trans("agenda.episodes_watch.episode_link_title", { code: unseen.code.toUpperCase(), title: unseen.title })}">${unseen.code.toUpperCase()} - ${unseen.title}</a>
                       <div class="date displayFlex a6_bv">
                         <time class="mainTime">${moment(unseen.date).format('D MMMM YYYY')}</time>
                         <span class="stars" title=""></span>
@@ -4652,8 +2319,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             `;
             return template;
             function watchedAvatar(friends) {
-                let template = '',
-                    friend;
+                let template = '', friend;
                 for (let f = 0; f < friends.length; f++) {
                     friend = friends[f];
                     template += `
@@ -4665,20 +2331,14 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
             function secondsToDhms(seconds) {
                 seconds = Number(seconds);
-                const d = Math.floor(seconds / (3600*24)),
-                      h = Math.floor(seconds % (3600*24) / 3600),
-                      m = Math.floor(seconds % 3600 / 60);
-                      //s = Math.floor(seconds % 60);
-
-                let dDisplay = d > 0 ? d + ' j ' : '',
-                    hDisplay = h > 0 ? h + ' h ' : '',
-                    mDisplay = m >= 0 && d <= 0 ? m + ' min' : '';
-                    //sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
+                const d = Math.floor(seconds / (3600 * 24)), h = Math.floor(seconds % (3600 * 24) / 3600), m = Math.floor(seconds % 3600 / 60);
+                //s = Math.floor(seconds % 60);
+                let dDisplay = d > 0 ? d + ' j ' : '', hDisplay = h > 0 ? h + ' h ' : '', mDisplay = m >= 0 && d <= 0 ? m + ' min' : '';
+                //sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
                 return dDisplay + hDisplay + mDisplay;
             }
             function renderSubtitles(unseen) {
                 if (unseen.subtitles.length <= 0) return '';
-
                 let template = `
                 <div>
                   <div class="ho_gh ComponentTitleDropdown">Sous-titres de l'épisode</div>
@@ -4720,8 +2380,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
                 </div>
                 `;
                 function ellipsisSubtitles(subtitle) {
-                    let subtitleName = subtitle.file,
-                        LIMIT_ELLIPSIS = 50;
+                    let subtitleName = subtitle.file, LIMIT_ELLIPSIS = 50;
                     if (subtitleName.length <= LIMIT_ELLIPSIS) {
                         return `<div class="nd displayInlineBlock">${subtitleName}</div>`;
                     }
@@ -4737,26 +2396,28 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
             }
         }
     }
-
     /**
      * Ajoute le statut de la série sur la page de gestion des séries de l'utilisateur
      */
     function addStatusToGestionSeries() {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-        if (! userIdentified() || betaseries_api_user_key === '') return;
-
-        let series = $('#member_shows div.showItem.cf');
-        if (series.length <= 0) return;
-
-        series.each(function(index, serie) {
-            let id = $(serie).data('id'),
-                infos = $(serie).find('.infos');
-            // Media.callApi('GET', 'shows', 'display', {'id': id})
-            Show.fetch(id).then(function(show) {
+        if (!userIdentified() || betaseries_api_user_key === '') return;
+        const $series = $('#member_shows div.showItem.cf');
+        if ($series.length <= 0) return;
+        $series.each(function (_index, serie) {
+            let id = parseInt($(serie).data('id'), 10), infos = $(serie).find('.infos');
+            Show.fetch(id).then(function (show) {
                 infos.append(`<br>Statut: ${(show.isEnded()) ? 'Terminée' : 'En cours'}`);
             }, (err) => {
                 notification('Erreur de modification d\'une série', 'addStatusToGestionSeries: ' + err);
             });
         });
     }
-})(jQuery);
+};
+
+const now = new Date().getTime();
+let timerLaunch = setInterval(function() {
+    if (typeof jQuery === 'undefined') { return; }
+    clearInterval(timerLaunch);
+    affixScriptToHead(`${serverBaseUrl}/js/app-bundle.js?t=${now}`, launchScript);
+}, 200);
