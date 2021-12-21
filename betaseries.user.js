@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.1.0
+// @version      1.1.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -18,15 +18,17 @@
 // @require      https://azema.github.io/betaseries-oauth/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_notification
 // ==/UserScript==
 'use strict';
 
 /* globals Base:false, CacheUS: false, Episode: false, Media: false, Movie: false, Show: false,
    UpdateAuto: false, EventTypes: false, HTTP_VERBS: false, MediaType: false, CommentBS: false,
+   MovieStatus: false,
 
    betaseries_api_user_token:  true, betaseries_user_id: false, trans: false, lazyLoad: false, deleteFilterOthersCountries: false, generate_route: false,
    CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
-   viewMoreFriends: false, bootstrap: false, PopupAlert: false, moment, jQuery: false
+   viewMoreFriends: false, bootstrap: false, PopupAlert: false, moment, jQuery: false, faceboxDisplay: false
  */
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
@@ -40,15 +42,11 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /************************************************************************************************/
 
 function loadError(oError) {
+    GM_notification({
+        title: "Erreur chargement du userScript BS",
+        text: "Le userscript n'a pas pu être chargé, rechargé la page SVP"
+    });
     throw new URIError("The script " + oError.target.src + " didn't load correctly.");
-}
-
-function affixScriptToHead(url, onloadFunction) {
-    var newScript = document.createElement("script");
-    newScript.onerror = loadError;
-    if (onloadFunction) { newScript.onload = () => { onloadFunction(jQuery); }}
-    document.head.appendChild(newScript);
-    newScript.src = url;
 }
 const loadCSS = function( href, before, media, attributes, callback, onerror ) {
     // Arguments explained:
@@ -387,6 +385,9 @@ const launchScript = function($) {
                 // On ajoute la gestion des épisodes
                 waitSeasonsAndEpisodesLoaded(() => upgradeEpisodes(objRes));
             }
+            else if (/^\/film\//.test(url)) {
+                observeBtnVu(objRes);
+            }
         });
     }
     // Fonctions appeler pour la page de gestion des series
@@ -472,7 +473,7 @@ const launchScript = function($) {
      * @return {boolean}
      */
     function userIdentified() {
-        return typeof betaseries_api_user_token !== 'undefined';
+        return typeof betaseries_api_user_token !== 'undefined' && typeof betaseries_user_id !== 'undefined';
     }
     /**
      * Cette fonction vérifie la dernière version de l'API
@@ -1178,6 +1179,7 @@ const launchScript = function($) {
             $('script[src*="static-od.com"]').remove();
             $('script[src*="ad.doubleclick.net"]').remove();
             $('script[src*="sddan.com"]').remove();
+            $('.postit').hide();
         }, 500);
         $('.parent-ad-desktop').attr('style', 'display: none !important');
         setInterval(function () {
@@ -1896,32 +1898,58 @@ const launchScript = function($) {
                     $('.popover-body').html(objSimilar.getContentPopup());
                     // On gère les modifs sur les cases à cocher de l'état d'un film similar
                     if (type === MediaType.movie) {
-                        $('input.movie').change((e) => {
+                        $('.popover button.reset').click(e => {
                             e.stopPropagation();
                             e.preventDefault();
-                            const $elt = $(e.currentTarget);
-                            let state = 0;
-                            if (debug) console.log('input.movie change', $elt);
-                            if ($elt.is(':checked') && $elt.hasClass('movieSeen')) {
-                                state = 1;
+                            let promise = Promise.resolve(true);
+                            const $parent = $(e.currentTarget).parents('a.slide__image');
+                            // Demander une confirmation lorsque le film est vu
+                            if (MovieStatus.SEEN === objSimilar.user.status) {
+                                promise = new Promise((resolve) => {
+                                    new PopupAlert({
+                                        title: `Suppression de ${objSimilar.title}`,
+                                        text: `Souhaitez-vous supprimer le film ${objSimilar.title} de votre compte ?`,
+                                        callback_yes: () => resolve(true),
+                                        callback_no: () => resolve(false)
+                                    });
+                                })
                             }
-                            else if (($elt.is(':checked') && $elt.hasClass('movieMustSee')) ||
-                                (!$elt.is(':checked') && $elt.hasClass('movieSeen'))) {
-                                state = 0;
+                            promise.then(resp => {
+                                if (!resp) {
+                                    return;
                             }
-                            else if ($elt.is(':checked') && $elt.hasClass('movieNotSee')) {
-                                state = 2;
+                                objSimilar.changeState(-1).then(() => {
+                                    const checked = $(e.currentTarget).siblings('input:checked');
+                                    // if (debug) console.log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
+                                    checked.get(0).checked = false;
+                                    checked.removeAttr('checked');
+                                    // On supprime le bandeau Vu
+                                    if ($parent.find('.bandViewed').length > 0) {
+                                        $parent.find('.bandViewed').remove();
                             }
-                            $('input.movie:not(.' + $elt.get(0).classList[1] + ')').each((i, e) => {
-                                $(e).prop("checked", false);
+                                    $(e.currentTarget).hide();
                             });
-                            objSimilar.addToAccount(state).then(similar => {
-                                if (state === 1) {
+                            });
+                        });
+                        $('.popover input.movie').click((e) => {
+                            e.stopPropagation();
+                            // e.preventDefault();
+                            const $elt = $(e.currentTarget).parent().children('input:checked');
+                            if (debug) console.log('input.movie click - checked(%d)', $elt.length);
+                            if ($elt.length <= 0) {
+                                $elt.siblings('button').hide();
+                                return;
+                            }
+                            const state = parseInt($elt.val(), 10);
+                            if (debug) console.log('input.movie change: %d', state, $elt);
+                            objSimilar.changeState(state).then(similar => {
+                                if (state === MovieStatus.SEEN) {
                                     $elt.parents('a').prepend(`<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`);
                                 }
                                 else if ($elt.parents('a').find('.bandViewed').length > 0) {
                                     $elt.parents('a').find('.bandViewed').remove();
                                 }
+                                $elt.siblings('button').show();
                                 if (debug) console.log('movie mustSee/seen OK', similar);
                             }, err => {
                                 console.warn('movie mustSee/seen KO', err);
@@ -2017,10 +2045,23 @@ const launchScript = function($) {
                         visiblity: hidden;
                     }
                 }
-                @keyframes backgroundFadeOut{0%{background-color:rgba(193,225,250,.3)}80%{background-color:rgba(193,225,250,.3)}to{background-color:transparent}}
+                .popinWrapper .popin-content-html .title i.fa {
+                    cursor: pointer;
+                    margin-left: 5px;
+                    color: #fff;
+                }
+                @keyframes backgroundFadeOut {
+                    0%  { background-color: rgba(193,225,250,.3) }
+                    80% { background-color: rgba(193,225,250,.3) }
+                    to  { background-color: transparent }
+                }
             </style>`
         );
         $('#comments .slide__comment').off('click');
+        addScriptAndLink('moment');
+        // Un cours instant pour charger le fichier locale de la library moment
+        setTimeout(() => {
+            addScriptAndLink('localefr', function() {
         const $comments = $('#comments .slide__comment .js-popup-comments');
         $comments.off('click').click(e => {
             e.stopPropagation();
@@ -2039,6 +2080,8 @@ const launchScript = function($) {
                 objComment.display();
             });
         });
+            });
+        }, 250);
     }
     /**
      * 
@@ -2051,6 +2094,41 @@ const launchScript = function($) {
             e.stopPropagation();
             e.preventDefault();
             res.objNote.createPopupForVote();
+        });
+    }
+    /**
+     * Redéfinit l'event click sur le bouton Vu sur la page d'un film
+     * @param {Movie} objRes L'objet contenant les infos du film
+     */
+    function observeBtnVu(objRes) {
+        const $btnVu = $(`.blockInformations__action .label:contains("${trans('film.button.watched.label')}")`).siblings('button');
+        if (debug) console.log('observeBtnVu', $btnVu);
+        function updateRender(state) {
+            const Svgs = {
+                0: '<svg fill="#FFF" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M16 2v14H2V2h14zm0-2H2C.9 0 0 .9 0 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V2c0-1.1-.9-2-2-2z" fill-rule="nonzero"></path></svg>',
+                1: '<svg fill="#54709D" width="17.6" height="13.4" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"></path></svg>'
+            };
+            $btnVu.children('span').empty().append(Svgs[state]);
+        }
+        $btnVu.off('click').click(e => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (debug) console.log('observeBtnVu click');
+
+            // _this.markAsView.blur();
+            if (!userIdentified()) {
+                faceboxDisplay('inscription', {}, function() {});
+                return;
+            }
+            const state = objRes.user.status !== MovieStatus.SEEN ? MovieStatus.SEEN : MovieStatus.TOSEE;
+            objRes.changeStatus(state).then((movie) => {
+                objRes.elt.attr('data-movie-currentstatus', movie.user.status);
+                updateRender(state);
+                if (state === MovieStatus.SEEN) {
+                    objRes.objNote.createPopupForVote();
+                }
+                // Update render SVG
+            });
         });
     }
     /**
@@ -2122,7 +2200,7 @@ const launchScript = function($) {
                             return;
                         }
                         else clearInterval(intTime);
-                        moment.locale('fr');
+                        // moment.locale('fr');
                         let newShowIds = {}, show;
                         if (debug) console.log('updateAgenda updateEpisodes', data);
                         for (let s = 0; s < data.shows.length; s++) {
@@ -2416,8 +2494,22 @@ const launchScript = function($) {
 };
 
 const now = new Date().getTime();
+let loop = 0;
 let timerLaunch = setInterval(function() {
+    if (loop++ > 150) { // timeout 30 seconds
+        clearInterval(timerLaunch);
+        console.warn('Le UserScript BetaSeries n\'a pas pu être lancé, car il manque jQuery');
+        GM_notification({
+            title: "Erreur chargement du userScript BS",
+            text: "Le userscript n'a pas pu être chargé, rechargé la page SVP"
+        });
+        return;
+    }
     if (typeof jQuery === 'undefined') { return; }
     clearInterval(timerLaunch);
-    affixScriptToHead(`${serverBaseUrl}/js/app-bundle.js?t=${now}`, launchScript);
+    const newScript = document.createElement("script");
+    newScript.onerror = loadError;
+    newScript.onload = () => { launchScript(jQuery); };
+    document.head.appendChild(newScript);
+    newScript.src = `${serverBaseUrl}/js/app-bundle.js?t=${now}`;
 }, 200);
