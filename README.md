@@ -1,4 +1,4 @@
-# ![logo betaseries](/screenshots/48.png) UserScript BetaSeries
+# ![logo betaseries](./screenshots/48.png) UserScript BetaSeries
 UserScript pour le site [BetaSeries](https://www.betaseries.com/) testé avec Tampermonkey sur Chrome
 
 ## Sommaire
@@ -33,17 +33,27 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 * Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode
 
-![Nombre de votants](/screenshots/nbVotants.jpg "Nombre de votants")
+![Nombre de votants](./screenshots/nbVotants.jpg "Nombre de votants")
 * Ajout du vote du membre connecté à la note globale de la ressource
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource
 * Ajout de la gestion du synopsis (description), pour l'afficher au complet et pour revenir à un synopsis tronqué, autant de fois que nécessaire.
+* Modification de l'affichage des commentaires dans la popup (Je l'ai modifié car, à plusieurs reprises, les commentaires ne se chargeait pas dans la popup. Il fallait recharger la page :anguished:):
+  - Ajout de la possibilité de naviguer entre les commentaires à l'aide des boutons **Prev** et **Next**.
+  - Les spoilers ne sont pas affichés directement. Comme avant, il faut cliquer sur le lien pour afficher le message.
+  - Affichage des réponses
+  - TODO:
+    * [ ] Mieux gérer le retour d'état d'un thumb
+    * [ ] Utiliser un bouton, plutôt qu'un lien, pour l'affichage d'un spoiler
+    * [ ] Ajouter l'écriture d'une réponse
+    * [ ] Gérer l'affichage de l'ensemble des commentaires
+* Modification de l'affichage de la notation. Je l'ai modifié pour les mêmes raisons que les commentaires (cf ci-dessus).
 
 #### Séries et Films
 
 * En mode DEV, ajout d'un bouton à côté du titre d'un similar, pour visualiser ses données JSON.
 * Ajoute un bandeau d'angle "Viewed" sur les séries/films similaires déjà vues (Nécessite d'être connecté à votre compte utilisateur)
 
-![Séries similaires avec le bandeau vues](/screenshots/similarsViewed.jpg "Séries similaires avec le bandeau vues")
+![Séries similaires avec le bandeau vues](./screenshots/similarsViewed.jpg "Séries similaires avec le bandeau vues")
 * Ajout d'une popup avec les détails d'une série/film similaire lors du survol de l'image d'un similaire
 * Dans la popup d'un similaire:
   * ***Film:*** Possibilité d'indiquer l'état _Vu_, _A voir_ ou _Ne veux pas voir_
@@ -59,10 +69,14 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
 * Ajout d'une case à cocher "Vu" sur les vignettes des épisodes pour ajouter ou retirer l'épisode des épisodes vus. La barre de progression de la série, ainsi que l'affichage du prochain épisode à visionner, sont mis à jour en même temps que les épisodes, sans recharger toute la page.
 
-![Case à cocher VU d'un épisode](/screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
+![Case à cocher VU d'un épisode](./screenshots/checkSeen.jpg "Case à cocher VU d'un épisode")
 * Ajout d'une mise à jour automatique des épisodes de la saison courante, avec réglage des options, au survol du bouton de mise à jour. Les options permettent d'activer l'update et l'intervalle de temps entre les mises à jour.
 
-![Options de mise à jour auto](/screenshots/OptionsUpdateAutoEpisodes.jpg "Options de mise à jour auto")
+![Options de mise à jour auto](./screenshots/OptionsUpdateAutoEpisodes.jpg "Options de mise à jour auto")
+
+#### Films
+
+* Ajout de la gestion du bouton **Vu**, afin d'activer la notation. La popup de notation est ouverte lorsque le film est indiqué comme vu.
 
 #### Liste des séries
 
@@ -82,7 +96,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 * Ajout d'un sommaire, sur les pages des méthodes de l'[API](https://www.betaseries.com/api/), avec les liens des différentes fonctions. Ce qui permet de voir toutes les fonctions liées aux méthodes, en début de page.
 
-![Sommaire des méthodes de l'API](/screenshots/sommaireMethodes.png "Sommaire des méthodes de l'API")
+![Sommaire des méthodes de l'API](./screenshots/sommaireMethodes.png "Sommaire des méthodes de l'API")
 * Ajout d'améliorations sur la page de la console de l'API
   - Un bouton pour supprimer la ligne de paramètre (le paramètre _version_ ne peut être supprimé)
   - Un bouton pour vérouiller la ligne de paramètre (le paramètre _version_ est vérouillé)
@@ -90,13 +104,13 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
   - Un bouton pour afficher/masquer le résultat de la requête
   - Un clic sur un paramètre, dans la section __documentation__, permet d'ajouter ce paramètre directement
 
-![Console de l'API](/screenshots/console.png "Console de l'API")
+![Console de l'API](./screenshots/console.png "Console de l'API")
 
 ## Corrections
 
 * Décode les HTMLEntities dans le titre de la série
 
-![HTMLEntities](/screenshots/HTMLEntities-title.png "HTMLEntities dans le titre")
+![HTMLEntities](./screenshots/HTMLEntities-title.png "HTMLEntities dans le titre")
 
 ## Futures améliorations possibles
 

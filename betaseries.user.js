@@ -28,7 +28,7 @@
 
    betaseries_api_user_token:  true, betaseries_user_id: false, trans: false, lazyLoad: false, deleteFilterOthersCountries: false, generate_route: false,
    CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
-   viewMoreFriends: false, bootstrap: false, PopupAlert: false, moment, jQuery: false, faceboxDisplay: false
+   viewMoreFriends: false, bootstrap: false, PopupAlert: false, moment, faceboxDisplay: false
  */
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
@@ -2123,11 +2123,11 @@ const launchScript = function($) {
             const state = objRes.user.status !== MovieStatus.SEEN ? MovieStatus.SEEN : MovieStatus.TOSEE;
             objRes.changeStatus(state).then((movie) => {
                 objRes.elt.attr('data-movie-currentstatus', movie.user.status);
+                // Update render SVG
                 updateRender(state);
                 if (state === MovieStatus.SEEN) {
                     objRes.objNote.createPopupForVote();
                 }
-                // Update render SVG
             });
         });
     }
