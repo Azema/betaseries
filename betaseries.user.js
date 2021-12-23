@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.1.1
+// @version      1.1.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -24,7 +24,7 @@
 
 /* globals Base:false, CacheUS: false, Episode: false, Media: false, Movie: false, Show: false,
    UpdateAuto: false, EventTypes: false, HTTP_VERBS: false, MediaType: false, CommentBS: false,
-   MovieStatus: false,
+   MovieStatus: false, Member: false, DataTypesCache: false,
 
    betaseries_api_user_token:  true, betaseries_user_id: false, trans: false, lazyLoad: false, deleteFilterOthersCountries: false, generate_route: false,
    CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
@@ -39,15 +39,20 @@ let betaseries_api_user_key = '';
 let themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
+/* SRI du fichier app-bundle.js */
+const sriBundle = 'sha384-/TxVbe1VZEm8T/uCka84BIY2WDkshzpdGIBoj4iYUl/z5UDKfLZOxmLRHAR2Ps8b';
 /************************************************************************************************/
 
-function loadError(oError) {
-    GM_notification({
-        title: "Erreur chargement du userScript BS",
-        text: "Le userscript n'a pas pu être chargé, rechargé la page SVP"
-    });
-    throw new URIError("The script " + oError.target.src + " didn't load correctly.");
-}
+/**
+ * Fonction de chargement dynamique de feuilles de style CSS
+ * @param   {string}            href        Le source de la feuille de style
+ * @param   {HTMLLinkElement}   before      Link de référence pour le placement
+ * @param   {Attr}              media       Le type de média à utiliser pour la feuille de style
+ * @param   {Object}            attributes  Les attributs à appliquer à l'élément Link
+ * @param   {Function}          callback    Fonction de callback après chargement de la feuille de style
+ * @param   {Function}          onerror     Fonction de callback en cas d'erreur
+ * @returns {HTMLLinkElement}
+ */
 const loadCSS = function( href, before, media, attributes, callback, onerror ) {
     // Arguments explained:
     // `href` [REQUIRED] is the URL for your CSS file.
@@ -130,7 +135,15 @@ const loadCSS = function( href, before, media, attributes, callback, onerror ) {
     onloadcssdefined( newcb );
     return ss;
 };
-const loadJS = function( src, before, media, attributes, callback, onerror ) {
+/**
+ * Fonction de chargement dynamique de scripts JS
+ * @param   {string}    src         La source du script
+ * @param   {Object}    attributes  Les attributs du script
+ * @param   {Function}  callback    Fonction de callback après le chargement du script
+ * @param   {Function}  onerror     Fonction de callback en cas d'erreur
+ * @returns {HTMLScriptElement}     L'objet script
+ */
+const loadJS = function( src, attributes, callback, onerror ) {
     // Arguments explained:
     // `href` [REQUIRED] is the URL for your CSS file.
     // `before` [OPTIONAL] is the element the script should use as a reference for injecting our stylesheet <link> before
@@ -139,20 +152,13 @@ const loadJS = function( src, before, media, attributes, callback, onerror ) {
     // `attributes` [OPTIONAL] is the Object of attribute name/attribute value pairs to set on the stylesheet's DOM Element.
     const doc = window.document;
     const ss = doc.createElement( "script" );
-    let ref;
-    if( before ){
-        ref = before;
-    }
-    else {
-        const refs = ( doc.body || doc.getElementsByTagName( "head" )[ 0 ] ).childNodes;
-        ref = refs[ refs.length - 1];
-    }
+    const refs = ( doc.body || doc.getElementsByTagName( "head" )[ 0 ] ).childNodes;
+    const ref = refs[ refs.length - 1];
 
-    const scripts = doc.scripts;
     // Set any of the provided attributes to the stylesheet DOM Element.
-    if( attributes ){
-        for( let attributeName in attributes ){
-            if ( attributes[attributeName] !== undefined ){
+    if ( attributes ) {
+        for ( let attributeName in attributes ) {
+            if ( attributes[attributeName] !== undefined ) {
                 ss.setAttribute( attributeName, attributes[attributeName] );
             }
         }
@@ -171,25 +177,12 @@ const loadJS = function( src, before, media, attributes, callback, onerror ) {
     // Inject link
     // Note: the ternary preserves the existing behavior of "before" argument, but we could choose to change the argument to "after" in a later release and standardize on ref.nextSibling for all refs
     // Note: `insertBefore` is used instead of `appendChild`, for safety re: http://www.paulirish.com/2011/surefire-dom-element-insertion/
-    ready( function(){
-        ref.parentNode.insertBefore( ss, ( before ? ref : ref.nextSibling ) );
+    ready( function() {
+        ref.parentNode.insertBefore( ss, ref.nextSibling );
     });
-    // A method (exposed on return object for external use) that mimics onload by polling document.styleSheets until it includes the new sheet.
-    var onloadjsdefined = function( cb ){
-        const resolvedSrc = ss.src;
-        let i = scripts.length;
-        while ( i-- ) {
-            if ( scripts[ i ].src === resolvedSrc ) {
-                return cb();
-            }
-        }
-        setTimeout(function() {
-            onloadjsdefined( cb );
-        });
-    };
 
     let called = false;
-	function newcb(){
+	function newcb() {
         if ( ss.addEventListener ) {
             ss.removeEventListener( "load", newcb );
         }
@@ -204,15 +197,10 @@ const loadJS = function( src, before, media, attributes, callback, onerror ) {
         ss.addEventListener( "load", newcb);
         if (onerror) { ss.addEventListener('error', onerror); }
     }
-    ss.onloadjsdefined = onloadjsdefined;
-    onloadjsdefined( newcb );
     return ss;
 };
 const launchScript = function($) {
-    const debug = false, 
-          url = location.pathname, 
-          noop = function () {}, 
-          regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
+    const debug = false, url = location.pathname, noop = function () {}, regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
     // Objet contenant les scripts et feuilles de style utilisées par le userscript
     scriptsAndStyles = {
         "moment": {
@@ -341,11 +329,18 @@ const launchScript = function($) {
     UpdateAuto.getValue = GM_getValue;
     UpdateAuto.setValue = GM_setValue;
 
+    /**
+     * @type Member
+     */
+    let user;
+    Member.fetch().then(member => {
+        user = member;
     // On affiche la version du script
-    if (debug) console.log('UserScript BetaSeries v%s', GM_info.script.version);
+        if (debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
+    });
 
     // Ajout des feuilles de styles pour le userscript
-    addScriptAndLink(['awesome', 'stylehome'], () => console.info('Styles loaded'));
+    addScriptAndLink(['awesome', 'stylehome']);
     if (typeof lazyLoad === 'undefined') {
         let notLoop = 0;
         let timerLazy = setInterval(function () {
@@ -386,7 +381,7 @@ const launchScript = function($) {
                 waitSeasonsAndEpisodesLoaded(() => upgradeEpisodes(objRes));
             }
             else if (/^\/film\//.test(url)) {
-                observeBtnVu(objRes);
+                observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
             }
         });
     }
@@ -518,6 +513,7 @@ const launchScript = function($) {
         $('.userscript-notifications .title').html(title);
         $('.userscript-notifications .text').html(text);
         notifContainer.slideDown().delay(5000).slideUp();
+        console.trace('Notification');
     }
     /**
      * addScriptAndLink - Permet d'ajouter un script ou un link sur la page Web
@@ -555,19 +551,11 @@ const launchScript = function($) {
                 if (debug) console.log('loadErrorScript error', oError);
                 console.error("The script " + oError.target.src + " didn't load correctly.");
             }
-            // $('head').append(`<script id="${data.id}"
-            //                           integrity="${data.integrity}"
-            //                           src="${data.src}"
-            //                           crossorigin="anonymous"
-            //                           referrerpolicy="no-referrer"></script>`);
-            // const newScript = document.querySelector("#" + data.id);
-            // newScript.onerror = loadErrorScript;
-            // newScript.onload = onloadFunction;
-            loadJS(data.src, null, null, {
+            loadJS(data.src, {
                 integrity: data.integrity,
                 id: data.id,
-                crossorigin: 'anonymous',
-                referrerpolicy: 'no-referrer'
+                crossOrigin: 'anonymous',
+                referrerPolicy: 'no-referrer'
             }, onloadFunction, loadErrorScript);
         }
         else if (data.type === 'style') {
@@ -578,8 +566,8 @@ const launchScript = function($) {
             loadCSS( data.href, null, null, {
                 integrity: data.integrity,
                 id: data.id,
-                crossorigin: 'anonymous',
-                referrerpolicy: 'no-referrer'
+                crossOrigin: 'anonymous',
+                referrerPolicy: 'no-referrer'
             }, onloadFunction, loadErrorStyle );
         }
     }
@@ -794,12 +782,17 @@ const launchScript = function($) {
          */
         function buildTable() {
             let $table = $(`
+                <style>i.fa {cursor: pointer;margin-left: 10px;}</style>
                 <div id="sommaire" class="table-responsive" style="display:none;">
                     <table class="table table-dark table-striped table-bordered">
                         <thead class="thead-dark">
                             <tr>
-                                <th colspan="5" scope="col" class="col-lg-12 liTitle">Sommaire</th>
+                                <th colspan="5" scope="col" class="col-lg-12 liTitle">
+                                    Sommaire <i class="fa fa-chevron-circle-up" aria-hidden="true" title="Fermer le sommaire"></i>
+                                </th>
                             </tr>
+                        </thead>
+                        <tbody>
                             <tr>
                                 <th scope="col" class="col-lg-3">Fonction</th>
                                 <th scope="col" class="col-lg-2">GET</th>
@@ -807,8 +800,7 @@ const launchScript = function($) {
                                 <th scope="col" class="col-lg-2">PUT</th>
                                 <th scope="col" class="col-lg-2">DELETE</th>
                             </tr>
-                        </thead>
-                        <tbody></tbody>
+                        </tbody>
                     </table>
                 </div>`), $tbody = $table.find('tbody');
             for (let key in methods) {
@@ -827,24 +819,38 @@ const launchScript = function($) {
         // Construire un sommaire des fonctions
         //if (debug) console.log('methods', methods);
         $('.maincontent h1').after(buildTable());
-        $('#sommaire').fadeIn();
+        $('#sommaire').slideDown();
         $('.linkSommaire').click((e) => {
             e.stopPropagation();
             e.preventDefault();
             $('#' + $(e.currentTarget).data('id')).get(0).scrollIntoView(true);
         });
-        $('.fa-chevron-circle-up').click(function (e) {
+        $('h2 .fa-chevron-circle-up').click(function (e) {
             e.stopPropagation();
             e.preventDefault();
             document.getElementById('sommaire').scrollIntoView(true);
         });
+        $('#sommaire .fa-chevron-circle-up').click(e => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $tbody = $('#sommaire table tbody');
+            // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
+            $tbody.slideToggle(600, 'swing', () => {
+                if ($tbody.is(':hidden')) {
+                    $(e.currentTarget).removeClass('fa-chevron-circle-up').addClass('fa-chevron-circle-down');
+    }
+                else {
+                    $(e.currentTarget).removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
+                }
+            });
+        });
     }
     /**
-     * Ajoute un bouton pour le dev pour afficher les données de la ressource
-     * dans une modal
+     * 
+     * @returns {implDialog}
      */
-    function addBtnDev() {
-        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>', dialogHTML = `
+    function getDialog() {
+        const dialogHTML = `
               <style>
                 .dialog-container .close {
                   float: right;
@@ -859,7 +865,8 @@ const launchScript = function($) {
                 .dialog-container .close:hover {color: #000;text-decoration: none;}
                 .dialog-container .close:not(:disabled):hover, .close:not(:disabled):focus {opacity: .75;}
                 .dialog-container button.close {padding: 0;background-color: transparent;border: 0;}
-                .dialog-container .counter {font-size:0.8em;}
+                .dialog-container .counter {margin-left: 15px;}
+                .dialog-container .counter, .dialog-container .suffixCounter {font-size:0.8em;}
               </style>
                 <div
                   class="dialog dialog-container table-dark"
@@ -870,7 +877,7 @@ const launchScript = function($) {
                   <div class="dialog-overlay"></div>
                   <div class="dialog-content" role="document" style="width: 80%;">
                     <h1 id="dialog-resource-title">Données de la ressource
-                        <span class="counter"></span>
+                    <span class="counter"></span> <span class="suffixCounter">appels à l'API</span>
                         <button type = "button"
                                 class = "close"
                                 aria-label = "Close"
@@ -880,41 +887,85 @@ const launchScript = function($) {
                     </h1>
                     <div class="data-resource content"></div>
                   </div>
-                </div>`;
-        $('.blockInformations__actions').append(btnHTML);
+            </div>
+        `;
+        if ($('#dialog-resource').length <= 0) {
         $('body').append(dialogHTML);
-        let $dialog = $('#dialog-resource');
-        const html = document.documentElement;
-        const onShow = function () {
-            html.style.overflowY = 'hidden';
-            $('#dialog-resource')
+        }
+        
+        return {
+            _dialog: $('#dialog-resource'),
+            _html: document.documentElement,
+            _onShow: function () {
+                this._html.style.overflowY = 'hidden';
+                this._dialog
                 .css('z-index', '1005')
-                .css('overflow', 'scroll');
-        };
-        const onHide = function () {
-            html.style.overflowY = '';
-            $('#dialog-resource')
+                    .css('overflow', 'scroll')
+                    .find('button.close').click(this.close.bind(this));
+                this._dialog.find('.dialog-overlay').click(this.close.bind(this));
+                document.addEventListener("keydown", this._bindKeypress);
+            },
+            _bindKeypress: function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                // console.log('_bindKeypress', this, e);
+                if (27 === e.which) {
+                    this.close();
+                }
+            },
+            _onHide: function () {
+                this._html.style.overflowY = '';
+                this._dialog
                 .css('z-index', '0')
-                .css('overflow', 'none');
-        };
+                    .css('overflow', 'none')
+                    .find('button.close').off('click');
+                this._dialog.find('.dialog-overlay').off('click');
+                this._dialog.off('keypress');
+                document.removeEventListener("keydown", this._bindKeypress);
+            },
+            init: function() {
+                this._bindKeypress = this._bindKeypress.bind(this);
+                this._onHide = this._onHide.bind(this);
+                this._onShow = this._onShow.bind(this);
+                return this;
+            },
+            close: function () {
+                this._dialog.hide('fast', this._onHide);
+            },
+            show: function() {
+                this._dialog.show('slow', this._onShow);
+            },
+            setCounter: function(counter) {
+                this._dialog.find('.counter').text(counter);
+            },
+            setContent: function(content) {
+                this._dialog.find('.data-resource').html(content);
+            }
+        }.init();
+    }
+    /**
+     * Ajoute un bouton pour le dev pour afficher les données de la ressource
+     * dans une modal
+     */
+    function addBtnDev() {
+        const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>';
+        $('.blockInformations__actions').append(btnHTML);
+        /**
+         * @type {Dialog}
+         */
+        const dialog = getDialog();
         $('.blockInformations__actions .fa-wrench').parent().click((e) => {
             e.stopPropagation();
             e.preventDefault();
-            let type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
-            $dataRes = $('#dialog-resource .data-resource'); // DOMElement contenant le rendu JSON de la ressource
+            let type = getApiResource(location.pathname.split('/')[1]); // Indique de quel type de ressource il s'agit
             getResourceData().then(function (data) {
                 // if (debug) console.log('addBtnDev promise return', data);
-                $dataRes.empty().append(renderjson.set_show_to_level(2)(data[type.singular]));
-                $('#dialog-resource-title span.counter').empty().text('(' + Media.counter + ' appels API)');
-                $dialog.show(400, onShow);
+                dialog.setContent(renderjson.set_show_to_level(2)(data[type.singular]));
+                dialog.setCounter(Base.counter.toString());
+                dialog.show();
             }, (err) => {
                 notification('Erreur de récupération de la ressource', 'addBtnDev: ' + err);
             });
-        });
-        $('.dialog button.close').click(function (e) {
-            e.stopPropagation();
-            e.preventDefault();
-            $dialog.hide(400, onHide);
         });
     }
     /**
@@ -1420,7 +1471,8 @@ const launchScript = function($) {
                 $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    let checkAuto = $('#updateEpisodeListAuto').is(':checked'), intervalAuto = parseInt($('#updateEpisodeListTime').val().toString(), 10);
+                    let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
+                        intervalAuto = parseInt($('#updateEpisodeListTime').val().toString(), 10);
                     if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
                     if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
                     if (debug) console.log('updateEpisodeList submit', objUpAuto);
@@ -1437,6 +1489,10 @@ const launchScript = function($) {
     function upgradeEpisodes(res) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (!userIdentified() || betaseries_api_user_key === '') return;
+        if (!(res instanceof Show)) {
+            console.error("Le paramètre res n'est pas du type Show", res);
+            return;
+        }
         const seasons = $('#seasons .slide_flex');
         let vignettes = getVignettes();
         if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
@@ -1653,13 +1709,6 @@ const launchScript = function($) {
         });
         // On active les menus dropdown
         $('.dropdown-toggle').dropdown();
-        // On gère l'ajout et la suppression de la série dans le compte utilisateur
-        if (res.in_account) {
-            res.deleteShowClick();
-        }
-        else {
-            res.addShowClick();
-        }
         // On récupère les vignettes des épisodes
         function getVignettes() {
             return $('#episodes .slide__image');
@@ -1673,6 +1722,7 @@ const launchScript = function($) {
      * @return {void}
      */
     function replaceSuggestSimilarHandler($elt, objSimilars = []) {
+        if ($elt.hasClass('usbs')) return;
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (!userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
         if (debug) console.log('replaceSuggestSimilarHandler');
@@ -1760,6 +1810,20 @@ const launchScript = function($) {
                                 break;
                         }
                     });
+                },
+                onClose: function() {
+                    $('#popin-dialog .popin-content-html form')
+                        .replaceWith(`
+                            <div class="popin-content-ajax"><p></p></div>
+                            <div class="button-set">
+                                <button class="btn-reset btn-btn btn--grey js-close-popupalert" 
+                                        type="button" 
+                                        id="popupalertno">Non</button>
+                                <button class="btn-reset btn-btn btn-blue2 js-close-popupalert" 
+                                        type="submit" 
+                                        id="popupalertyes">OK, j'ai compris</button>
+                            </div>`
+                        );
                 }
             });
             function autocompleteSimilar(el) {
@@ -1770,9 +1834,53 @@ const launchScript = function($) {
                 $("#similaire_id_search").val(titre).trigger("blur");
                 $("input[name=similaire_id]").val(id);
                 $('#popin-dialog .popin-content-html > form > div.button-set > button').focus();
-                //$("input[name=notes_url]").trigger("focus");
             }
         });
+        $elt.addClass('usbs');
+    }
+    /**
+     * Ajoute la section Similars
+     */
+    function addSimilarsSection() {
+        $('.scrollNavigation').append(`<a href="#similars" class="u-colorWhiteOpacity05 js-anchor-link">Séries similaires</a>`);
+        let template = `
+            <div id="similars" class="sectionSeparator">
+                <div class="slidesWrapper">
+                    <div class="container-padding60">
+                        <div class="blockTitles">
+                            <h2 class="blockTitle">Séries similaires</h2>
+                        </div>
+                    </div>
+                    <div class="positionRelative">
+                        <div class="slides_flex hideScrollbar js-scroll-slider container-padding60 slides--col125 overflowXScroll">
+                            <div class="slide_flex">
+                                <div class="slide__image positionRelative u-insideBorderOpacity u-insideBorderOpacity--01">
+                                    <button data-ab-form-validation-submit="" type="button" class="btn-reset positionRelative zIndex1 actorEmpty">
+                                        <span class="svgContainer" style="height: 188px">
+                                            <svg fill="#0D151C" width="14" height="14" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                                            </svg>
+                                        </span>
+                                    </button>
+                                </div>
+                                <div class="slide__title">Suggérer la première série</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-reset slidesNav slidesNav--left js-scroll-slider__left">
+                            <span class="sr-only">left</span>
+                        </button>
+                        <button type="button" class="btn-reset slidesNav js-scroll-slider__right">
+                            <span class="sr-only">right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>`
+        ;
+        $('#photos').after(template);
+        replaceSuggestSimilarHandler($('#similars div.slides_flex div.slide_flex div.slide__image > button'));
+        const resId = getResourceId();
+        const res = Base.cache.get(DataTypesCache.shows, resId);
+        if (res) res.removeListener(EventTypes.ADD, addSimilarsSection);
     }
     /**
      * Vérifie si les séries/films similaires ont été vues
@@ -1783,6 +1891,9 @@ const launchScript = function($) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (!userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
         if (debug) console.groupCollapsed('similarsViewed');
+        if (res instanceof Show && !res.in_account && $('#similars').length <= 0) {
+            res.addListener(EventTypes.ADD, addSimilarsSection);
+        }
         let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
         len = $similars.length; // Le nombre de similaires
         if (debug) console.log('nb similars: %d', len, res.nbSimilars);
@@ -1854,6 +1965,7 @@ const launchScript = function($) {
                     let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
+                const dialog = getDialog();
                 for (let s = 0; s < res.similars.length; s++) {
                     objSimilars.push(res.similars[s].id);
                     let $elt = $($similars.get(s)),
@@ -1866,7 +1978,7 @@ const launchScript = function($) {
                     similar.decodeTitle();
                     // On ajoute l'icone pour visualiser les data JSON du similar
                     if (debug) {
-                        similar.wrench();
+                        similar.wrench(dialog);
                     }
                     similar
                         // On vérifie la présence de l'image du similar
@@ -2057,11 +2169,8 @@ const launchScript = function($) {
                 }
             </style>`
         );
-        $('#comments .slide__comment').off('click');
-        addScriptAndLink('moment');
-        // Un cours instant pour charger le fichier locale de la library moment
-        setTimeout(() => {
-            addScriptAndLink('localefr', function() {
+        
+        const eventComments = () => {
         const $comments = $('#comments .slide__comment .js-popup-comments');
         $comments.off('click').click(e => {
             e.stopPropagation();
@@ -2080,8 +2189,11 @@ const launchScript = function($) {
                 objComment.display();
             });
         });
-            });
-        }, 250);
+        };
+        $('#comments .slide__comment').off('click');
+        addScriptAndLink('moment', () => {
+            addScriptAndLink('localefr', eventComments);
+        });
     }
     /**
      * 
@@ -2103,6 +2215,10 @@ const launchScript = function($) {
     function observeBtnVu(objRes) {
         const $btnVu = $(`.blockInformations__action .label:contains("${trans('film.button.watched.label')}")`).siblings('button');
         if (debug) console.log('observeBtnVu', $btnVu);
+        /**
+         * Met à jour le bouton Vu
+         * @param {number} state L'état de visionnage du film (TOSEE or SEEN)
+         */
         function updateRender(state) {
             const Svgs = {
                 0: '<svg fill="#FFF" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M16 2v14H2V2h14zm0-2H2C.9 0 0 .9 0 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V2c0-1.1-.9-2-2-2z" fill-rule="nonzero"></path></svg>',
@@ -2500,16 +2616,23 @@ let timerLaunch = setInterval(function() {
         clearInterval(timerLaunch);
         console.warn('Le UserScript BetaSeries n\'a pas pu être lancé, car il manque jQuery');
         GM_notification({
-            title: "Erreur chargement du userScript BS",
-            text: "Le userscript n'a pas pu être chargé, rechargé la page SVP"
+            title: "Erreur Timeout UserScript BS",
+            text: "Le userscript n'a pas pu être chargé, car jQuery n'est pas présent. Rechargez la page SVP"
         });
         return;
     }
     if (typeof jQuery === 'undefined') { return; }
     clearInterval(timerLaunch);
-    const newScript = document.createElement("script");
-    newScript.onerror = loadError;
-    newScript.onload = () => { launchScript(jQuery); };
-    document.head.appendChild(newScript);
-    newScript.src = `${serverBaseUrl}/js/app-bundle.js?t=${now}`;
+    loadJS(`${serverBaseUrl}/js/app-bundle.js?t=${now}`, {
+            integrity: sriBundle,
+            crossOrigin: 'anonymous',
+            referrerPolicy: 'no-referrer'
+        }, () => launchScript(jQuery), (oError) => {
+            GM_notification({
+                title: "Erreur chargement UserScript BS",
+                text: "Le userscript n'a pas pu être chargé, rechargez la page SVP"
+            });
+            throw new URIError("The script " + oError.target.src + " didn't load correctly.");
+        }
+    );
 }, 200);
