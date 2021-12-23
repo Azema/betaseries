@@ -4,6 +4,7 @@
         "target": "esnext",
         "sourceMap": false,
         "outDir": "./dist/tsc",
-        "rootDir": "./src"
+        "rootDir": "./src",
+        "removeComments": false
       }
 }
