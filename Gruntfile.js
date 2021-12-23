@@ -10,7 +10,7 @@ var util = require('util');
  */
 module.exports = function(grunt) {
     grunt.util.linefeed = '\n';
-    grunt.registerTask('build', ['clean', 'ts', 'cleanExports:dist', 'concat:dist', 'copy:dist', 'sri:dist']);
+    grunt.registerTask('build', ['clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist', 'copy:dist', 'sri:dist']);
     grunt.initConfig({
         distdir: './dist',
         pkg: grunt.file.readJSON('package.json'),
@@ -61,10 +61,22 @@ module.exports = function(grunt) {
             ]
         },
         clean: ['<%= distdir %>/*'],
+        lineending: {
+            dist: {
+                options: {
+                    overwrite: true,
+                    eol: 'lf'
+                },
+                files: {
+                    '': ['<%= distdir %>/bundle.js']
+                }
+            }
+        },
         concat: {
             dist: {
                 options: {
-                    banner: "<%= banner %>"
+                    banner: "<%= banner %>",
+                    separator: '\n'
                 },
                 src:['<%= src.js %>'],
                 dest:'<%= distdir %>/bundle.js'
@@ -96,6 +108,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks("grunt-ts");
+    grunt.loadNpmTasks('grunt-lineending');
     grunt.registerMultiTask('cleanExports', 'concatene all classes', function() {
         this.files.forEach(
             /**

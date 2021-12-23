@@ -22,6 +22,7 @@
     "grunt-contrib-clean": "^2.0.0",
     "grunt-contrib-concat": "^2.0.0",
     "grunt-contrib-copy": "^1.0.0",
+    "grunt-lineending": "^1.0.0",
     "grunt-ts": "^6.0.0-beta.22",
     "ts-loader": "^9.2.6",
     "typescript": "^4.5.4"
