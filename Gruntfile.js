@@ -2,7 +2,7 @@
 'use strict';
 
 var path = require('path');
-var util = require('util');
+// var util = require('util');
 
 /**
  * 
@@ -76,7 +76,8 @@ module.exports = function(grunt) {
             dist: {
                 options: {
                     banner: "<%= banner %>",
-                    separator: '\n'
+                    separator: '\n',
+                    stripBanners: false
                 },
                 src:['<%= src.js %>'],
                 dest:'<%= distdir %>/bundle.js'
