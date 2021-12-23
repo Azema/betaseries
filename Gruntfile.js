@@ -10,7 +10,7 @@ var path = require('path');
  */
 module.exports = function(grunt) {
     grunt.util.linefeed = '\n';
-    grunt.registerTask('build', ['clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist', 'copy:dist', 'sri:dist']);
+    grunt.registerTask('build', ['clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist', 'copy:dist', 'sri:dist', 'version']);
     grunt.initConfig({
         distdir: './dist',
         pkg: grunt.file.readJSON('package.json'),
@@ -103,6 +103,9 @@ module.exports = function(grunt) {
                 src: '<%= distdir %>/app-bundle.js',
                 dest: './betaseries.user.js'
             }
+        },
+        version: {
+            v: '<%= pkg.version %>'
         }
     });
     grunt.loadNpmTasks('grunt-contrib-concat');
@@ -217,5 +220,16 @@ module.exports = function(grunt) {
             return;
         }
         grunt.file.write(this.data.dest, content);
+    });
+    grunt.registerMultiTask('version', 'Remplace le numéro de version du userscript par celle du package', function() {
+        const version = this.data;
+        if (!version || version.length <= 0) {
+            grunt.log.error('Le paramètre "v" est requis');
+            return false;
+        }
+        const filepath = './betaseries.user.js';
+        let content = grunt.file.read(filepath)
+                    .replace(/@version(\s+)[0-9.]*/, `@version$1${version}`);
+        grunt.file.write(filepath, content);
     });
 };
