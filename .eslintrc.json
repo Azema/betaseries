@@ -2,8 +2,10 @@
     "parserOptions": {
         "ecmaVersion": "latest",
         "sourceType": "script",
-        "ecmaFeatures": {}
+        "ecmaFeatures": {
+        }
     },
+    "extends": "eslint:recommended",
     "rules": {
         "constructor-super": 2,
         "for-direction": 2,
