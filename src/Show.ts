@@ -23,6 +23,7 @@ export enum Picked {
     banner,
     show
 }
+// eslint-disable-next-line no-unused-vars
 export class Picture {
     constructor(data: any) {
         this.id = parseInt(data.id, 10);
@@ -371,6 +372,7 @@ export class Show extends Media implements implShow, implAddNote {
             {
                 if (Base.debug) console.log('Série terminée, popup confirmation archivage');
                 promise = new Promise(resolve => {
+                    // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: 'Archivage de la série',
                         text: 'Voulez-vous archiver cette série terminée ?',
@@ -389,6 +391,7 @@ export class Show extends Media implements implShow, implAddNote {
             if (note.user === 0) {
                 if (Base.debug) console.log('Proposition de voter pour la série');
                 promise.then(() => {
+                    // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: Base.trans("popin.note.title.show"),
                         text: "Voulez-vous noter la série ?",
@@ -624,7 +627,7 @@ export class Show extends Media implements implShow, implAddNote {
                         </div>`);
                 show.elt = jQuery('reactjs-show-actions');
                 // On ofusque l'image des épisodes non-vu
-                let vignette;
+                let vignette: JQuery<HTMLElement>;
                 for (let v = 0; v < vignettes.length; v++) {
                     vignette = $(vignettes.get(v));
                     if (vignette.find('.seen').length <= 0) {
@@ -723,6 +726,7 @@ export class Show extends Media implements implShow, implAddNote {
                         _this.addNumberVoters();
                         _this.addShowClick();
                     };
+                    // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: Base.trans("popup.delete_show_success.title"),
                         text: Base.trans("popup.delete_show_success.text", { "%title%": _this.title }),
@@ -731,6 +735,7 @@ export class Show extends Media implements implShow, implAddNote {
                     });
                 };
                 // Supprimer la série du compte utilisateur
+                // eslint-disable-next-line no-undef
                 new PopupAlert({
                     title: Base.trans("popup.delete_show.title", { "%title%": _this.title }),
                     text: Base.trans("popup.delete_show.text", { "%title%": _this.title }),

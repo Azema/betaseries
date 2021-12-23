@@ -27,6 +27,7 @@ export enum MovieStatus {
     SEEN = 1,
     DONTWANTTOSEE = 2
 }
+// eslint-disable-next-line no-unused-vars
 export class Movie extends Media implements implAddNote {
     /***************************************************/
     /*                      STATIC                     */

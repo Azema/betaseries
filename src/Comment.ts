@@ -214,7 +214,7 @@ export class CommentBS {
                                     <button type="button" class="btn-reset mainLink mainLink--regular btnResponse" style="vertical-align: 0px;">Répondre</button>
                                     <a href="#c_1269819" class="mainTime">
                                         <span class="mainLink">&nbsp;∙&nbsp;</span>
-                                        Le ${typeof moment !== 'undefined' ? moment(comment.date).format('D MM YYYY HH:mm') : comment.date.toString()}
+                                        Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('D MM YYYY HH:mm') : comment.date.toString()}
                                     </a>
                                     <span class="stars" title="${comment.user_note} / 5">
                                         ${renderNote(comment.user_note)}

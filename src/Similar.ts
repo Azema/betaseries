@@ -7,7 +7,7 @@ import {Platform_link} from "./Episode";
 
 declare var renderjson;
 
-interface Dialog {
+interface implDialog {
     show: Function,
     close: Function,
     setContent: Function,
@@ -160,9 +160,10 @@ export class Similar extends Media implements implShow, implMovie {
     /**
      * Ajoute l'icône wrench à côté du titre du similar
      * pour permettre de visualiser les données du similar
-     * @return {Similar}
+     * @param   {implDialog} dialog L'objet Dialog pour afficher les données
+     * @returns {Similar}
      */
-    wrench(dialog: Dialog): Similar {
+    wrench(dialog: implDialog): Similar {
         const $title: JQuery<HTMLElement> = this.elt.find('.slide__title'),
               _this: Similar = this;
         $title.html($title.html() +
@@ -177,23 +178,10 @@ export class Similar extends Media implements implShow, implMovie {
         $title.find('.popover-wrench').click((e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            const $dataRes: JQuery<HTMLElement> = $('#dialog-resource .data-resource'), // DOMElement contenant le rendu JSON de la ressource
-                    html: HTMLElement = document.documentElement;
-            const onShow = function(): void {
-                html.style.overflowY = 'hidden';
-                jQuery('#dialog-resource')
-                    .css('z-index', '1005')
-                    .css('overflow', 'scroll');
-            };
-            const onHide = function(): void {
-                html.style.overflowY = '';
-                jQuery('#dialog-resource')
-                    .css('z-index', '0')
-                    .css('overflow', 'none');
-            };
 
             //if (debug) console.log('Popover Wrench', eltId, self);
             this.fetch().then(function(data) {
+                // eslint-disable-next-line no-undef
                 dialog.setContent(renderjson.set_show_to_level(2)(data[_this.mediaType.singular]));
                 dialog.setCounter(Base.counter.toString());
                 dialog.show();
@@ -430,6 +418,7 @@ export class Similar extends Media implements implShow, implMovie {
      * @param   {number} note Note du membre connecté pour le média
      * @returns {Promise<boolean>}
      */
+    // eslint-disable-next-line no-unused-vars
     addVote(note: number): Promise<boolean> {
         throw new Error('On ne vote pas pour un similar');
     }

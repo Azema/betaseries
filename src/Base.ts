@@ -123,6 +123,7 @@ export abstract class Base implements implRepliesComment, implAddNote {
      * @param   {*[]}     args    Autres paramètres
      * @returns {string}
      */
+    // eslint-disable-next-line no-unused-vars
     static trans: Function = function(msg: string, ...args: any[]) {};
     /**
      * Contient les infos sur les différentes classification TV et cinéma

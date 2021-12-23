@@ -345,6 +345,7 @@ export class Episode extends Base implements implAddNote {
         if (method === HTTP_VERBS.POST) {
             let createPromise = () => {
                 return new Promise(resolve => {
+                    // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: 'Episodes vus',
                         text: 'Doit-on cocher les épisodes précédents comme vu ?',
@@ -462,6 +463,7 @@ export class Episode extends Base implements implAddNote {
             if (lenSeen === lenEpisodes) {
                 moveSeason();
             } else if (lenSeen === lenNotSpecial) {
+                // eslint-disable-next-line no-undef
                 new PopupAlert({
                     title: 'Fin de la saison',
                     text: 'Tous les épisodes de la saison, hors spéciaux, ont été vu.<br/>Voulez-vous passer à la saison suivante ?',

@@ -1,7 +1,8 @@
 import { Base, Obj } from "./Base";
 import { DataTypesCache } from "./Cache";
 import { Show } from "./Show";
-
+declare var moment;
+// eslint-disable-next-line no-unused-vars
 export class UpdateAuto {
     static getValue = function(name: string, defaultVal: Obj): Obj {
         return Base.cache.getOrDefault(DataTypesCache.updates, 'updateAuto', defaultVal);
@@ -228,7 +229,15 @@ export class UpdateAuto {
                     _this.stop();
                     return;
                 }
-                if (Base.debug) console.log('update episode list');
+                if (Base.debug) {
+                    let prefix = '';
+                    if (typeof moment !== 'undefined') {
+                        const now = new Date();
+                        // eslint-disable-next-line no-undef
+                        prefix = '[' + moment(now).format('DD/MM/YY HH:mm') + ']: ';
+                    }
+                    console.log('%supdate episode list', prefix);
+                }
                 const btnUpEpisodeList = $('.updateEpisodes');
                 if (btnUpEpisodeList.length > 0) {
                     btnUpEpisodeList.trigger('click');

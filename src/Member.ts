@@ -66,6 +66,7 @@ class Options {
         }
     }
 }
+/* eslint-disable-next-line no-unused-vars */
 export class Member {
     /**
      * @type {number} Identifiant du membre
