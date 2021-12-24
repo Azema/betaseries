@@ -32,6 +32,9 @@ export class UpdateAuto {
     private _timer: NodeJS.Timer;
 
     private constructor(show: Show) {
+        if (UpdateAuto.instance) {
+            return UpdateAuto.instance;
+        }
         this._show = show;
         this._showId = show.id;
         let objUpAuto = UpdateAuto.getValue('objUpAuto', {});
