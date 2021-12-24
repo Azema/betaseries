@@ -124,6 +124,8 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Utilisation de [**Fetch**](https://developer.mozilla.org/fr/docs/Web/API/fetch) au lieu de jQuery.Ajax
 * Ajout d'une vérification de la validité du token pour certains endpoints de l'API (cf. https://www.betaseries.com/bugs/api/461). Cela concerne exclusivement le fonctionnement du userScript.
 * Utilisation de classes Javascript (Cache, Note, Media, Show, Movie, Episode et Similar) pour stocker et manipuler les données en fonction du type de ressource. Plus simple aussi pour passer les données d'une fonction à une autre.
+* Les classes sont développées en TypeScript et sont stockées dans ce repository.
+* Utilisation de Grunt pour l'automatisation des tâches de build.
 
 ## Ressources
 
