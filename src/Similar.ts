@@ -229,7 +229,7 @@ export class Similar extends Media implements implShow, implMovie {
         if (this.mediaType.singular === MediaType.show) {
             const status = this.status.toLowerCase() == 'ended' ? 'Terminée' : 'En cours';
             const seen = (this.user.status > 0) ? 'Vu à <strong>' + this.user.status + '%</strong>' : 'Pas vu';
-            template += `<p><strong>${this.seasons.length}</strong> saison${(this.seasons.length > 1 ? 's':'')}, <strong>${this.nbEpisodes}</strong> épisodes, `;
+            template += `<p><strong>${this.nbSeasons}</strong> saison${(this.nbSeasons > 1 ? 's':'')}, <strong>${this.nbEpisodes}</strong> épisodes, `;
             if (this.objNote.total > 0) {
                 template += `<strong>${this.objNote.total}</strong> votes`;
                 if (this.objNote.user > 0) {
