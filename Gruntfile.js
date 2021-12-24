@@ -9,10 +9,17 @@ var path = require('path');
  * @param {IGrunt} grunt 
  */
 module.exports = function(grunt) {
+    // On définit les fins de ligne en mode linux
     grunt.util.linefeed = '\n';
-    grunt.registerTask('build', ['clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist', 'copy:dist', 'sri:dist', 'version']);
+    
+    grunt.registerTask('build', [
+        'clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist', 
+        'copy:dist', 'sri:dist', 'version', 'deploy']
+    );
+    grunt.registerTask('deploy', ['gitadd:oauth', 'gitcommit:oauth', 'gitpush:oauth']);
+
     grunt.initConfig({
-        distdir: './dist',
+        distdir: path.resolve('./dist'),
         pkg: grunt.file.readJSON('package.json'),
         banner:
         '/*! <%= pkg.title || pkg.name %> - v<%= pkg.version %> - <%= grunt.template.today("yyyy-mm-dd") %>\n' +
@@ -60,6 +67,9 @@ module.exports = function(grunt) {
                 '<%= distdir %>/js/index.js'
             ]
         },
+        paths: {
+            oauth: path.resolve('../../betaseries-oauth')
+        },
         clean: ['<%= distdir %>/*'],
         lineending: {
             dist: {
@@ -91,13 +101,16 @@ module.exports = function(grunt) {
         },
         copy: {
             dist: {
-                files: [{ dest: '../../betaseries-oauth/js/app-bundle.js', src : '<%= distdir %>/bundle.js' }]
+                files: [{ src : '<%= distdir %>/bundle.js', dest: '<%= paths.oauth %>/js/app-bundle.js' }]
             }
         },
         sri: {
             dist: {
                 src: '<%= distdir %>/bundle.js',
-                dest: './betaseries.user.js'
+                dest: [
+                    './betaseries.user.js', 
+                    './local.betaseries.user.js'
+                ]
             },
             test: {
                 src: '<%= distdir %>/app-bundle.js',
@@ -106,6 +119,46 @@ module.exports = function(grunt) {
         },
         version: {
             v: '<%= pkg.version %>'
+        },
+        gitadd: {
+            oauth: {
+                options: {
+                    cwd: '<%= paths.oauth %>',
+                    force: true
+                },
+                files: [
+                    {
+                        src: ['js/app-bundle.js'],
+                        expand: true,
+                        cwd: '<%= paths.oauth %>'
+                    }
+                ]
+            }
+        },
+        gitcommit: {
+            oauth: {
+                options: {
+                    cwd: '<%= paths.oauth %>',
+                    message: 'Update bundle.js',
+                    allowEmpty: true
+                },
+                files: [
+                    {
+                        src: ['js/app-bundle.js'],
+                        expand: true,
+                        cwd: '<%= paths.oauth %>'
+                    }
+                ]
+            }
+        },
+        gitpush: {
+            oauth: {
+                options: {
+                    remote: 'origin',
+                    cwd: '<%= paths.oauth %>',
+                    all: true
+                }
+            }
         }
     });
     grunt.loadNpmTasks('grunt-contrib-concat');
@@ -113,6 +166,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks("grunt-ts");
     grunt.loadNpmTasks('grunt-lineending');
+    grunt.loadNpmTasks('grunt-git');
     grunt.registerMultiTask('cleanExports', 'concatene all classes', function() {
         this.files.forEach(
             /**
@@ -208,18 +262,28 @@ module.exports = function(grunt) {
         }
         const hash = calcHash(srcPath, options.algorithm);
         grunt.verbose.writeln('hash: ' + hash);
-        if (!grunt.file.exists(this.data.dest)) {
-            grunt.log.error(`Le fichier de destination (${this.data.dest}) n'existe pas.`);
-            return;
-        }
         const sri = `${options.algorithm}-${hash}`;
-        const content = grunt.file.read(this.data.dest)
-                      .replace(/const sriBundle = '[^']*';/, `const sriBundle = '${sri}';`);
-        if (content.length <= 0) {
-            grunt.log.error('Erreur durant le remplacement du hash dans le fichier ' + this.data.dest);
-            return;
+        const changeSri = function(filepath, sri) {
+            grunt.verbose.writeln('Change SRI in ' + filepath);
+            if (!grunt.file.exists(filepath)) {
+                grunt.log.error(`Le fichier de destination (${filepath}) n'existe pas.`);
+                return;
+            }
+            const content = grunt.file.read(filepath)
+                          .replace(/const sriBundle = '[^']*';/, `const sriBundle = '${sri}';`);
+            if (content.length <= 0) {
+                grunt.log.error('Erreur durant le remplacement du hash dans le fichier ' + filepath);
+                return;
+            }
+            grunt.file.write(filepath, content);
         }
-        grunt.file.write(this.data.dest, content);
+        if (this.data.dest instanceof Array) {
+            for (let d = 0; d < this.data.dest.length; d++) {
+                changeSri(this.data.dest[d], sri);
+            }
+        } else {
+            changeSri(this.data.dest, sri);
+        }
     });
     grunt.registerMultiTask('version', 'Remplace le numéro de version du userscript par celle du package', function() {
         const version = this.data;
@@ -227,9 +291,19 @@ module.exports = function(grunt) {
             grunt.log.error('Le paramètre "v" est requis');
             return false;
         }
-        const filepath = './betaseries.user.js';
-        let content = grunt.file.read(filepath)
-                    .replace(/@version(\s+)[0-9.]*/, `@version$1${version}`);
-        grunt.file.write(filepath, content);
+        const filepaths = [
+            path.resolve('./betaseries.user.js'),
+            path.resolve('./local.betaseries.user.js')
+        ];
+        for (let p = 0; p < filepaths.length; p++) {
+            grunt.verbose.writeln('Change SRI in ' + filepaths[p]);
+            if (!grunt.file.exists(filepaths[p])) {
+                grunt.log.error(`Le fichier de destination (${filepaths[p]}) n'existe pas.`);
+                return;
+            }
+            let content = grunt.file.read(filepaths[p])
+                        .replace(/@version(\s+)[0-9.]*/, `@version$1${version}`);
+            grunt.file.write(filepaths[p], content);
+        }
     });
 };
