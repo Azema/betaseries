@@ -144,7 +144,7 @@ module.exports = function(grunt) {
                 },
                 files: [
                     {
-                        src: ['js/app-bundle.js'],
+                        src: ['js/app-bundle.js', 'README.md', 'sri.sha384'],
                         expand: true,
                         cwd: '<%= paths.oauth %>'
                     }
@@ -156,7 +156,8 @@ module.exports = function(grunt) {
                 options: {
                     remote: 'origin',
                     cwd: '<%= paths.oauth %>',
-                    all: true
+                    all: true,
+                    force: true
                 }
             }
         }
