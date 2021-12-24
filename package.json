@@ -10,10 +10,15 @@
     "url": "https://github.com/Azema/betaseries/issues"
   },
   "homepage": "https://github.com/Azema/betaseries",
-  "license": "Apache-2.0 License",
+  "license": "Apache-2.0",
   "repository": {
     "url": "https://github.com/Azema/betaseries",
     "type": "git"
+  },
+  "keywords": ["userscript", "tampermonkey", "greasemonkey", "betaseries"],
+  "browser": "./betaseries.user.js",
+  "scripts": {
+    "postinstall": "node ./node_modules/grunt/bin/grunt build"
   },
   "devDependencies": {
     "@types/grunt": "^0.4.27",
