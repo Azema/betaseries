@@ -103,6 +103,11 @@ export abstract class Base implements implRepliesComment, implAddNote {
      */
     static serverBaseUrl: string = '';
     /**
+     * Indique le theme d'affichage du site Web (light or dark)
+     * @type {string}
+     */
+    static theme: string = 'light';
+    /**
      * Fonction de notification sur la page Web
      * @type {Function}
      */
