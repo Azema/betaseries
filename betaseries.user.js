@@ -40,7 +40,7 @@ let themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-7Q6Y4JqNZYSrNOB2bNvDXDpk3bFhtRhc5dQaekx05GD1tPqop47TNmF6cQfcg7Ld';
+const sriBundle = 'sha384-hYAmNFECP8etRPPCd+SBGLm7daV911t4p/amvwOU3NZ+EgM1w/w9AtXMeuOwkxGE';
 /************************************************************************************************/
 
 /**
@@ -2102,10 +2102,6 @@ const launchScript = function($) {
      * @param {Base} res La ressource média
      */
     function comments(res) {
-        let promise = new Promise(resolve => resolve());
-        if (res.comments.length <= 0) {
-            promise = res.fetchComments();
-        }
         // On remplace les boutons des commentaires, pour supprimer les events
         [].forEach.call(document.querySelectorAll(".js-popinalert-comments"), function(el) {
             const cId = el.getAttribute('data-comment-id');
@@ -2114,67 +2110,134 @@ const launchScript = function($) {
         });
         $('head').append(`
             <style type="text/css">
-                .iv_ix {
+                .it_iv, .iv_ix {
                     display: inline-block;
                     position: relative;
                     top: -1px;
                     margin-left: 11px;
                     vertical-align: middle;
                 }
-                .iv_iz:hover .iv_ix{
+                .it_ix:hover .it_iv, .iv_iz:hover .iv_ix {
                     opacity: 1;
                     visiblity: visible;
                 }
-                .iv_i1 { display:none; }
-                .iv_iz:hover .iv_i1 { display: inline-block; }
-                .iv_i3 { 
+                .it_iz, .iv_i1 { display:none; }
+                .it_ix:hover .it_iz, .iv_iz:hover .iv_i1 { display: inline-block; }
+                .it_i1, .iv_i3 {
                     display: flex;
                     align-items: center;
                     margin-top: -1px;
                 }
+                .comments {
+                    margin-bottom: 0px;
+                }
+                .comments .comment {
+                    animation: 2s ease 0s 1 normal forwards running backgroundFadeOut;
+                }
+                .comments .comment .comment-text {
+                    line-height: 15px;
+                    word-break: break-word;
+                }
+                .writing {
+                    border-top: 0px;
+                }
+                .writing textarea {
+                    overflow-x: hidden;
+                    overflow-wrap: break-word;
+                    width: 95%;
+                    display: inline;
+                }
+                .writing .sendComment {
+                    display: inline;
+                    transition: opacity 200ms ease 0s;
+                    vertical-align: middle;
+                }
+                .writing .mainTime {
+                    margin-top: 10px;
+                    margin-bottom: 0px;
+                }
+                .writing .mainTime .baliseSpoiler {
+                    cursor: pointer;
+                }
                 @media (max-width:330px) {
-                    .iv_iz .media-left { display: none; }
-                    .iv_iz .media-body { margin-left: 0;}
+                    .it_ix .media-left, .iv_iz .media-left { display: none; }
+                    .it_ix .media-body, .iv_iz .media-body { margin-left: 0;}
                 }
                 @media (max-width:424px) {
-                    .iv_i5 { margin-left: 20px; }
-                    .iv_i3 { flex-wrap: wrap; }
-                    .iv_iz img { 
-                        width: 24px;
-                        height: 24px;
-                    }
-                    .iv_iz .stars { display: none; }
+                    .it_i3, .iv_i5 { margin-left: 20px; }
+                    .it_i1, .iv_i3 { flex-wrap: wrap; }
+                    .it_ix img, .iv_iz img {
+                            width: 24px;
+                            height: 24px;
+                        }
+                    .it_ix .stars, .iv_iz .stars { display: none; }
                 }
                 @media (min-width:425px) {
-                    .iv_iz { padding-right: 25px; }
-                    .iv_i5 { margin-left: 40px; }
-                    .iv_i3 { 
+                    .it_ix, .iv_iz { padding-right: 25px; }
+                    .it_i3, .iv_i5 { margin-left: 40px; }
+                    .it_i1, .iv_i3 {
                         height: 24px;
                         line-height: 24px;
                     }
-                    .iv_ix {
+                    .it_iv, .iv_ix {
                         opacity: 0;
                         visiblity: hidden;
                     }
                 }
-                .popinWrapper .popin-content-html .title i.fa {
+                .popinWrapper .popin-content .title i.fa {
                     cursor: pointer;
                     margin-left: 5px;
-                    color: #fff;
+                    color: var(--default_color);
                 }
                 @keyframes backgroundFadeOut {
                     0%  { background-color: rgba(193,225,250,.3) }
                     80% { background-color: rgba(193,225,250,.3) }
                     to  { background-color: transparent }
                 }
+                .gz_g1 { position:relative; }
+                .gz_g1 .form-control {
+                    padding-right: 30px;
+                    overflow: hidden;
+                }
+                .gz_g1 button {
+                    position: absolute;
+                    top: 8px;
+                    right: 10px;
+                    font-size: 0;
+                    width: 16px;
+                    height: 16px;
+                }
+                .gz_g1 button[disabled] { cursor: inherit }
+                .gz_g1 button svg { position: relative; top: -1px; }
+                .er_et {
+                    width: 100%;
+                    height: 185px;
+                    background-image: linear-gradient(-90deg, #f2f3f6, #edeef1 50%, #f2f3f6);
+                    background-size: 600px 104px;
+                    animation-name: er_ev;
+                    animation-duration: 1.5s;
+                    animation-iteration-count: infinite;
+                    animation-timing-function: linear;
+                    animation-fill-mode: forwards;
+                    transform: translateZ(0);
+                    clip-path: url("#placeholder");
+                    -webkit-clip-path: url("#placeholder")
+                }
+                .er_ex+.er_ex { margin-top: 9px; padding-top: 10px }
+                .er_ez+.er_ez { border-top: 1px var(--gray_light) solid}
+                @keyframes er_ev {
+                    0% { background-position: -600px 0 }
+                    to { background-position: 600px 0 }
+                }
             </style>`
         );
-        
         const eventComments = () => {
         const $comments = $('#comments .slide__comment .js-popup-comments');
         $comments.off('click').click(e => {
             e.stopPropagation();
             e.preventDefault();
+
+            let promise = new Promise(resolve => resolve());
             if (res.comments.length <= 0) {
                 promise = res.fetchComments();
             }
@@ -2188,6 +2251,11 @@ const launchScript = function($) {
                 }
                 objComment.display();
             });
+        });
+        $('#comments .blockTitles button').removeAttr('onclick').off('click').click(e => {
+            e.stopPropagation();
+            e.preventDefault();
+            res.displayComments();
         });
         };
         $('#comments .slide__comment').off('click');

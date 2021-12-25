@@ -1,9 +1,9 @@
-import {Base, HTTP_VERBS, Obj} from './Base';
+import {Base, HTTP_VERBS, MediaTypes, Obj} from './Base';
 
-declare var moment, currentLogin: string;
+declare var moment, currentLogin: string, getScrollbarWidth;
 export interface implRepliesComment {
     fetchRepliesOfComment(commentId: number): Promise<Array<CommentBS>>;
-    changeThumbsComment(commentId: number, thumbs: number): boolean;
+    changeThumbsComment(commentId: number, thumbs: number, thumbed: number): boolean;
 }
 interface implReplyUser {
     id: number;
@@ -124,7 +124,7 @@ export class CommentBS {
      * @param   {number} note    La note à afficher
      * @returns {string}
      */
-    private _renderNote(note: number): string {
+    protected _renderNote(note: number): string {
         let typeSvg: string,
             template: string = '';
         note = note || 0;
@@ -147,12 +147,23 @@ export class CommentBS {
      * @param   {CommentBS} comment Le commentaire à afficher
      * @returns {string}
      */
-    private _templateComment(comment: CommentBS): string {
-        const spoiler = /\[spoiler\]/.test(comment.text);
+    public getTemplateComment(comment: CommentBS, all: boolean = false): string {
+        const text = new Option(comment.text).innerHTML;
+        const spoiler = /\[spoiler\]/.test(text);
         let btnSpoiler = spoiler ? `<button type="button" class="btn-reset mainLink view-spoiler" style="vertical-align: 0px;">${Base.trans("comment.button.display_spoiler")}</button>` : '';
-        let className = (comment.in_reply_to !== 0) ? 'iv_i5' : '';
+        // let classNames = {reply: 'iv_i5', actions: 'iv_i3', comment: 'iv_iz'};
+        let classNames = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
+        let className = (comment.in_reply_to > 0) ? classNames.reply : '';
+        let btnToggleReplies = comment.nbReplies > 0 ? `
+        <button type="button" class="btn-reset mainLink mainLink--regular toggleReplies" style="margin-top: 2px; margin-bottom: -3px;" data-toggle="1">
+            <span class="svgContainer" style="display: inline-flex; height: 16px; width: 16px;">
+                <svg width="8" height="6" xmlns="http://www.w3.org/2000/svg" style="transition: transform 200ms ease 0s; transform: rotate(180deg);">
+                    <path d="M4 5.667l4-4-.94-.94L4 3.78.94.727l-.94.94z" fill="#54709D" fill-rule="nonzero"></path>
+                </svg>
+            </span>&nbsp;<span class="btnText">${Base.trans("comment.hide_answers")}</span>
+        </button>` : '';
         return `
-            <div class="comment ${className} positionRelative iv_iz" data-comment-id="${comment.id}">
+            <div class="comment ${className} positionRelative ${classNames.comment}" data-comment-id="${comment.id}" ${comment.in_reply_to > 0 ? 'data-comment-reply="' + comment.in_reply_to + '"' : ''} data-comment-inner="${comment.inner_id}">
                 <div class="media">
                     <div class="media-left">
                         <a href="/membre/${comment.login}" class="avatar">
@@ -164,9 +175,9 @@ export class CommentBS {
                             <span class="mainLink">${comment.login}</span>&nbsp;
                             <span class="mainLink mainLink--regular">&nbsp;</span>
                         </a>
-                        <span style="${spoiler ? 'display:none;':''}" class="comment-text">${comment.text}</span>
+                        <span style="${spoiler ? 'display:none;':''}" class="comment-text">${text}</span>
                         ${btnSpoiler}
-                        <div class="iv_i3">
+                        <div class="${classNames.actions}">
                             <div class="options-main options-comment">
                                 <button type="button" class="btn-reset btnUpVote btnThumb">
                                     <svg data-disabled="false" class="SvgLike" fill="#fff" width="16" height="14" viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg">
@@ -186,15 +197,15 @@ export class CommentBS {
                                 </button>
                                 <strong class="mainLink thumbs" style="margin-left: 5px;">${comment.thumbs > 0 ? '+' + comment.thumbs : (comment.thumbs < 0) ? '-' + comment.thumbs : comment.thumbs}</strong>
                                 <span class="mainLink">&nbsp;∙&nbsp;</span>
-                                <button type="button" class="btn-reset mainLink mainLink--regular btnResponse" style="vertical-align: 0px;">Répondre</button>
+                                <button type="button" class="btn-reset mainLink mainLink--regular btnResponse" style="vertical-align: 0px;">${Base.trans("timeline.comment.reply")}</button>
                                 <a href="#c_1269819" class="mainTime">
                                     <span class="mainLink">&nbsp;∙&nbsp;</span>
-                                    Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('D MM YYYY HH:mm') : comment.date.toString()}
+                                    Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('DD/MM/YYYY HH:mm') : comment.date.toString()}
                                 </a>
                                 <span class="stars" title="${comment.user_note} / 5">
                                     ${this._renderNote(comment.user_note)}
                                 </span>
-                                <div class="iv_ix">
+                                <div class="it_iv">
                                     <button type="button" class="btn-reset btnToggleOptions">
                                         <span class="svgContainer">
                                             <svg width="4" height="16" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="transform: rotate(90deg);">
@@ -220,6 +231,7 @@ export class CommentBS {
                                 </button>
                             </div>
                         </div>
+                        ${btnToggleReplies}
                     </div>
                 </div>
             </div>
@@ -229,7 +241,7 @@ export class CommentBS {
      * Renvoie la template HTML pour l'écriture d'un commentaire
      * @returns {string}
      */
-    private _templateWriting(): string {
+    public static getTemplateWriting(): string {
         const login = Base.userIdentified() ? currentLogin : '';
         return `
             <div class="writing">
@@ -241,7 +253,7 @@ export class CommentBS {
                     </div>
                     <div class="media-body">
                         <form class="gz_g1">
-                            <textarea rows="1" placeholder="${Base.trans("timeline.comment.write")}" class="form-control"></textarea>
+                            <textarea rows="2" placeholder="${Base.trans("timeline.comment.write")}" class="form-control"></textarea>
                             <button class="btn-reset sendComment" disabled="" aria-label="${Base.trans("comment.send.label")}">
                                 <span class="svgContainer" style="width: 16px; height: 16px;">
                                     <svg fill="${Base.theme === 'dark' ? "#fff" : "#333"}" width="15" height="12" xmlns="http://www.w3.org/2000/svg">
@@ -311,264 +323,288 @@ export class CommentBS {
     /**
      * Affiche le commentaire dans une dialogbox
      */
-    display(): void {
+    async display(): Promise<void> {
         // La popup et ses éléments
         const _this = this,
               $popup = jQuery('#popin-dialog'),
-              $contentHtmlElement = $popup.find(".popin-content-html"),
+              $contentHtml = $popup.find(".popin-content-html"),
               $contentReact = $popup.find('.popin-content-reactmodule'),
-              $title = $contentHtmlElement.find(".title"),
-              $text = $popup.find("p"),
               $closeButtons = $popup.find("#popin-showClose"),
               cleanEvents = () => {
                 // On désactive les events
                 $popup.find("#popin-showClose").off('click');
                 $popup.find('.comments .comment .btnThumb').off('click');
                 $popup.find('.btnToggleOptions').off('click');
-                $title.find('.prev-comment').off('click');
-                $title.find('.next-comment').off('click');
-                $text.find('.view-spoiler').off('click');
+                $contentReact.find('.prev-comment').off('click');
+                $contentReact.find('.next-comment').off('click');
+                $contentReact.find('.view-spoiler').off('click');
                 $popup.find('.sendComment').off('click');
                 $popup.find('textarea').off('keypress');
                 $popup.find('.baliseSpoiler').off('click');
               },
-              hidePopup = () => { 
-                  $popup.attr('aria-hidden', 'true'); 
+              hidePopup = () => {
+                  document.body.style.overflow = "visible";
+                  document.body.style.paddingRight = "";
+                  $popup.attr('aria-hidden', 'true');
                   $popup.find("#popupalertyes").show();
                   $popup.find("#popupalertno").show();
-                  $contentHtmlElement.hide();
+                  $contentReact.empty();
+                  $contentHtml.hide();
                   cleanEvents();
                 },
-              showPopup = () => { 
+              showPopup = () => {
+                  document.body.style.overflow = "hidden";
+                  document.body.style.paddingRight = getScrollbarWidth() + "px";
                   $popup.find("#popupalertyes").hide();
                   $popup.find("#popupalertno").hide();
-                  $contentHtmlElement.show();
-                  $contentReact.hide();
+                  $contentHtml.hide();
+                  $contentReact.show();
                   $closeButtons.show();
                   $popup.attr('aria-hidden', 'false');
               };
         // On vérifie que la popup est masquée
         hidePopup();
-        
-        let style = `
-            <style type="text/css">
-                .comments {
-                    margin-bottom: 0px;
-                }
-                .comments .comment {
-                    animation: 2s ease 0s 1 normal forwards running backgroundFadeOut;
-                }
-                .comments .comment .comment-text {
-                    line-height: 15px; 
-                    word-break: break-word;
-                }
-                .writing {
-                    border-top: 0px;
-                }
-                .writing textarea {
-                    overflow-x: hidden;
-                    overflow-wrap: break-word;
-                    height: 50px;
-                    width: 95%;
-                    display: inline;
-                }
-                .writing .sendComment {
-                    display: inline;
-                    transition: opacity 200ms ease 0s;
-                    vertical-align: middle;
-                }
-                .writing .mainTime {
-                    margin-top: 10px; 
-                    margin-bottom: 0px;
-                }
-                .writing .mainTime .baliseSpoiler {
-                    cursor: pointer;
-                }
-                
-            </style>
-        `;
-        let template = style + '<div class="comments overflowYScroll">' +
-                     this._templateComment(this) + '</div>';
 
-        let promise: Promise<boolean> = Promise.resolve(true);
+        let template = '<div class="comments overflowYScroll">' +
+                     this.getTemplateComment(this);
+
         // Récupération des réponses sur l'API
         // On ajoute les réponses, par ordre décroissant à la template
         if (this.nbReplies > 0 && this.replies.length <= 0) {
-            promise = this._parent.fetchRepliesOfComment(this.id)
-            .then((replies: Array<CommentBS>) => {
-                _this.replies = replies;
-                for (let r = replies.length - 1; r >= 0; r--) {
-                    template += this._templateComment(replies[r]);
-                }
-                return true;
-            });
-        }
-        else if (this.nbReplies > 0) {
-            for (let r = this.replies.length - 1; r >= 0; r--) {
-                template += this._templateComment(this.replies[r]);
+            const replies = await this._parent.fetchRepliesOfComment(this.id);
+            if (replies && replies.length > 0) {
+                this.replies = replies;
             }
         }
-        // On attend les réponses du commentaire
-        promise.then(() => {
-            // On définit le type d'affichage de la popup
-            $popup.attr('data-popin-type', 'comments');
-            // On affiche le titre de la popup
-            // avec des boutons pour naviguer
-            $title.empty().append('Commentaires <i class="fa fa-chevron-circle-left prev-comment" aria-hidden="true"></i> <i class="fa fa-chevron-circle-right next-comment" aria-hidden="true"></i>');
-            // On ajoute les templates HTML du commentaire,
-            // des réponses et du formulaire de d'écriture
-            $text.empty().append(template + this._templateWriting());
-            // On active le bouton de fermeture de la popup
-            $closeButtons.click(() => { 
-                hidePopup(); 
-                $popup.removeAttr('data-popin-type');
-            });
-            // On récupère le bouton de navigation 'précédent'
-            const $prevCmt = $title.find('.prev-comment');
-            // Si le commentaire est le premier de la liste
-            // on ne l'active pas
-            if (this.first) {
-                $prevCmt.css('color', 'grey').css('cursor', 'initial');
-            } else {
-                // On active le btn précédent
-                $prevCmt.click((e: JQuery.ClickEvent) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    // Il faut tout nettoyer, comme pour la fermeture
-                    cleanEvents();
-                    // Il faut demander au parent d'afficher le commentaire précédent
-                    _this._parent.getPrevComment(_this.id).display();
-                });
-            }
-            
-            const $nextCmt = $title.find('.next-comment');
-            // Si le commentaire est le dernier de la liste
-            // on ne l'active pas
-            if (this.last) {
-                $nextCmt.css('color', 'grey').css('cursor', 'initial');
-            } else {
-                // On active le btn suivant
-                $nextCmt.click((e: JQuery.ClickEvent) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    // Il faut tout nettoyer, comme pour la fermeture
-                    cleanEvents();
-                    // Il faut demander au parent d'afficher le commentaire suivant
-                    _this._parent.getNextComment(_this.id).display();
-                });
-            }
-            // On active le lien pour afficher le spoiler
-            const $btnSpoiler = $text.find('.view-spoiler');
-            if ($btnSpoiler.length > 0) {
-                $btnSpoiler.click((e:JQuery.ClickEvent) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    $(e.currentTarget).prev('span.comment-text').fadeIn();
-                    $(e.currentTarget).fadeOut();
-                });
-            }
-            /**
-             * Ajoutons les events pour:
-             *  - btnUpVote: Voter pour ce commentaire
-             *  - btnDownVote: Voter contre ce commentaire
-             */
-            $popup.find('.comments .comment .btnThumb').click((e: JQuery.ClickEvent) => {
+        for (let r = this.replies.length - 1; r >= 0; r--) {
+            template += this.getTemplateComment(this.replies[r]);
+        }
+        // On définit le type d'affichage de la popup
+        $popup.attr('data-popin-type', 'comments');
+        // On affiche le titre de la popup
+        // avec des boutons pour naviguer
+        $contentReact.empty().append(`<div class="title" id="dialog-title" tabindex="0"></div>`);
+        const $title = $contentReact.find('.title');
+        $title.append(Base.trans("blog.title.comments") + ' <i class="fa fa-chevron-circle-left prev-comment" aria-hidden="true"></i> <i class="fa fa-chevron-circle-right next-comment" aria-hidden="true"></i>');
+        // On ajoute les templates HTML du commentaire,
+        // des réponses et du formulaire de d'écriture
+        $contentReact.append(template + '</div>' + CommentBS.getTemplateWriting());
+        // On active le bouton de fermeture de la popup
+        $closeButtons.click(() => {
+            hidePopup();
+            $popup.removeAttr('data-popin-type');
+        });
+        // On récupère le bouton de navigation 'précédent'
+        const $prevCmt = $title.find('.prev-comment');
+        // Si le commentaire est le premier de la liste
+        // on ne l'active pas
+        if (this.first) {
+            $prevCmt.css('color', 'grey').css('cursor', 'initial');
+        } else {
+            // On active le btn précédent
+            $prevCmt.click((e: JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
-                const $btn = jQuery(e.currentTarget);
-                const commentId = parseInt($btn.parents('.comment').data('commentId'), 10);
-                let verb = HTTP_VERBS.POST;
-                const vote: number = $btn.hasClass('btnUpVote') ? 1 : -1;
-                let params: Obj = {id: commentId, type: vote, switch: false};
-                // On a déjà voté
-                if (_this.thumbed == vote) {
-                    verb = HTTP_VERBS.DELETE;
-                    params = {id: commentId};
+                // Il faut tout nettoyer, comme pour la fermeture
+                cleanEvents();
+                // Il faut demander au parent d'afficher le commentaire précédent
+                _this._parent.getPrevComment(_this.id).display();
+            });
+        }
+
+        const $nextCmt = $title.find('.next-comment');
+        // Si le commentaire est le dernier de la liste
+        // on ne l'active pas
+        if (this.last) {
+            $nextCmt.css('color', 'grey').css('cursor', 'initial');
+        } else {
+            // On active le btn suivant
+            $nextCmt.click((e: JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                // Il faut tout nettoyer, comme pour la fermeture
+                cleanEvents();
+                // Il faut demander au parent d'afficher le commentaire suivant
+                _this._parent.getNextComment(_this.id).display();
+            });
+        }
+        // On active le lien pour afficher le spoiler
+        const $btnSpoiler = $contentReact.find('.view-spoiler');
+        if ($btnSpoiler.length > 0) {
+            $btnSpoiler.click((e:JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                $(e.currentTarget).prev('span.comment-text').fadeIn();
+                $(e.currentTarget).fadeOut();
+            });
+        }
+        /**
+         * Ajoutons les events pour:
+         *  - btnUpVote: Voter pour ce commentaire
+         *  - btnDownVote: Voter contre ce commentaire
+         */
+        $popup.find('.comments .comment .btnThumb').click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $btn = jQuery(e.currentTarget);
+            const commentId = parseInt($btn.parents('.comment').data('commentId'), 10);
+            let verb = HTTP_VERBS.POST;
+            const vote: number = $btn.hasClass('btnUpVote') ? 1 : -1;
+            let params: Obj = {id: commentId, type: vote, switch: false};
+            // On a déjà voté
+            if (_this.thumbed == vote) {
+                verb = HTTP_VERBS.DELETE;
+                params = {id: commentId};
+            }
+            else if (_this.thumbed != 0) {
+                console.warn("Le vote est impossible. Annuler votre vote et recommencer");
+                return;
+            }
+            Base.callApi(verb, 'comments', 'thumb', params)
+            .then((data: Obj) => {
+                if (commentId == _this.id) {
+                    _this.thumbs = parseInt(data.comment.thumbs, 10);
+                    _this.thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
+                    _this.updateRenderThumbs(vote);
+                } else if (_this.isReply(commentId)) {
+                    const reply: CommentBS = _this.getReply(commentId);
+                    reply.thumbs = parseInt(data.comment.thumbs, 10);
+                    reply.thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
+                    reply.updateRenderThumbs(vote);
+                } else {
+                    // Demander au parent d'incrémenter les thumbs du commentaire
+                    const thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
+                    _this._parent.changeThumbsComment(commentId, data.comment.thumbs, thumbed);
                 }
-                else if (_this.thumbed != 0) {
-                    console.warn("Le vote est impossible. Annuler votre vote et recommencer");
-                    return;
-                }
-                Base.callApi(verb, 'comments', 'thumb', params)
-                .then((data: Obj) => {
-                    if (commentId == _this.id) {
-                        _this.thumbs = parseInt(data.comment.thumbs, 10);
-                        _this.thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
-                        _this.updateRenderThumbs(vote);
-                    } else if (_this.isReply(commentId)) {
-                        const reply: CommentBS = _this.getReply(commentId);
-                        reply.thumbs = parseInt(data.comment.thumbs, 10);
-                        reply.thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
-                        reply.updateRenderThumbs(vote);
+            })
+            .catch(err => {
+                const msg = err.text !== undefined ? err.text : err;
+                Base.notification('Vote commentaire', "Une erreur est apparue durant le vote: " + msg);
+            });
+        });
+        /**
+         * On affiche/masque les options du commentaire
+         */
+        $popup.find('.btnToggleOptions').click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            jQuery(e.currentTarget).parents('.iv_i3').first()
+                .find('.options-comment').each((_index: number, elt: HTMLElement) => {
+                    const $elt = jQuery(elt);
+                    if ($elt.is(':visible')) {
+                        $elt.hide();
                     } else {
-                        // Demander au parent d'incrémenter les thumbs du commentaire
-                        _this._parent.changeThumbsComment(commentId, data.comment.thumbs);
+                        $elt.show();
                     }
-                })
-                .catch(err => {
-                    const msg = err.text !== undefined ? err.text : err;
-                    Base.notification('Vote commentaire', "Une erreur est apparue durant le vote: " + msg);
-                });
-            });
-            /**
-             * On affiche/masque les options du commentaire
-             */
-            $popup.find('.btnToggleOptions').click((e: JQuery.ClickEvent) => {
-                e.stopPropagation();
-                e.preventDefault();
-                jQuery(e.currentTarget).parents('.iv_i3').first()
-                    .find('.options-comment').each((_index: number, elt: HTMLElement) => {
-                        const $elt = jQuery(elt);
-                        if ($elt.is(':visible')) {
-                            $elt.hide();
-                        } else {
-                            $elt.show();
-                        }
-                    }
-                );
-            });
-            /**
-             * On envoie la réponse à ce commentaire à l'API
-             */
-            $popup.find('.sendComment').click((e: JQuery.ClickEvent) => {
-                e.stopPropagation();
-                e.preventDefault();
-                const $textarea = $(e.currentTarget).siblings('textarea');
-                if (($textarea.val() as string).length > 0) {
-                    _this.reply($textarea.val() as string)
-                    .then((comment: CommentBS) => {
+                }
+            );
+        });
+        /**
+         * On envoie la réponse à ce commentaire à l'API
+         */
+        $popup.find('.sendComment').click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $textarea = $(e.currentTarget).siblings('textarea');
+            if (($textarea.val() as string).length > 0) {
+                const replyId = parseInt($textarea.data('replyTo'), 10);
+                const msg = $textarea.val() as string;
+                if (replyId && replyId == _this.id) {
+                    _this.reply(msg).then(comment => {
                         if (comment) {
-                            $textarea.val('');
-                            $textarea.parents('.writing').siblings('.comments').append(_this._templateComment(comment));
+                            let template = _this.getTemplateComment(comment);
+                            $contentReact.find('.comments').append(template);
                         }
                     })
-                }
-            });
-            /**
-             * On active / desactive le bouton d'envoi du commentaire
-             * en fonction du contenu du textarea
-             */
-            $popup.find('textarea').keypress((e: JQuery.KeyPressEvent) => {
-                const $textarea = $(e.currentTarget);
-                if (($textarea.val() as string).length > 0) {
-                    $textarea.siblings('button').removeAttr('disabled');
+                } else if (replyId) {
+                    const reply = _this.getReply(replyId);
+                    if (reply) {
+                        reply.reply(msg).then(comment => {
+                            if (comment) {
+                                let template = _this.getTemplateComment(comment);
+                                $contentReact.find(`.comments .comment[data-comment-id="${reply.id}"]`)
+                                    .after(template);
+                            }
+                        });
+                    } else {
+                        // Allo Houston, on a un problème
+                    }
                 } else {
-                    $textarea.siblings('button').attr('disabled', 'true');
+                    CommentBS.sendComment(_this._parent, msg);
                 }
-            });
-            /**
-             * On ajoute les balises SPOILER au message dans le textarea
-             */
-            $popup.find('.baliseSpoiler').click((e: JQuery.ClickEvent) => {
-                const $textarea = $popup.find('textarea');
-                if (/\[spoiler\]/.test($textarea.val() as string)) {
-                    return;
-                }
-                const text = '[spoiler]' + $textarea.val() + '[/spoiler]';
-                $textarea.val(text);
-            });
-            showPopup();
+                $textarea.val('');
+            }
         });
+        /**
+         * On active / desactive le bouton d'envoi du commentaire
+         * en fonction du contenu du textarea
+         */
+        $popup.find('textarea').keypress((e: JQuery.KeyPressEvent) => {
+            const $textarea = $(e.currentTarget);
+            if (($textarea.val() as string).length > 0) {
+                $textarea.siblings('button').removeAttr('disabled');
+            } else {
+                $textarea.siblings('button').attr('disabled', 'true');
+            }
+        });
+        /**
+         * On ajoute les balises SPOILER au message dans le textarea
+         */
+        $popup.find('.baliseSpoiler').click((e: JQuery.ClickEvent) => {
+            const $textarea = $popup.find('textarea');
+            if (/\[spoiler\]/.test($textarea.val() as string)) {
+                return;
+            }
+            const text = '[spoiler]' + $textarea.val() + '[/spoiler]';
+            $textarea.val(text);
+        });
+        $contentReact.find('.comments .toggleReplies').click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $btn: JQuery<HTMLElement> = $(e.currentTarget);
+            const state = $btn.data('toggle'); // 0: Etat masqué, 1: Etat affiché
+            const $comment: JQuery<HTMLElement> = $btn.parents('.comment');
+            const inner: string = $comment.data('commentInner');
+            const $replies = $comment.parents('.comments').find(`.comment[data-comment-reply="${inner}"]`);
+            if (state == '0') {
+                // On affiche
+                $replies.fadeIn('fast');
+                $btn.find('.btnText').text(Base.trans("comment.hide_answers"));
+                $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s; transform: rotate(180deg);');
+                $btn.data('toggle', '1');
+            } else {
+                // On masque
+                $replies.fadeOut('fast');
+                $btn.find('.btnText').text(Base.trans("comment.button.reply", {"%count%": $replies.length.toString()}));
+                $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s;');
+                $btn.data('toggle', '0');
+            }
+        });
+        $contentReact.find('.btnResponse').click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $btn: JQuery<HTMLElement> = $(e.currentTarget);
+            const $comment: JQuery<HTMLElement> = $btn.parents('.comment');
+            const commentId: number = parseInt($comment.data('commentId'), 10);
+            let comment: CommentBS;
+            // Si il s'agit d'une réponse, il nous faut le commentaire parent
+            if ($comment.hasClass('iv_i5') || $comment.hasClass('it_i3')) {
+                const $parent = $comment.siblings('.comment:not(.iv_i5)').first();
+                const parentId: number = parseInt($parent.data('commentId'), 10);
+                if (commentId == parentId) {
+                    comment = _this._parent.getComment(commentId);
+                } else {
+                    const cmtParent = _this._parent.getComment(parentId);
+                    comment = cmtParent.getReply(commentId);
+                }
+            } else {
+                comment = _this._parent.getComment(commentId);
+            }
+            $contentReact.find('textarea')
+                .val('@' + comment.login)
+                .attr('data-reply-to', comment.id);
+        });
+        showPopup();
     }
     /**
      * Envoie une réponse de ce commentaire à l'API
@@ -588,6 +624,32 @@ export class CommentBS {
             const comment = new CommentBS(data.comment, _this._parent);
             _this.replies.push(comment);
             // _this._parent.comments.push(comment);
+            return comment;
+        })
+        .catch(err => {
+            Base.notification('Commentaire', "Erreur durant l'ajout d'un commentaire");
+            console.error(err);
+        });
+    }
+    /**
+     * Envoie une réponse de ce commentaire à l'API
+     * @param   {string} text        Le texte de la réponse
+     * @returns {Promise<void | CommentBS>}
+     */
+    public static sendComment(media: Base, text: string): Promise<void | CommentBS> {
+        const _this = this;
+        const params = {
+            type: media.mediaType.singular,
+            id: media.id,
+            text: text
+        };
+        return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
+        .then((data: Obj) => {
+            const comment = new CommentBS(data.comment, media);
+            // On change le flag du dernier comment
+            media.comments[media.comments.length - 1].last = false;
+            comment.last = true;
+            media.comments.push(comment);
             return comment;
         })
         .catch(err => {

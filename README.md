@@ -45,7 +45,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
     * [X] Mieux gérer le retour d'état d'un thumb
     * [ ] Utiliser un bouton, plutôt qu'un lien, pour l'affichage d'un spoiler
     * [X] Ajouter l'écriture d'une réponse
-    * [ ] Gérer l'affichage de l'ensemble des commentaires
+    * [X] Gérer l'affichage de l'ensemble des commentaires
 * Modification de l'affichage de la notation. Je l'ai modifié pour les mêmes raisons que les commentaires (cf ci-dessus).
 
 #### Séries et Films
