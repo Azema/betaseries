@@ -10,17 +10,17 @@ enum StarTypes {
     DISABLE = 'disable'
 }
 export class Note {
-    constructor(data: any, parent: Base) {
-        this.total = parseInt(data.total, 10);
-        this.mean = parseInt(data.mean, 10);
-        this.user = parseInt(data.user, 10);
-        this._parent = parent;
-    }
     total: number;
     mean: number;
     user: number;
     _parent: Base;
 
+    constructor(data: any, parent: Base) {
+        this.total = parseInt(data.total, 10);
+        this.mean = parseFloat(data.mean);
+        this.user = parseInt(data.user, 10);
+        this._parent = parent;
+    }
     /**
      * Retourne la note moyenne sous forme de pourcentage
      * @returns {number} La note sous forme de pourcentage
@@ -30,14 +30,14 @@ export class Note {
     }
     /**
      * Retourne l'objet Note sous forme de chaine
-     * @returns {string} 
+     * @returns {string}
      */
     public toString(): string {
         const votes = 'vote' + (this.total > 1 ? 's' : ''),
               // On met en forme le nombre de votes
               total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(this.total),
               // On limite le nombre de chiffre après la virgule
-              note = this.mean.toFixed(1);
+              note = this.mean.toFixed(2);
         let toString = `${total} ${votes} : ${note} / 5`;
         // On ajoute la note du membre connecté, si il a voté
         if (this.user > 0) {
@@ -57,21 +57,21 @@ export class Note {
               $title = $contentHtmlElement.find(".title"),
               $text = $popup.find("p"),
               $closeButtons = $popup.find("#popin-showClose"),
-              hidePopup = () => { 
-                  $popup.attr('aria-hidden', 'true'); 
+              hidePopup = () => {
+                  $popup.attr('aria-hidden', 'true');
                   $popup.find("#popupalertyes").show();
                   $popup.find("#popupalertno").show();
                   $contentHtmlElement.hide();
                   // On désactive les events
                   $text.find('.star-svg').off('mouseenter').off('mouseleave').off('click');
               },
-              showPopup = () => { 
+              showPopup = () => {
                   $popup.find("#popupalertyes").hide();
                   $popup.find("#popupalertno").hide();
                   $contentHtmlElement.show();
                   $contentReact.hide();
                   $closeButtons.show();
-                  $popup.attr('aria-hidden', 'false'); 
+                  $popup.attr('aria-hidden', 'false');
               };
         // On vérifie que la popup est masquée
         hidePopup();
@@ -102,9 +102,9 @@ export class Note {
                 break;
         }
         $title.empty().text(title);
-        $closeButtons.click(() => { 
-            hidePopup(); 
-            $popup.removeAttr('data-popin-type'); 
+        $closeButtons.click(() => {
+            hidePopup();
+            $popup.removeAttr('data-popin-type');
         });
         // On ajoute les events sur les étoiles
         const updateStars = function(evt: JQuery.MouseEventBase, note: number): void {
@@ -148,10 +148,9 @@ export class Note {
      */
     public renderStars(): void {
         const $stars: JQuery<HTMLElement> = jQuery('.blockInformations__metadatas .js-render-stars .star-svg use');
-        const note = Math.round(this.mean);
         let className: string;
         for (let s = 0; s < 5; s++) {
-            className = (note <= s) ? StarTypes.EMPTY : (note < s + 1) ? StarTypes.HALF : StarTypes.FULL;
+            className = (this.mean <= s) ? StarTypes.EMPTY : (this.mean < s + 1) ? StarTypes.HALF : StarTypes.FULL;
             $($stars.get(s)).attr('xlink:href', `#icon-star-${className}`);
         }
     }
