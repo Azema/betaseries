@@ -310,6 +310,10 @@ const launchScript = function($) {
         }
     };
     let timer, timerUA, currentUser, cache, fnLazy;
+
+    // On vérifie le theme d'affichage du site pour le membre connecté
+    const theme = checkThemeStyle();
+
     /* Initialize the cache */
     cache = new CacheUS();
     /**
@@ -326,6 +330,7 @@ const launchScript = function($) {
     Base.ratings = ratings;
     Base.themoviedb_api_user_key = themoviedb_api_user_key;
     Base.serverBaseUrl = serverBaseUrl;
+    Base.theme = theme;
     UpdateAuto.getValue = GM_getValue;
     UpdateAuto.setValue = GM_setValue;
 
@@ -469,6 +474,24 @@ const launchScript = function($) {
      */
     function userIdentified() {
         return typeof betaseries_api_user_token !== 'undefined' && typeof betaseries_user_id !== 'undefined';
+    }
+    /**
+     * Identifie, stocke et retourne le theme CSS utilisé (light or dark)
+     * stocké dans window.theme
+     * @returns {void}
+     */
+    function checkThemeStyle() {
+        if (window.theme !== undefined) {
+            return window.theme;
+        }
+        window.theme = 'light';
+        const stylesheets = $('link[rel="stylesheet"]');
+        for (let s = 0; s < stylesheets.length; s++) {
+            if (/dark.css/.test(stylesheets[s].href)) {
+                window.theme = 'dark';
+            }
+        }
+        return window.theme;
     }
     /**
      * Cette fonction vérifie la dernière version de l'API
