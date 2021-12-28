@@ -5,15 +5,15 @@ var path = require('path');
 // var util = require('util');
 
 /**
- * 
- * @param {IGrunt} grunt 
+ *
+ * @param {IGrunt} grunt
  */
 module.exports = function(grunt) {
     // On définit les fins de ligne en mode linux
     grunt.util.linefeed = '\n';
-    
+
     grunt.registerTask('build', [
-        'clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist', 
+        'clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
         'copy:dist', 'sri:dist', 'version', 'deploy']
     );
     grunt.registerTask('deploy', ['gitadd:oauth', 'gitcommit:oauth', 'gitpush:oauth']);
@@ -35,6 +35,7 @@ module.exports = function(grunt) {
             tsc: [
                 '<%= distdir %>/tsc/Cache.js',
                 '<%= distdir %>/tsc/Character.js',
+                '<%= distdir %>/tsc/Comments.js',
                 '<%= distdir %>/tsc/Comment.js',
                 '<%= distdir %>/tsc/Note.js',
                 '<%= distdir %>/tsc/User.js',
@@ -43,6 +44,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/tsc/Show.js',
                 '<%= distdir %>/tsc/Movie.js',
                 '<%= distdir %>/tsc/Subtitle.js',
+                '<%= distdir %>/tsc/Season.js',
                 '<%= distdir %>/tsc/Episode.js',
                 '<%= distdir %>/tsc/Similar.js',
                 '<%= distdir %>/tsc/UpdateAuto.js',
@@ -52,6 +54,7 @@ module.exports = function(grunt) {
             js: [
                 '<%= distdir %>/js/Cache.js',
                 '<%= distdir %>/js/Character.js',
+                '<%= distdir %>/js/Comments.js',
                 '<%= distdir %>/js/Comment.js',
                 '<%= distdir %>/js/Note.js',
                 '<%= distdir %>/js/User.js',
@@ -60,6 +63,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/js/Show.js',
                 '<%= distdir %>/js/Movie.js',
                 '<%= distdir %>/js/Subtitle.js',
+                '<%= distdir %>/js/Season.js',
                 '<%= distdir %>/js/Episode.js',
                 '<%= distdir %>/js/Similar.js',
                 '<%= distdir %>/js/UpdateAuto.js',
@@ -108,7 +112,7 @@ module.exports = function(grunt) {
             dist: {
                 src: '<%= distdir %>/bundle.js',
                 dest: [
-                    './betaseries.user.js', 
+                    './betaseries.user.js',
                     './local.betaseries.user.js'
                 ]
             },
@@ -128,7 +132,7 @@ module.exports = function(grunt) {
                 },
                 files: [
                     {
-                        src: ['js/app-bundle.js'],
+                        src: ['js/app-bundle.js', 'README.md', 'sri.sha384'],
                         expand: true,
                         cwd: '<%= paths.oauth %>'
                     }
@@ -171,7 +175,7 @@ module.exports = function(grunt) {
     grunt.registerMultiTask('cleanExports', 'concatene all classes', function() {
         this.files.forEach(
             /**
-             * @param {grunt.file.IFilesConfig} f 
+             * @param {grunt.file.IFilesConfig} f
              */
             function(f) {
                 f.src.filter(function(filepath) {
@@ -229,7 +233,7 @@ module.exports = function(grunt) {
                         }
                     }
                     content = linesToDest.join('\n');
-                    
+
                     if (!grunt.file.exists(path.resolve(f.dest))) {
                         grunt.verbose.writeln(`Création du répertoire ${f.dest}`);
                         grunt.file.mkdir(path.resolve(f.dest));
@@ -250,7 +254,7 @@ module.exports = function(grunt) {
         });
         const calcHash = (url, algorithm) => {
             const fileContent = grunt.file.read(url);
-      
+
             // openssl dgst -sha384 -binary file.js | openssl base64 -A
             return crypto.createHash(algorithm).update(fileContent).digest('base64');
         };

@@ -1,6 +1,6 @@
 import {Base, Obj, MediaType, MediaTypes, HTTP_VERBS} from "./Base";
 import {Media} from "./Media";
-import { Season } from "./Episode";
+import { Season } from "./Season";
 import {implShow, Showrunner, Platforms, Platform, Images, Picked, Picture} from "./Show";
 import {implMovie, OtherTitle} from "./Movie";
 import {Platform_link} from "./Episode";
@@ -64,6 +64,7 @@ export class Similar extends Media implements implShow, implMovie {
      * Remplit l'objet avec les données fournit en paramètre
      * @param  {Obj} data Les données provenant de l'API
      * @returns {Similar}
+     * @override
      */
     fill(data: Obj): this {
         if (this.mediaType.singular === MediaType.show) {
@@ -380,7 +381,7 @@ export class Similar extends Media implements implShow, implMovie {
     /**
      * Modifie le statut du similar
      * @param   {number} state Le nouveau statut du similar
-     * @returns {Promise<Similar>} 
+     * @returns {Promise<Similar>}
      */
     changeState(state: number): Promise<Similar> {
         if (state < -1 || state > 2) {

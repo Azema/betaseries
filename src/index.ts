@@ -1,7 +1,7 @@
 import { Base, MediaType, Obj } from "./Base";
 import { Media } from "./Media";
-import { Show, Images, Platforms, Showrunner, Picture } from "./Show";
-import { Season } from "./Episode";
+import { Show, Images, Platforms, Showrunner } from "./Show";
+import { Season } from "./Season";
 import { Similar } from "./Similar";
 
 'use strict';
@@ -10,6 +10,7 @@ import { Similar } from "./Similar";
  * Remplit l'objet avec les données fournit en paramètre
  * @param  {Obj} data Les données provenant de l'API
  * @returns {Show}
+ * @override
  */
  Show.prototype.fill = function(data: Obj): Show {
     this.aliases = data.aliases;
@@ -28,9 +29,11 @@ import { Similar } from "./Similar";
     if (data.platforms !== undefined && data.platforms != null) {
         this.platforms = new Platforms(data.platforms);
     }
-    this.seasons = new Array();
-    for (let s = 0; s < data.seasons_details.length; s++) {
-        this.seasons.push(new Season(data.seasons_details[s], this));
+    if (this.id == null && this.seasons == null) {
+        this.seasons = new Array();
+        for (let s = 0; s < data.seasons_details.length; s++) {
+            this.seasons.push(new Season(data.seasons_details[s], this));
+        }
     }
     this.showrunner = null;
     if (data.showrunner !== undefined && data.showrunner != null) {

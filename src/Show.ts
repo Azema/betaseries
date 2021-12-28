@@ -1,7 +1,7 @@
 import {Base, Obj, EventTypes, Rating, HTTP_VERBS, MediaType} from "./Base";
 import { implAddNote } from "./Note";
 import {Media} from "./Media";
-import {Season} from "./Episode";
+import {Season} from "./Season";
 
 declare var PopupAlert: any;
 
@@ -135,7 +135,7 @@ export class Show extends Media implements implShow, implAddNote {
             .catch(err => reject(err) );
         });
     }
-    
+
     /***************************************************/
     /*                  PROPERTIES                     */
     /***************************************************/
@@ -157,7 +157,7 @@ export class Show extends Media implements implShow, implAddNote {
     social_links: Array<string>;
     status: string;
     thetvdb_id: number;
-    
+
     /***************************************************/
     /*                      METHODS                    */
     /***************************************************/
@@ -189,7 +189,7 @@ export class Show extends Media implements implShow, implAddNote {
     fetch(force: boolean = true): Promise<any> {
         return Base.callApi('GET', 'shows', 'display', {id: this.id}, force);
     }
-    
+
     /**
      * isEnded - Indique si la série est terminée
      *
@@ -208,7 +208,7 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * isFavorite - Indique si la série est dans les favoris
-     * 
+     *
      * @returns {boolean}
      */
     isFavorite(): boolean {
@@ -466,7 +466,7 @@ export class Show extends Media implements implShow, implAddNote {
                     width = 124,
                     src = `${Base.api.url}/pictures/episodes?key=${Base.userKey}&id=${res.user.next.id}&width=${width}&height=${height}`,
                     serieTitle = res.resource_url.split('/').pop();
-                
+
             jQuery('.blockInformations__actions').after(
                 `<a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
                     <div class="media-left">
@@ -855,7 +855,7 @@ export class Show extends Media implements implShow, implAddNote {
             }
         }
     }
-    
+
     /**
      * Définit la saison courante
      * @param   {number} seasonNumber Le numéro de la saison courante (commence à 1)
