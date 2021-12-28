@@ -2261,6 +2261,34 @@ const launchScript = function($) {
                     0% { background-position: -600px 0 }
                     to { background-position: 600px 0 }
                 }
+                .ef_eh {
+                    display: inline-block;
+                    position: relative;
+                    vertical-align: middle;
+                }
+                .ef_eh:after {
+                    content: "";
+                    z-index: 1;
+                    position: absolute;
+                    top: 50%;
+                    right: -11px;
+                    width: 0;
+                    height: 0;
+                    border-top: 3px solid currentColor;
+                    border-right: 3px solid transparent;
+                    border-left: 3px solid transparent;
+                }
+                @media (max-width:420px) {
+                    .ef_ej { margin-bottom: 5px; }
+                }
+                @media (min-width:421px) {
+                    .ef_ej {
+                        z-index: 1;
+                        position: absolute;
+                        top: 17px;
+                        left: 128px;
+                    }
+                }
             </style>`
         );
         const eventComments = () => {
@@ -2271,23 +2299,26 @@ const launchScript = function($) {
 
             let promise = new Promise(resolve => resolve());
             if (res.comments.length <= 0) {
-                promise = res.fetchComments();
+                    promise = res.comments.fetchComments();
             }
             promise.then(() => {
                 const commentId = parseInt($(e.currentTarget).data('comment-id'), 10),
-                      objComment = res.getComment(commentId);
+                    /**
+                     * @type {CommentBS}
+                     */
+                    objComment = res.comments.getComment(commentId);
                 if (!(objComment instanceof CommentBS)) {
                     notification('Affichage commentaire', "Le commentaire n'a pas été retrouvé");
                     console.warn('Commentaire introuvable', {commentId, objComment, 'comments': res.comments});
                     return;
                 }
-                objComment.display();
+                    objComment.render();
             });
         });
         $('#comments .blockTitles button').removeAttr('onclick').off('click').click(e => {
             e.stopPropagation();
             e.preventDefault();
-            res.displayComments();
+            res.comments.render();
         });
         };
         $('#comments .slide__comment').off('click');
