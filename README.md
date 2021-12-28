@@ -46,6 +46,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
     * [ ] Utiliser un bouton, plutôt qu'un lien, pour l'affichage d'un spoiler
     * [X] Ajouter l'écriture d'une réponse
     * [X] Gérer l'affichage de l'ensemble des commentaires
+    * [ ] Gérer l'envoi de message privé directement depuis la popup
 * Modification de l'affichage de la notation. Je l'ai modifié pour les mêmes raisons que les commentaires (cf ci-dessus).
 
 #### Séries et Films
