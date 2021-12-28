@@ -11,6 +11,12 @@ export type implReplyUser = {
     login: string;
 };
 export class CommentBS {
+    /**
+     * Contient le nom des classes CSS utilisées pour le rendu du commentaire
+     * @type Obj
+     */
+    static classNamesCSS: Obj = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
+
     id: number;
     /**
      * Référence du média, pour créer l'URL (type.titleUrl)
@@ -176,7 +182,7 @@ export class CommentBS {
             </span>&nbsp;<span class="btnText">${Base.trans("comment.hide_answers")}</span>
         </button>` : '';
         return `
-            <div class="comment ${className} positionRelative ${classNames.comment}" data-comment-id="${comment.id}" ${comment.in_reply_to > 0 ? 'data-comment-reply="' + comment.in_reply_to + '"' : ''} data-comment-inner="${comment.inner_id}">
+            <div class="comment ${className} positionRelative ${CommentBS.classNamesCSS.comment}" data-comment-id="${comment.id}" ${comment.in_reply_to > 0 ? 'data-comment-reply="' + comment.in_reply_to + '"' : ''} data-comment-inner="${comment.inner_id}">
                 <div class="media">
                     <div class="media-left">
                         <a href="/membre/${comment.login}" class="avatar">
@@ -190,9 +196,9 @@ export class CommentBS {
                         </a>
                         <span style="${spoiler ? 'display:none;':''}" class="comment-text">${text}</span>
                         ${btnSpoiler}
-                        <div class="${classNames.actions} actionsCmt">
+                        <div class="${CommentBS.classNamesCSS.actions} actionsCmt">
                             <div class="options-main options-comment">
-                                <button type="button" class="btn-reset btnUpVote btnThumb">
+                                <button type="button" class="btn-reset btnUpVote btnThumb" title="+1 pour ce commentaire">
                                     <svg data-disabled="false" class="SvgLike" fill="#fff" width="16" height="14" viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg">
                                         <g fill="${comment.thumbed > 0 ? '#FFAC3B' : 'inherit'}" fill-rule="nonzero">
                                             <path fill="#fff" fill-rule="evenodd" d="M.67 6h2.73v8h-2.73v-8zm14.909.67c0-.733-.614-1.333-1.364-1.333h-4.302l.648-3.047.02-.213c0-.273-.116-.527-.3-.707l-.723-.7-4.486 4.393c-.252.24-.402.573-.402.94v6.667c0 .733.614 1.333 1.364 1.333h6.136c.566 0 1.05-.333 1.255-.813l2.059-4.7c.061-.153.095-.313.095-.487v-1.273l-.007-.007.007-.053z"></path>
@@ -200,7 +206,7 @@ export class CommentBS {
                                         </g>
                                     </svg>
                                 </button>
-                                <button type="button" class="btn-reset btnDownVote btnThumb">
+                                <button type="button" class="btn-reset btnDownVote btnThumb" title="-1 pour ce commentaire">
                                     <svg data-disabled="false" class="SvgLike" fill="#fff" width="16" height="14" viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(180deg) scaleX(-1); margin-left: 4px; vertical-align: -4px;">
                                         <g fill="${comment.thumbed < 0 ? '#FFAC3B' : 'inherit'}" fill-rule="nonzero">
                                             <path fill="#fff" fill-rule="evenodd" d="M.67 6h2.73v8h-2.73v-8zm14.909.67c0-.733-.614-1.333-1.364-1.333h-4.302l.648-3.047.02-.213c0-.273-.116-.527-.3-.707l-.723-.7-4.486 4.393c-.252.24-.402.573-.402.94v6.667c0 .733.614 1.333 1.364 1.333h6.136c.566 0 1.05-.333 1.255-.813l2.059-4.7c.061-.153.095-.313.095-.487v-1.273l-.007-.007.007-.053z"></path>
@@ -509,10 +515,11 @@ export class CommentBS {
          * On affiche/masque les options du commentaire
          */
         const $btnOptions = $container.find('.btnToggleOptions');
+        if (Base.debug) console.log('Comment loadEvents toggleOptions.length', $btnOptions.length);
         $btnOptions.click((e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            jQuery(e.currentTarget).parents('.iv_i3').first()
+            jQuery(e.currentTarget).parents(`.${CommentBS.classNamesCSS.actions}`).first()
                 .find('.options-comment').each((_index: number, elt: HTMLElement) => {
                     const $elt = jQuery(elt);
                     if ($elt.is(':visible')) {
