@@ -377,6 +377,7 @@ const launchScript = function($) {
             similarsViewed(objRes); // On s'occupe des ressources similaires
             objRes.decodeTitle(); // On décode le titre de la ressource
             objRes.addNumberVoters(); // On ajoute le nombre de votes à la note
+            objRes.objNote.renderStars(); // On met à jour l'affichage de la note
             upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
             comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
             replaceVoteFn(objRes);
