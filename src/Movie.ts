@@ -3,10 +3,10 @@ import { implAddNote } from "./Note";
 import {Platform_link} from "./Episode";
 import {Media} from "./Media";
 
-export interface OtherTitle {
+export type OtherTitle = {
     language: string;
     title: string;
-}
+};
 export interface implMovie {
     backdrop: string;
     director: string;
@@ -32,7 +32,7 @@ export class Movie extends Media implements implAddNote {
     /***************************************************/
     /*                      STATIC                     */
     /***************************************************/
-    
+
     /**
      * Methode static servant à retourner un objet show
      * à partir de son ID
@@ -47,11 +47,11 @@ export class Movie extends Media implements implAddNote {
             .catch(err => reject(err) );
         });
     }
-    
+
     /***************************************************/
     /*                  PROPERTIES                     */
     /***************************************************/
-    
+
     backdrop: string;
     director: string;
     original_release_date: Date;
@@ -65,7 +65,7 @@ export class Movie extends Media implements implAddNote {
     tmdb_id: number;
     trailer: string;
     url: string;
-    
+
     /***************************************************/
     /*                      METHODS                    */
     /***************************************************/
@@ -83,6 +83,7 @@ export class Movie extends Media implements implAddNote {
      * Remplit l'objet avec les données fournit en paramètre
      * @param  {any} data Les données provenant de l'API
      * @returns {Movie}
+     * @override
      */
     fill(data: any): this {
         if (data.user.in_account !== undefined) {

@@ -17,11 +17,12 @@ export abstract class Media extends Base {
         super(data);
         return this;
     }
-    
+
     /**
      * Remplit l'objet avec les données fournit en paramètre
      * @param  {Obj} data Les données provenant de l'API
      * @returns {Media}
+     * @override
      */
     fill(data: Obj): this {
         this.followers = parseInt(data.followers, 10);
