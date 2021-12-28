@@ -40,7 +40,7 @@ let themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-hYAmNFECP8etRPPCd+SBGLm7daV911t4p/amvwOU3NZ+EgM1w/w9AtXMeuOwkxGE';
+const sriBundle = 'sha384-u/G5tqEv3TTHPiq/hd4B96MDIRd516Tt508tTpM03bLwZx8RZ9GMXA941bDwJKTF';
 /************************************************************************************************/
 
 /**
@@ -1315,9 +1315,10 @@ const launchScript = function($) {
         /**
          * Fonction retournant le contenu de la Popup des options update
          * de la liste des épisodes
+         * @param {UpdateAuto} objUpAuto -
          * @return {String} Contenu HTML de la PopUp des options update
          */
-        const contentUp = function () {
+        const contentUp = function (objUpAuto) {
             const intervals = UpdateAuto.intervals;
             let contentUpdate = `
                     <style>
@@ -1345,7 +1346,7 @@ const launchScript = function($) {
                                class="form-check-input"
                                id="updateEpisodeListAuto"
                                ${objUpAuto.auto ? ' checked="true"' : ''}
-                               ${!show.in_account ? ' disabled="true"' : ''}>
+                               ${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>
                         <label class="form-check-label"
                                for="updateEpisodeListAuto">Activer la mise à jour auto des épisodes</label>
                       </div>
@@ -1353,15 +1354,15 @@ const launchScript = function($) {
                         <label for="updateEpisodeListTime">Fréquence de mise à jour</label>
                         <select class="form-control"
                                 id="updateEpisodeListTime"
-                                ${!show.in_account ? ' disabled="true"' : ''}>`;
+                                ${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>`;
             for (let i = 0; i < intervals.length; i++) {
                 contentUpdate += `<option value="${intervals[i].val}"
                     ${objUpAuto.interval === intervals[i].val ? 'selected="true"' : ''}>
                     ${intervals[i].label}</option>`;
             }
             contentUpdate += `</select></div>
-                    ${!show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>' : ''}
-                    <button type="submit" class="btn btn-primary"${!show.in_account ? ' disabled="true"' : ''}>Sauver</button>
+                    ${!objUpAuto.show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>' : ''}
+                    <button type="submit" class="btn btn-primary"${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>Sauver</button>
                     <button type="button" class="close btn btn-danger">Annuler</button>
                 </form>`;
             return contentUpdate;
@@ -1416,7 +1417,7 @@ const launchScript = function($) {
                 container: $('#updateEpisodeList'),
                 // delay: { "show": 500, "hide": 100 },
                 html: true,
-                content: contentUp,
+                content: ' ',
                 placement: 'right',
                 title: ' ',
                 trigger: 'manual',
@@ -1452,6 +1453,7 @@ const launchScript = function($) {
             });
             $('#updateEpisodeList .updateElement').on('shown.bs.popover', function () {
                 $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
+                $('#updateEpisodeList .popover-body').html(contentUp(objUpAuto));
                 if (objUpAuto.status) {
                     $('.optionsUpAuto .badge').css('cursor', 'pointer').click(e => {
                         e.stopPropagation();
@@ -1472,7 +1474,7 @@ const launchScript = function($) {
                     e.stopPropagation();
                     e.preventDefault();
                     let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
-                        intervalAuto = parseInt($('#updateEpisodeListTime').val().toString(), 10);
+                        intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
                     if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
                     if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
                     if (debug) console.log('updateEpisodeList submit', objUpAuto);

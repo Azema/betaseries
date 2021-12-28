@@ -22,7 +22,7 @@ export class UpdateAuto {
         {val: 45, label: '45 min.'},
         {val: 60, label: '60 min.'}
     ];
-    
+
     private _show: Show;
     private _showId: number;
     private _exist: boolean;
@@ -78,6 +78,14 @@ export class UpdateAuto {
         this._exist = true;
         this.changeColorBtn();
         return this;
+    }
+
+    /**
+     * Retourne l'objet Show associé
+     * @returns {Show}
+     */
+    get show(): Show {
+        return this._show;
     }
 
     /**
