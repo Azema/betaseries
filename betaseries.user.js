@@ -877,7 +877,7 @@ const launchScript = function($) {
     }
     /**
      * 
-     * @returns {implDialog}
+     * @returns {Dialog}
      */
     function getDialog() {
         const dialogHTML = `
@@ -1719,9 +1719,9 @@ const launchScript = function($) {
                             if (debug) console.groupEnd(); // On clos le groupe de console
                         }
                     }, (err) => {
+                        notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                         self.addClass('finish');
                         if (debug) console.groupEnd();
-                        notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                     });
                 });
             }
