@@ -323,9 +323,9 @@ const launchScript = function($) {
     Base.cache = cache;
     Base.notification = notification;
     Base.userIdentified = userIdentified;
-    Base.token = betaseries_api_user_token;
-    Base.userKey = betaseries_api_user_key;
-    Base.userId = betaseries_user_id;
+    Base.token = typeof betaseries_api_user_token !== 'undefined' ? betaseries_api_user_token : null;
+    Base.userKey = typeof betaseries_api_user_key !== 'undefined' ? betaseries_api_user_key : null;
+    Base.userId = typeof betaseries_user_id !== 'undefined' ? betaseries_user_id : null;
     Base.trans = trans;
     Base.ratings = ratings;
     Base.themoviedb_api_user_key = themoviedb_api_user_key;
@@ -334,15 +334,21 @@ const launchScript = function($) {
     UpdateAuto.getValue = GM_getValue;
     UpdateAuto.setValue = GM_setValue;
 
+
     /**
      * @type Member
      */
     let user;
-    Member.fetch().then(member => {
-        user = member;
-    // On affiche la version du script
-        if (debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
-    });
+    if (userIdentified()) {
+        Member.fetch().then(member => {
+            user = member;
+            // On affiche la version du script
+            if (debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
+        });
+    } else {
+        // On affiche la version du script
+            if (debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version);
+    }
 
     // Ajout des feuilles de styles pour le userscript
     addScriptAndLink(['awesome', 'stylehome']);
