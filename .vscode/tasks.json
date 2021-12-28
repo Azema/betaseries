@@ -29,6 +29,17 @@
 				}
 			},
 			"label": "grunt: build"
+		},
+		{
+			"type": "grunt",
+			"task": "version",
+			"problemMatcher": [],
+			"options": {
+				"shell": {
+					"executable": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+				}
+			},
+			"label": "grunt: version"
 		}
 	]
 }
