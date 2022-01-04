@@ -6,7 +6,7 @@ import { CommentsBS } from "./Comments";
 import { implAddNote, Note } from "./Note";
 import { User } from "./User";
 
-function ExceptionIdentification(message: string) {
+export function ExceptionIdentification(message: string) {
     this.message = message;
     this.name = "ExceptionIdentification";
 }
@@ -15,25 +15,28 @@ export enum MediaType {
     show = 'show',
     movie = 'movie',
     episode = 'episode'
-}
+};
 export type MediaTypes = {
     singular: MediaType;
     plural: string;
     className: Class<Base>;
-}
+};
 export enum EventTypes {
     UPDATE = 'update',
     SAVE = 'save',
     ADD = 'add',
-    REMOVE = 'remove'
-}
+    REMOVE = 'remove',
+    NOTE = 'note',
+    ARCHIVE = 'archive',
+    UNARCHIVE = 'unarchive'
+};
 export enum HTTP_VERBS {
     GET = 'GET',
     POST = 'POST',
     PUT = 'PUT',
     DELETE = 'DELETE',
     OPTIONS = 'OPTIONS'
-}
+};
 export type Rating = {
     img: string;
     title: string;
@@ -60,7 +63,7 @@ export abstract class Base implements implAddNote {
     static cache: CacheUS = null;
     /**
      * Objet contenant les informations de l'API
-     * @type {*}
+     * @type {Obj}
      */
     static api: any = {
             "url": 'https://api.betaseries.com',
@@ -210,7 +213,8 @@ export abstract class Base implements implAddNote {
      */
     static EventTypes: Array<EventTypes> = new Array(
         EventTypes.UPDATE,
-        EventTypes.SAVE
+        EventTypes.SAVE,
+        EventTypes.NOTE
     );
     /**
      * Fonction d'authentification sur l'API BetaSeries
@@ -273,12 +277,14 @@ export abstract class Base implements implAddNote {
             throw new Error(`Ressource (${resource}) inconnue dans l'API.`);
         }
         if (! Base.userKey) {
+            Base.notification('Call API', `La clé API doit être renseignée`);
             throw new Error('userKey are required');
         }
         if (! Base.token && resource in Base.api.tokenRequired &&
             action in Base.api.tokenRequired[resource] &&
             Base.api.tokenRequired[resource][action].indexOf(type) !== 1)
         {
+            Base.notification('Call API', `Identification requise pour cet appel: ${type} ${resource}/${action}`);
             // Identification required
             throw new ExceptionIdentification("Identification required");
         }
@@ -523,9 +529,10 @@ export abstract class Base implements implAddNote {
      * @sealed
      */
     protected _callListeners(name: EventTypes): this {
+        const event = new CustomEvent('betaseries', {detail: {name: name}});
         if (this._listeners[name] !== undefined) {
             for (let l = 0; l < this._listeners[name].length; l++) {
-                this._listeners[name][l].call(this, this);
+                this._listeners[name][l].call(this, event, this);
             }
         }
         return this;
@@ -591,17 +598,7 @@ export abstract class Base implements implAddNote {
             return;
         }
 
-        const votes = 'vote' + (this.objNote.total > 1 ? 's' : ''),
-                // On met en forme le nombre de votes
-                total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true})
-                        .format(this.objNote.total),
-                // On limite le nombre de chiffre après la virgule
-                note = this.objNote.mean.toFixed(1);
-        let title = `${total} ${votes} : ${note} / 5`;
-        // On ajoute la note du membre connecté, si il a voté
-        if (Base.userIdentified() && this.objNote.user > 0) {
-            title += `, votre note: ${this.objNote.user}`;
-        }
+        let title = this.objNote.toString();
         if (change) {
             $elt.attr('title', title);
         }
@@ -656,7 +653,7 @@ export abstract class Base implements implAddNote {
         return new Promise((resolve: Function, reject:Function) => {
             Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
             .then((data: Obj) => {
-                _this.fill(data[this.mediaType.singular]);
+                _this.fill(data[this.mediaType.singular])._callListeners(EventTypes.NOTE);
                 resolve(true);
             })
             .catch(err => {
