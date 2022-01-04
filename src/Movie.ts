@@ -43,7 +43,7 @@ export class Movie extends Media implements implAddNote {
     static fetch(id: number, force: boolean = false): Promise<Movie> {
         return new Promise((resolve: Function, reject: Function) => {
             Base.callApi('GET', 'movies', 'movie', {id: id}, force)
-            .then(data => resolve(new Movie(data, jQuery('.blockInformations'))) )
+            .then(data => resolve(new Movie(data.movie, jQuery('.blockInformations'))) )
             .catch(err => reject(err) );
         });
     }
@@ -71,10 +71,6 @@ export class Movie extends Media implements implAddNote {
     /***************************************************/
 
     constructor(data: any, element: JQuery<HTMLElement>) {
-        if (data.user.in_account !== undefined) {
-            data.in_account = data.user.in_account;
-            delete data.user.in_account;
-        }
         super(data);
         this.elt = element;
         return this.fill(data);
@@ -90,6 +86,9 @@ export class Movie extends Media implements implAddNote {
             data.in_account = data.user.in_account;
             delete data.user.in_account;
         }
+        data.description = data.synopsis;
+        delete data.synopsis;
+
         this.backdrop = data.backdrop;
         this.director = data.director;
         this.original_release_date = new Date(data.original_release_date);
@@ -107,12 +106,6 @@ export class Movie extends Media implements implAddNote {
         super.fill(data);
         return this.save();
     }
-
-    /*
-    Bouton Vu: $(`.blockInformations__action .label:contains("${Base.trans('film.button.watched.label')}")`).siblings('button')
-    Bouton A voir: $(`.blockInformations__action .label:contains("${Base.trans('film.button.to_watch.label')}")`).siblings('button')
-    Bouton Favori: $(`.blockInformations__action .label:contains("${Base.trans('film.button.favorite.label')}")`).siblings('button')
-    */
     /**
      * Définit le film, sur le compte du membre connecté, comme "vu"
      * @returns {Promise<Movie>}
