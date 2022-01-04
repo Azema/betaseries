@@ -118,7 +118,10 @@ export class Show extends Media implements implShow, implAddNote {
         EventTypes.UPDATE,
         EventTypes.SAVE,
         EventTypes.ADD,
-        EventTypes.REMOVE
+        EventTypes.REMOVE,
+        EventTypes.NOTE,
+        EventTypes.ARCHIVE,
+        EventTypes.UNARCHIVE
     );
 
     /**
@@ -131,7 +134,15 @@ export class Show extends Media implements implShow, implAddNote {
     static fetch(id: number, force: boolean = false): Promise<Show> {
         return new Promise((resolve: Function, reject: Function) => {
             Base.callApi('GET', 'shows', 'display', {id: id}, force)
-            .then(data => resolve(new Show(data, jQuery('.blockInformations'))) )
+            .then(data => resolve(new Show(data.show, jQuery('.blockInformations'))) )
+            .catch(err => reject(err) );
+        });
+    }
+
+    static fetchByUrl(url: string, force: boolean = true): Promise<Show> {
+        return new Promise((resolve: Function, reject: Function) => {
+            Base.callApi('GET', 'shows', 'display', {url: url}, force)
+            .then(data => resolve(new Show(data.show, jQuery('.blockInformations'))) )
             .catch(err => reject(err) );
         });
     }
@@ -265,6 +276,7 @@ export class Show extends Media implements implShow, implAddNote {
             .then(data => {
                 _this.fill(data.show);
                 _this.save();
+                _this._callListeners(EventTypes.ARCHIVE);
                 resolve(_this);
             }, err => {
                 reject(err);
@@ -282,6 +294,7 @@ export class Show extends Media implements implShow, implAddNote {
             .then(data => {
                 _this.fill(data.show);
                 _this.save();
+                _this._callListeners(EventTypes.UNARCHIVE);
                 resolve(_this);
             }, err => {
                 reject(err);
@@ -353,6 +366,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {void}
      */
     updateRender(cb: Function = Base.noop): void {
+        const self = this;
         this.updateProgressBar();
         this.updateNextEpisode();
         let note = this.objNote;
@@ -391,16 +405,22 @@ export class Show extends Media implements implShow, implAddNote {
             if (note.user === 0) {
                 if (Base.debug) console.log('Proposition de voter pour la série');
                 promise.then(() => {
+                    let retourCallback = false;
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: Base.trans("popin.note.title.show"),
                         text: "Voulez-vous noter la série ?",
                         callback_yes: function() {
-                            jQuery('.blockInformations__metadatas .js-render-stars').trigger('click');
+                            // jQuery('.blockInformations__metadatas > button').trigger('click');
+                            retourCallback = true;
                             return true;
                         },
                         callback_no: function() {
                             return true;
+                        },
+                        onClose: function() {
+                            if (retourCallback)
+                                self.objNote.createPopupForVote();
                         }
                     });
                 });
@@ -496,7 +516,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {void}
      */
     addShowClick(trigEpisode: boolean = false): void {
-        const _this = this;
+        const self = this;
         const vignettes = $('#episodes .slide__image');
         // Vérifier si le membre a ajouter la série à son compte
         if (! this.in_account) {
@@ -520,13 +540,13 @@ export class Show extends Media implements implShow, implAddNote {
                 if (Base.debug) console.groupCollapsed('AddShow');
                 const done = function(): void {
                     // On met à jour les boutons Archiver et Favori
-                    changeBtnAdd(_this);
+                    changeBtnAdd(self);
                     // On met à jour le bloc du prochain épisode à voir
-                    _this.updateNextEpisode(function() {
+                    self.updateNextEpisode(function() {
                         if (Base.debug) console.groupEnd();
                     });
                 };
-                _this.addToAccount()
+                self.addToAccount()
                 .then(() => done(), err => {
                     if (err && err.code !== undefined && err.code === 2003) {
                         done();
@@ -588,15 +608,10 @@ export class Show extends Media implements implShow, implAddNote {
             // On remplace le bouton Ajouter par les boutons Archiver et Favoris
             const divs = jQuery('#reactjs-show-actions > div');
             if (divs.length === 1) {
-                jQuery('#reactjs-show-actions').remove();
-                let $container = jQuery('.blockInformations__actions'),
-                    method = 'prepend';
-                // Si le bouton VOD est présent, on place les boutons après
-                if ($('#dropdownWatchOn').length > 0) {
-                    $container = jQuery('#dropdownWatchOn').parent();
-                    method = 'after';
-                }
-                $container[method](`
+                const $reactjs: JQuery<HTMLElement> = jQuery('#reactjs-show-actions');
+                $reactjs
+                    .empty()
+                    .append(`
                         <div class="displayFlex alignItemsFlexStart"
                                 id="reactjs-show-actions"
                                 data-show-id="${show.id}"
@@ -625,7 +640,6 @@ export class Show extends Media implements implShow, implAddNote {
                             <div class="label">${Base.trans('show.button.favorite.label')}</div>
                             </div>
                         </div>`);
-                show.elt = jQuery('reactjs-show-actions');
                 // On ofusque l'image des épisodes non-vu
                 let vignette: JQuery<HTMLElement>;
                 for (let v = 0; v < vignettes.length; v++) {
@@ -643,11 +657,11 @@ export class Show extends Media implements implShow, implAddNote {
                         </span>
                     </button>`
                 );
-                _this.elt = $('.blockInformations');
-                _this.addNumberVoters();
+                self.elt = $('.blockInformations');
+                self.addNumberVoters();
             }
-            _this.addEventBtnsArchiveAndFavoris();
-            _this.deleteShowClick();
+            self.addEventBtnsArchiveAndFavoris();
+            self.deleteShowClick();
         }
         if (trigEpisode) {
             this.update(true).then(show => {
@@ -855,7 +869,6 @@ export class Show extends Media implements implShow, implAddNote {
             }
         }
     }
-
     /**
      * Définit la saison courante
      * @param   {number} seasonNumber Le numéro de la saison courante (commence à 1)
