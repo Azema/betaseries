@@ -2,6 +2,8 @@ import { Base, Obj } from "./Base";
 import { Episode } from "./Episode";
 import { Show } from "./Show";
 
+declare var PopupAlert;
+
 export class Season {
     /**
      * @type {number} Numéro de la saison dans la série
@@ -15,6 +17,10 @@ export class Season {
      * @type {Show} L'objet Show auquel est rattaché la saison
      */
     private _show: Show;
+    /**
+     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
+     */
+    private _elt: JQuery<HTMLElement>;
 
     /**
      * Constructeur de la classe Season
@@ -25,6 +31,8 @@ export class Season {
     constructor(data: Obj, show: Show) {
         this.number = parseInt(data.number, 10);
         this._show = show;
+        // document.querySelector("#seasons > div > div.positionRelative > div > div:nth-child(2)")
+        this._elt = jQuery(`#seasons .slides_flex .slide_flex:nth-child(${this.number.toString()})`);
         if (data.episodes && data.episodes instanceof Array && data.episodes[0] instanceof Episode) {
             this.episodes = data.episodes;
         }
@@ -45,7 +53,7 @@ export class Season {
             .then(data => {
                 _this.episodes = [];
                 for (let e = 0; e < data.episodes.length; e++) {
-                    _this.episodes.push(new Episode(data.episodes[e], _this._show, _this));
+                    _this.episodes.push(new Episode(data.episodes[e], _this));
                 }
                 resolve(_this);
             }, err => {
@@ -90,5 +98,104 @@ export class Season {
             if (this.episodes[e].special) nbEpisodesSpecial++;
         }
         return nbEpisodesSpecial;
+    }
+
+    /**
+     * Met à jour l'objet Show
+     * @param {Function} cb Function de callback
+     * @returns {Season}
+     */
+    updateShow(cb: Function = Base.noop): Season {
+        this._show.update(true).then(cb as (value: Show) => Show);
+        return this;
+    }
+
+    /**
+     * Change le statut visuel de la saison sur le site
+     * @return {Season}
+     */
+    updateRender(): Season {
+        const self: Season = this;
+        const lenEpisodes: number = this.episodes.length;
+        const lenSpecials: number = this.getNbEpisodesSpecial();
+        const lenNotSpecials: number = lenEpisodes - lenSpecials;
+        const lenSeen: number = self.getNbEpisodesSeen();
+        if (Base.debug) console.log('Season updateRender', {lenEpisodes, lenSpecials, lenNotSpecials, lenSeen});
+        /**
+         * Met à jour la vignette de la saison courante
+         * et change de saison, si il y en a une suivante
+         */
+        const seasonViewed = function(): void {
+            // On check la saison
+            self._elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
+            self._elt
+                .removeClass('slide--notSeen')
+                .addClass('slide--seen');
+            if (Base.debug) console.log('Tous les épisodes de la saison ont été vus');
+            // Si il y a une saison suivante, on la sélectionne
+            if (self._elt.next().length > 0) {
+                if (Base.debug) console.log('Il y a une autre saison');
+                self.changeCurrentSeason(self.number + 1);
+                self._elt.removeClass('slide--current');
+                self._elt.next().trigger('click');
+            }
+        };
+        // Si tous les épisodes de la saison ont été vus
+        if (lenSeen === lenEpisodes) {
+            seasonViewed();
+        }
+        // Si tous les épisodes de la saison, hors spéciaux, ont été vus
+        else if (lenSpecials > 0 && lenSeen === lenNotSpecials) {
+            // eslint-disable-next-line no-undef
+            new PopupAlert({
+                title: 'Fin de la saison',
+                text: 'Tous les épisodes de la saison, hors spéciaux, ont été vu.<br/>Voulez-vous passer à la saison suivante ?',
+                callback_yes: () => {
+                    seasonViewed();
+                },
+                callback_no: () => {
+                    return true;
+                }
+            });
+        } else {
+            const $checkSeen: JQuery<HTMLElement> = this._elt.find('.checkSeen');
+            if ($checkSeen.length > 0) {
+                $checkSeen.remove();
+                if (!self._elt.hasClass('slide--notSeen')) {
+                    self._elt
+                        .addClass('slide--notSeen')
+                        .removeClass('slide--seen');
+                }
+            }
+        }
+
+        return this;
+    }
+
+    /**
+     * Modifie la saison courante de l'objet Show
+     * @param   {number} seasonNumber Le numéro de la saison
+     * @returns {Season}
+     */
+    changeCurrentSeason(seasonNumber: number): Season {
+        this._show.setCurrentSeason(seasonNumber);
+        return this;
+    }
+
+    /**
+     * Indique si la série est sur le compte du membre connecté
+     * @returns {boolean}
+     */
+    showInAccount(): boolean {
+        return this._show.in_account;
+    }
+
+    /**
+     * Définit la série comme étant sur le compte du membre connecté
+     * @returns {Season}
+     */
+    addShowToAccount(): Season {
+        this._show.in_account = true;
+        return this;
     }
 }
