@@ -1,10 +1,12 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
-        "target": "esnext",
+        "module": "CommonJS",
+        "target": "ESNext",
         "sourceMap": false,
         "outDir": "./dist/tsc",
         "rootDir": "./src",
+        "allowJs": true,
         "removeComments": false
-      }
+      },
+      "include": ["src/*.ts"]
 }

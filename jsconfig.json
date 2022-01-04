@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ESNext",
+    "checkJs": true,
+    "declarationDir": "dist/declarations/"
+  },
+  "exclude": ["node_modules/**", "PagesWebTest/**"]
+}
