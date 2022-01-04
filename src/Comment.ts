@@ -1,5 +1,6 @@
-import { Base, HTTP_VERBS, Obj } from './Base';
+import { Base, HTTP_VERBS, Obj, EventTypes } from './Base';
 import { CommentsBS, CustomEvent } from './Comments';
+import { Note } from './Note';
 
 declare var moment, currentLogin: string, getScrollbarWidth, faceboxDisplay: Function;
 export interface implRepliesComment {
@@ -139,29 +140,6 @@ export class CommentBS {
         return this._parent.isLast(this.id);
     }
     /**
-     * Permet d'afficher une note avec des étoiles
-     * @param   {number} note    La note à afficher
-     * @returns {string}
-     */
-    protected static _renderNote(note: number): string {
-        let typeSvg: string,
-            template: string = '';
-        note = note || 0;
-        Array.from({
-            length: 5
-        }, (_index: number, number) => {
-            typeSvg = note <= number ? "empty" : (note < number + 1) ? 'half' : "full";
-            template += `
-                <svg viewBox="0 0 100 100" class="star-svg">
-                    <use xmlns:xlink="http://www.w3.org/1999/xlink"
-                        xlink:href="#icon-star-${typeSvg}">
-                    </use>
-                </svg>
-            `;
-        });
-        return template;
-    }
-    /**
      * Renvoie la template HTML pour l'affichage d'un commentaire
      * @param   {CommentBS} comment Le commentaire à afficher
      * @returns {string}
@@ -222,7 +200,7 @@ export class CommentBS {
                                     Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('DD/MM/YYYY HH:mm') : comment.date.toString()}
                                 </a>
                                 <span class="stars" title="${comment.user_note} / 5">
-                                    ${CommentBS._renderNote(comment.user_note)}
+                                    ${Note.renderStars(comment.user_note)}
                                 </span>
                                 <div class="it_iv">
                                     <button type="button" class="btn-reset btnToggleOptions">
@@ -503,6 +481,9 @@ export class CommentBS {
                     const thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
                     self._parent.changeThumbs(commentId, data.comment.thumbs, thumbed);
                 }
+                // Petite animation pour le nombre de votes
+                $btn.siblings('strong.thumbs')
+                    .css('animation', '1s ease 0s 1 normal forwards running backgroundFadeOut');
             })
             .catch(err => {
                 const msg = err.text !== undefined ? err.text : err;
@@ -568,9 +549,12 @@ export class CommentBS {
                         // Allo Houston, on a un problème
                     }
                 } else {
-                    CommentsBS.sendComment(self._media, msg);
+                    CommentsBS.sendComment(self._media, msg).then((comment: CommentBS) => {
+                        self._parent.addToPage(comment.id);
+                    });
                 }
                 $textarea.val('');
+                $textarea.siblings('button').attr('disabled', 'true');
             }
         });
         this._events.push({elt: $btnSend, event: 'click'});
@@ -622,7 +606,7 @@ export class CommentBS {
             } else {
                 // On masque
                 $replies.fadeOut('fast');
-                $btn.find('.btnText').text(Base.trans("comment.button.reply", {"%count%": $replies.length.toString()}));
+                $btn.find('.btnText').text(Base.trans("comment.button.reply", {"%count%": $replies.length.toString()}, $replies.length));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s;');
                 $btn.data('toggle', '0');
             }

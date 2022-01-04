@@ -1,7 +1,8 @@
-import { Base, Obj, HTTP_VERBS, MediaTypes } from "./Base";
+import { Base, Obj, HTTP_VERBS, EventTypes } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
+import { Note } from "./Note";
 
-declare var getScrollbarWidth, faceboxDisplay: Function;
+declare var getScrollbarWidth, faceboxDisplay: Function, moment;
 
 export enum MediaStatusComments {
     OPEN = 'open',
@@ -17,13 +18,22 @@ export class CommentsBS implements implRepliesComment {
     /*************************************************/
 
     /**
+     * Types d'évenements gérés par cette classe
+     * @type {Array}
+     */
+     static EventTypes: Array<string> = new Array(
+        'update',
+        'save',
+        'add'
+    );
+
+    /**
      * Envoie une réponse de ce commentaire à l'API
      * @param   {Base} media - Le média correspondant à la collection
      * @param   {string} text - Le texte de la réponse
      * @returns {Promise<void | CommentBS>}
      */
     public static sendComment(media: Base, text: string): Promise<void | CommentBS> {
-        const _this = this;
         const params = {
             type: media.mediaType.singular,
             id: media.id,
@@ -51,6 +61,7 @@ export class CommentsBS implements implRepliesComment {
     is_subscribed: boolean;
     status: string;
     private _events: Array<CustomEvent>;
+    private _listeners: object;
 
     /*************************************************/
     /*                  METHODS                      */
@@ -61,6 +72,69 @@ export class CommentsBS implements implRepliesComment {
         this.is_subscribed = false;
         this.status = MediaStatusComments.OPEN;
         this.nbComments = nbComments;
+        this._initListeners();
+    }
+    /**
+     * Initialize le tableau des écouteurs d'évènements
+     * @returns {Base}
+     * @sealed
+     */
+    private _initListeners(): this {
+        this._listeners = {};
+        const EvtTypes = CommentsBS.EventTypes;
+        for (let e = 0; e < EvtTypes.length; e++) {
+            this._listeners[EvtTypes[e]] = new Array();
+        }
+        return this;
+    }
+    /**
+     * Permet d'ajouter un listener sur un type d'évenement
+     * @param  {EventTypes} name - Le type d'évenement
+     * @param  {Function}   fn   - La fonction à appeler
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    public addListener(name: EventTypes, fn: Function): this {
+        // On vérifie que le type d'event est pris en charge
+        if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
+            throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
+        }
+        if (this._listeners[name] === undefined) {
+            this._listeners[name] = new Array();
+        }
+        this._listeners[name].push(fn);
+        return this;
+    }
+    /**
+     * Permet de supprimer un listener sur un type d'évenement
+     * @param  {string}   name - Le type d'évenement
+     * @param  {Function} fn   - La fonction qui était appelée
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    public removeListener(name: EventTypes, fn: Function): this {
+        if (this._listeners[name] !== undefined) {
+            for (let l = 0; l < this._listeners[name].length; l++) {
+                if (this._listeners[name][l] === fn)
+                    this._listeners[name].splice(l, 1);
+            }
+        }
+        return this;
+    }
+    /**
+     * Appel les listeners pour un type d'évenement
+     * @param  {EventTypes} name - Le type d'évenement
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    protected _callListeners(name: EventTypes): this {
+        const event = new CustomEvent('betaseries', {detail: {name: name}});
+        if (this._listeners[name] !== undefined) {
+            for (let l = 0; l < this._listeners[name].length; l++) {
+                this._listeners[name][l].call(this, event, this);
+            }
+        }
+        return this;
     }
     /**
      * Retourne la taille de la collection
@@ -475,12 +549,16 @@ export class CommentsBS implements implRepliesComment {
                 if ($textarea.data('replyTo')) {
                     comment = self.getComment(parseInt($textarea.data('replyTo'), 10));
                     comment.reply($textarea.val() as string);
+                    $textarea.val('');
+                    $textarea.siblings('button').attr('disabled', 'true');
                 } else {
                     CommentsBS.sendComment(self._parent, $textarea.val() as string)
                     .then((comment: CommentBS) => {
                         if (comment) {
                             $textarea.val('');
-                            $textarea.parents('.writing').siblings('.comments').append(CommentBS.getTemplateComment(comment));
+                            $textarea.siblings('button').attr('disabled', 'true');
+                            $textarea.parents('.comments').append(CommentBS.getTemplateComment(comment));
+                            self.addToPage(comment.id);
                         }
                     });
                 }
@@ -707,5 +785,46 @@ export class CommentsBS implements implRepliesComment {
             });
 
         });
+    }
+    /**
+     * Ajoute un commentaire dans la liste des commentaires de la page
+     * @param {number} cmtId - L'identifiant du commentaire
+     */
+    public addToPage(cmtId: number) {
+        const comment: CommentBS = this.getComment(cmtId);
+        const headMsg = comment.text.substring(0, 275);
+        let hideMsg = '';
+        if (comment.text.length > 275)
+            hideMsg = '<span class="u-colorWhiteOpacity05 u-show-fulltext positionRelative zIndex1"></span><span class="sr-only">' + comment.text.substring(275) + '</span>';
+        const avatar = comment.avatar || 'https://img.betaseries.com/NkUiybcFbxbsT_EnzkGza980XP0=/42x42/smart/https%3A%2F%2Fwww.betaseries.com%2Fimages%2Fsite%2Favatar-default.png';
+        const template = `
+            <div class="slide_flex">
+                <div class="slide__comment positionRelative u-insideBorderOpacity u-insideBorderOpacity--01">
+                    <p>${headMsg} ${hideMsg}</p>
+                    <button type="button" class="btn-reset js-popup-comments zIndex10" data-comment-id="${comment.id}"></button>
+                </div>
+                <div class="slide__author">
+                    <div class="media">
+                        <span class="media-left avatar">
+                            <a href="https://www.betaseries.com/membre/${comment.login}">
+                                <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in" src="${avatar}" width="42" height="42" alt="avatar de ${comment.login}" />
+                            </a>
+                        </span>
+                        <div class="media-body">
+                            <div class="displayFlex alignItemsCenter">
+                                ${comment.login}
+                                <span class="stars">${Note.renderStars(comment.user_note, comment.user_id === Base.userId ? 'blue' : '')}</span>
+                            </div>
+                            <div>
+                                <time class="u-colorWhiteOpacity05" style="font-size: 14px;">
+                                    ${moment(comment.date).format('DD MMMM YYYY')}
+                                </time>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        jQuery('#comments .slides_flex').prepend(template);
+        this._callListeners(EventTypes.ADD);
     }
 }
