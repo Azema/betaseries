@@ -25,7 +25,7 @@
   "scripts": {
     "postinstall": "node ./node_modules/grunt/bin/grunt build"
   },
-  "types": "main.d.ts",
+  "types": "betaseries.d.ts",
   "devDependencies": {
     "@types/grunt": "^0.4.27",
     "@types/jquery": "^3.5.10",
