@@ -40,7 +40,7 @@ export class Note {
               note = this.mean.toFixed(2);
         let toString = `${total} ${votes} : ${note} / 5`;
         // On ajoute la note du membre connecté, si il a voté
-        if (this.user > 0) {
+        if (Base.userIdentified() && this.user > 0) {
             toString += `, votre note: ${this.user}`;
         }
         return toString;
@@ -48,7 +48,8 @@ export class Note {
     /**
      * Crée une popup avec 5 étoiles pour noter le média
      */
-    public createPopupForVote(): void {
+    public createPopupForVote(cb: Function = Base.noop): void {
+        if (Base.debug) console.log('objNote createPopupForVote');
         // La popup et ses éléments
         const _this = this,
               $popup = jQuery('#popin-dialog'),
@@ -56,18 +57,18 @@ export class Note {
               $contentReact = $popup.find('.popin-content-reactmodule'),
               $title = $contentHtmlElement.find(".title"),
               $text = $popup.find("p"),
-              $closeButtons = $popup.find("#popin-showClose"),
+              $closeButtons = $popup.find(".js-close-popupalert"),
               hidePopup = () => {
+                  if (Base.debug) console.log('objNote createPopupForVote hidePopup');
                   $popup.attr('aria-hidden', 'true');
-                  $popup.find("#popupalertyes").show();
-                  $popup.find("#popupalertno").show();
+                  $contentHtmlElement.find(".button-set").show();
                   $contentHtmlElement.hide();
                   // On désactive les events
                   $text.find('.star-svg').off('mouseenter').off('mouseleave').off('click');
               },
               showPopup = () => {
-                  $popup.find("#popupalertyes").hide();
-                  $popup.find("#popupalertno").hide();
+                  if (Base.debug) console.log('objNote createPopupForVote showPopup');
+                  $contentHtmlElement.find(".button-set").hide();
                   $contentHtmlElement.show();
                   $contentReact.hide();
                   $closeButtons.show();
@@ -133,6 +134,7 @@ export class Note {
                     if (result) {
                         // TODO: Mettre à jour la note du média
                         _this._parent.changeTitleNote(true);
+                        if (cb) cb.call(_this);
                     } else {
                         Base.notification('Erreur Vote', "Une erreur s'est produite durant le vote");
                     }
@@ -146,12 +148,36 @@ export class Note {
     /**
      * Met à jour l'affichage de la note
      */
-    public renderStars(): void {
-        const $stars: JQuery<HTMLElement> = jQuery('.blockInformations__metadatas .js-render-stars .star-svg use');
+    public updateStars(elt: JQuery<HTMLElement> = null): void {
+        elt = elt || jQuery('.blockInformations__metadatas .js-render-stars');
+        const $stars: JQuery<HTMLElement> = elt.find('.star-svg use');
         let className: string;
         for (let s = 0; s < 5; s++) {
             className = (this.mean <= s) ? StarTypes.EMPTY : (this.mean < s + 1) ? StarTypes.HALF : StarTypes.FULL;
             $($stars.get(s)).attr('xlink:href', `#icon-star-${className}`);
         }
+    }
+    /**
+     * Retourne la template pour l'affichage d'une note sous forme d'étoiles
+     * @param   {number} [note=0] - La note à afficher
+     * @param   {string} [color] - La couleur des étoiles
+     * @returns {string}
+     */
+    public static renderStars(note: number = 0, color: string = ''): string {
+        let typeSvg: string,
+            template: string = '';
+        Array.from({
+            length: 5
+        }, (_index: number, number: number) => {
+            typeSvg = note <= number ? 'empty' : (note < number + 1) ? 'half' : 'full';
+            template += `
+                <svg viewBox="0 0 100 100" class="star-svg">
+                    <use xmlns:xlink="http://www.w3.org/1999/xlink"
+                        xlink:href="#icon-star${color}-${typeSvg}">
+                    </use>
+                </svg>
+            `;
+        });
+        return template;
     }
 }
