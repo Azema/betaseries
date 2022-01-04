@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.1.5
+// @version      1.1.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -12,7 +12,9 @@
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
 // @match        https://www.betaseries.com/membre/*
+// @exclude      https://www.betaseries.com/membre/*/badges
 // @match        https://www.betaseries.com/api/*
+// @match        https://www.betaseries.com/article/*
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
 // @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js#sha512-C6XM91cD52KknT8jaQF1P2PrIRTrbMzq6hzFkc22Pionu774sZwVPJInNxfHNwPvPne3AMtnRWKunr9+/gQR5g==
 // @require      https://azema.github.io/betaseries-oauth/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
@@ -24,7 +26,7 @@
 
 /* globals Base:false, CacheUS: false, Episode: false, Media: false, Movie: false, Show: false,
    UpdateAuto: false, EventTypes: false, HTTP_VERBS: false, MediaType: false, CommentBS: false,
-   MovieStatus: false, Member: false, DataTypesCache: false,
+   MovieStatus: false, Member: false, DataTypesCache: false, Note: false,
 
    betaseries_api_user_token:  true, betaseries_user_id: false, trans: false, lazyLoad: false, deleteFilterOthersCountries: false, generate_route: false,
    CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
@@ -40,7 +42,7 @@ let themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-u/G5tqEv3TTHPiq/hd4B96MDIRd516Tt508tTpM03bLwZx8RZ9GMXA941bDwJKTF';
+const sriBundle = 'sha384-oAo1484K59MKxWlqYkhW7jcF+vsmYxi9yTc+bbNnfPTiGoDMofNNTo3Uf2xtf85y';
 /************************************************************************************************/
 
 /**
@@ -97,7 +99,7 @@ const loadCSS = function( href, before, media, attributes, callback, onerror ) {
     // Inject link
     // Note: the ternary preserves the existing behavior of "before" argument, but we could choose to change the argument to "after" in a later release and standardize on ref.nextSibling for all refs
     // Note: `insertBefore` is used instead of `appendChild`, for safety re: http://www.paulirish.com/2011/surefire-dom-element-insertion/
-    ready( function(){
+    ready( function() {
         ref.parentNode.insertBefore( ss, ( before ? ref : ref.nextSibling ) );
     });
     // A method (exposed on return object for external use) that mimics onload by polling document.styleSheets until it includes the new sheet.
@@ -185,6 +187,7 @@ const loadJS = function( src, attributes, callback, onerror ) {
 	function newcb() {
         if ( ss.addEventListener ) {
             ss.removeEventListener( "load", newcb );
+            if (onerror) ss.removeEventListener('error', onerror);
         }
         if ( !called && callback ) {
             called = true;
@@ -200,50 +203,81 @@ const loadJS = function( src, attributes, callback, onerror ) {
     return ss;
 };
 const launchScript = function($) {
-    const debug = false, url = location.pathname, noop = function () {}, regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
+    const debug = false,
+          origin = window.location.origin,
+          url = window.location.pathname,
+          noop = function () {},
+          regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
     // Objet contenant les scripts et feuilles de style utilisées par le userscript
     scriptsAndStyles = {
         "moment": {
             type: 'script',
             id: 'jsmomment',
             src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js',
-            integrity: 'sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=='
+            integrity: 'sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==',
+            called: false,
+            loaded: false
         },
         "localefr": {
             type: 'script',
             id: 'jslocalefr',
             src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js',
-            integrity: 'sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw=='
+            integrity: 'sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw==',
+            called: false,
+            loaded: false
         },
         "popover": {
             type: 'style',
             id: 'csspopover',
             href: `${serverBaseUrl}/css/popover.min.css`,
-            integrity: 'sha384-0+WYbwjuMdB+tkwXZjC24CjnKegI87PHNRai4K6AXIKTgpetZCQJ9dNVqJ5dUnpg'
+            integrity: 'sha384-UPi41tFgvFfGGtsdAAjqp9REEAkjVSkUxK6mWhlO3JBxsCTXu/sFpyayM1ofuGHj',
+            media: 'all',
+            called: false,
+            loaded: false
         },
         "bootstrap": {
             type: 'script',
             id: 'jsbootstrap',
             src: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js',
-            integrity: 'sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl'
+            integrity: 'sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl',
+            called: false,
+            loaded: false
         },
         "tablecss": {
             type: 'style',
             id: 'tablecss',
             href: `${serverBaseUrl}/css/table.min.css`,
-            integrity: 'sha384-83x9kix7Q4F8l4FQwGfdbntFyjmZu3F1fB8IAfWdH4cNFiXYqAVrVArnil0rkc1p'
+            integrity: 'sha384-tRMvWzqbXtOp2OM+OPoYpWVxHw8eXcFKgzi4q9m6i0rvWTU33pdb8Bx33wBWjlo9',
+            media: 'all',
+            called: false,
+            loaded: false
         },
         "stylehome": {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-z4aam29xkOKmgpOUGhk9kS8/SutkQeUtEBBXm2NYiZFc2CJSvH5hothze+P0/dz8'
+            integrity: 'sha384-NoJYNIzjwvIRv16fC7a8i8D/17deFhgAZnR/H8F6NvJb8S5npNfBYzNSHq1G5M1v',
+            media: 'all',
+            called: false,
+            loaded: false
         },
         "awesome": {
             type: 'style',
             id: 'awesome',
             href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
-            integrity: 'sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=='
+            integrity: 'sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==',
+            media: 'all',
+            called: false,
+            loaded: false
+        },
+        "comments": {
+            type: 'style',
+            id: 'commentstyle',
+            href: `${serverBaseUrl}/css/comments.min.css`,
+            integrity: 'sha384-yQcOjOUfl4J3t613qravFq+UWIggK53/GS51F9EKqusGsWEiFIbDISOQAAghxww5',
+            media: 'all',
+            called: false,
+            loaded: false
         }
     },
     // URI des images et description des classifications TV et films
@@ -309,7 +343,12 @@ const launchScript = function($) {
             title: 'Interdit aux enfants de 17 ans et moins'
         }
     };
-    let timer, timerUA, currentUser, cache, fnLazy;
+    let timer, timerUA, currentUser, cache, fnLazy, state = {},
+        mainLogoMargins = {top: 0, bottom: 0}, mainlogoModified = false;
+    /**
+     * @type Member
+     */
+    let user;
 
     // On vérifie le theme d'affichage du site pour le membre connecté
     const theme = checkThemeStyle();
@@ -876,7 +915,7 @@ const launchScript = function($) {
         });
     }
     /**
-     * 
+     *
      * @returns {Dialog}
      */
     function getDialog() {
@@ -922,7 +961,7 @@ const launchScript = function($) {
         if ($('#dialog-resource').length <= 0) {
         $('body').append(dialogHTML);
         }
-        
+
         return {
             _dialog: $('#dialog-resource'),
             _html: document.documentElement,
@@ -1848,11 +1887,11 @@ const launchScript = function($) {
                         .replaceWith(`
                             <div class="popin-content-ajax"><p></p></div>
                             <div class="button-set">
-                                <button class="btn-reset btn-btn btn--grey js-close-popupalert" 
-                                        type="button" 
+                                <button class="btn-reset btn-btn btn--grey js-close-popupalert"
+                                        type="button"
                                         id="popupalertno">Non</button>
-                                <button class="btn-reset btn-btn btn-blue2 js-close-popupalert" 
-                                        type="submit" 
+                                <button class="btn-reset btn-btn btn-blue2 js-close-popupalert"
+                                        type="submit"
                                         id="popupalertyes">OK, j'ai compris</button>
                             </div>`
                         );
@@ -2327,7 +2366,7 @@ const launchScript = function($) {
         });
     }
     /**
-     * 
+     *
      * @param {Base} res Le média principal
      */
     function replaceVoteFn(res) {
