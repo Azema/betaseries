@@ -690,36 +690,45 @@ const launchScript = function($) {
      * @param  {String|String[]} name Le ou les identifiants des éléments à charger
      * @return {void}
      */
-    function addScriptAndLink(name, onloadFunction = noop) {
+    function addScriptAndLink(name, onloadFunction = noop/* , index */) {
         if (name instanceof Array) {
+            // if (Base.debug) console.log('addScriptAndLink array.length = %d', name.length);
             if (name.length > 1) {
-                for (let n = 0; n < name.length; n++) {
-                    if (n === name.length - 1) {
-                        addScriptAndLink(name[n], onloadFunction);
+                const elt = name.shift();
+                addScriptAndLink(elt, () => addScriptAndLink(name, onloadFunction) );
+                return;
+            } else if (name.length === 1) {
+                name = name.shift();
                     } else {
-                        addScriptAndLink(name[n]);
-                    }
-                }
                 return;
             }
-            else {
-                name = name[0];
             }
-        }
+        // if (Base.debug) console.log('[%d] addScriptAndLink: %s', index, name);
         // On vérifie que le nom est connu
         if (!scriptsAndStyles || !(name in scriptsAndStyles)) {
             throw new Error(`${name} ne fait pas partit des données de scripts ou de styles`);
         }
         const data = scriptsAndStyles[name];
         // On vérifie si il est déjà chargé
-        if ($('#' + data.id).length === 1) {
+        if (data.called && data.loaded) {
+            // if (Base.debug) console.log('[%d] %s(%s) déjà appelé et chargé, on renvoie direct', index, data.type, name);
             return onloadFunction();
+        } else if (data.called && !data.loaded) {
+            waitPresent(() => { return scriptsAndStyles[name].loaded; }, onloadFunction, 10, 10);
+            return;
         }
+        scriptsAndStyles[name].called = true;
         if (data.type === 'script') {
             const loadErrorScript = function(oError) {
-                if (debug) console.log('loadErrorScript error', oError);
+                if (Base.debug) console.log('loadErrorScript error', oError);
                 console.error("The script " + oError.target.src + " didn't load correctly.");
             }
+            let origOnLoadFunction = onloadFunction;
+            onloadFunction = function() {
+                // if (Base.debug) console.log('[%d] script(%s) chargé, on renvoie le callback', index, name);
+                scriptsAndStyles[name].loaded = true;
+                origOnLoadFunction();
+            };
             loadJS(data.src, {
                 integrity: data.integrity,
                 id: data.id,
@@ -729,10 +738,16 @@ const launchScript = function($) {
         }
         else if (data.type === 'style') {
             const loadErrorStyle = function(oError) {
-                if (debug) console.log('loadErrorStyle error', oError);
+                if (Base.debug) console.log('loadErrorStyle error', oError);
                 console.error("The style " + oError.target.href + " didn't load correctly.");
             }
-            loadCSS( data.href, null, null, {
+            let origOnLoadFunction = onloadFunction;
+            onloadFunction = function() {
+                // if (Base.debug) console.log('[%d] style(%s) chargé, on renvoie le callback', index, name);
+                scriptsAndStyles[name].loaded = true;
+                origOnLoadFunction();
+            };
+            loadCSS( data.href, null, data.media, {
                 integrity: data.integrity,
                 id: data.id,
                 crossOrigin: 'anonymous',
