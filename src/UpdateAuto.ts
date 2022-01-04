@@ -53,6 +53,11 @@ export class UpdateAuto {
         return this;
     }
 
+    /**
+     * Retourne l'instance de l'objet de mise à jour auto des épisodes
+     * @param   {Show} s - L'objet de la série
+     * @returns {UpdateAuto}
+     */
     public static getInstance(s: Show): UpdateAuto {
         if (! UpdateAuto.instance) {
             UpdateAuto.instance = new UpdateAuto(s);
@@ -204,6 +209,9 @@ export class UpdateAuto {
         if (objUpAuto[this._showId] !== undefined) {
             delete objUpAuto[this._showId];
             UpdateAuto.setValue('objUpAuto', objUpAuto);
+            this._auto = false;
+            this._interval = 0;
+            this._exist = false;
         }
         return this;
     }
@@ -227,12 +235,12 @@ export class UpdateAuto {
                 this.stop();
                 return this;
             }
-            this.status = true;
             if (this._timer) {
                 if (Base.debug) console.log('close old interval timer');
                 clearInterval(this._timer);
             }
             const _this = this;
+            this.status = true;
             this._timer = setInterval(function() {
                 // if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, _this._objShow));
                 if (! _this._auto || _this._show.user.remaining <= 0) {

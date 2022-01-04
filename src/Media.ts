@@ -65,6 +65,7 @@ export abstract class Media extends Base {
      */
     public set in_account(i: boolean) {
         this._in_account = !!i;
+        this.save();
     }
 
     /**
