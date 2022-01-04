@@ -117,7 +117,7 @@ const loadCSS = function( href, before, media, attributes, callback, onerror ) {
     };
 
     let called = false;
-	function newcb(){
+	function newcb() {
         if ( ss.addEventListener ) {
             ss.removeEventListener( "load", newcb );
         }
@@ -818,9 +818,7 @@ const launchScript = function($) {
     function waitPagination() {
         let loaded = false;
         // On attend la présence du paginateur
-        let timerSeries = setInterval(() => {
-            if ($('#pagination-shows').length < 1) return;
-            clearInterval(timerSeries);
+        waitDomPresent('#pagination-shows', () => {
             // On copie colle le paginateur en haut de la liste des séries
             $('#results-shows').prepend($('#pagination-shows').clone(true, true));
             // On observe les modifications dans le noeud du paginateur
@@ -830,7 +828,7 @@ const launchScript = function($) {
                     loaded = true;
                 }
             });
-        }, 500);
+        }, 10);
     }
     /**
      * Ajoute des améliorations sur la page de la console de l'API
@@ -840,7 +838,7 @@ const launchScript = function($) {
         $('div.form-group button.btn-btn.btn--blue').prop('onclick', null).off('click').click((e, key) => {
             e.stopPropagation();
             e.preventDefault();
-            if (debug) console.log('nouveau parametre handler', key);
+            if (Base.debug) console.log('nouveau parametre handler', key);
             // On ajoute une nouvelle ligne de paramètre
             newApiParameter();
             // On insère la clé du paramètre, si elle est présente
@@ -855,11 +853,9 @@ const launchScript = function($) {
             // On supprime tous les paramètres existants
             $('#api-params .remove').remove();
             // En attente de la documentation de l'API
-            timer = setInterval(() => {
-                if ($('#doc code').length <= 0) return;
-                clearInterval(timer); // On supprime le timer
+            waitDomPresent('#doc code', () => {
                 let paramsDoc = $('#doc > ul > li > code');
-                if (debug) console.log('paramsDoc', paramsDoc);
+                if (Base.debug) console.log('paramsDoc', paramsDoc);
                 paramsDoc.css('cursor', 'pointer');
                 // On ajoute la clé du paramètre dans une nouvelle ligne de paramètre
                 paramsDoc.click((e) => {
@@ -889,7 +885,7 @@ const launchScript = function($) {
                 e.stopPropagation();
                 e.preventDefault();
                 let self = $(e.currentTarget);
-                if (debug) console.log('lock-param', self, self.hasClass('fa-unlock'));
+                if (Base.debug) console.log('lock-param', self, self.hasClass('fa-unlock'));
                 if (self.hasClass('fa-unlock')) {
                     self.removeClass('fa-unlock').addClass('fa-lock');
                     self.parent('.api-params').removeClass('remove').addClass('lock');
@@ -926,7 +922,7 @@ const launchScript = function($) {
      * Le sommaire est constitué des liens vers les fonctions des méthodes.
      */
     function sommaireDevApi() {
-        if (debug) console.log('build sommaire');
+        if (Base.debug) console.log('build sommaire');
         let titles = $('.maincontent h2'), methods = {};
         // Ajout du style CSS pour les tables
         addScriptAndLink('tablecss');
@@ -1001,7 +997,7 @@ const launchScript = function($) {
             methods[key][verb] = { id: id, title: desc };
         }
         // Construire un sommaire des fonctions
-        //if (debug) console.log('methods', methods);
+        //if (Base.debug) console.log('methods', methods);
         $('.maincontent h1').after(buildTable());
         $('#sommaire').slideDown();
         $('.linkSommaire').click((e) => {
@@ -1143,7 +1139,7 @@ const launchScript = function($) {
             e.preventDefault();
             let type = getApiResource(location.pathname.split('/')[1]); // Indique de quel type de ressource il s'agit
             getResourceData().then(function (data) {
-                // if (debug) console.log('addBtnDev promise return', data);
+                // if (Base.debug) console.log('addBtnDev promise return', data);
                 dialog.setContent(renderjson.set_show_to_level(2)(data[type.singular]));
                 dialog.setCounter(Base.counter.toString());
                 dialog.show();
@@ -1162,7 +1158,7 @@ const launchScript = function($) {
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
         fonction = type.singular === 'show' || type.singular === 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
         id = (id === null) ? getResourceId() : id;
-        if (debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
+        if (Base.debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
         return new Promise((resolve, reject) => {
             Base.callApi('GET', type.plural, fonction, { 'id': id }, nocache)
                 .then(data => {
@@ -1182,7 +1178,7 @@ const launchScript = function($) {
         const type = getApiResource(location.pathname.split('/')[1]), // Indique de quel type de ressource il s'agit
         fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie'; // Indique la fonction à appeler en fonction de la ressource
         id = (id === null) ? getResourceId() : id;
-        if (debug) console.log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
+        if (Base.debug) console.log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
         return Base.callApi('GET', type.plural, fonction, { 'id': id }, nocache);
     }
     /**
@@ -1311,7 +1307,7 @@ const launchScript = function($) {
             };
             addScriptAndLink('tablecss');
             $('body').append(dialogHTML);
-            //if (debug) console.log(currentUser, otherMember, trads);
+            //if (Base.debug) console.log(currentUser, otherMember, trads);
             for (const [key, value] of Object.entries(trads)) {
                 if (typeof value == 'object') {
                     for (const [subkey, subvalue] of Object.entries(trads[key])) {
@@ -1386,7 +1382,7 @@ const launchScript = function($) {
         });
         $inpSearchFriends.on('input', () => {
             let val = $inpSearchFriends.val().toString().trim().toLowerCase();
-            if (debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
+            if (Base.debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
             if (val === '' || idFriends.indexOf(val) === -1) {
                 $('.timeline-item').show();
                 if (val === '') {
@@ -1396,7 +1392,7 @@ const launchScript = function($) {
             }
             $('.clearSearch').show();
             $('.timeline-item').hide();
-            if (debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
+            if (Base.debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
             $('.timeline-item .infos a[href="' + objFriends[val].link + '"]').parents('.timeline-item').show();
         });
         $('.clearSearch').click(() => {
@@ -1481,10 +1477,10 @@ const launchScript = function($) {
             let len = parseInt($('#seasons .slide--current .slide__infos').text(), 10), $episodes = $('#episodes .slide_flex');
             // On vérifie que les saisons et les episodes soient chargés sur la page
             if ($episodes.length <= 0 || $episodes.length < len) {
-                if (debug) console.log('waitSeasonsAndEpisodesLoaded: En attente du chargement des vignettes');
+                if (Base.debug) console.log('waitSeasonsAndEpisodesLoaded: En attente du chargement des vignettes');
                 return;
             }
-            if (debug) console.log('waitSeasonsAndEpisodesLoaded, nbVignettes (%d, %d)', $episodes.length, len);
+            if (Base.debug) console.log('waitSeasonsAndEpisodesLoaded, nbVignettes (%d, %d)', $episodes.length, len);
             clearInterval(timer);
             successCb();
         }, 500);
@@ -1558,7 +1554,10 @@ const launchScript = function($) {
          * @return {String} Contenu HTML du titre de la PopUp des options update
          */
         const titlePopup = function (objUpAuto) {
-            const className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary', label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running', help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
+            const className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary',
+                  label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running',
+                  title = (objUpAuto && objUpAuto.status) ? 'Arrêter la tâche en cours' : 'Lancer la tâche de mise à jour auto',
+                  help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
             return `<style>
                         .optionsUpAuto .close {
                             position: absolute;
@@ -1568,11 +1567,12 @@ const launchScript = function($) {
                             font-size: 1.5em;
                             top: 0;
                         }
+                        .optionsUpAuto .badge {cursor: pointer;}
                         .optionsUpAuto .close:hover {border: none;outline: none;}
                         .optionsUpAuto .close:focus {border: none;outline: none;}
                     </style>
                     <div class="optionsUpAuto" style="color:#000;">Options de mise à jour
-                      <span class="badge badge-pill badge-${className}"${objUpAuto.status ? 'title="Arrêter la tâche en cours"' : ''}>${label}</span>
+                      <span class="badge badge-pill badge-${className}" title="${title}">${label}</span>
                       <button type="button" class="close" aria-label="Close" title="Fermer">
                         <span aria-hidden="true">&times;</span>
                       </button>
@@ -1586,17 +1586,11 @@ const launchScript = function($) {
         else if (objUpAuto.status) {
             objUpAuto.stop();
         }
-        let notLoop = 0;
-        let intTime = setInterval(function () {
-            if (++notLoop >= 20) {
-                clearInterval(intTime);
-                return;
+        const check = function() {
+            return typeof bootstrap !== 'undefined' && typeof bootstrap.Popover === 'function';
             }
-            if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') {
-                return;
-            }
-            else clearInterval(intTime);
-            if (debug) console.log('Loaded popover updateEpisodes');
+        waitPresent(check, () => {
+            if (Base.debug) console.log('Loaded popover updateEpisodes');
             $('#updateEpisodeList .updateElement').popover({
                 container: $('#updateEpisodeList'),
                 // delay: { "show": 500, "hide": 100 },
@@ -1631,24 +1625,49 @@ const launchScript = function($) {
             // Et on supprime les listeners de la popup
             $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
                 $('#episodes .slide__image').popover('enable');
-                $('.optionsUpAuto .badge').css('cursor', 'initial').off('click');
+                $('.optionsUpAuto .badge').off('click');
                 $('#updateEpisodeList button.close').off('click');
                 $('#optionsUpdateEpisodeList button.btn-primary').off('click');
             });
             $('#updateEpisodeList .updateElement').on('shown.bs.popover', function () {
                 $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
                 $('#updateEpisodeList .popover-body').html(contentUp(objUpAuto));
-                if (objUpAuto.status) {
-                    $('.optionsUpAuto .badge').css('cursor', 'pointer').click(e => {
+                $('.optionsUpAuto .badge').click(e => {
                         e.stopPropagation();
                         e.preventDefault();
                         const $badge = $(e.currentTarget);
                         if ($badge.hasClass('badge-success')) {
                             // On arrête la tâche d'update auto
                             objUpAuto.stop();
+                        $badge
+                            .removeClass('badge-success')
+                            .addClass('badge-secondary')
+                            .text('not running')
+                            .attr('title', 'Activer la tâche de mise à jour auto');
+                    } else {
+                        if (!objUpAuto.show.in_account) {
+                            if (Base.debug) console.log('La série n\'est pas sur le compte du membre');
+                            return;
+                        } else if (objUpAuto.interval <= 0) {
+                            if (Base.debug) console.log('Le paramètre interval est <= 0');
+                            $('.popover button[type="submit"]').before('<div class="form-group"><p class="alert alert-warning">Veuillez renseigner les paramètres de mise à jour.</p></div>');
+                            return;
+                        } else if (objUpAuto.interval > 0) {
+                            $('.optionsUpAuto .alert').parent().remove();
                         }
+                        objUpAuto.auto = true;
+                        const $checkAuto = $('#updateEpisodeListAuto');
+                        if (!$checkAuto.is(':checked')) {
+                            $checkAuto.attr('checked', 'true');
+                        }
+                        objUpAuto.launch();
+                        $badge
+                            .removeClass('badge-secondary')
+                            .addClass('badge-success')
+                            .text('running')
+                            .attr('title', 'Arrêter la tâche en cours');
+                    }
                     });
-                }
                 $('#updateEpisodeList button.close').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -1661,12 +1680,12 @@ const launchScript = function($) {
                         intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
                     if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
                     if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
-                    if (debug) console.log('updateEpisodeList submit', objUpAuto);
+                    if (Base.debug) console.log('updateEpisodeList submit', objUpAuto);
                     objUpAuto.launch();
                     $('#updateEpisodeList .updateElement').popover('hide');
                 });
             });
-        }, 500);
+        }, 10, 500);
     }
     /**
      * Ajoute un bouton Vu sur la vignette d'un épisode
@@ -1681,16 +1700,16 @@ const launchScript = function($) {
         }
         const seasons = $('#seasons .slide_flex');
         let vignettes = getVignettes();
-        if (debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
+        if (Base.debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
         /*
-         * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE,
+         * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE, ARCHIVE et UNARCHIVE
          * pour mettre à jour l'update auto des épisodes
          */
-        res.addListener(EventTypes.UPDATE, function (show) {
-            if (debug) console.log('Listener called');
+        const updateAuto = function(event, show) {
+            if (Base.debug) console.log('Listener called');
+            let objUpAuto = UpdateAuto.getInstance(show);
             // Si il n'y a plus d'épisodes à regarder sur la série
-            if (show.user.remaining <= 0) {
-                let objUpAuto = UpdateAuto.getInstance(show);
+            if (event.detail.name === EventTypes.UPDATE && show.user.remaining <= 0) {
                 // Si la série est terminée
                 if (show.isEnded()) {
                     // On supprime la série des options d'update
@@ -1700,39 +1719,43 @@ const launchScript = function($) {
                     // On désactive la mise à jour auto
                     objUpAuto.stop();
                 }
+            } else if (event.detail.name === EventTypes.ARCHIVE) {
+                objUpAuto.stop();
+            } else if (event.detail.name === EventTypes.UNARCHIVE) {
+                objUpAuto.launch();
             }
-        });
+        };
+        res.addListener(EventTypes.UPDATE, updateAuto);
+        res.addListener(EventTypes.ARCHIVE, updateAuto);
+        res.addListener(EventTypes.UNARCHIVE, updateAuto);
         // On ajoute les cases à cocher sur les vignettes courantes
         addCheckSeen();
         // Ajoute les cases à cocher sur les vignettes des épisodes
         function addCheckSeen() {
             vignettes = getVignettes();
             const seasonNum = parseInt($('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(), 10);
+            if (Base.debug) console.log('currentSeason: ', res.currentSeason);
+            if (res.currentSeason === undefined || res.currentSeason.number !== seasonNum) {
             res.setCurrentSeason(seasonNum);
-            let promise = res.currentSeason.fetchEpisodes(); // Contient la promesse de récupérer les épisodes de la saison courante
-            // On ajoute le CSS et le Javascript pour les popup
-            if ($('#csspopover').length === 0 && $('#jsbootstrap').length === 0) {
-                addScriptAndLink(['popover', 'bootstrap']);
             }
-            /**
-             * Retourne la position de la popup par rapport à l'image du similar
-             * @param  {Object} _tip Unknown
-             * @param  {Object} elt Le DOM Element du lien du similar
-             * @return {String}     La position de la popup
-             */
-            let funcPlacement = (_tip, elt) => {
-                //if (debug) console.log('funcPlacement', tip, $(tip).width());
-                let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
-                return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
-            };
+            let promise = res.currentSeason.fetchEpisodes(); // Contient la promesse de récupérer les épisodes de la saison courante
+
             // On ajoute la description des épisodes dans des Popup
             promise.then(() => {
-                let intTime = setInterval(function () {
-                    if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') {
-                        return;
-                    }
-                    else clearInterval(intTime);
-                    if (debug) console.log('Add synopsis episode');
+            // On ajoute le CSS et le Javascript pour les popup
+                addScriptAndLink(['popover', 'bootstrap'], function () {
+                    if (Base.debug) console.log('Add synopsis episode');
+                    /**
+                     * Retourne la position de la popup par rapport à l'image du similar
+                     * @param  {Object} _tip Unknown
+                     * @param  {Object} elt Le DOM Element du lien du similar
+                     * @return {String}     La position de la popup
+                     */
+                    let funcPlacement = (_tip, elt) => {
+                        //if (Base.debug) console.log('funcPlacement', tip, $(tip).width());
+                        let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
+                        return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
+                    };
                     let $vignette, objEpisode, description;
                     for (let v = 0; v < vignettes.length; v++) {
                         $vignette = $(vignettes.get(v));
@@ -1761,8 +1784,10 @@ const launchScript = function($) {
                             boundary: 'window'
                         });
                     }
-                    $('#episodes .slide__image').on('shown.bs.popover', function () {
-                        const $checkSeen = $(this).find('.checkSeen'), episodeId = parseInt($checkSeen.data('id'), 10), episode = res.currentSeason.getEpisode(episodeId);
+                    $('#episodes .slide__image').on('inserted.bs.popover', function () {
+                        const $checkSeen = $(this).find('.checkSeen'),
+                              episodeId = parseInt($checkSeen.data('id'), 10),
+                              episode = res.currentSeason.getEpisode(episodeId);
                         if (!episode) {
                             console.warn('episode title popup', episodeId, res);
                         }
@@ -1772,9 +1797,10 @@ const launchScript = function($) {
                     $('#episodes .checkSeen').click(function (e) {
                         e.stopPropagation();
                         e.preventDefault();
-                        const $elt = $(e.currentTarget), episodeId = parseInt($elt.data('id'), 10), episode = res.currentSeason.getEpisode(episodeId);
-                        if (debug) console.log('click checkSeen', episode, res);
-                        episode.toggleSpinner(true);
+                        const $elt = $(e.currentTarget),
+                              episodeId = parseInt($elt.data('id'), 10),
+                              episode = res.currentSeason.getEpisode(episodeId);
+                        if (Base.debug) console.log('click checkSeen', episode, res);
                         // On vérifie si l'épisode a déjà été vu
                         if ($elt.hasClass('seen')) {
                             // On demande à l'enlever des épisodes vus
@@ -1808,7 +1834,7 @@ const launchScript = function($) {
                                 .popover('show');
                         }
                     );
-                }, 500);
+            });
             });
             // Ajouter un bouton de mise à jour des épisodes de la saison courante
             if ($('#updateEpisodeList').length < 1) {
@@ -1826,7 +1852,7 @@ const launchScript = function($) {
                 $('.updateEpisodes').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (debug) console.groupCollapsed('updateEpisodes');
+                    if (Base.debug) console.groupCollapsed('updateEpisodes');
                     // On ferme la popup des options d'update auto
                     $('#updateEpisodeList .updateElement').popover('hide');
                     const self = $(e.currentTarget);
@@ -1834,7 +1860,7 @@ const launchScript = function($) {
                     // Le numéro de la saison courante
                     // const seasonNum = $('#seasons .slide_flex.slide--current .slide__title').text().match(/\d+/).shift();
                     res.currentSeason.fetchEpisodes().then(() => {
-                        // if (debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
+                        // if (Base.debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
                         vignettes = getVignettes();
                         // len = getNbVignettes();
                         let $vignette, objEpisode, changed = false, retour;
@@ -1842,7 +1868,7 @@ const launchScript = function($) {
                             $vignette = $(vignettes.get(v)); // DOMElement jQuery de l'image de l'épisode
                             objEpisode = res.currentSeason.episodes[v];
                             objEpisode.elt = $vignette.parents('.slide_flex'); // Données de l'épisode
-                            //if (debug) console.log('Episode ID', getEpisodeId($vignette), episode.id);
+                            //if (Base.debug) console.log('Episode ID', getEpisodeId($vignette), episode.id);
                             retour = objEpisode.updateCheckSeen(v);
                             if (!changed) {
                                 changed = retour;
@@ -1850,7 +1876,7 @@ const launchScript = function($) {
                         }
                         // On met à jour les éléments, seulement si il y a eu des modifications
                         if (changed) {
-                            if (debug) console.log('updateEpisodes changed true', res);
+                            if (Base.debug) console.log('updateEpisodes changed true', res);
                             // Si il reste des épisodes à voir, on scroll
                             if ($('#episodes .slide_flex.slide--notSeen').length > 0) {
                                 $('#episodes .slides_flex').get(0).scrollLeft =
@@ -1859,38 +1885,40 @@ const launchScript = function($) {
                             res.update(true).then(() => {
                                 self.addClass('finish');
                                 fnLazy.init(); // On affiche les images lazyload
-                                if (debug) console.groupEnd(); // On clos le groupe de console
+                                if (Base.debug) console.groupEnd(); // On clos le groupe de console
                             }, err => {
                                 notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
                                 self.addClass('finish');
                                 console.warn('Show update error', err);
-                                if (debug) console.groupEnd(); // On clos le groupe de console
+                                if (Base.debug) console.groupEnd(); // On clos le groupe de console
                             });
                         }
                         else {
-                            if (debug) console.log('updateEpisodes no changes');
+                            if (Base.debug) console.log('updateEpisodes no changes');
                             self.addClass('finish'); // On arrete l'animation de mise à jour
-                            if (debug) console.groupEnd(); // On clos le groupe de console
+                            if (Base.debug) console.groupEnd(); // On clos le groupe de console
                         }
                     }, (err) => {
                         notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                         self.addClass('finish');
-                        if (debug) console.groupEnd();
+                        if (Base.debug) console.groupEnd();
                     });
                 });
             }
         }
         // On ajoute un event sur le changement de saison
         seasons.click(() => {
-            if (debug) console.groupCollapsed('season click');
+            if (Base.debug) console.groupCollapsed('season click');
             $('#episodes .checkSeen').off('click');
+            $('#episodes .slide__image').off('inserted.bs.popover');
+            $('#episodes .slide__image').popover('dispose');
             // On attend que les vignettes de la saison choisie soient chargées
             waitSeasonsAndEpisodesLoaded(() => {
                 addCheckSeen();
-                if (debug) console.groupEnd();
+                if (Base.debug) console.groupEnd();
             }, () => {
                 console.error('Season click Timeout');
-                if (debug) console.groupEnd();
+                if (Base.debug) console.groupEnd();
             });
         });
         // On active les menus dropdown
@@ -1911,7 +1939,7 @@ const launchScript = function($) {
         if ($elt.hasClass('usbs')) return;
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (!userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
-        if (debug) console.log('replaceSuggestSimilarHandler');
+        if (Base.debug) console.log('replaceSuggestSimilarHandler');
         const type = getApiResource(url.split('/')[1]), // Le type de ressource
         resId = getResourceId(); // Identifiant de la ressource
         // Gestion d'ajout d'un similar
@@ -1984,7 +2012,7 @@ const launchScript = function($) {
                                 break;
                             /* Touche Entrée */
                             case 13:
-                                if (debug) console.log('current_item', current_item);
+                                if (Base.debug) console.log('current_item', current_item);
                                 if (current_item.length !== 0) {
                                     autocompleteSimilar(current_item.find("span"));
                                 }
@@ -2076,13 +2104,13 @@ const launchScript = function($) {
     function similarsViewed(res) {
         // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
         if (!userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
-        if (debug) console.groupCollapsed('similarsViewed');
-        if (res instanceof Show && !res.in_account && $('#similars').length <= 0) {
+        if (Base.debug) console.groupCollapsed('similarsViewed');
+        if (res instanceof Media && $('#similars').length <= 0) {
             res.addListener(EventTypes.ADD, addSimilarsSection);
         }
         let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
         len = $similars.length; // Le nombre de similaires
-        if (debug) console.log('nb similars: %d', len, res.nbSimilars);
+        if (Base.debug) console.log('nb similars: %d', len, res.nbSimilars);
         // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
         if (len <= 0 || (len === 1 && $($similars.parent().get(0)).find('button').length === 1)) {
             $('.updateSimilars').addClass('finish');
@@ -2135,11 +2163,10 @@ const launchScript = function($) {
         }
         let objSimilars = [];
         res.fetchSimilars().then(function (res) {
-            let intTime = setInterval(function () {
-                if (typeof bootstrap === 'undefined' || typeof bootstrap.Popover !== 'function') {
-                    return;
-                }
-                else clearInterval(intTime);
+            const check = function() {
+                return typeof bootstrap !== 'undefined' && typeof bootstrap.Popover === 'function';
+            };
+            waitPresent(check, () => {
                 /**
                  * Retourne la position de la popup par rapport à l'image du similar
                  * @param  {Object}         _tip Unknown
@@ -2147,7 +2174,7 @@ const launchScript = function($) {
                  * @return {String}              La position de la popup
                  */
                 let funcPlacement = (_tip, elt) => {
-                    //if (debug) console.log('funcPlacement', tip, $(tip).width());
+                    //if (Base.debug) console.log('funcPlacement', tip, $(tip).width());
                     let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
                     return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                 };
@@ -2163,12 +2190,13 @@ const launchScript = function($) {
                     // On décode le titre du similar
                     similar.decodeTitle();
                     // On ajoute l'icone pour visualiser les data JSON du similar
-                    if (debug) {
+                    if (Base.debug) {
                         similar.wrench(dialog);
                     }
+                    $link.attr('data-placement', funcPlacement(null, $elt.get(0)));
                     similar
                         // On vérifie la présence de l'image du similar
-                        .checkImg()
+                        // .checkImg()
                         // On ajoute le bandeau viewed sur le similar
                         .addViewed()
                         // On ajoute le code HTML pour le rendu de la note
@@ -2179,7 +2207,6 @@ const launchScript = function($) {
                         delay: { "show": 250, "hide": 100 },
                         html: true,
                         content: ' ',
-                        placement: funcPlacement,
                         title: ' ',
                         trigger: 'hover',
                         fallbackPlacement: ['left', 'right']
@@ -2191,9 +2218,6 @@ const launchScript = function($) {
                           resId = parseInt($link.data('id'), 10),
                           type = $link.data('type'),
                           objSimilar = res.getSimilar(resId);
-                    if (debug && !objSimilar) console.log('resId[%d], type: %s',resId, type, objSimilar, res);
-                    $('.popover-header').html(objSimilar.getTitlePopup());
-                    $('.popover-body').html(objSimilar.getContentPopup());
                     // On gère les modifs sur les cases à cocher de l'état d'un film similar
                     if (type === MediaType.movie) {
                         $('.popover button.reset').click(e => {
@@ -2218,7 +2242,7 @@ const launchScript = function($) {
                             }
                                 objSimilar.changeState(-1).then(() => {
                                     const checked = $(e.currentTarget).siblings('input:checked');
-                                    // if (debug) console.log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
+                                    // if (Base.debug) console.log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
                                     checked.get(0).checked = false;
                                     checked.removeAttr('checked');
                                     // On supprime le bandeau Vu
@@ -2233,13 +2257,13 @@ const launchScript = function($) {
                             e.stopPropagation();
                             // e.preventDefault();
                             const $elt = $(e.currentTarget).parent().children('input:checked');
-                            if (debug) console.log('input.movie click - checked(%d)', $elt.length);
+                            if (Base.debug) console.log('input.movie click - checked(%d)', $elt.length);
                             if ($elt.length <= 0) {
                                 $elt.siblings('button').hide();
                                 return;
                             }
                             const state = parseInt($elt.val(), 10);
-                            if (debug) console.log('input.movie change: %d', state, $elt);
+                            if (Base.debug) console.log('input.movie change: %d', state, $elt);
                             objSimilar.changeState(state).then(similar => {
                                 if (state === MovieStatus.SEEN) {
                                     $elt.parents('a').prepend(`<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`);
@@ -2248,7 +2272,7 @@ const launchScript = function($) {
                                     $elt.parents('a').find('.bandViewed').remove();
                                 }
                                 $elt.siblings('button').show();
-                                if (debug) console.log('movie mustSee/seen OK', similar);
+                                if (Base.debug) console.log('movie mustSee/seen OK', similar);
                             }, err => {
                                 console.warn('movie mustSee/seen KO', err);
                             });
@@ -2268,16 +2292,25 @@ const launchScript = function($) {
                             });
                         });
                     }
+                })
+                .on('inserted.bs.popover', function() {
+                    const $link = $(this),
+                          resId = parseInt($link.data('id'), 10),
+                          objSimilar = res.getSimilar(resId);
+                    $('.popover-header').html(objSimilar.getTitlePopup());
+                    $('.popover-body').html(objSimilar.getContentPopup());
                     // On gère le placement de la Popover par rapport à l'image du similar
-                    let popover = $('.popover'), img = popover.siblings('img.js-lazy-image'), placement = $('.popover').attr('x-placement'), space = 0;
+                    const placement = $link.attr('data-placement');
                     if (placement == 'left') {
+                        const popover = $('.popover'),
+                              img = popover.siblings('img.js-lazy-image'),
                         space = popover.width() + (img.width() / 2) + 5;
                         popover.css('left', `-${space}px`);
                     }
                 });
                 $('.updateSimilars').addClass('finish');
                 console.groupEnd();
-            }, 500);
+            }, 10, 500);
         }, (err) => {
             notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
         });
@@ -2288,163 +2321,14 @@ const launchScript = function($) {
      * @param {Base} res La ressource média
      */
     function comments(res) {
+        // On charge le style pour l'affichage des commentaires
+        addScriptAndLink('comments');
         // On remplace les boutons des commentaires, pour supprimer les events
         [].forEach.call(document.querySelectorAll(".js-popinalert-comments"), function(el) {
             const cId = el.getAttribute('data-comment-id');
             $(el).replaceWith(`<button type="button" class="btn-reset js-popup-comments zIndex10" data-comment-id="${cId}"></button>`);
-            // if (debug) console.log('eventListener comment retiré');
+            // if (Base.debug) console.log('eventListener comment retiré');
         });
-        $('head').append(`
-            <style type="text/css">
-                .it_iv, .iv_ix {
-                    display: inline-block;
-                    position: relative;
-                    top: -1px;
-                    margin-left: 11px;
-                    vertical-align: middle;
-                }
-                .it_ix:hover .it_iv, .iv_iz:hover .iv_ix {
-                    opacity: 1;
-                    visiblity: visible;
-                }
-                .it_iz, .iv_i1 { display:none; }
-                .it_ix:hover .it_iz, .iv_iz:hover .iv_i1 { display: inline-block; }
-                .it_i1, .iv_i3 {
-                    display: flex;
-                    align-items: center;
-                    margin-top: -1px;
-                }
-                .comments {
-                    margin-bottom: 0px;
-                }
-                .comments .comment {
-                    animation: 2s ease 0s 1 normal forwards running backgroundFadeOut;
-                }
-                .comments .comment .comment-text {
-                    line-height: 15px;
-                    word-break: break-word;
-                }
-                .writing {
-                    border-top: 0px;
-                }
-                .writing textarea {
-                    overflow-x: hidden;
-                    overflow-wrap: break-word;
-                    width: 95%;
-                    display: inline;
-                }
-                .writing .sendComment {
-                    display: inline;
-                    transition: opacity 200ms ease 0s;
-                    vertical-align: middle;
-                }
-                .writing .mainTime {
-                    margin-top: 10px;
-                    margin-bottom: 0px;
-                }
-                .writing .mainTime .baliseSpoiler {
-                    cursor: pointer;
-                }
-                @media (max-width:330px) {
-                    .it_ix .media-left, .iv_iz .media-left { display: none; }
-                    .it_ix .media-body, .iv_iz .media-body { margin-left: 0;}
-                }
-                @media (max-width:424px) {
-                    .it_i3, .iv_i5 { margin-left: 20px; }
-                    .it_i1, .iv_i3 { flex-wrap: wrap; }
-                    .it_ix img, .iv_iz img {
-                            width: 24px;
-                            height: 24px;
-                        }
-                    .it_ix .stars, .iv_iz .stars { display: none; }
-                }
-                @media (min-width:425px) {
-                    .it_ix, .iv_iz { padding-right: 25px; }
-                    .it_i3, .iv_i5 { margin-left: 40px; }
-                    .it_i1, .iv_i3 {
-                        height: 24px;
-                        line-height: 24px;
-                    }
-                    .it_iv, .iv_ix {
-                        opacity: 0;
-                        visiblity: hidden;
-                    }
-                }
-                .popinWrapper .popin-content .title i.fa {
-                    cursor: pointer;
-                    margin-left: 5px;
-                    color: var(--default_color);
-                }
-                @keyframes backgroundFadeOut {
-                    0%  { background-color: rgba(193,225,250,.3) }
-                    80% { background-color: rgba(193,225,250,.3) }
-                    to  { background-color: transparent }
-                }
-                .gz_g1 { position:relative; }
-                .gz_g1 .form-control {
-                    padding-right: 30px;
-                    overflow: hidden;
-                }
-                .gz_g1 button {
-                    position: absolute;
-                    top: 8px;
-                    right: 10px;
-                    font-size: 0;
-                    width: 16px;
-                    height: 16px;
-                }
-                .gz_g1 button[disabled] { cursor: inherit }
-                .gz_g1 button svg { position: relative; top: -1px; }
-                .er_et {
-                    width: 100%;
-                    height: 185px;
-                    background-image: linear-gradient(-90deg, #f2f3f6, #edeef1 50%, #f2f3f6);
-                    background-size: 600px 104px;
-                    animation-name: er_ev;
-                    animation-duration: 1.5s;
-                    animation-iteration-count: infinite;
-                    animation-timing-function: linear;
-                    animation-fill-mode: forwards;
-                    transform: translateZ(0);
-                    clip-path: url("#placeholder");
-                    -webkit-clip-path: url("#placeholder")
-                }
-                .er_ex+.er_ex { margin-top: 9px; padding-top: 10px }
-                .er_ez+.er_ez { border-top: 1px var(--gray_light) solid}
-                @keyframes er_ev {
-                    0% { background-position: -600px 0 }
-                    to { background-position: 600px 0 }
-                }
-                .ef_eh {
-                    display: inline-block;
-                    position: relative;
-                    vertical-align: middle;
-                }
-                .ef_eh:after {
-                    content: "";
-                    z-index: 1;
-                    position: absolute;
-                    top: 50%;
-                    right: -11px;
-                    width: 0;
-                    height: 0;
-                    border-top: 3px solid currentColor;
-                    border-right: 3px solid transparent;
-                    border-left: 3px solid transparent;
-                }
-                @media (max-width:420px) {
-                    .ef_ej { margin-bottom: 5px; }
-                }
-                @media (min-width:421px) {
-                    .ef_ej {
-                        z-index: 1;
-                        position: absolute;
-                        top: 17px;
-                        left: 128px;
-                    }
-                }
-            </style>`
-        );
         const eventComments = () => {
         const $comments = $('#comments .slide__comment .js-popup-comments');
         $comments.off('click').click(e => {
@@ -2479,6 +2363,7 @@ const launchScript = function($) {
         addScriptAndLink('moment', () => {
             addScriptAndLink('localefr', eventComments);
         });
+        res.comments.addListener(EventTypes.ADD, eventComments);
     }
     /**
      *
@@ -2487,11 +2372,62 @@ const launchScript = function($) {
     function replaceVoteFn(res) {
         const $blockMeta = $('.blockInformations__metadatas'),
               $btnVote = $blockMeta.find('button');
+        const displayNotesInPopup = function() {
+            if (Base.debug) console.log('callback after load popover and bootstrap');
+            res.removeListener(EventTypes.NOTE, displayNotesInPopup);
+            const popupVote = function() {
+                // On met en forme le nombre de votes
+                const total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(res.objNote.total);
+                return `
+                    <div>
+                        <p>Nombre de votants: <strong>${total}</strong></p>
+                        <div class="render-stars mean">
+                            <p>Note moyenne: <strong>${res.objNote.mean.toFixed(2)}</strong></p>
+                            <span class="stars">
+                                ${Note.renderStars(res.objNote.mean)}
+                            </span>
+                        </div>
+                        <div class="render-stars user">
+                            <p>Votre note</p>
+                            <span class="stars">
+                                ${Note.renderStars(res.objNote.user, 'blue')}
+                            </span>
+                        </div>
+                    </div>`;
+            };
+            $btnVote.popover({
+                container: $btnVote,
+                delay: { "show": 500, "hide": 100 },
+                html: true,
+                content: popupVote,
+                placement: 'bottom',
+                title: 'Notes du média',
+                trigger: 'hover',
+                // boundary: $btnVote.get(0)
+            });
+            $btnVote.on('inserted.bs.popover', function () {
+                const positionsVote = $btnVote.position();
+                $('.popover')
+                    .css('top', positionsVote.top + 30)
+                    .css('left', positionsVote.left)
+                    .css('cursor', 'initial')
+                    .click((e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                    });
+            });
+        }
         $btnVote.removeAttr('onclick').click(e => {
             e.stopPropagation();
             e.preventDefault();
-            res.objNote.createPopupForVote();
+            res.objNote.createPopupForVote((note) => {
+                if (Base.debug) console.log('createPopupForVote callback', note);
         });
+            res.addListener(EventTypes.NOTE, displayNotesInPopup);
+        });
+        if (res.objNote.user > 0) {
+            addScriptAndLink(['popover', 'bootstrap'], displayNotesInPopup);
+    }
     }
     /**
      * Redéfinit l'event click sur le bouton Vu sur la page d'un film
@@ -2499,7 +2435,7 @@ const launchScript = function($) {
      */
     function observeBtnVu(objRes) {
         const $btnVu = $(`.blockInformations__action .label:contains("${trans('film.button.watched.label')}")`).siblings('button');
-        if (debug) console.log('observeBtnVu', $btnVu);
+        if (Base.debug) console.log('observeBtnVu', $btnVu);
         /**
          * Met à jour le bouton Vu
          * @param {number} state L'état de visionnage du film (TOSEE or SEEN)
@@ -2514,7 +2450,7 @@ const launchScript = function($) {
         $btnVu.off('click').click(e => {
             e.stopPropagation();
             e.preventDefault();
-            if (debug) console.log('observeBtnVu click');
+            if (Base.debug) console.log('observeBtnVu click');
 
             // _this.markAsView.blur();
             if (!userIdentified()) {
@@ -2543,11 +2479,11 @@ const launchScript = function($) {
         let $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer'), len = $containersEpisode.length, currentShowIds = {};
         // En attente du chargement des épisodes
         if (len > 0) {
-            if (debug) console.log('updateAgenda - nb containers: %d', len);
+            if (Base.debug) console.log('updateAgenda - nb containers: %d', len);
             clearInterval(timerUA);
         }
         else {
-            if (debug) console.log('updateAgenda en attente');
+            if (Base.debug) console.log('updateAgenda en attente');
             return;
         }
         const params = {
@@ -2565,7 +2501,7 @@ const launchScript = function($) {
                     .data('showId', data.shows[t].id)
                     .data('code', data.shows[t].unseen[0].code.toLowerCase());
                 currentShowIds[data.shows[t].id] = { code: data.shows[t].unseen[0].code.toLowerCase() };
-                //if (debug) console.log('title: %s - code: %s', title, episode);
+                //if (Base.debug) console.log('title: %s - code: %s', title, episode);
             }
         });
         if ($('.updateElements').length === 0) {
@@ -2582,33 +2518,29 @@ const launchScript = function($) {
             $('.updateEpisodes').click((e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (debug) console.groupCollapsed('Agenda updateEpisodes');
+                if (Base.debug) console.groupCollapsed('Agenda updateEpisodes');
                 $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer');
                 const self = $(e.currentTarget), len = $containersEpisode.length;
                 self.removeClass('finish');
-                let countIntTime = 0;
-                Media.callApi('GET', 'episodes', 'list', { limit: 1, order: 'smart', showsLimit: len, released: 1, specials: false, subtitles: 'all' })
+                const params = {
+                    limit: 1,
+                    order: 'smart',
+                    showsLimit: len,
+                    released: 1,
+                    specials: false,
+                    subtitles: 'all'
+                };
+                Media.callApi('GET', 'episodes', 'list', params)
                     .then((data) => {
-                    let intTime = setInterval(function () {
-                        if (++countIntTime > 60) {
-                            clearInterval(intTime);
-                            self.addClass('finish');
-                            notification('Erreur de mise à jour des épisodes', 'updateAgenda: updateEpisodes.click interval time over');
-                            if (debug) console.groupEnd();
-                            return;
-                        }
-                        if (typeof moment !== 'function') {
-                            return;
-                        }
-                        else clearInterval(intTime);
+                    waitPresent(() => { return typeof moment === 'function'}, () => {
                         // moment.locale('fr');
                         let newShowIds = {}, show;
-                        if (debug) console.log('updateAgenda updateEpisodes', data);
+                        if (Base.debug) console.log('updateAgenda updateEpisodes', data);
                         for (let s = 0; s < data.shows.length; s++) {
                             show = data.shows[s];
                             newShowIds[show.id] = { code: show.unseen[0].code.toLowerCase() };
                             if (currentShowIds[show.id] === undefined) {
-                                if (debug) console.log('Une nouvelle série est arrivée', show);
+                                if (Base.debug) console.log('Une nouvelle série est arrivée', show);
                                 // Il s'agit d'une nouvelle série
                                 // TODO Ajouter un nouveau container
                                 let newContainer = $(buildContainer(show.unseen[0]));
@@ -2616,7 +2548,7 @@ const launchScript = function($) {
                                 $($containersEpisode.get(s)).parent().after(newContainer);
                             }
                         }
-                        if (debug) console.log('Iteration principale');
+                        if (Base.debug) console.log('Iteration principale');
                         let container, unseen;
                         // Itération principale sur les containers
                         for (let e = 0; e < len; e++) {
@@ -2624,7 +2556,7 @@ const launchScript = function($) {
                             unseen = null;
                             // Si la serie n'est plus dans la liste
                             if (newShowIds[container.data('showId')] === undefined) {
-                                if (debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
+                                if (Base.debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
                                 container.parent().remove();
                                 continue;
                             }
@@ -2640,7 +2572,7 @@ const launchScript = function($) {
                                 }
                             }
                             if (unseen && container.data('code') !== unseen.code.toLowerCase()) {
-                                if (debug) console.log('Episode à mettre à jour', unseen);
+                                if (Base.debug) console.log('Episode à mettre à jour', unseen);
                                 // Mettre à jour l'épisode
                                 let mainLink = $('a.mainLink', container), text = unseen.code + ' - ' + unseen.title;
                                 // On met à jour le titre et le lien de l'épisode
@@ -2662,11 +2594,11 @@ const launchScript = function($) {
                         }
                         fnLazy.init();
                         self.addClass('finish');
-                        if (debug) console.groupEnd();
-                    }, 500);
+                        if (Base.debug) console.groupEnd();
+                    }, 30, 500);
                 }, (err) => {
                     notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
-                    if (debug) console.groupEnd();
+                    if (Base.debug) console.groupEnd();
                 });
             });
         }
@@ -2892,7 +2824,148 @@ const launchScript = function($) {
             });
         });
     }
+    /**
+     * Ajoute des popups pour visualiser les fiches des séries
+     * et des films lors du survol des liens dans les articles
+     */
+    function addPopupOnLinks() {
+        addScriptAndLink(['popover', 'bootstrap', 'moment', 'localefr'], () => {
+            waitDomPresent('.container[data-section="article"] .blogArticleContent a', () => {
+                const $article = $('.container[data-section="article"] .blogArticleContent');
+                let $links = $article.find('a');
+                if (Base.debug) console.log('links(%d) before filter', $links.length);
+                $links = $links.filter(function() {
+                    // console.log('filter', this);
+                    return /^\/(serie|film)\//.test(this.pathname);
+                });
+                if (Base.debug) console.log('links(%d) after filter', $links.length);
+                let popups = {};
+                $('head').append(`
+                    <style type="text/css">
+                        .popover { min-width: 350px !important; }
+                        .popover .popover-header { margin-top: 0; display: block; }
+                        .popover .popover-body { padding-top: 0; }
+                        .popover .popover-body .media .mainTime { color: #212529; }
+                        .popover .popover-body .media p { font-size: 13px; }
+                    </style>
+                `);
+                const createMedia = function(link) {
+                    const url = link.href.substring(link.href.lastIndexOf('/') + 1)
+                    if (/^\/serie\//.test(link.pathname)) {
+                        return Show.fetchByUrl(url).then(show => {
+                            return {
+                                title: '<i class="fa fa-film" aria-hidden="true"></i> Détails de la série',
+                                html: `
+                                <div class="media">
+                                    <div class="media-left">
+                                        <img src="${show.images.poster}" alt="${show.title}" width="119" height="174">
+                                    </div>
+                                    <div class="media-body">
+                                        <div class="blogThumbnailShowTitle mainLink">
+                                            ${show.title} ${show.in_account ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                        </div>
+                                        <div class="display">
+                                            <div>${show.seasons.length} saisons - ${show.nbEpisodes} épisodes</div>
+                                            <div>Statut: ${show.isEnded() ? 'Terminé' : 'En cours'}</div>
+                                            <time class="mainTime" datetime="${show.creation}">${show.creation}</time>
+                                            <div class="stars" title="${show.objNote.total} votes: ${show.objNote.mean.toFixed(2)} / 5">${Note.renderStars(show.objNote.mean)}</div>
+                                        </div>
+                                        <div>${show.description.substring(0, 150)}...</div>
+                                    </div>
+                                </div>`
 };
+                        });
+                    } else {
+                        // Récupérer l'ID du film
+                        const movieId = url.match(/^(\d+)/)[1];
+                        return Movie.fetch(movieId, true).then(movie => {
+                            return {
+                                title: '<i class="fa fa-film" aria-hidden="true"></i> Détails du film',
+                                html: `
+                                <div class="media">
+                                    <div class="media-left">
+                                        <img src="${movie.poster}" alt="${movie.title}" width="119" height="174">
+                                    </div>
+                                    <div class="media-body">
+                                        <div class="blogThumbnailShowTitle mainLink">
+                                            ${movie.title} ${movie.user.status === 1 ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                        </div>
+                                        <div class="display">
+                                            <time class="mainTime" datetime="${moment(movie.release_date).format('YYYY-MM-DD')}">${moment(movie.release_date).format('DD MMMM YYYY')}</time>
+                                            <div class="stars" title="${movie.objNote.total} votes: ${movie.objNote.mean.toFixed(2)} / 5">${Note.renderStars(movie.objNote.mean)}</div>
+                                        </div>
+                                        <div>${movie.description.substring(0, 150)}...</div>
+                                    </div>
+                                </div>`
+                            };
+                        });
+                    }
+                }
+                const addPopup = (anchor) => {
+                    if (Base.debug) console.log('Popup created', anchor.text());
+                    let key = anchor.text().toLowerCase().trim().replace(/[^0-9a-z]/g, '');
+                    if (popups[key] == undefined) {
+                        popups[key] = createMedia(anchor.get(0));
+                    }
+                    if (popups[key] instanceof Promise) {
+                        popups[key].then(data => {
+                            anchor.popover({
+                                container: anchor,
+                                delay: { "show": 500, "hide": 100 },
+                                html: true,
+                                content: data.html,
+                                placement: 'bottom',
+                                title: data.title,
+                                trigger: 'hover'
+                            });
+                            popups[key] = data;
+                        });
+                    } else {
+                        anchor.popover({
+                            container: anchor,
+                            delay: { "show": 500, "hide": 100 },
+                            html: true,
+                            content: popups[key].html,
+                            placement: 'bottom',
+                            title: popups[key].title,
+                            trigger: 'hover'
+                        });
+                    }
+                    anchor.on('inserted.bs.popover', function () {
+                        const positions = anchor.position();
+                        $('.popover')
+                            .css('top', positions.top + 30)
+                            .css('left', positions.left)
+                            .css('cursor', 'initial')
+                            .click((e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            });
+                    });
+                }
+                let $link;
+                for (let l = 0; l < $links.length; l++) {
+                    $link = $($links.get(l));
+                    addPopup($link);
+                }
+            }, 10, 500);
+        });
+    }
+};
+/*
+API: /timeline
+types: [
+    'film_del',
+    'film_add',
+    'del_serie',
+    'add_serie',
+    'markas', // Marquer un épisode
+    'archive',
+    'badge',
+    'comment',
+    'forum'
+]
+*/
 
 const now = new Date().getTime();
 let loop = 0;
@@ -2902,7 +2975,8 @@ let timerLaunch = setInterval(function() {
         console.warn('Le UserScript BetaSeries n\'a pas pu être lancé, car il manque jQuery');
         GM_notification({
             title: "Erreur Timeout UserScript BS",
-            text: "Le userscript n'a pas pu être chargé, car jQuery n'est pas présent. Rechargez la page SVP"
+            text: "Le userscript n'a pas pu être chargé, car jQuery n'est pas présent. Rechargez la page SVP",
+            timeout: 30000
         });
         return;
     }
@@ -2915,7 +2989,8 @@ let timerLaunch = setInterval(function() {
         }, () => launchScript(jQuery), (oError) => {
             GM_notification({
                 title: "Erreur chargement UserScript BS",
-                text: "Le userscript n'a pas pu être chargé, rechargez la page SVP"
+                text: "Le userscript n'a pas pu être chargé, rechargez la page SVP",
+                timeout: 30000
             });
             throw new URIError("The script " + oError.target.src + " didn't load correctly.");
         }
