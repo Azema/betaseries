@@ -1,9 +1,7 @@
 import {Base, Obj, HTTP_VERBS, MediaType, EventTypes} from "./Base";
-import {DataTypesCache} from "./Cache";
 import { implAddNote } from "./Note";
-import {Show} from "./Show";
 import { Season } from "./Season";
-import {Subtitle} from "./Subtitle";
+import {Subtitle, Subtitles} from "./Subtitle";
 
 declare var PopupAlert: any;
 
@@ -82,17 +80,13 @@ export class Episode extends Base implements implAddNote {
      */
     seen_total: number;
     /**
-     * @type {Show} L'objet Show contenant l'épisode
-     */
-    show: Show;
-    /**
      * @type {boolean} Indique si il s'agit d'un épisode spécial
      */
     special: boolean;
     /**
      * @type {Array<Subtitle>} Tableau des sous-titres dispo sur BS
      */
-    subtitles: Array<Subtitle>;
+    subtitles: Subtitles;
     /**
      * @type {number} Identifiant de l'épisode sur thetvdb.com
      */
@@ -113,13 +107,11 @@ export class Episode extends Base implements implAddNote {
     /**
      * Constructeur de la classe Episode
      * @param   {Obj}       data    Les données provenant de l'API
-     * @param   {Show}      show    L'objet Show
      * @param   {Season}    season  L'objet Season contenant l'épisode
      * @returns {Episode}
      */
-    constructor(data: any, show: Show, season: Season) {
+    constructor(data: any, season: Season) {
         super(data);
-        this.show = show;
         this._season = season;
         return this.fill(data);
     }
@@ -140,12 +132,7 @@ export class Episode extends Base implements implAddNote {
         this.releasesSvod = data.releasesSvod;
         this.seen_total = (data.seen_total !== null) ? parseInt(data.seen_total, 10) : 0;
         this.special = data.special === 1 ? true : false;
-        this.subtitles = new Array();
-        if (data.subtitles !== undefined) {
-            for (let s = 0; s < data.subtitles.length; s++) {
-                this.subtitles.push(new Subtitle(data.subtitles[s]));
-            }
-        }
+        this.subtitles = new Subtitles(data.subtitles || []);
         this.thetvdb_id = parseInt(data.thetvdb_id, 10);
         this.watched_by = data.watched_by;
         this.writers = data.writers;
@@ -244,6 +231,20 @@ export class Episode extends Base implements implAddNote {
         return `<span style="color: var(--link_color);">Synopsis épisode ${this.code}</span>`;
     }
     /**
+     * Définit le film, sur le compte du membre connecté, comme "vu"
+     * @returns {void}
+     */
+    markAsView(): void {
+        this.updateStatus('seen', HTTP_VERBS.POST);
+    }
+    /**
+     * Définit le film, sur le compte du membre connecté, comme "non vu"
+     * @returns {void}
+     */
+    markAsUnview(): void {
+        this.updateStatus('unseen', HTTP_VERBS.DELETE);
+    }
+    /**
      * Modifie le statut d'un épisode sur l'API
      * @param  {String} status    Le nouveau statut de l'épisode
      * @param  {String} method    Verbe HTTP utilisé pour la requête à l'API
@@ -254,6 +255,7 @@ export class Episode extends Base implements implAddNote {
         const pos = this.elt.find('.checkSeen').data('pos');
         let promise = new Promise(resolve => { resolve(false); });
         let args = {id: this.id, bulk: true};
+        this.toggleSpinner(true);
 
         if (method === HTTP_VERBS.POST) {
             let createPromise = () => {
@@ -289,14 +291,10 @@ export class Episode extends Base implements implAddNote {
             Base.callApi(method, 'episodes', 'watched', args).then((data: Obj) =>
             {
                 if (Base.debug) console.log('updateStatus %s episodes/watched', method, data);
-                if (! (_this.show instanceof Show) && Base.cache.has(DataTypesCache.shows, data.show.id)) {
-                    _this.show = Base.cache.get(DataTypesCache.shows, data.show.id);
-                }
                 // Si un épisode est vu et que la série n'a pas été ajoutée
                 // au compte du membre connecté
-                if (! _this.show.in_account && data.episode.show.in_account) {
-                    _this.show.in_account = true;
-                    _this.show.save();
+                if (! _this._season.showInAccount() && data.episode.show.in_account) {
+                    _this._season.addShowToAccount();
                 }
                 // On met à jour l'objet Episode
                 if (method === HTTP_VERBS.POST && response && pos) {
@@ -319,13 +317,21 @@ export class Episode extends Base implements implAddNote {
                     .fill(data.episode)
                     .updateRender(status, true)
                     ._callListeners(EventTypes.UPDATE)
-                    .save();
+                    ._season.updateShow(() => {
+                        _this.toggleSpinner(false);
+                    });
             })
             .catch(err => {
                 if (Base.debug) console.error('updateStatus error %s', err);
                 if (err && err == 'changeStatus') {
                     if (Base.debug) console.log('updateStatus error %s changeStatus', method);
                     _this.updateRender(status);
+                    if (status === 'seen') {
+                        _this.user.seen = true;
+                    } else {
+                        _this.user.seen = false;
+                    }
+                    _this.toggleSpinner(false);
                 } else {
                     _this.toggleSpinner(false);
                     Base.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
@@ -340,10 +346,7 @@ export class Episode extends Base implements implAddNote {
      * @return {Episode}
      */
     updateRender(newStatus: string, update: boolean = true): Episode {
-        const _this: Episode = this;
         const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
-        const lenEpisodes: number = _this._season.episodes.length;
-        const lenNotSpecial: number = lenEpisodes - _this._season.getNbEpisodesSpecial();
         if (Base.debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
         if (newStatus === 'seen') {
             $elt.css('background', ''); // On ajoute le check dans la case à cocher
@@ -352,42 +355,6 @@ export class Episode extends Base implements implAddNote {
             // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
             $elt.parents('div.slide__image').first().find('img').removeAttr('style');
             $elt.parents('div.slide_flex').first().removeClass('slide--notSeen');
-
-            const moveSeason = function() {
-                const slideCurrent: JQuery<HTMLElement> = jQuery('#seasons div.slide--current');
-                // On check la saison
-                slideCurrent.find('.slide__image').prepend('<div class="checkSeen"></div>');
-                slideCurrent
-                    .removeClass('slide--notSeen')
-                    .addClass('slide--seen');
-                if (Base.debug) console.log('Tous les épisodes de la saison ont été vus', slideCurrent);
-                // Si il y a une saison suivante, on la sélectionne
-                if (slideCurrent.next().length > 0) {
-                    if (Base.debug) console.log('Il y a une autre saison');
-                    slideCurrent.next().trigger('click');
-                    let seasonNumber: number = _this.show.currentSeason.number + 1;
-                    _this.show.setCurrentSeason(seasonNumber);
-                    slideCurrent.removeClass('slide--current');
-                }
-            };
-            const lenSeen: number = _this._season.getNbEpisodesSeen();
-            if (Base.debug) console.log('Episode.updateRender', {lenEpisodes: lenEpisodes, lenNotSpecial: lenNotSpecial, lenSeen: lenSeen});
-            // Si tous les épisodes de la saison ont été vus
-            if (lenSeen === lenEpisodes) {
-                moveSeason();
-            } else if (lenSeen === lenNotSpecial) {
-                // eslint-disable-next-line no-undef
-                new PopupAlert({
-                    title: 'Fin de la saison',
-                    text: 'Tous les épisodes de la saison, hors spéciaux, ont été vu.<br/>Voulez-vous passer à la saison suivante ?',
-                    callback_yes: () => {
-                        moveSeason();
-                    },
-                    callback_no: () => {
-                        return true;
-                    }
-                });
-            }
         } else {
             $elt.css('background', 'rgba(13,21,28,.2)'); // On enlève le check dans la case à cocher
             $elt.removeClass('seen'); // On supprime la classe 'seen'
@@ -401,24 +368,9 @@ export class Episode extends Base implements implAddNote {
             if (!contVignette.hasClass('slide--notSeen')) {
                 contVignette.addClass('slide--notSeen');
             }
-            const lenSeen: number = _this._season.getNbEpisodesSeen();
-            if (lenSeen < lenEpisodes) {
-                const $seasonCurrent = jQuery('#seasons div.slide--current');
-                $seasonCurrent.find('.checkSeen').remove();
-                $seasonCurrent
-                    .removeClass('slide--seen')
-                    .addClass('slide--notSeen');
-            }
         }
-        if (update) {
-            if (this.show instanceof Show) {
-                this.show.update(true).then(() => {
-                    _this.toggleSpinner(false);
-                });
-            } else {
-                console.warn('Episode.show is not an instance of class Show', this);
-            }
-        }
+        this._season.updateRender();
+
         return this;
     }
     /**
