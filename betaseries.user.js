@@ -350,11 +350,9 @@ const launchScript = function($) {
      */
     let user;
 
-    // On vérifie le theme d'affichage du site pour le membre connecté
-    const theme = checkThemeStyle();
-
     /* Initialize the cache */
     cache = new CacheUS();
+
     /**
      * Paramétrage de la super classe abstraite Base et UpdateAuto
      */
@@ -369,60 +367,26 @@ const launchScript = function($) {
     Base.ratings = ratings;
     Base.themoviedb_api_user_key = themoviedb_api_user_key;
     Base.serverBaseUrl = serverBaseUrl;
-    Base.theme = theme;
+    Base.theme = checkThemeStyle();
     UpdateAuto.getValue = GM_getValue;
     UpdateAuto.setValue = GM_setValue;
 
-
     /**
-     * @type Member
+     * Initialization du script
      */
-    let user;
-    if (userIdentified()) {
-        Member.fetch().then(member => {
-            user = member;
-            // On affiche la version du script
-            if (debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
-        });
-    } else {
-        // On affiche la version du script
-            if (debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version);
-    }
+    init();
 
-    // Ajout des feuilles de styles pour le userscript
-    addScriptAndLink(['awesome', 'stylehome']);
-    if (typeof lazyLoad === 'undefined') {
-        let notLoop = 0;
-        let timerLazy = setInterval(function () {
-            // Pour eviter une boucle infinie
-            if (++notLoop >= 20) {
-                clearInterval(timerLazy);
-                // Ca ne fera pas le job, mais ça ne déclenchera pas d'erreur
-                fnLazy = { init: function () { console.warn('fake lazyLoad'); } };
-                return;
-            }
-            if (typeof lazyLoad !== 'undefined') {
-                fnLazy = new lazyLoad({});
-                clearInterval(timerLazy);
-                timerLazy = null;
-            }
-        }, 500);
-    }
-    else {
-        fnLazy = new lazyLoad({});
-    }
-    checkApiVersion();
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
         // On récupère d'abord la ressource courante pour instancier un objet Media
         getResource(true).then((objRes) => {
-            if (debug) console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
-            if (debug) addBtnDev(); // On ajoute le bouton de Dev
+            if (Base.debug) console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
+            if (Base.debug) addBtnDev(); // On ajoute le bouton de Dev
             removeAds(); // On retire les pubs
             similarsViewed(objRes); // On s'occupe des ressources similaires
             objRes.decodeTitle(); // On décode le titre de la ressource
             objRes.addNumberVoters(); // On ajoute le nombre de votes à la note
-            objRes.objNote.renderStars(); // On met à jour l'affichage de la note
+            objRes.objNote.updateStars(); // On met à jour l'affichage de la note
             upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
             comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
             replaceVoteFn(objRes);
@@ -442,6 +406,7 @@ const launchScript = function($) {
     }
     // Fonctions appeler sur la page des membres
     else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && userIdentified()) {
+        if (debug) console.log('regexUser OK');
         if (regexUser.test(url)) {
             // On récupère les infos du membre connecté
             getMember()
@@ -469,7 +434,7 @@ const launchScript = function($) {
     }
     // Fonctions appeler sur les pages des séries
     else if (/^\/series\//.test(url)) {
-        if (debug) console.log('Page des séries');
+        if (Base.debug) console.log('Page des séries');
         waitPagination();
         seriesFilterPays();
         if (/agenda/.test(url)) {
@@ -484,28 +449,163 @@ const launchScript = function($) {
             }, 1000);
         }
     }
-    // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
-    // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
-    const observer = new MutationObserver(mutationsList => {
-        let updateTitle = (i, e) => { if (isTruncated(e)) {
-            $(e).parents('a').attr('title', $(e).text());
-        } };
-        for (let mutation of mutationsList) {
-            if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
-                let node = mutation.addedNodes[0], $node = $(node);
-                if ($node.hasClass('col-md-4')) {
-                    $('.mainLink', $node).each(updateTitle);
+    // Fonctions appeler sur les pages des articles
+    else if (/^\/article\//.test(url)) {
+        if (Base.debug) console.log('Page d\'un article');
+        checkArticle();
+        addPopupOnLinks();
+    }
+
+    /**
+     * Initialisation du script
+     */
+    function init() {
+        // Ajout des feuilles de styles pour le userscript
+        addScriptAndLink(['awesome', 'stylehome']);
+        if (userIdentified()) {
+            Member.fetch().then(member => {
+                user = member;
+                // On affiche la version du script
+                if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
+            });
+        } else {
+            // On affiche la version du script
+                if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version);
+        }
+        checkApiVersion();
+        const $mainlogo = $('nav .mainlogo');
+        const boundHandleScroll = function() {
+            // console.log('scrollEvent', window.visualViewport.pageTop, mainlogoModified);
+            if (window.visualViewport.pageTop > 40 && !mainlogoModified) {
+                mainLogoMargins.top = $mainlogo.css('margin-top');
+                mainLogoMargins.bottom = $mainlogo.css('margin-bottom');
+                $mainlogo.css('margin-top', '0px');
+                $mainlogo.css('margin-bottom', '0px');
+                const $body = $('body');
+                if (!$body.hasClass('is-scrolled')) {
+                    $body.addClass('is-scrolled');
                 }
-                else if ($node.hasClass('js-searchResult')) {
-                    let title = $('.mainLink', $node).get(0);
-                    if (isTruncated(title)) {
-                        $node.attr('title', $(title).text());
+                mainlogoModified = true;
+            } else if (window.visualViewport.pageTop < 40 && mainlogoModified) {
+                $mainlogo.css('margin-top', mainLogoMargins.top);
+                $mainlogo.css('margin-bottom', mainLogoMargins.bottom);
+                mainlogoModified = false;
+            }
+        }
+        boundHandleScroll('call initial');
+        window.addEventListener("scroll", boundHandleScroll);
+        $('#reactjs-header-search .menu-item .b_g').click(() => {
+            // if (debug) console.log('click search menu');
+            if (window.visualViewport.pageTop > 40 || mainlogoModified) {
+                $mainlogo.css('margin-top', mainLogoMargins.top);
+                $mainlogo.css('margin-bottom', mainLogoMargins.bottom);
+                const $body = $('body');
+                if (!$body.hasClass('is-scrolled')) {
+                    $body.addClass('is-scrolled');
+                }
+                mainlogoModified = false;
+            }
+            waitDomPresent('#reactjs-header-search .menu-item form .c4_c8', () => {
+                $('#reactjs-header-search .menu-item form .c4_c8').click(boundHandleScroll);
+            });
+        });
+        if (typeof lazyLoad === 'undefined') {
+            let notLoop = 0;
+            let timerLazy = setInterval(function () {
+                // Pour eviter une boucle infinie
+                if (++notLoop >= 20) {
+                    clearInterval(timerLazy);
+                    // Ca ne fera pas le job, mais ça ne déclenchera pas d'erreur
+                    fnLazy = { init: function () { console.warn('fake lazyLoad'); } };
+                    return;
+                }
+                if (typeof lazyLoad !== 'undefined') {
+                    fnLazy = new lazyLoad({});
+                    clearInterval(timerLazy);
+                    timerLazy = null;
+                }
+            }, 500);
+        }
+        else {
+            fnLazy = new lazyLoad({});
+        }
+        headerSearch();
+    }
+    /**
+     * Patiente en attendant que la fonction de check soit OK
+     * @param {Function} check - La fonction de vérification de fin d'attente
+     * @param {Function} cb - La fonction de callback
+     * @param {number} timeout - Le nombre de secondes avant d'arrêter l'attente
+     * @param {number} interval - La valeur de l'intervalle entre chaque vérification en ms
+     */
+    function waitPresent(check, cb, timeout = 2, interval = 50) {
+        let loopMax = (timeout * 1000) / interval;
+        let timer = setInterval(() => {
+            if (--loopMax <= 0) {
+                if (debug) console.log('waitDomPresent timeout');
+                clearInterval(timer);
+                return;
+            }
+            if (!check()) return;
+            clearInterval(timer);
+            return cb();
+        }, interval);
+    }
+    /**
+     * Patiente le temps du chargement du DOM, en attente d'une noeud identifié par le selector
+     * @param {string} selector - Le selecteur jQuery
+     * @param {Function} cb - La fonction de callback
+     * @param {number} timeout - Le nombre de secondes avant d'arrêter l'attente
+     * @param {number} interval - La valeur de l'intervalle entre chaque vérification en ms
+     */
+    function waitDomPresent(selector, cb, timeout = 2, interval = 50) {
+        const check = function() {
+            return $(selector).length > 0;
+        }
+        waitPresent(check, cb, timeout, interval);
+    }
+
+    function checkArticle() {
+        $('a').click(() => {
+            $('a').off('click');
+            console.log('Event click', origin, url, window.location.pathname);
+            if (window.history.state != state) {
+                console.log('on a changé de page');
+                state = window.history.state;
+                setTimeout(noop, 0);
+                if (/^\/article\//.test(location.pathname))
+                    addPopupOnLinks();
+                    checkArticle();
+            }
+        });
+    }
+    /**
+     * Permet d'ajouter des améliorations au menu de recherche du site
+     */
+    function headerSearch() {
+        // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
+        // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
+        const observer = new MutationObserver(mutationsList => {
+            let updateTitle = (i, e) => { if (isTruncated(e)) {
+                $(e).parents('a').attr('title', $(e).text());
+            } };
+            for (let mutation of mutationsList) {
+                if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
+                    let node = mutation.addedNodes[0], $node = $(node);
+                    if ($node.hasClass('col-md-4')) {
+                        $('.mainLink', $node).each(updateTitle);
+                    }
+                    else if ($node.hasClass('js-searchResult')) {
+                        let title = $('.mainLink', $node).get(0);
+                        if (isTruncated(title)) {
+                            $node.attr('title', $(title).text());
+                        }
                     }
                 }
             }
-        }
-    });
-    observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
+        });
+        observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
+    }
     /**
      * Verifie si l'élément est tronqué, généralement, du texte
      * @params {Object} Objet DOMElement
