@@ -130,8 +130,8 @@ declare module 'Note' {
 }
 declare module 'Comment' {
 	/// <reference types="jquery" />
-	import { Base, Obj } from 'Base';
-	import { CommentsBS } from 'Comments';
+	import { Obj } from 'Base';
+	import { CommentsBS, OrderComments } from 'Comments';
 	export interface implRepliesComment {
 	    fetchReplies(commentId: number): Promise<Array<CommentBS>>;
 	    changeThumbs(commentId: number, thumbs: number, thumbed: number): boolean;
@@ -224,10 +224,38 @@ declare module 'Comment' {
 	     * ???
 	     */
 	    user_rank: string;
+	    /**
+	     * @type {CommentsBS} La collection de commentaires
+	     */
 	    private _parent;
-	    private _media;
+	    /**
+	     * @type {Array<CustomEvent>} Liste des events déclarés par la fonction loadEvents
+	     */
 	    private _events;
-	    constructor(data: any, parent: CommentsBS, media: Base);
+	    constructor(data: any, parent: CommentsBS | CommentBS);
+	    /**
+	     * Remplit l'objet CommentBS avec les données provenant de l'API
+	     * @param   {Obj} data - Les données provenant de l'API
+	     * @returns {CommentBS}
+	     */
+	    fill(data: Obj): CommentBS;
+	    /**
+	     * Récupère les réponses du commentaire
+	     * @param   {OrderComments} order - Ordre de tri des réponses
+	     * @returns {Promise<CommentBS>}
+	     */
+	    fetchReplies(order?: OrderComments): Promise<CommentBS>;
+	    /**
+	     * Modifie le texte du commentaire
+	     * @param   {string} msg - Le nouveau message du commentaire
+	     * @returns {CommentBS}
+	     */
+	    edit(msg: string): Promise<CommentBS>;
+	    /**
+	     * Supprime le commentaire sur l'API
+	     * @returns
+	     */
+	    delete(): void;
 	    /**
 	     * Indique si le commentaire est le premier de la liste
 	     * @returns {boolean}
@@ -243,7 +271,7 @@ declare module 'Comment' {
 	     * @param   {CommentBS} comment Le commentaire à afficher
 	     * @returns {string}
 	     */
-	    static getTemplateComment(comment: CommentBS, all?: boolean): string;
+	    static getTemplateComment(comment: CommentBS): string;
 	    /**
 	     * Renvoie la template HTML pour l'écriture d'un commentaire
 	     * @returns {string}
@@ -260,13 +288,24 @@ declare module 'Comment' {
 	     * @param   {number} commentId L'identifiant de la réponse
 	     * @returns {boolean}
 	     */
-	    isReply(commentId: number): boolean;
+	    isReply(commentId: number): Promise<boolean>;
 	    /**
 	     * Retourne la réponse correspondant à l'identifiant fournit
 	     * @param   {number} commentId L'identifiant de la réponse
-	     * @returns {CommentBS} La réponse
+	     * @returns {CommentBS | void} La réponse
 	     */
-	    getReply(commentId: number): CommentBS;
+	    getReply(commentId: number): Promise<CommentBS>;
+	    /**
+	     * Supprime une réponse
+	     * @param   {number} cmtId - L'identifiant de la réponse
+	     * @returns {boolean}
+	     */
+	    removeReply(cmtId: number): boolean;
+	    /**
+	     * Retourne l'objet CommentsBS
+	     * @returns {CommentsBS}
+	     */
+	    getCollectionComments(): CommentsBS;
 	    /**
 	     * Ajoute les évènements sur les commentaires lors du rendu
 	     * @param   {JQuery<HTMLElement>} $container - Le conteneur des éléments d'affichage
@@ -289,7 +328,7 @@ declare module 'Comment' {
 	     * @param   {string} text        Le texte de la réponse
 	     * @returns {Promise<void | CommentBS>}
 	     */
-	    reply(text: string): Promise<void | CommentBS>;
+	    sendReply(text: string): Promise<void | CommentBS>;
 	}
 
 }
@@ -297,6 +336,10 @@ declare module 'Comments' {
 	/// <reference types="jquery" />
 	import { Base, Obj, EventTypes } from 'Base';
 	import { CommentBS, implRepliesComment } from 'Comment';
+	export enum OrderComments {
+	    DESC = "desc",
+	    ASC = "asc"
+	}
 	export enum MediaStatusComments {
 	    OPEN = "open",
 	    CLOSED = "close"
@@ -322,20 +365,52 @@ declare module 'Comments' {
 	    static sendComment(media: Base, text: string): Promise<void | CommentBS>;
 	    /*************************************************/
 	    /*************************************************/
-	    _parent: Base;
+	    /**
+	     * @type {Array<CommentBS>} Tableau des commentaires
+	     */
 	    comments: Array<CommentBS>;
+	    /**
+	     * @type {number} Nombre total de commentaires du média
+	     */
 	    nbComments: number;
+	    /**
+	     * @type {boolean} Indique si le membre à souscrit aux alertes commentaires du média
+	     */
 	    is_subscribed: boolean;
+	    /**
+	     * @type {string} Indique si les commentaires sont ouverts ou fermés
+	     */
 	    status: string;
+	    /**
+	     * @type {Base} Le média auquel sont associés les commentaires
+	     * @private
+	     */
+	    private _parent;
+	    /**
+	     * @type {Array<CustomEvent>} Tableau des events déclarés par la fonction loadEvents
+	     * @private
+	     */
 	    private _events;
+	    /**
+	     * @type {object} Objet contenant les fonctions à l'écoute des changements
+	     * @private
+	     */
 	    private _listeners;
+	    /**
+	     * @type {OrderComments} Ordre de tri des commentaires et des réponses
+	     */
+	    private _order;
 	    /*************************************************/
 	    /*************************************************/
 	    constructor(nbComments: number, media: Base);
 	    /**
+	     * Initialise la collection de commentaires
+	     */
+	    init(): void;
+	    /**
 	     * Initialize le tableau des écouteurs d'évènements
 	     * @returns {Base}
-	     * @sealed
+	     * @private
 	     */
 	    private _initListeners;
 	    /**
@@ -343,7 +418,6 @@ declare module 'Comments' {
 	     * @param  {EventTypes} name - Le type d'évenement
 	     * @param  {Function}   fn   - La fonction à appeler
 	     * @return {Base} L'instance du média
-	     * @sealed
 	     */
 	    addListener(name: EventTypes, fn: Function): this;
 	    /**
@@ -351,14 +425,12 @@ declare module 'Comments' {
 	     * @param  {string}   name - Le type d'évenement
 	     * @param  {Function} fn   - La fonction qui était appelée
 	     * @return {Base} L'instance du média
-	     * @sealed
 	     */
 	    removeListener(name: EventTypes, fn: Function): this;
 	    /**
 	     * Appel les listeners pour un type d'évenement
 	     * @param  {EventTypes} name - Le type d'évenement
 	     * @return {Base} L'instance du média
-	     * @sealed
 	     */
 	    protected _callListeners(name: EventTypes): this;
 	    /**
@@ -367,18 +439,35 @@ declare module 'Comments' {
 	     */
 	    get length(): number;
 	    /**
+	     * Retourne le média auxquels sont associés les commentaires
+	     * @readonly
+	     */
+	    get media(): Base;
+	    /**
+	     * Retourne l'ordre de tri des commentaires
+	     * @returns {OrderComments}
+	     */
+	    get order(): OrderComments;
+	    /**
+	     * Définit l'ordre de tri des commentaires
+	     * @param {OrderComments} o - Ordre de tri
+	     */
+	    set order(o: OrderComments);
+	    /**
 	     * Récupère les commentaires du média sur l'API
 	     * @param   {number} [nbpp=50] - Le nombre de commentaires à récupérer
 	     * @param   {number} [since=0] - L'identifiant du dernier commentaire reçu
+	     * @param   {OrderComments} [order='desc'] - Ordre de tri des commentaires
 	     * @returns {Promise<CommentsBS>}
 	     */
-	    fetchComments(nbpp?: number, since?: number): Promise<CommentsBS>;
+	    fetchComments(nbpp?: number, since?: number, order?: OrderComments): Promise<CommentsBS>;
 	    /**
 	     * Ajoute un commentaire à la collection
-	     * @param   {Obj} data - Les données du commentaire provenant de l'API
+	     * /!\ (Ne l'ajoute pas sur l'API) /!\
+	     * @param   {any} data - Les données du commentaire provenant de l'API
 	     * @returns {CommentsBS}
 	     */
-	    addComment(data: Obj | CommentBS): this;
+	    addComment(data: any | CommentBS): this;
 	    /**
 	     * Retire un commentaire de la collection
 	     * /!\ (Ne le supprime pas sur l'API) /!\
@@ -424,9 +513,10 @@ declare module 'Comments' {
 	    /**
 	     * Retourne les réponses d'un commentaire
 	     * @param   {number} commentId - Identifiant du commentaire original
+	     * @param   {OrderComments} [order='desc'] - Ordre de tri des réponses
 	     * @returns {Promise<Array<CommentBS>>} Tableau des réponses
 	     */
-	    fetchReplies(commentId: number): Promise<Array<CommentBS>>;
+	    fetchReplies(commentId: number, order?: OrderComments): Promise<Array<CommentBS>>;
 	    /**
 	     * Modifie le nombre de votes et le vote du membre pour un commentaire
 	     * @param   {number} commentId - Identifiant du commentaire
@@ -441,6 +531,10 @@ declare module 'Comments' {
 	     * @returns {Promise<string>} La template
 	     */
 	    getTemplate(nbpp: number): Promise<string>;
+	    /**
+	     * Met à jour le nombre de commentaires sur la page
+	     */
+	    updateCounter(): void;
 	    /**
 	     * Ajoute les évènements sur les commentaires lors du rendu
 	     * @param   {JQuery<HTMLElement>} $container - Le conteneur des éléments d'affichage
@@ -465,284 +559,17 @@ declare module 'Comments' {
 	     * @param {number} cmtId - L'identifiant du commentaire
 	     */
 	    addToPage(cmtId: number): void;
+	    /**
+	     * Supprime un commentaire dans la liste des commentaires de la page
+	     * @param {number} cmtId - L'identifiant du commentaire
+	     */
+	    removeFromPage(cmtId: number): void;
+	    /**
+	     * Retourne la template affichant les notes associés aux commentaires
+	     * @returns {string} La template affichant les évaluations des commentaires
+	     */
+	    showEvaluations(): Promise<string>;
 	}
-
-}
-declare module 'User' {
-	 class Next {
-	    id: number;
-	    code: string;
-	    date: Date;
-	    title: string;
-	    image: string;
-	    constructor(data: any);
-	}
-	export class User {
-	    archived: boolean;
-	    downloaded: boolean;
-	    favorited: boolean;
-	    friends_want_to_watch: Array<string>;
-	    friends_watched: Array<string>;
-	    hidden: boolean;
-	    last: string;
-	    mail: boolean;
-	    next: Next;
-	    profile: string;
-	    remaining: number;
-	    seen: boolean;
-	    status: number;
-	    tags: string;
-	    twitter: boolean;
-	    constructor(data: any);
-	}
-	export {};
-
-}
-declare module 'Base' {
-	/// <reference types="jquery" />
-	import { CacheUS } from 'Cache';
-	import { Character } from 'Character';
-	import { CommentsBS } from 'Comments';
-	import { implAddNote, Note } from 'Note';
-	import { User } from 'User';
-	export function ExceptionIdentification(message: string): void; type Class<T> = new (...args: any[]) => T;
-	export enum MediaType {
-	    show = "show",
-	    movie = "movie",
-	    episode = "episode"
-	}
-	export type MediaTypes = {
-	    singular: MediaType;
-	    plural: string;
-	    className: Class<Base>;
-	};
-	export enum EventTypes {
-	    UPDATE = "update",
-	    SAVE = "save",
-	    ADD = "add",
-	    REMOVE = "remove",
-	    NOTE = "note",
-	    ARCHIVE = "archive",
-	    UNARCHIVE = "unarchive"
-	}
-	export enum HTTP_VERBS {
-	    GET = "GET",
-	    POST = "POST",
-	    PUT = "PUT",
-	    DELETE = "DELETE",
-	    OPTIONS = "OPTIONS"
-	}
-	export type Rating = {
-	    img: string;
-	    title: string;
-	};
-	export type Ratings = {
-	    [key: string]: Rating;
-	};
-	export type Obj = {
-	    [key: string]: any;
-	};
-	export abstract class Base implements implAddNote {
-	    /**
-	     * Flag de debug pour le dev
-	     * @type {boolean}
-	     */
-	    static debug: boolean;
-	    /**
-	     * L'objet cache du script pour stocker les données
-	     * @type {CacheUS}
-	     */
-	    static cache: CacheUS;
-	    /**
-	     * Objet contenant les informations de l'API
-	     * @type {Obj}
-	     */
-	    static api: any;
-	    /**
-	     * Le token d'authentification de l'API
-	     * @type {String}
-	     */
-	    static token: string;
-	    /**
-	     * La clé d'utilisation de l'API
-	     * @type {String}
-	     */
-	    static userKey: string;
-	    /**
-	     * L'identifiant du membre connecté
-	     * @type {Number}
-	     */
-	    static userId: number;
-	    /**
-	     * Clé pour l'API TheMovieDB
-	     * @type {string}
-	     */
-	    static themoviedb_api_user_key: string;
-	    /**
-	     * Le nombre d'appels à l'API
-	     * @type {Number}
-	     */
-	    static counter: number;
-	    /**
-	     * L'URL de base du serveur contenant les ressources statiques
-	     * @type {String}
-	     */
-	    static serverBaseUrl: string;
-	    /**
-	     * Indique le theme d'affichage du site Web (light or dark)
-	     * @type {string}
-	     */
-	    static theme: string;
-	    /**
-	     * Fonction de notification sur la page Web
-	     * @type {Function}
-	     */
-	    static notification: Function;
-	    /**
-	     * Fonction pour vérifier que le membre est connecté
-	     * @type {Function}
-	     */
-	    static userIdentified: Function;
-	    /**
-	     * Fonction vide
-	     * @type {Function}
-	     */
-	    static noop: Function;
-	    /**
-	     * Fonction de traduction de chaînes de caractères
-	     * @param   {String}  msg  - Identifiant de la chaîne à traduire
-	     * @param   {Obj}     [params={}] - Variables utilisées dans la traduction {"%key%"": value}
-	     * @param   {number}  [count=1] - Nombre d'éléments pour la version plural
-	     * @returns {string}
-	     */
-	    static trans: Function;
-	    /**
-	     * Contient les infos sur les différentes classification TV et cinéma
-	     * @type {Ratings}
-	     */
-	    static ratings: Ratings;
-	    /**
-	     * Types d'évenements gérés par cette classe
-	     * @type {Array}
-	     */
-	    static EventTypes: Array<EventTypes>;
-	    /**
-	     * Fonction d'authentification sur l'API BetaSeries
-	     *
-	     * @return {Promise}
-	     */
-	    static authenticate(): Promise<any>;
-	    /**
-	     * Fonction servant à appeler l'API de BetaSeries
-	     *
-	     * @param  {String}   type - Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
-	     * @param  {String}   resource - La ressource de l'API (ex: shows, seasons, episodes...)
-	     * @param  {String}   action - L'action à appliquer sur la ressource (ex: search, list...)
-	     * @param  {Obj}      args - Un objet (clef, valeur) à transmettre dans la requête
-	     * @param  {bool}     [force=false] - Indique si on doit utiliser le cache ou non (Par défaut: false)
-	     * @return {Promise<Obj>} Les données provenant de l'API
-	     * @throws Error
-	     */
-	    static callApi(type: string, resource: string, action: string, args: any, force?: boolean): Promise<Obj>;
-	    description: string;
-	    characters: Array<Character>;
-	    comments: CommentsBS;
-	    id: number;
-	    objNote: Note;
-	    resource_url: string;
-	    title: string;
-	    user: User;
-	    mediaType: MediaTypes;
-	    private _elt;
-	    private _listeners;
-	    constructor(data: Obj);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data - Les données provenant de l'API
-	     * @returns {Base}
-	     * @virtual
-	     */
-	    fill(data: Obj): this;
-	    /**
-	     * Retourne le nombre de commentaires pour ce média sur l'API
-	     * @readonly
-	     */
-	    get nbComments(): number;
-	    /**
-	     * Initialize le tableau des écouteurs d'évènements
-	     * @returns {Base}
-	     * @sealed
-	     */
-	    private _initListeners;
-	    /**
-	     * Permet d'ajouter un listener sur un type d'évenement
-	     * @param  {EventTypes} name - Le type d'évenement
-	     * @param  {Function}   fn   - La fonction à appeler
-	     * @return {Base} L'instance du média
-	     * @sealed
-	     */
-	    addListener(name: EventTypes, fn: Function): this;
-	    /**
-	     * Permet de supprimer un listener sur un type d'évenement
-	     * @param  {string}   name - Le type d'évenement
-	     * @param  {Function} fn   - La fonction qui était appelée
-	     * @return {Base} L'instance du média
-	     * @sealed
-	     */
-	    removeListener(name: EventTypes, fn: Function): this;
-	    /**
-	     * Appel les listeners pour un type d'évenement
-	     * @param  {EventTypes} name - Le type d'évenement
-	     * @return {Base} L'instance du média
-	     * @sealed
-	     */
-	    protected _callListeners(name: EventTypes): this;
-	    /**
-	     * Sauvegarde l'objet en cache
-	     * @return {Base} L'instance du média
-	     */
-	    save(): this;
-	    /**
-	     * Retourne le DOMElement correspondant au média
-	     * @returns {JQuery} Le DOMElement jQuery
-	     */
-	    get elt(): JQuery;
-	    /**
-	     * Définit le DOMElement de référence pour ce média
-	     * @param  {JQuery} elt - DOMElement auquel est rattaché le média
-	     */
-	    set elt(elt: JQuery);
-	    /**
-	     * Retourne le nombre d'acteurs référencés dans ce média
-	     * @returns {number}
-	     */
-	    get nbCharacters(): number;
-	    /**
-	     * Décode le titre de la page
-	     * @return {Base} L'instance du média
-	     */
-	    decodeTitle(): Base;
-	    /**
-	     * Ajoute le nombre de votes à la note dans l'attribut title de la balise
-	     * contenant la représentation de la note de la ressource
-	     *
-	     * @param  {Boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
-	     * @return {String} Le titre modifié de la note
-	     */
-	    changeTitleNote(change?: boolean): string;
-	    /**
-	     * Ajoute le nombre de votes à la note de la ressource
-	     * @return {Base} L'instance du média
-	     */
-	    addNumberVoters(): Base;
-	    /**
-	     * Ajoute une note au média
-	     * @param   {number} note - Note du membre connecté pour le média
-	     * @returns {Promise<boolean>}
-	     */
-	    addVote(note: number): Promise<boolean>;
-	}
-	export {};
 
 }
 declare module 'Movie' {
@@ -799,9 +626,14 @@ declare module 'Movie' {
 	    tagline: string;
 	    tmdb_id: number;
 	    trailer: string;
-	    url: string;
 	    /***************************************************/
 	    /***************************************************/
+	    /**
+	     * Constructeur de la classe Movie
+	     * @param   {Obj} data - Les données du média
+	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+	     * @returns {Media}
+	     */
 	    constructor(data: any, element: JQuery<HTMLElement>);
 	    /**
 	     * Remplit l'objet avec les données fournit en paramètre
@@ -955,19 +787,57 @@ declare module 'Similar' {
 
 }
 declare module 'Media' {
+	/// <reference types="jquery" />
 	import { Base, Obj } from 'Base';
 	import { Similar } from 'Similar';
 	export abstract class Media extends Base {
+	    /**
+	     * @type {number} Nombre de membres ayant ce média sur leur compte
+	     */
 	    followers: number;
+	    /**
+	     * @type {Array<string>} Les genres attribués à ce média
+	     */
 	    genres: Array<string>;
+	    /**
+	     * @type {string} Identifiant IMDB
+	     */
 	    imdb_id: string;
+	    /**
+	     * @type {string} Langue originale du média
+	     */
 	    language: string;
+	    /**
+	     * @type {number} Durée du média en minutes
+	     */
 	    length: number;
+	    /**
+	     * @type {string} Titre original du média
+	     */
 	    original_title: string;
+	    /**
+	     * @type {Array<Similar>} Tableau des médias similaires
+	     */
 	    similars: Array<Similar>;
+	    /**
+	     * @type {number} Nombre de médias similaires
+	     */
 	    nbSimilars: number;
+	    /**
+	     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
+	     */
 	    _in_account: boolean;
-	    constructor(data: Obj);
+	    /**
+	     * @type {string} slug - Identifiant du média servant pour l'URL
+	     */
+	    slug: string;
+	    /**
+	     * Constructeur de la classe Media
+	     * @param   {Obj} data - Les données du média
+	     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
+	     * @returns {Media}
+	     */
+	    constructor(data: Obj, element?: JQuery<HTMLElement>);
 	    /**
 	     * Remplit l'objet avec les données fournit en paramètre
 	     * @param  {Obj} data Les données provenant de l'API
@@ -1076,41 +946,124 @@ declare module 'Show' {
 	     */
 	    static EventTypes: Array<EventTypes>;
 	    /**
-	     * Methode static servant à retourner un objet show
-	     * à partir de son ID
-	     * @param  {number} id             L'identifiant de la série
-	     * @param  {boolean} [force=false] Indique si on utilise le cache ou non
+	     * Méthode static servant à récupérer une série sur l'API BS
+	     * @param  {Obj} params - Critères de recherche de la série
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Show>}
+	     * @private
+	     */
+	    private static _fetch;
+	    /**
+	     * Méthode static servant à récupérer plusieurs séries sur l'API BS
+	     * @param  {Array<number>} ids - Les identifiants des séries recherchées
+	     * @return {Promise<Array<Show>>}
+	     */
+	    static fetchMulti(ids: Array<number>): Promise<Array<Show>>;
+	    /**
+	     * Methode static servant à récupérer une série par son identifiant BS
+	     * @param  {number} id - L'identifiant de la série
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
 	     * @return {Promise<Show>}
 	     */
 	    static fetch(id: number, force?: boolean): Promise<Show>;
+	    /**
+	     * Methode static servant à récupérer une série par son identifiant TheTVDB
+	     * @param  {number} id - L'identifiant TheTVDB de la série
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Show>}
+	     */
+	    static fetchByTvdb(id: number, force?: boolean): Promise<Show>;
+	    /**
+	     * Méthode static servant à récupérer une série par son identifiant URL
+	     * @param   {string} url - Identifiant URL (slug) de la série recherchée
+	     * @param   {boolean} force - Indique si on doit ignorer les données dans le cache
+	     * @returns {Promise<Show>}
+	     */
 	    static fetchByUrl(url: string, force?: boolean): Promise<Show>;
 	    /***************************************************/
 	    /***************************************************/
+	    /**
+	     * @type {object} Contient les alias de la série
+	     */
 	    aliases: object;
+	    /**
+	     * @type {string} Année de création de la série
+	     */
 	    creation: string;
+	    /**
+	     * @type {string} Pays d'origine de la série
+	     */
 	    country: string;
+	    /**
+	     * @type {Season} Pointeur vers la saison courante
+	     */
 	    currentSeason: Season;
+	    /**
+	     * @type {Images} Contient les URLs d'accès aux images de la série
+	     */
 	    images: Images;
+	    /**
+	     * @type {number} Nombre total d'épisodes dans la série
+	     */
 	    nbEpisodes: number;
+	    /**
+	     * @type {string} Chaîne TV ayant produit la série
+	     */
 	    network: string;
+	    /**
+	     * @type {string}
+	     */
 	    next_trailer: string;
+	    /**
+	     * @type {string}
+	     */
 	    next_trailer_host: string;
+	    /**
+	     * @type {string} Code de classification TV parental
+	     */
 	    rating: string;
+	    /**
+	     * @type {Array<Picture>} Tableau des images uploadées par les membres
+	     */
 	    pictures: Array<Picture>;
+	    /**
+	     * @type {Platforms} Plateformes de diffusion
+	     */
 	    platforms: Platforms;
+	    /**
+	     * @type {Array<Season>} Tableau des saisons de la série
+	     */
 	    seasons: Array<Season>;
+	    /**
+	     * @type {Showrunner}
+	     */
 	    showrunner: Showrunner;
+	    /**
+	     * @type {Array<string>} Tableau des liens sociaux de la série
+	     */
 	    social_links: Array<string>;
+	    /**
+	     * @type {string} Status de la série sur le compte du membre
+	     */
 	    status: string;
+	    /**
+	     * @type {number} Identifiant TheTVDB de la série
+	     */
 	    thetvdb_id: number;
 	    /***************************************************/
 	    /***************************************************/
+	    /**
+	     * Constructeur de la classe Show
+	     * @param   {Obj} data - Les données du média
+	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+	     * @returns {Media}
+	     */
 	    constructor(data: Obj, element: JQuery<HTMLElement>);
 	    /**
 	     * Initialise l'objet lors de sa construction et après son remplissage
 	     * @returns {Show}
 	     */
-	    private _init;
+	    init(): Show;
 	    /**
 	     * Récupère les données de la série sur l'API
 	     * @param  {boolean} [force=true]   Indique si on utilise les données en cache
@@ -1555,6 +1508,280 @@ declare module 'Episode' {
 	     */
 	    toggleSpinner(display: boolean): Episode;
 	}
+
+}
+declare module 'User' {
+	import { WatchedBy } from 'Episode'; class Next {
+	    id: number;
+	    code: string;
+	    date: Date;
+	    title: string;
+	    image: string;
+	    constructor(data: any);
+	}
+	export class User {
+	    archived: boolean;
+	    downloaded: boolean;
+	    favorited: boolean;
+	    friends_want_to_watch: Array<string>;
+	    friends_watched: Array<WatchedBy>;
+	    hidden: boolean;
+	    last: string;
+	    mail: boolean;
+	    next: Next;
+	    profile: string;
+	    remaining: number;
+	    seen: boolean;
+	    status: number;
+	    tags: string;
+	    twitter: boolean;
+	    constructor(data: any);
+	}
+	export {};
+
+}
+declare module 'Base' {
+	/// <reference types="jquery" />
+	import { CacheUS } from 'Cache';
+	import { Character } from 'Character';
+	import { CommentsBS } from 'Comments';
+	import { implAddNote, Note } from 'Note';
+	import { User } from 'User';
+	export function ExceptionIdentification(message: string): void; type Class<T> = new (...args: any[]) => T;
+	export enum MediaType {
+	    show = "show",
+	    movie = "movie",
+	    episode = "episode"
+	}
+	export type MediaTypes = {
+	    singular: MediaType;
+	    plural: string;
+	    className: Class<Base>;
+	};
+	export enum EventTypes {
+	    UPDATE = "update",
+	    SAVE = "save",
+	    ADD = "add",
+	    REMOVE = "remove",
+	    NOTE = "note",
+	    ARCHIVE = "archive",
+	    UNARCHIVE = "unarchive"
+	}
+	export enum HTTP_VERBS {
+	    GET = "GET",
+	    POST = "POST",
+	    PUT = "PUT",
+	    DELETE = "DELETE",
+	    OPTIONS = "OPTIONS"
+	}
+	export type Rating = {
+	    img: string;
+	    title: string;
+	};
+	export type Ratings = {
+	    [key: string]: Rating;
+	};
+	export type Obj = {
+	    [key: string]: any;
+	};
+	export abstract class Base implements implAddNote {
+	    /**
+	     * Flag de debug pour le dev
+	     * @type {boolean}
+	     */
+	    static debug: boolean;
+	    /**
+	     * L'objet cache du script pour stocker les données
+	     * @type {CacheUS}
+	     */
+	    static cache: CacheUS;
+	    /**
+	     * Objet contenant les informations de l'API
+	     * @type {Obj}
+	     */
+	    static api: any;
+	    /**
+	     * Le token d'authentification de l'API
+	     * @type {String}
+	     */
+	    static token: string;
+	    /**
+	     * La clé d'utilisation de l'API
+	     * @type {String}
+	     */
+	    static userKey: string;
+	    /**
+	     * L'identifiant du membre connecté
+	     * @type {Number}
+	     */
+	    static userId: number;
+	    /**
+	     * Clé pour l'API TheMovieDB
+	     * @type {string}
+	     */
+	    static themoviedb_api_user_key: string;
+	    /**
+	     * Le nombre d'appels à l'API
+	     * @type {Number}
+	     */
+	    static counter: number;
+	    /**
+	     * L'URL de base du serveur contenant les ressources statiques
+	     * @type {String}
+	     */
+	    static serverBaseUrl: string;
+	    /**
+	     * Indique le theme d'affichage du site Web (light or dark)
+	     * @type {string}
+	     */
+	    static theme: string;
+	    /**
+	     * Fonction de notification sur la page Web
+	     * @type {Function}
+	     */
+	    static notification: Function;
+	    /**
+	     * Fonction pour vérifier que le membre est connecté
+	     * @type {Function}
+	     */
+	    static userIdentified: Function;
+	    /**
+	     * Fonction vide
+	     * @type {Function}
+	     */
+	    static noop: Function;
+	    /**
+	     * Fonction de traduction de chaînes de caractères
+	     * @param   {String}  msg  - Identifiant de la chaîne à traduire
+	     * @param   {Obj}     [params={}] - Variables utilisées dans la traduction {"%key%"": value}
+	     * @param   {number}  [count=1] - Nombre d'éléments pour la version plural
+	     * @returns {string}
+	     */
+	    static trans: Function;
+	    /**
+	     * Contient les infos sur les différentes classification TV et cinéma
+	     * @type {Ratings}
+	     */
+	    static ratings: Ratings;
+	    /**
+	     * Types d'évenements gérés par cette classe
+	     * @type {Array}
+	     */
+	    static EventTypes: Array<EventTypes>;
+	    /**
+	     * Fonction d'authentification sur l'API BetaSeries
+	     *
+	     * @return {Promise}
+	     */
+	    static authenticate(): Promise<any>;
+	    /**
+	     * Fonction servant à appeler l'API de BetaSeries
+	     *
+	     * @param  {String}   type - Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
+	     * @param  {String}   resource - La ressource de l'API (ex: shows, seasons, episodes...)
+	     * @param  {String}   action - L'action à appliquer sur la ressource (ex: search, list...)
+	     * @param  {Obj}      args - Un objet (clef, valeur) à transmettre dans la requête
+	     * @param  {bool}     [force=false] - Indique si on doit utiliser le cache ou non (Par défaut: false)
+	     * @return {Promise<Obj>} Les données provenant de l'API
+	     * @throws Error
+	     */
+	    static callApi(type: string, resource: string, action: string, args: any, force?: boolean): Promise<Obj>;
+	    description: string;
+	    characters: Array<Character>;
+	    comments: CommentsBS;
+	    nbComments: number;
+	    id: number;
+	    objNote: Note;
+	    resource_url: string;
+	    title: string;
+	    user: User;
+	    mediaType: MediaTypes;
+	    private _elt;
+	    private _listeners;
+	    constructor(data: Obj);
+	    /**
+	     * Remplit l'objet avec les données fournit en paramètre
+	     * @param  {Obj} data - Les données provenant de l'API
+	     * @returns {Base}
+	     * @virtual
+	     */
+	    fill(data: Obj): this;
+	    /**
+	     * Initialize le tableau des écouteurs d'évènements
+	     * @returns {Base}
+	     * @sealed
+	     */
+	    private _initListeners;
+	    /**
+	     * Permet d'ajouter un listener sur un type d'évenement
+	     * @param  {EventTypes} name - Le type d'évenement
+	     * @param  {Function}   fn   - La fonction à appeler
+	     * @return {Base} L'instance du média
+	     * @sealed
+	     */
+	    addListener(name: EventTypes, fn: Function): this;
+	    /**
+	     * Permet de supprimer un listener sur un type d'évenement
+	     * @param  {string}   name - Le type d'évenement
+	     * @param  {Function} fn   - La fonction qui était appelée
+	     * @return {Base} L'instance du média
+	     * @sealed
+	     */
+	    removeListener(name: EventTypes, fn: Function): this;
+	    /**
+	     * Appel les listeners pour un type d'évenement
+	     * @param  {EventTypes} name - Le type d'évenement
+	     * @return {Base} L'instance du média
+	     * @sealed
+	     */
+	    protected _callListeners(name: EventTypes): this;
+	    init(): void;
+	    /**
+	     * Sauvegarde l'objet en cache
+	     * @return {Base} L'instance du média
+	     */
+	    save(): this;
+	    /**
+	     * Retourne le DOMElement correspondant au média
+	     * @returns {JQuery} Le DOMElement jQuery
+	     */
+	    get elt(): JQuery;
+	    /**
+	     * Définit le DOMElement de référence pour ce média
+	     * @param  {JQuery} elt - DOMElement auquel est rattaché le média
+	     */
+	    set elt(elt: JQuery);
+	    /**
+	     * Retourne le nombre d'acteurs référencés dans ce média
+	     * @returns {number}
+	     */
+	    get nbCharacters(): number;
+	    /**
+	     * Décode le titre de la page
+	     * @return {Base} L'instance du média
+	     */
+	    decodeTitle(): Base;
+	    /**
+	     * Ajoute le nombre de votes à la note dans l'attribut title de la balise
+	     * contenant la représentation de la note de la ressource
+	     *
+	     * @param  {Boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
+	     * @return {String} Le titre modifié de la note
+	     */
+	    changeTitleNote(change?: boolean): string;
+	    /**
+	     * Ajoute le nombre de votes à la note de la ressource
+	     * @return {Base} L'instance du média
+	     */
+	    addNumberVoters(): Base;
+	    /**
+	     * Ajoute une note au média
+	     * @param   {number} note - Note du membre connecté pour le média
+	     * @returns {Promise<boolean>}
+	     */
+	    addVote(note: number): Promise<boolean>;
+	}
+	export {};
 
 }
 declare module 'Member' {
