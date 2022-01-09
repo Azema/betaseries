@@ -212,6 +212,7 @@ export class UpdateAuto {
             this._auto = false;
             this._interval = 0;
             this._exist = false;
+            this.changeColorBtn();
         }
         return this;
     }
@@ -241,7 +242,7 @@ export class UpdateAuto {
             }
             const _this = this;
             this.status = true;
-            this._timer = setInterval(function() {
+            const run = function() {
                 // if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, _this._objShow));
                 if (! _this._auto || _this._show.user.remaining <= 0) {
                     if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
@@ -264,7 +265,9 @@ export class UpdateAuto {
                         _this.status = true;
                     }
                 }
-            }, (this._interval * 60) * 1000);
+            };
+            run();
+            this._timer = setInterval(run, (this._interval * 60) * 1000);
         }
         return this;
     }

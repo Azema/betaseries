@@ -426,6 +426,7 @@ export abstract class Base implements implAddNote {
     description: string;
     characters: Array<Character>;
     comments: CommentsBS;
+    nbComments: number;
     id: number;
     objNote: Note;
     resource_url: string;
@@ -459,21 +460,14 @@ export abstract class Base implements implAddNote {
                 this.characters.push(new Character(data.characters[c]));
             }
         }
-        const nbComments = data.comments ? parseInt(data.comments, 10) : 0;
-        this.comments = new CommentsBS(nbComments, this);
+        this.nbComments = data.comments ? parseInt(data.comments, 10) : 0;
+        this.comments = new CommentsBS(this.nbComments, this);
         this.objNote = (data.note) ? new Note(data.note, this) : new Note(data.notes, this);
         this.resource_url = data.resource_url;
         this.title = data.title;
         this.user = new User(data.user);
         this.description = data.description;
         return this;
-    }
-    /**
-     * Retourne le nombre de commentaires pour ce média sur l'API
-     * @readonly
-     */
-    public get nbComments(): number {
-        return this.comments.nbComments;
     }
     /**
      * Initialize le tableau des écouteurs d'évènements
@@ -530,13 +524,15 @@ export abstract class Base implements implAddNote {
      */
     protected _callListeners(name: EventTypes): this {
         const event = new CustomEvent('betaseries', {detail: {name: name}});
-        if (this._listeners[name] !== undefined) {
+        if (this._listeners[name] !== undefined && this._listeners[name].length > 0) {
+            if (Base.debug) console.log('Base call %d Listeners on event %s', this._listeners[name].length, name);
             for (let l = 0; l < this._listeners[name].length; l++) {
                 this._listeners[name][l].call(this, event, this);
             }
         }
         return this;
     }
+    public init() {}
     /**
      * Sauvegarde l'objet en cache
      * @return {Base} L'instance du média

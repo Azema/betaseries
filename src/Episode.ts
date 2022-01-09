@@ -1,7 +1,7 @@
 import {Base, Obj, HTTP_VERBS, MediaType, EventTypes} from "./Base";
 import { implAddNote } from "./Note";
 import { Season } from "./Season";
-import {Subtitle, Subtitles} from "./Subtitle";
+import { Subtitles } from "./Subtitle";
 
 declare var PopupAlert: any;
 

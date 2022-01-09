@@ -2,19 +2,57 @@ import {Base, Obj} from "./Base";
 import {Similar} from "./Similar";
 
 export abstract class Media extends Base {
-
+    /**
+     * @type {number} Nombre de membres ayant ce média sur leur compte
+     */
     followers: number;
+    /**
+     * @type {Array<string>} Les genres attribués à ce média
+     */
     genres: Array<string>;
+    /**
+     * @type {string} Identifiant IMDB
+     */
     imdb_id: string;
+    /**
+     * @type {string} Langue originale du média
+     */
     language: string;
+    /**
+     * @type {number} Durée du média en minutes
+     */
     length: number;
+    /**
+     * @type {string} Titre original du média
+     */
     original_title: string;
+    /**
+     * @type {Array<Similar>} Tableau des médias similaires
+     */
     similars: Array<Similar>;
+    /**
+     * @type {number} Nombre de médias similaires
+     */
     nbSimilars: number;
+    /**
+     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
+     */
     _in_account: boolean;
+    /**
+     * @type {string} slug - Identifiant du média servant pour l'URL
+     */
+    slug: string;
 
-    constructor(data: Obj) {
+    /**
+     * Constructeur de la classe Media
+     * @param   {Obj} data - Les données du média
+     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
+     * @returns {Media}
+     */
+    constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data);
+        if (element)
+            this.elt = element;
         return this;
     }
 
@@ -48,7 +86,8 @@ export abstract class Media extends Base {
                 this.genres.push(data.genres[g]);
             }
         }
-        this.in_account = data.in_account;
+        this.in_account = !!data.in_account;
+        this.slug = data.slug;
         super.fill(data);
         return this;
     }

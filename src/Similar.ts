@@ -12,6 +12,7 @@ interface implDialog {
     close: Function,
     setContent: Function,
     setCounter: Function,
+    setTitle: Function,
     init: Function
 }
 export class Similar extends Media implements implShow, implMovie {
@@ -103,6 +104,10 @@ export class Similar extends Media implements implShow, implMovie {
                 data.description = data.synopsis;
                 delete data.synopsis;
             }
+            if (data.url !== undefined) {
+                data.slug = data.url;
+                delete data.url;
+            }
             this.backdrop = data.backdrop;
             this.director = data.director;
             this.original_release_date = new Date(data.original_release_date);
@@ -115,7 +120,6 @@ export class Similar extends Media implements implShow, implMovie {
             this.tagline = data.tagline;
             this.tmdb_id = parseInt(data.tmdb_id);
             this.trailer = data.trailer;
-            this.url = data.url;
         }
         super.fill(data);
         return this;
@@ -185,6 +189,7 @@ export class Similar extends Media implements implShow, implMovie {
                 // eslint-disable-next-line no-undef
                 dialog.setContent(renderjson.set_show_to_level(2)(data[_this.mediaType.singular]));
                 dialog.setCounter(Base.counter.toString());
+                dialog.setTitle('Données du similar');
                 dialog.show();
             });
         });
@@ -294,7 +299,7 @@ export class Similar extends Media implements implShow, implMovie {
         // if (Base.debug) console.log('getTitlePopup', this);
         let title: string = this.title;
         if (this.objNote.total > 0) {
-            title += ' <span style="font-size: 0.8em;color:#000;">' +
+            title += ' <span style="font-size: 0.8em;color:var(--link_color);">' +
                     this.objNote.mean.toFixed(2) + ' / 5</span>';
         }
         return title;

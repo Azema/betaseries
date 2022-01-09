@@ -1,5 +1,5 @@
 import { Base, HTTP_VERBS, Obj, EventTypes } from './Base';
-import { CommentsBS, CustomEvent } from './Comments';
+import { CommentsBS, CustomEvent, OrderComments } from './Comments';
 import { Note } from './Note';
 
 declare var moment, currentLogin: string, getScrollbarWidth, faceboxDisplay: Function;
@@ -96,14 +96,26 @@ export class CommentBS {
      * ???
      */
     user_rank: string;
-
-    private _parent: CommentsBS;
-    private _media: Base;
+    /**
+     * @type {CommentsBS} La collection de commentaires
+     */
+    private _parent: CommentsBS | CommentBS;
+    /**
+     * @type {Array<CustomEvent>} Liste des events déclarés par la fonction loadEvents
+     */
     private _events: Array<CustomEvent>;
 
-    constructor(data: any, parent: CommentsBS, media: Base) {
+    constructor(data: any, parent: CommentsBS | CommentBS) {
         this._parent = parent;
-        this._media = media;
+        return this.fill(data);
+    }
+
+    /**
+     * Remplit l'objet CommentBS avec les données provenant de l'API
+     * @param   {Obj} data - Les données provenant de l'API
+     * @returns {CommentBS}
+     */
+    public fill(data: Obj): CommentBS {
         this.id = parseInt(data.id, 10);
         this.reference = data.reference;
         this.type = data.type;
@@ -124,6 +136,64 @@ export class CommentBS {
         this.replies = new Array();
         this.from_admin = data.from_admin;
         this.user_rank = data.user_rank;
+        return this;
+    }
+    /**
+     * Récupère les réponses du commentaire
+     * @param   {OrderComments} order - Ordre de tri des réponses
+     * @returns {Promise<CommentBS>}
+     */
+    public async fetchReplies(order: OrderComments = OrderComments.ASC): Promise<CommentBS> {
+        if (this.nbReplies <= 0) return this;
+        const data = await Base.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: this.id, order });
+        this.replies = new Array();
+        if (data.comments) {
+            for (let c = 0; c < data.comments.length; c++) {
+                this.replies.push(new CommentBS(data.comments[c], this));
+            }
+        }
+        return this;
+    }
+    /**
+     * Modifie le texte du commentaire
+     * @param   {string} msg - Le nouveau message du commentaire
+     * @returns {CommentBS}
+     */
+    public edit(msg: string): Promise<CommentBS> {
+        const self = this;
+        this.text = msg;
+        const params = {
+            edit_id: this.id,
+            text: msg
+        };
+        return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
+        .then((data: Obj) => {
+            return self.fill(data.comment);
+        });
+    }
+    /**
+     * Supprime le commentaire sur l'API
+     * @returns
+     */
+    public delete() {
+        const self = this;
+        const promises = new Array();
+        if (this.nbReplies > 0) {
+            for (let r = 0; r < this.replies.length; r++) {
+                promises.push(Base.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.replies[r].id}));
+            }
+        }
+        Promise.all(promises).then(() => {
+            Base.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.id})
+            .then((data: Obj) => {
+                if (self._parent instanceof CommentsBS) {
+                    self._parent.removeComment(self.id);
+                } else if (self._parent instanceof CommentBS) {
+                    self._parent.removeReply(self.id);
+                }
+                self.getCollectionComments().nbComments = self.getCollectionComments().nbComments - (promises.length + 1);
+            });
+        });
     }
     /**
      * Indique si le commentaire est le premier de la liste
@@ -144,23 +214,42 @@ export class CommentBS {
      * @param   {CommentBS} comment Le commentaire à afficher
      * @returns {string}
      */
-    public static getTemplateComment(comment: CommentBS, all: boolean = false): string {
-        const text = new Option(comment.text).innerHTML;
+    public static getTemplateComment(comment: CommentBS): string {
+        let text = new Option(comment.text).innerHTML;
+        if (/@\w+/.test(text)) {
+            text = text.replace(/@(\w+)/g, '<a href="/membre/$1" class="mainLink mainLink--regular">@$1</a>');
+        }
         const spoiler = /\[spoiler\]/.test(text);
-        let btnSpoiler = spoiler ? `<button type="button" class="btn-reset mainLink view-spoiler" style="vertical-align: 0px;">${Base.trans("comment.button.display_spoiler")}</button>` : '';
+        let btnSpoiler = spoiler ? `<button type="button" class="btn-reset mainLink view-spoiler">${Base.trans("comment.button.display_spoiler")}</button>` : '';
+        text = text.replace(/\[spoiler\](.*)\[\/spoiler\]/g, '<span class="spoiler" style="display:none">$1</span>');
         // let classNames = {reply: 'iv_i5', actions: 'iv_i3', comment: 'iv_iz'};
         let classNames = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
-        let className = (comment.in_reply_to > 0) ? classNames.reply + ' reply' : '';
+        const isReply = comment.in_reply_to > 0 ? true : false;
+        let className = isReply ? CommentBS.classNamesCSS.reply + ' reply ' : '';
         let btnToggleReplies = comment.nbReplies > 0 ? `
-        <button type="button" class="btn-reset mainLink mainLink--regular toggleReplies" style="margin-top: 2px; margin-bottom: -3px;" data-toggle="1">
-            <span class="svgContainer" style="display: inline-flex; height: 16px; width: 16px;">
-                <svg width="8" height="6" xmlns="http://www.w3.org/2000/svg" style="transition: transform 200ms ease 0s; transform: rotate(180deg);">
-                    <path d="M4 5.667l4-4-.94-.94L4 3.78.94.727l-.94.94z" fill="#54709D" fill-rule="nonzero"></path>
-                </svg>
-            </span>&nbsp;<span class="btnText">${Base.trans("comment.hide_answers")}</span>
-        </button>` : '';
+            <button type="button" class="btn-reset mainLink mainLink--regular toggleReplies" data-toggle="1">
+                <span class="svgContainer">
+                    <svg width="8" height="6" xmlns="http://www.w3.org/2000/svg" style="transition: transform 200ms ease 0s; transform: rotate(180deg);">
+                        <path d="M4 5.667l4-4-.94-.94L4 3.78.94.727l-.94.94z" fill="#54709D" fill-rule="nonzero"></path>
+                    </svg>
+                </span>&nbsp;<span class="btnText">${Base.trans("comment.hide_answers")}</span>
+            </button>` : '';
+        let templateOptions = `
+            <a href="/messages/nouveau?login=${comment.login}" class="mainLink">Envoyer un message</a>
+            <span class="mainLink">∙</span>
+            <button type="button" class="btn-reset mainLink btnSignal">Signaler</button>
+        `;
+        if (comment.user_id === Base.userId) {
+            templateOptions = `
+                <button type="button" class="btn-reset mainLink btnEditComment">Éditer</button>
+                <span class="mainLink">∙</span>
+                <button type="button" class="btn-reset mainLink btnDeleteComment">Supprimer</button>
+            `;
+        }
+        let btnResponse = `<span class="mainLink">&nbsp;∙&nbsp;</span><button type="button" class="btn-reset mainLink mainLink--regular btnResponse" ${!Base.userIdentified() ? 'style="display:none;"' : ''}>${Base.trans("timeline.comment.reply")}</button>`;
+        if (isReply) btnResponse = '';
         return `
-            <div class="comment ${className} positionRelative ${CommentBS.classNamesCSS.comment}" data-comment-id="${comment.id}" ${comment.in_reply_to > 0 ? 'data-comment-reply="' + comment.in_reply_to + '"' : ''} data-comment-inner="${comment.inner_id}">
+            <div class="comment ${className}positionRelative ${CommentBS.classNamesCSS.comment}" data-comment-id="${comment.id}" ${comment.in_reply_to > 0 ? 'data-comment-reply="' + comment.in_reply_to + '"' : ''} data-comment-inner="${comment.inner_id}">
                 <div class="media">
                     <div class="media-left">
                         <a href="/membre/${comment.login}" class="avatar">
@@ -169,11 +258,10 @@ export class CommentBS {
                     </div>
                     <div class="media-body">
                         <a href="/membre/${comment.login}">
-                            <span class="mainLink">${comment.login}</span>&nbsp;
-                            <span class="mainLink mainLink--regular">&nbsp;</span>
+                            <span class="mainLink">${comment.login}</span>
                         </a>
-                        <span style="${spoiler ? 'display:none;':''}" class="comment-text">${text}</span>
                         ${btnSpoiler}
+                        <span class="comment-text">${text}</span>
                         <div class="${CommentBS.classNamesCSS.actions} actionsCmt">
                             <div class="options-main options-comment">
                                 <button type="button" class="btn-reset btnUpVote btnThumb" title="+1 pour ce commentaire">
@@ -192,15 +280,12 @@ export class CommentBS {
                                         </g>
                                     </svg>
                                 </button>
-                                <strong class="mainLink thumbs" style="margin-left: 5px;">${comment.thumbs > 0 ? '+' + comment.thumbs : (comment.thumbs < 0) ? '-' + comment.thumbs : comment.thumbs}</strong>
-                                <span class="mainLink">&nbsp;∙&nbsp;</span>
-                                <button type="button" class="btn-reset mainLink mainLink--regular btnResponse" style="vertical-align: 0px;${!Base.userIdentified() ? 'display:none;' : ''}">${Base.trans("timeline.comment.reply")}</button>
-                                <a href="#c_1269819" class="mainTime">
-                                    <span class="mainLink">&nbsp;∙&nbsp;</span>
-                                    Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('DD/MM/YYYY HH:mm') : comment.date.toString()}
-                                </a>
+                                <strong class="mainLink thumbs">${comment.thumbs > 0 ? '+' + comment.thumbs : (comment.thumbs < 0) ? '-' + comment.thumbs : comment.thumbs}</strong>
+                                ${btnResponse}
+                                <span class="mainLink">∙</span>
+                                <span class="mainTime">Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('DD/MM/YYYY HH:mm') : comment.date.toString()}</span>
                                 <span class="stars" title="${comment.user_note} / 5">
-                                    ${Note.renderStars(comment.user_note)}
+                                    ${Note.renderStars(comment.user_note, comment.user_id === Base.userId ? 'blue' : '')}
                                 </span>
                                 <div class="it_iv">
                                     <button type="button" class="btn-reset btnToggleOptions">
@@ -216,10 +301,8 @@ export class CommentBS {
                                 </div>
                             </div>
                             <div class="options-options options-comment" style="display:none;">
-                                <a href="/messages/nouveau?login=${comment.login}" class="mainLink">Envoyer un message</a>
-                                <span class="mainLink">&nbsp;∙&nbsp;</span>
-                                <button type="button" class="btn-reset mainLink btnSignal" style="vertical-align: 0px;">Signaler</button>
-                                <button type="button" class="btn-reset btnToggleOptions" style="margin-left: 4px;">
+                                ${templateOptions}
+                                <button type="button" class="btn-reset btnToggleOptions">
                                     <span class="svgContainer">
                                         <svg fill="${Base.theme === 'dark' ? "rgba(255, 255, 255, .5)" : "#333"}" width="9" height="9" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M14 1.41l-1.41-1.41-5.59 5.59-5.59-5.59-1.41 1.41 5.59 5.59-5.59 5.59 1.41 1.41 5.59-5.59 5.59 5.59 1.41-1.41-5.59-5.59z"></path>
@@ -265,7 +348,6 @@ export class CommentBS {
             </div>
         `;
     }
-
     /**
      * Met à jour le rendu des votes de ce commentaire
      * @param   {number} vote Le vote
@@ -287,14 +369,16 @@ export class CommentBS {
         const $btnVote = this.thumbed > 0 ? $thumbs.siblings('.btnThumb.btnUpVote') : $thumbs.siblings('.btnThumb.btnDownVote');
         $btnVote.find('g').attr('fill', '#FFAC3B');
     }
-
     /**
      * Indique si le comment fournit en paramètre fait parti des réponses
      * @param   {number} commentId L'identifiant de la réponse
      * @returns {boolean}
      */
-    public isReply(commentId: number): boolean {
-        if (this.replies.length <= 0) return false;
+    public async isReply(commentId: number): Promise<boolean> {
+        if (this.replies.length <= 0 && this.nbReplies <= 0) return false;
+        else if (this.replies.length <= 0) {
+            await this.fetchReplies();
+        }
         for (let r = 0; r < this.replies.length; r++) {
             if (this.replies[r].id == commentId) {
                 return true;
@@ -302,13 +386,16 @@ export class CommentBS {
         }
         return false;
     }
-
     /**
      * Retourne la réponse correspondant à l'identifiant fournit
      * @param   {number} commentId L'identifiant de la réponse
-     * @returns {CommentBS} La réponse
+     * @returns {CommentBS | void} La réponse
      */
-    public getReply(commentId: number): CommentBS {
+    public async getReply(commentId: number): Promise<CommentBS> {
+        if (this.replies.length <= 0 && this.nbReplies <= 0) return null;
+        else if (this.replies.length <= 0) {
+            await this.fetchReplies();
+        }
         for (let r = 0; r < this.replies.length; r++) {
             if (this.replies[r].id == commentId) {
                 return this.replies[r];
@@ -316,7 +403,32 @@ export class CommentBS {
         }
         return null;
     }
-
+    /**
+     * Supprime une réponse
+     * @param   {number} cmtId - L'identifiant de la réponse
+     * @returns {boolean}
+     */
+    public removeReply(cmtId: number): boolean {
+        for (let r = 0; r < this.replies.length; r++) {
+            if (this.replies[r].id == cmtId) {
+                this.replies.splice(r, 1);
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * Retourne l'objet CommentsBS
+     * @returns {CommentsBS}
+     */
+    public getCollectionComments(): CommentsBS {
+        if (this._parent instanceof CommentsBS) {
+            return this._parent;
+        } else if (this._parent instanceof CommentBS) {
+            return this._parent._parent as CommentsBS;
+        }
+        return null;
+    }
     /**
      * Ajoute les évènements sur les commentaires lors du rendu
      * @param   {JQuery<HTMLElement>} $container - Le conteneur des éléments d'affichage
@@ -329,6 +441,17 @@ export class CommentBS {
         const $popup = jQuery('#popin-dialog');
         const $btnClose = jQuery("#popin-showClose");
         const $title = $container.find('.title');
+        /**
+         * Retourne l'objet CommentBS associé au DOMElement fournit en paramètre
+         * @param   {JQuery<HTMLElement>} $comment - Le DOMElement contenant le commentaire
+         * @returns {Promise<CommentBS>}
+         */
+        const getObjComment = async function($comment: JQuery<HTMLElement>): Promise<CommentBS> {
+            const commentId: number = parseInt($comment.data('commentId'), 10);
+            if (commentId === self.id) return self;
+            else if (self.isReply(commentId)) return await self.getReply(commentId);
+            else return self.getCollectionComments().getComment(commentId);
+        };
 
         $btnClose.click(() => {
             funcPopup.hidePopup();
@@ -344,7 +467,8 @@ export class CommentBS {
          * @returns {void}
          */
         function displaySubscription($btn: JQuery<HTMLElement>): void {
-            if (!self._parent.is_subscribed) {
+            const collection = self.getCollectionComments();
+            if (!collection.is_subscribed) {
                 $btn.removeClass('active');
                 $btn.attr('title', "Recevoir les commentaires par e-mail");
                 $btn.find('svg').replaceWith(`
@@ -352,7 +476,7 @@ export class CommentBS {
                         <path fill-rule="nonzero" d="M13.176 13.284L3.162 2.987 1.046.812 0 1.854l2.306 2.298v.008c-.428.812-.659 1.772-.659 2.806v4.103L0 12.709v.821h11.307l1.647 1.641L14 14.13l-.824-.845zM6.588 16c.914 0 1.647-.73 1.647-1.641H4.941c0 .91.733 1.641 1.647 1.641zm4.941-6.006v-3.02c0-2.527-1.35-4.627-3.705-5.185V1.23C7.824.55 7.272 0 6.588 0c-.683 0-1.235.55-1.235 1.23v.559c-.124.024-.239.065-.346.098a2.994 2.994 0 0 0-.247.09h-.008c-.008 0-.008 0-.017.009-.19.073-.379.164-.56.254 0 0-.008 0-.008.008l7.362 7.746z"></path>
                     </svg>
                 `);
-            } else if (self._parent.is_subscribed) {
+            } else if (collection.is_subscribed) {
                 $btn.addClass('active');
                 $btn.attr('title', "Ne plus recevoir les commentaires par e-mail");
                 $btn.find('svg').replaceWith(`
@@ -373,17 +497,17 @@ export class CommentBS {
                 return;
             }
             const $btn = $(e.currentTarget);
-            let params: Obj = {type: self._media.mediaType.singular, id: self._media.id};
+            let params: Obj = {type: self.getCollectionComments().media.mediaType.singular, id: self.getCollectionComments().media.id};
             if ($btn.hasClass('active')) {
                 Base.callApi(HTTP_VERBS.DELETE, 'comments', 'subscription', params)
                 .then((data: Obj) => {
-                    self._parent.is_subscribed = false;
+                    self.getCollectionComments().is_subscribed = false;
                     displaySubscription($btn);
                 });
             } else {
                 Base.callApi(HTTP_VERBS.POST, 'comments', 'subscription', params)
                 .then((data: Obj) => {
-                    self._parent.is_subscribed = true;
+                    self.getCollectionComments().is_subscribed = true;
                     displaySubscription($btn);
                 });
             }
@@ -405,7 +529,7 @@ export class CommentBS {
                 // Il faut tout nettoyer, comme pour la fermeture
                 self.cleanEvents();
                 // Il faut demander au parent d'afficher le commentaire précédent
-                self._parent.getPrevComment(self.id).render();
+                self.getCollectionComments().getPrevComment(self.id).render();
             });
             this._events.push({elt: $prevCmt, event: 'click'});
         }
@@ -423,7 +547,7 @@ export class CommentBS {
                 // Il faut tout nettoyer, comme pour la fermeture
                 self.cleanEvents();
                 // Il faut demander au parent d'afficher le commentaire suivant
-                self._parent.getNextComment(self.id).render();
+                self.getCollectionComments().getNextComment(self.id).render();
             });
             this._events.push({elt: $nextCmt, event: 'click'});
         }
@@ -433,8 +557,15 @@ export class CommentBS {
             $btnSpoiler.click((e:JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
-                $(e.currentTarget).prev('span.comment-text').fadeIn();
-                $(e.currentTarget).fadeOut();
+                const $btn = jQuery(e.currentTarget);
+                const $spoiler = $btn.next('.comment-text').find('.spoiler');
+                if ($spoiler.is(':visible')) {
+                    $spoiler.fadeOut('fast');
+                    $btn.text('Voir le spoiler');
+                } else {
+                    $spoiler.fadeIn('fast');
+                    $btn.text('Cacher le spoiler');
+                }
             });
             this._events.push({elt: $btnSpoiler, event: 'click'});
         }
@@ -466,20 +597,20 @@ export class CommentBS {
                 return;
             }
             Base.callApi(verb, 'comments', 'thumb', params)
-            .then((data: Obj) => {
+            .then(async (data: Obj) => {
                 if (commentId == self.id) {
                     self.thumbs = parseInt(data.comment.thumbs, 10);
                     self.thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
                     self.updateRenderThumbs(vote);
-                } else if (self.isReply(commentId)) {
-                    const reply: CommentBS = self.getReply(commentId);
+                } else if (await self.isReply(commentId)) {
+                    const reply: CommentBS = await self.getReply(commentId);
                     reply.thumbs = parseInt(data.comment.thumbs, 10);
                     reply.thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
                     reply.updateRenderThumbs(vote);
                 } else {
                     // Demander au parent d'incrémenter les thumbs du commentaire
                     const thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
-                    self._parent.changeThumbs(commentId, data.comment.thumbs, thumbed);
+                    self.getCollectionComments().changeThumbs(commentId, data.comment.thumbs, thumbed);
                 }
                 // Petite animation pour le nombre de votes
                 $btn.siblings('strong.thumbs')
@@ -496,7 +627,7 @@ export class CommentBS {
          * On affiche/masque les options du commentaire
          */
         const $btnOptions = $container.find('.btnToggleOptions');
-        if (Base.debug) console.log('Comment loadEvents toggleOptions.length', $btnOptions.length);
+        // if (Base.debug) console.log('Comment loadEvents toggleOptions.length', $btnOptions.length);
         $btnOptions.click((e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
@@ -517,7 +648,7 @@ export class CommentBS {
          * On envoie la réponse à ce commentaire à l'API
          */
         const $btnSend = $container.find('.sendComment');
-        $btnSend.click((e: JQuery.ClickEvent) => {
+        $btnSend.click(async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -527,30 +658,52 @@ export class CommentBS {
             const $textarea = $(e.currentTarget).siblings('textarea');
             if (($textarea.val() as string).length > 0) {
                 const replyId = parseInt($textarea.data('replyTo'), 10);
+                const action = $textarea.data('action');
                 const msg = $textarea.val() as string;
                 if (replyId && replyId == self.id) {
-                    self.reply(msg).then(comment => {
+                    self.sendReply(msg).then(comment => {
                         if (comment) {
                             let template = CommentBS.getTemplateComment(comment);
                             $container.find('.comments').append(template);
+                            $textarea.removeAttr('data-reply-to');
+                            self.cleanEvents(() => {
+                                self.loadEvents($container, funcPopup);
+                            });
                         }
                     })
                 } else if (replyId) {
-                    const reply = self.getReply(replyId);
+                    const reply = await self.getReply(replyId);
                     if (reply) {
-                        reply.reply(msg).then(comment => {
+                        reply.sendReply(msg).then(comment => {
                             if (comment) {
                                 let template = CommentBS.getTemplateComment(comment);
                                 $container.find(`.comments .comment[data-comment-id="${reply.id}"]`)
                                     .after(template);
+                                    $textarea.removeAttr('data-reply-to');
+                                self.cleanEvents(() => {
+                                    self.loadEvents($container, funcPopup);
+                                });
                             }
                         });
                     } else {
                         // Allo Houston, on a un problème
                     }
+                } else if (action === 'edit') {
+                    self.edit(msg).then(() => {
+                        const cmtId = parseInt($textarea.data('commentId'), 10);
+                        let $comment = $(e.currentTarget).parents('.writing').siblings('.comments').children(`.comment[data-comment-id="${cmtId.toString()}"]`);
+                        $comment.find('.comment-text').text(self.text);
+                        // TODO: modifier le texte de la vignette du commentaire
+                        $comment = jQuery(`#comments .slide_flex .slide__comment[data-comment-id="${cmtId}"]`);
+                        $comment.find('p').text(msg);
+                        $textarea.removeAttr('data-action').removeAttr('data-comment-id');
+                    });
                 } else {
-                    CommentsBS.sendComment(self._media, msg).then((comment: CommentBS) => {
-                        self._parent.addToPage(comment.id);
+                    CommentsBS.sendComment(self.getCollectionComments().media, msg).then((comment: CommentBS) => {
+                        self.getCollectionComments().addToPage(comment.id);
+                        self.cleanEvents(() => {
+                            self.loadEvents($container, funcPopup);
+                        });
                     });
                 }
                 $textarea.val('');
@@ -599,12 +752,14 @@ export class CommentBS {
             const $replies = $comment.parents('.comments').find(`.comment[data-comment-reply="${inner}"]`);
             if (state == '0') {
                 // On affiche
+                $replies.nextAll('.sub').fadeIn('fast');
                 $replies.fadeIn('fast');
                 $btn.find('.btnText').text(Base.trans("comment.hide_answers"));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s; transform: rotate(180deg);');
                 $btn.data('toggle', '1');
             } else {
                 // On masque
+                $replies.nextAll('.sub').fadeOut('fast');
                 $replies.fadeOut('fast');
                 $btn.find('.btnText').text(Base.trans("comment.button.reply", {"%count%": $replies.length.toString()}, $replies.length));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s;');
@@ -614,7 +769,7 @@ export class CommentBS {
         this._events.push({elt: $btnReplies, event: 'click'});
 
         const $btnResponse = $container.find('.btnResponse');
-        $btnResponse.click((e: JQuery.ClickEvent) => {
+        $btnResponse.click(async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -623,28 +778,58 @@ export class CommentBS {
             }
             const $btn: JQuery<HTMLElement> = $(e.currentTarget);
             const $comment: JQuery<HTMLElement> = $btn.parents('.comment');
-            const commentId: number = parseInt($comment.data('commentId'), 10);
-            let comment: CommentBS;
-            // Si il s'agit d'une réponse, il nous faut le commentaire parent
-            if ($comment.hasClass('iv_i5') || $comment.hasClass('it_i3')) {
-                const $parent = $comment.siblings('.comment:not(.iv_i5)').first();
-                const parentId: number = parseInt($parent.data('commentId'), 10);
-                if (commentId == parentId) {
-                    comment = self._parent.getComment(commentId);
-                } else {
-                    const cmtParent = self._parent.getComment(parentId);
-                    comment = cmtParent.getReply(commentId);
-                }
-            } else {
-                comment = self._parent.getComment(commentId);
-            }
+            const comment: CommentBS = await getObjComment($comment);
             $container.find('textarea')
                 .val('@' + comment.login)
                 .attr('data-reply-to', comment.id);
         });
         this._events.push({elt: $btnResponse, event: 'click'});
-    }
 
+        const $btnEdit = $container.find('.btnEditComment');
+        $btnEdit.click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $parent = $(e.currentTarget).parents('.comment');
+            const commentId = parseInt($parent.data('commentId'), 10);
+            $textarea.val(self.text);
+            $textarea.attr('data-action', 'edit');
+            $textarea.attr('data-comment-id', commentId);
+        });
+        this._events.push({elt: $btnEdit, event: 'click'});
+
+        const $btnDelete = $container.find('.btnDeleteComment');
+        $btnDelete.click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $parent = $(e.currentTarget).parents('.comment');
+            const $options = $(e.currentTarget).parents('.options-options');
+            let template = `
+                <div class="options-delete">
+                    <span class="mainTime">Supprimer mon commentaire :</span>
+                    <button type="button" class="btn-reset fontWeight700 btnYes" style="vertical-align: 0px; padding-left: 10px; padding-right: 10px; color: rgb(208, 2, 27);">Oui</button>
+                    <button type="button" class="btn-reset mainLink btnNo" style="vertical-align: 0px;">Non</button>
+                </div>
+            `;
+            $options.hide().after(template);
+            const $btnYes = $parent.find('.options-delete .btnYes');
+            const $btnNo = $parent.find('.options-delete .btnNo');
+            $btnYes.click((e: JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                self.delete();
+                $btnClose.trigger('click');
+            });
+            $btnNo.click((e: JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                $parent.find('.options-delete').remove();
+                $options.show();
+                $btnYes.off('click');
+                $btnNo.off('click');
+            });
+        });
+        this._events.push({elt: $btnDelete, event: 'click'});
+    }
     /**
      * Nettoie les events créer par la fonction loadEvents
      * @param   {Function} onComplete - Fonction de callback
@@ -660,7 +845,6 @@ export class CommentBS {
         }
         onComplete();
     }
-
     /**
      * Affiche le commentaire dans une dialogbox
      */
@@ -714,8 +898,8 @@ export class CommentBS {
         showPopup();
 
         let template = `
-            <div data-media-type="${self._media.mediaType.singular}"
-                            data-media-id="${self._media.id}"
+            <div data-media-type="${self.getCollectionComments().media.mediaType.singular}"
+                            data-media-id="${self.getCollectionComments().media.id}"
                             class="displayFlex flexDirectionColumn"
                             style="margin-top: 2px; min-height: 0">`;
         if (Base.userIdentified()) {
@@ -730,16 +914,13 @@ export class CommentBS {
         // Récupération des réponses sur l'API
         // On ajoute les réponses, par ordre décroissant à la template
         if (this.nbReplies > 0 && this.replies.length <= 0) {
-            const replies = await this._parent.fetchReplies(this.id);
-            if (replies && replies.length > 0) {
-                this.replies = replies;
-            }
+            await this.fetchReplies();
         }
-        for (let r = this.replies.length - 1; r >= 0; r--) {
+        for (let r = 0; r < this.replies.length; r++) {
             template += CommentBS.getTemplateComment(this.replies[r]);
         }
         template += '</div>';
-        if (this._parent.isOpen() && Base.userIdentified()) {
+        if (this.getCollectionComments().isOpen() && Base.userIdentified()) {
             template += CommentBS.getTemplateWriting();
         }
         template += '</div>';
@@ -766,19 +947,21 @@ export class CommentBS {
      * @param   {string} text        Le texte de la réponse
      * @returns {Promise<void | CommentBS>}
      */
-    public reply(text: string): Promise<void | CommentBS> {
-        const _this = this;
+    public sendReply(text: string): Promise<void | CommentBS> {
+        const self = this;
         const params = {
-            type: this._media.mediaType.singular,
-            id: this._media.id,
+            type: this.getCollectionComments().media.mediaType.singular,
+            id: this.getCollectionComments().media.id,
             in_reply_to: this.inner_id,
             text: text
         };
         return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
         .then((data: Obj) => {
-            const comment = new CommentBS(data.comment, _this._parent, _this._media);
-            _this.replies.push(comment);
-            // _this._parent.comments.push(comment);
+            const comment = new CommentBS(data.comment, self);
+            const method: Function = self.getCollectionComments().order === OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
+            method.call(self.replies, comment);
+            self.nbReplies++;
+            self.getCollectionComments().nbComments++;
             return comment;
         })
         .catch(err => {

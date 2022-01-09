@@ -144,7 +144,6 @@ export class Note {
         // On affiche la popup
         showPopup();
     }
-
     /**
      * Met à jour l'affichage de la note
      */

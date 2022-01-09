@@ -64,15 +64,19 @@ export class Movie extends Media implements implAddNote {
     tagline: string;
     tmdb_id: number;
     trailer: string;
-    url: string;
 
     /***************************************************/
     /*                      METHODS                    */
     /***************************************************/
 
+    /**
+     * Constructeur de la classe Movie
+     * @param   {Obj} data - Les données du média
+     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+     * @returns {Media}
+     */
     constructor(data: any, element: JQuery<HTMLElement>) {
-        super(data);
-        this.elt = element;
+        super(data, element);
         return this.fill(data);
     }
     /**
@@ -88,6 +92,8 @@ export class Movie extends Media implements implAddNote {
         }
         data.description = data.synopsis;
         delete data.synopsis;
+        data.slug = data.url;
+        delete data.url;
 
         this.backdrop = data.backdrop;
         this.director = data.director;
@@ -101,7 +107,6 @@ export class Movie extends Media implements implAddNote {
         this.tagline = data.tagline;
         this.tmdb_id = parseInt(data.tmdb_id);
         this.trailer = data.trailer;
-        this.url = data.url;
         this.mediaType = {singular: MediaType.movie, plural: 'movies', className: Movie};
         super.fill(data);
         return this.save();

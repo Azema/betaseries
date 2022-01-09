@@ -125,64 +125,165 @@ export class Show extends Media implements implShow, implAddNote {
     );
 
     /**
-     * Methode static servant à retourner un objet show
-     * à partir de son ID
-     * @param  {number} id             L'identifiant de la série
-     * @param  {boolean} [force=false] Indique si on utilise le cache ou non
+     * Méthode static servant à récupérer une série sur l'API BS
+     * @param  {Obj} params - Critères de recherche de la série
+     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
      * @return {Promise<Show>}
+     * @private
      */
-    static fetch(id: number, force: boolean = false): Promise<Show> {
+    private static _fetch(params: Obj, force: boolean = false): Promise<Show> {
         return new Promise((resolve: Function, reject: Function) => {
-            Base.callApi('GET', 'shows', 'display', {id: id}, force)
+            Base.callApi('GET', 'shows', 'display', params, force)
             .then(data => resolve(new Show(data.show, jQuery('.blockInformations'))) )
             .catch(err => reject(err) );
         });
     }
 
-    static fetchByUrl(url: string, force: boolean = true): Promise<Show> {
+    /**
+     * Méthode static servant à récupérer plusieurs séries sur l'API BS
+     * @param  {Array<number>} ids - Les identifiants des séries recherchées
+     * @return {Promise<Array<Show>>}
+     */
+    static fetchMulti(ids: Array<number>): Promise<Array<Show>> {
         return new Promise((resolve: Function, reject: Function) => {
-            Base.callApi('GET', 'shows', 'display', {url: url}, force)
-            .then(data => resolve(new Show(data.show, jQuery('.blockInformations'))) )
-            .catch(err => reject(err) );
+            Base.callApi(HTTP_VERBS.GET, 'shows', 'display', {id: ids.join(',')})
+            .then((data: Obj) => {
+                const shows: Array<Show> = Array();
+                if (ids.length > 1) {
+                    for (let s = 0; s < data.shows.length; s++) {
+                        shows.push(new Show(data.shows[s], jQuery('.blockInformations')));
+                    }
+                } else {
+                    shows.push(new Show(data.show, jQuery('.blockInformations')));
+                }
+                resolve(shows);
+            })
+            .catch(err => reject(err));
         });
+    }
+
+    /**
+     * Methode static servant à récupérer une série par son identifiant BS
+     * @param  {number} id - L'identifiant de la série
+     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+     * @return {Promise<Show>}
+     */
+    static fetch(id: number, force: boolean = false): Promise<Show> {
+        return this._fetch({id: id}, force);
+    }
+
+    /**
+     * Methode static servant à récupérer une série par son identifiant TheTVDB
+     * @param  {number} id - L'identifiant TheTVDB de la série
+     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+     * @return {Promise<Show>}
+     */
+    static fetchByTvdb(id: number, force: boolean = false): Promise<Show> {
+        return this._fetch({thetvdb_id: id}, force);
+    }
+
+    /**
+     * Méthode static servant à récupérer une série par son identifiant URL
+     * @param   {string} url - Identifiant URL (slug) de la série recherchée
+     * @param   {boolean} force - Indique si on doit ignorer les données dans le cache
+     * @returns {Promise<Show>}
+     */
+    static fetchByUrl(url: string, force: boolean = true): Promise<Show> {
+        return this._fetch({url: url}, force);
     }
 
     /***************************************************/
     /*                  PROPERTIES                     */
     /***************************************************/
 
+    /**
+     * @type {object} Contient les alias de la série
+     */
     aliases: object;
+    /**
+     * @type {string} Année de création de la série
+     */
     creation: string;
+    /**
+     * @type {string} Pays d'origine de la série
+     */
     country: string;
+    /**
+     * @type {Season} Pointeur vers la saison courante
+     */
     currentSeason: Season;
+    /**
+     * @type {Images} Contient les URLs d'accès aux images de la série
+     */
     images: Images;
+    /**
+     * @type {number} Nombre total d'épisodes dans la série
+     */
     nbEpisodes: number;
+    /**
+     * @type {string} Chaîne TV ayant produit la série
+     */
     network: string;
+    /**
+     * @type {string}
+     */
     next_trailer: string;
+    /**
+     * @type {string}
+     */
     next_trailer_host: string;
+    /**
+     * @type {string} Code de classification TV parental
+     */
     rating: string;
+    /**
+     * @type {Array<Picture>} Tableau des images uploadées par les membres
+     */
     pictures: Array<Picture>;
+    /**
+     * @type {Platforms} Plateformes de diffusion
+     */
     platforms: Platforms;
+    /**
+     * @type {Array<Season>} Tableau des saisons de la série
+     */
     seasons: Array<Season>;
+    /**
+     * @type {Showrunner}
+     */
     showrunner: Showrunner;
+    /**
+     * @type {Array<string>} Tableau des liens sociaux de la série
+     */
     social_links: Array<string>;
+    /**
+     * @type {string} Status de la série sur le compte du membre
+     */
     status: string;
+    /**
+     * @type {number} Identifiant TheTVDB de la série
+     */
     thetvdb_id: number;
 
     /***************************************************/
     /*                      METHODS                    */
     /***************************************************/
 
+    /**
+     * Constructeur de la classe Show
+     * @param   {Obj} data - Les données du média
+     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+     * @returns {Media}
+     */
     constructor(data: Obj, element: JQuery<HTMLElement>) {
-        super(data);
-        this.elt = element;
-        return this.fill(data)._init();
+        super(data, element);
+        return this.fill(data);
     }
     /**
      * Initialise l'objet lors de sa construction et après son remplissage
      * @returns {Show}
      */
-    private _init(): Show {
+    public init(): Show {
         // On gère l'ajout et la suppression de la série dans le compte utilisateur
         if (this.in_account) {
             this.deleteShowClick();
@@ -230,17 +331,23 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>} Promise of show
      */
     addToAccount(): Promise<Show> {
-        const _this = this;
-        if (this.in_account) return new Promise(resolve => resolve(_this));
+        const self = this;
+        if (this.in_account) return new Promise(resolve => resolve(self));
 
         return new Promise((resolve, reject) => {
-            Base.callApi('POST', 'shows', 'show', {id: _this.id})
+            Base.callApi('POST', 'shows', 'show', {id: self.id})
             .then(data => {
-                _this.fill(data.show);
-                _this._callListeners(EventTypes.ADD);
-                _this.save();
-                resolve(_this);
+                self.fill(data.show);
+                self._callListeners(EventTypes.ADD);
+                self.save();
+                resolve(self);
             }, err => {
+                // Si la série est déjà sur le compte du membre
+                if (err.code !== undefined && err.code === 2003) {
+                    self.update(true).then((show: Show) => {
+                        return resolve(show);
+                    });
+                }
                 reject(err);
             });
         });
@@ -250,17 +357,23 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>} Promise of show
      */
     removeFromAccount(): Promise<Show> {
-        const _this = this;
-        if (! this.in_account) return new Promise(resolve => resolve(_this));
+        const self = this;
+        if (! this.in_account) return new Promise(resolve => resolve(self));
 
         return new Promise((resolve: Function, reject: Function) => {
-            Base.callApi('DELETE', 'shows', 'show', {id: _this.id})
+            Base.callApi('DELETE', 'shows', 'show', {id: self.id})
             .then(data => {
-                _this.fill(data.show);
-                _this._callListeners(EventTypes.REMOVE);
-                _this.save();
-                resolve(this);
+                self.fill(data.show);
+                self._callListeners(EventTypes.REMOVE);
+                self.save();
+                resolve(self);
             }, err => {
+                // Si la série n'est plus sur le compte du membre
+                if (err.code !== undefined && err.code === 2004) {
+                    self.update(true).then((show: Show) => {
+                        return resolve(show);
+                    });
+                }
                 reject(err);
             });
         });

@@ -4,10 +4,17 @@ import { Note } from "./Note";
 
 declare var getScrollbarWidth, faceboxDisplay: Function, moment;
 
+/* interface JQuery<TElement = HTMLElement> extends Iterable<TElement> {
+    popover?(params: any): this;
+} */
+export enum OrderComments {
+    DESC = 'desc',
+    ASC = 'asc'
+};
 export enum MediaStatusComments {
     OPEN = 'open',
     CLOSED = 'close'
-}
+};
 export type CustomEvent = {
     elt: JQuery<HTMLElement>;
     event: string;
@@ -21,10 +28,11 @@ export class CommentsBS implements implRepliesComment {
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-     static EventTypes: Array<string> = new Array(
+    static EventTypes: Array<string> = new Array(
         'update',
         'save',
-        'add'
+        'add',
+        'delete'
     );
 
     /**
@@ -41,9 +49,9 @@ export class CommentsBS implements implRepliesComment {
         };
         return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
         .then((data: Obj) => {
-            const comment = new CommentBS(data.comment, media.comments, media);
+            const comment = new CommentBS(data.comment, media.comments);
             media.comments.addComment(comment);
-            media.comments.nbComments++;
+            media.comments.is_subscribed = true;
             return comment;
         })
         .catch(err => {
@@ -55,13 +63,41 @@ export class CommentsBS implements implRepliesComment {
     /*************************************************/
     /*                  PROPERTIES                   */
     /*************************************************/
-    _parent: Base;
+    /**
+     * @type {Array<CommentBS>} Tableau des commentaires
+     */
     comments: Array<CommentBS>;
+    /**
+     * @type {number} Nombre total de commentaires du média
+     */
     nbComments: number;
+    /**
+     * @type {boolean} Indique si le membre à souscrit aux alertes commentaires du média
+     */
     is_subscribed: boolean;
+    /**
+     * @type {string} Indique si les commentaires sont ouverts ou fermés
+     */
     status: string;
+    /**
+     * @type {Base} Le média auquel sont associés les commentaires
+     * @private
+     */
+    private _parent: Base;
+    /**
+     * @type {Array<CustomEvent>} Tableau des events déclarés par la fonction loadEvents
+     * @private
+     */
     private _events: Array<CustomEvent>;
+    /**
+     * @type {object} Objet contenant les fonctions à l'écoute des changements
+     * @private
+     */
     private _listeners: object;
+    /**
+     * @type {OrderComments} Ordre de tri des commentaires et des réponses
+     */
+    private _order: OrderComments;
 
     /*************************************************/
     /*                  METHODS                      */
@@ -72,12 +108,34 @@ export class CommentsBS implements implRepliesComment {
         this.is_subscribed = false;
         this.status = MediaStatusComments.OPEN;
         this.nbComments = nbComments;
+        this._order = OrderComments.DESC;
         this._initListeners();
+    }
+    /**
+     * Initialise la collection de commentaires
+     */
+    public init() {
+        const self = this;
+        const addCommentId = function() {
+            const $vignettes = jQuery('#comments .slides_flex .slide_flex .slide__comment');
+            let vignette: JQuery<HTMLElement>;
+            for (let v = 0; v < $vignettes.length; v++) {
+                vignette = jQuery($vignettes.get(v));
+                vignette.attr('data-comment-id', self.comments[v].id);
+            }
+        };
+        if (this.comments.length <= 0 && this.nbComments > 0) {
+            const $vignettes = jQuery('#comments .slides_flex .slide_flex');
+            this.fetchComments($vignettes.length)
+            .then(addCommentId);
+        } else {
+            addCommentId();
+        }
     }
     /**
      * Initialize le tableau des écouteurs d'évènements
      * @returns {Base}
-     * @sealed
+     * @private
      */
     private _initListeners(): this {
         this._listeners = {};
@@ -92,7 +150,6 @@ export class CommentsBS implements implRepliesComment {
      * @param  {EventTypes} name - Le type d'évenement
      * @param  {Function}   fn   - La fonction à appeler
      * @return {Base} L'instance du média
-     * @sealed
      */
     public addListener(name: EventTypes, fn: Function): this {
         // On vérifie que le type d'event est pris en charge
@@ -110,7 +167,6 @@ export class CommentsBS implements implRepliesComment {
      * @param  {string}   name - Le type d'évenement
      * @param  {Function} fn   - La fonction qui était appelée
      * @return {Base} L'instance du média
-     * @sealed
      */
     public removeListener(name: EventTypes, fn: Function): this {
         if (this._listeners[name] !== undefined) {
@@ -125,11 +181,11 @@ export class CommentsBS implements implRepliesComment {
      * Appel les listeners pour un type d'évenement
      * @param  {EventTypes} name - Le type d'évenement
      * @return {Base} L'instance du média
-     * @sealed
      */
     protected _callListeners(name: EventTypes): this {
         const event = new CustomEvent('betaseries', {detail: {name: name}});
-        if (this._listeners[name] !== undefined) {
+        if (this._listeners[name] !== undefined && this._listeners[name].length > 0) {
+            if (Base.debug) console.log('Comments call %d Listeners on event %s', this._listeners[name].length, name);
             for (let l = 0; l < this._listeners[name].length; l++) {
                 this._listeners[name][l].call(this, event, this);
             }
@@ -143,14 +199,36 @@ export class CommentsBS implements implRepliesComment {
     public get length(): number {
         return this.comments.length;
     }
-
+    /**
+     * Retourne le média auxquels sont associés les commentaires
+     * @readonly
+     */
+    public get media(): Base {
+        return this._parent;
+    }
+    /**
+     * Retourne l'ordre de tri des commentaires
+     * @returns {OrderComments}
+     */
+    public get order(): OrderComments {
+        return this._order;
+    }
+    /**
+     * Définit l'ordre de tri des commentaires
+     * @param {OrderComments} o - Ordre de tri
+     */
+    public set order(o: OrderComments) {
+        this._order = o;
+    }
     /**
      * Récupère les commentaires du média sur l'API
      * @param   {number} [nbpp=50] - Le nombre de commentaires à récupérer
      * @param   {number} [since=0] - L'identifiant du dernier commentaire reçu
+     * @param   {OrderComments} [order='desc'] - Ordre de tri des commentaires
      * @returns {Promise<CommentsBS>}
      */
-    public fetchComments(nbpp: number = 50, since: number = 0): Promise<CommentsBS> {
+    public fetchComments(nbpp: number = 50, since: number = 0, order: OrderComments = OrderComments.DESC): Promise<CommentsBS> {
+        if (order !== this._order) { this.order = order; }
         const self = this;
         return new Promise((resolve: Function, reject: Function) => {
             let params: Obj = {
@@ -158,7 +236,7 @@ export class CommentsBS implements implRepliesComment {
                 id: self._parent.id,
                 nbpp: nbpp,
                 replies: 0,
-                order: 'desc'
+                order: self.order
             };
             if (since > 0) {
                 params.since_id = since;
@@ -170,7 +248,8 @@ export class CommentsBS implements implRepliesComment {
                         self.comments = new Array();
                     }
                     for (let c = 0; c < data.comments.length; c++) {
-                        self.addComment(data.comments[c]);
+                        self.comments.push(new CommentBS(data.comments[c], self));
+                        // self.addComment(data.comments[c]);
                     }
                 }
                 self.nbComments = parseInt(data.total, 10);
@@ -187,15 +266,20 @@ export class CommentsBS implements implRepliesComment {
     }
     /**
      * Ajoute un commentaire à la collection
-     * @param   {Obj} data - Les données du commentaire provenant de l'API
+     * /!\ (Ne l'ajoute pas sur l'API) /!\
+     * @param   {any} data - Les données du commentaire provenant de l'API
      * @returns {CommentsBS}
      */
-    public addComment(data: Obj | CommentBS): this {
+    public addComment(data: any | CommentBS): this {
+        const method: Function = this.order == OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
+        if (Base.debug) console.log('addComment order: %s - method: %s', this.order, method.name);
         if (data instanceof CommentBS) {
-            this.comments.push(data);
+            method.call(this.comments, data);
         } else {
-            this.comments.push(new CommentBS(data, this, this._parent));
+            method.call(this.comments, new CommentBS(data, this));
         }
+        this.nbComments++;
+        this.media.nbComments++;
         return this;
     }
     /**
@@ -208,6 +292,11 @@ export class CommentsBS implements implRepliesComment {
         for (let c = 0; c < this.comments.length; c++) {
             if (this.comments[c].id === cmtId) {
                 this.comments.splice(c, 1);
+                // retire le commentaire de la liste des commentaires
+                this.removeFromPage(cmtId);
+                this.nbComments--;
+                this.media.nbComments--;
+                this._callListeners('delete' as EventTypes);
                 break;
             }
         }
@@ -280,14 +369,15 @@ export class CommentsBS implements implRepliesComment {
     /**
      * Retourne les réponses d'un commentaire
      * @param   {number} commentId - Identifiant du commentaire original
+     * @param   {OrderComments} [order='desc'] - Ordre de tri des réponses
      * @returns {Promise<Array<CommentBS>>} Tableau des réponses
      */
-    public async fetchReplies(commentId: number): Promise<Array<CommentBS>> {
-        const data = await Base.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: commentId, order: 'desc' });
+    public async fetchReplies(commentId: number, order: OrderComments = OrderComments.ASC): Promise<Array<CommentBS>> {
+        const data = await Base.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: commentId, order });
         const replies = new Array();
         if (data.comments) {
             for (let c = 0; c < data.comments.length; c++) {
-                replies.push(new CommentBS(data.comments[c], this, this._parent));
+                replies.push(new CommentBS(data.comments[c], this));
             }
         }
         return replies;
@@ -324,40 +414,46 @@ export class CommentsBS implements implRepliesComment {
                 if (Base.debug) console.log('Base fetchComments call');
                 promise = self.fetchComments(nbpp) as Promise<this>;
             }
-            let comment: CommentBS,
-                template: string = `
-                    <div data-media-type="${self._parent.mediaType.singular}"
-                         data-media-id="${self._parent.id}"
-                         class="displayFlex flexDirectionColumn"
-                         style="margin-top: 2px; min-height: 0">`;
-            if (Base.userIdentified()) {
-                template += `
-                <button type="button" class="btn-reset btnSubscribe" style="position: absolute; top: 3px; right: 31px; padding: 8px;">
-                    <span class="svgContainer">
-                        <svg></svg>
-                    </span>
-                </button>`;
-            }
-            template += '<div class="comments overflowYScroll">';
             promise.then(async () => {
+                let comment: CommentBS,
+                    template: string = `
+                        <div data-media-type="${self._parent.mediaType.singular}"
+                            data-media-id="${self._parent.id}"
+                            class="displayFlex flexDirectionColumn"
+                            style="margin-top: 2px; min-height: 0">`;
+                if (Base.userIdentified()) {
+                    template += `
+                    <button type="button" class="btn-reset btnSubscribe" style="position: absolute; top: 3px; right: 31px; padding: 8px;">
+                        <span class="svgContainer">
+                            <svg></svg>
+                        </span>
+                    </button>`;
+                }
+                template += '<div class="comments overflowYScroll">';
                 for (let c = 0; c < self.comments.length; c++) {
                     comment = self.comments[c];
-                    template += CommentBS.getTemplateComment(comment, true);
+                    template += CommentBS.getTemplateComment(comment);
                     // Si le commentaires à des réponses et qu'elles ne sont pas chargées
                     if (comment.nbReplies > 0 && comment.replies.length <= 0) {
                         // On récupère les réponses
-                        comment.replies = await self.fetchReplies(comment.id);
+                        if (Base.debug) console.log('Comments render getTemplate fetchReplies');
+                        await comment.fetchReplies();
                         // On ajoute un boutton pour afficher/masquer les réponses
                     }
                     for (let r = 0; r < comment.replies.length; r++) {
-                        template += CommentBS.getTemplateComment(comment.replies[r], true);
+                        template += CommentBS.getTemplateComment(comment.replies[r]);
                     }
                 }
                 // On ajoute le bouton pour voir plus de commentaires
                 if (self.comments.length < self.nbComments) {
-                    template += `<button type="button" class="btn-reset btn-greyBorder moreComments" style="margin-top: 10px; width: 100%;">${Base.trans("timeline.comments.display_more")}<i class="fa fa-cog fa-spin fa-2x fa-fw" style="display:none;margin-left:15px;vertical-align:middle;"></i><span class="sr-only">Loading...</span></button>`;
+                    template += `
+                        <button type="button" class="btn-reset btn-greyBorder moreComments" style="margin-top: 10px; width: 100%;">
+                            ${Base.trans("timeline.comments.display_more")}
+                            <i class="fa fa-cog fa-spin fa-2x fa-fw" style="display:none;margin-left:15px;vertical-align:middle;"></i>
+                            <span class="sr-only">Loading...</span>
+                        </button>`;
                 }
-                template + '</div>';
+                template += '</div>'; // Close div.comments
                 if (self.isOpen() && Base.userIdentified()) {
                     template += CommentBS.getTemplateWriting();
                 }
@@ -367,6 +463,13 @@ export class CommentsBS implements implRepliesComment {
                 reject(err);
             });
         });
+    }
+    /**
+     * Met à jour le nombre de commentaires sur la page
+     */
+    public updateCounter() {
+        const $counter = jQuery('#comments .blockTitle');
+        $counter.text($counter.text().replace(/\d+/, this.nbComments.toString()));
     }
     /**
      * Ajoute les évènements sur les commentaires lors du rendu
@@ -381,6 +484,32 @@ export class CommentsBS implements implRepliesComment {
         const self = this;
         const $popup = jQuery('#popin-dialog');
         const $btnClose = jQuery("#popin-showClose");
+        /**
+         * Retourne l'objet CommentBS associé au DOMElement fournit en paramètre
+         * @param   {JQuery<HTMLElement>} $comment - Le DOMElement contenant le commentaire
+         * @returns {Promise<CommentBS>}
+         */
+        const getObjComment = async function($comment: JQuery<HTMLElement>): Promise<CommentBS> {
+            const commentId: number = parseInt($comment.data('commentId'), 10);
+            let comment: CommentBS;
+            // Si il s'agit d'une réponse, il nous faut le commentaire parent
+            if ($comment.hasClass('reply')) {
+                let $parent = $comment.prev();
+                while ($parent.hasClass('reply')) {
+                    $parent = $parent.prev();
+                }
+                const parentId: number = parseInt($parent.data('commentId'), 10);
+                if (commentId == parentId) {
+                    comment = self.getComment(commentId);
+                } else {
+                    const cmtParent = self.getComment(parentId);
+                    comment = await cmtParent.getReply(commentId);
+                }
+            } else {
+                comment = self.getComment(commentId);
+            }
+            return comment;
+        };
         // On ajoute les templates HTML du commentaire,
         // des réponses et du formulaire de d'écriture
         // On active le bouton de fermeture de la popup
@@ -451,8 +580,15 @@ export class CommentsBS implements implRepliesComment {
             $btnSpoiler.click((e:JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
-                $(e.currentTarget).prev('span.comment-text').fadeIn();
-                $(e.currentTarget).fadeOut();
+                const $btn = jQuery(e.currentTarget);
+                const $spoiler = $btn.next('.comment-text').find('.spoiler');
+                if ($spoiler.is(':visible')) {
+                    $spoiler.fadeOut('fast');
+                    $btn.text('Voir le spoiler');
+                } else {
+                    $spoiler.fadeIn('fast');
+                    $btn.text('Cacher le spoiler');
+                }
             });
         }
         this._events.push({elt: $btnSpoiler, event: 'click'});
@@ -462,7 +598,7 @@ export class CommentsBS implements implRepliesComment {
          *  - btnDownVote: Voter contre ce commentaire
          */
         const $btnThumb = $container.find('.comments .comment .btnThumb');
-        $btnThumb.click((e: JQuery.ClickEvent) => {
+        $btnThumb.click(async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -484,7 +620,7 @@ export class CommentsBS implements implRepliesComment {
                     comment = this.getComment(commentId);
                 } else {
                     const cmtParent = this.getComment(parentId);
-                    comment = cmtParent.getReply(commentId);
+                    comment = await cmtParent.getReply(commentId);
                 }
             } else {
                 comment = this.getComment(commentId);
@@ -536,32 +672,80 @@ export class CommentsBS implements implRepliesComment {
          * On envoie la réponse à ce commentaire à l'API
          */
         const $btnSend = $container.find('.sendComment');
-        $btnSend.click((e: JQuery.ClickEvent) => {
+        $btnSend.click(async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
                 faceboxDisplay('inscription', {}, function() {});
                 return;
             }
+            const getNodeCmt = function(cmtId: number): JQuery<HTMLElement> {
+                return jQuery(e.currentTarget).parents('.writing').prev('.comments').find(`.comment[data-comment-id="${cmtId.toString()}"]`);
+            };
             const $textarea = $(e.currentTarget).siblings('textarea');
             if (($textarea.val() as string).length > 0) {
+                const action = $textarea.data('action');
+                const msg = $textarea.val() as string;
                 let comment: CommentBS;
+                let promise;
                 if ($textarea.data('replyTo')) {
-                    comment = self.getComment(parseInt($textarea.data('replyTo'), 10));
-                    comment.reply($textarea.val() as string);
-                    $textarea.val('');
-                    $textarea.siblings('button').attr('disabled', 'true');
+                    const cmtId = parseInt($textarea.data('replyTo'), 10);
+                    comment = self.getComment(cmtId);
+                    let $comment = getNodeCmt(cmtId);
+                    promise = comment.sendReply($textarea.val() as string).then((reply) => {
+                        if (reply instanceof CommentBS) {
+                            $textarea.val('');
+                            $textarea.siblings('button').attr('disabled', 'true');
+                            $textarea.removeAttr('data-reply-to');
+                            const template = CommentBS.getTemplateComment(reply);
+                            if ($comment.next('.comment').hasClass('reply')) {
+                                let $next = $comment.next('.comment');
+                                let $prev: JQuery<HTMLElement>;
+                                while ($next.hasClass('reply')) {
+                                    $prev = $next;
+                                    $next = $next.next('.comment');
+                                }
+                                $prev.after(template);
+                            } else {
+                                $comment.after(template);
+                            }
+                        }
+                    });
+                } else if (action && action === 'edit') {
+                    const cmtId = parseInt($textarea.data('commentId'), 10);
+                    let $comment = getNodeCmt(cmtId);
+                    const comment = await getObjComment($comment);
+                    promise = comment.edit(msg).then((comment) => {
+                        $comment.find('.comment-text').text(comment.text);
+                        $comment = jQuery(`#comments .slide_flex .slide__comment[data-comment-id="${cmtId}"]`);
+                        $comment.find('p').text(comment.text);
+                        $textarea.removeAttr('data-action');
+                        $textarea.removeAttr('data-comment-id');
+                        $textarea.val('');
+                        $textarea.siblings('button').attr('disabled', 'true');
+                    });
                 } else {
-                    CommentsBS.sendComment(self._parent, $textarea.val() as string)
+                    promise = CommentsBS.sendComment(self._parent, $textarea.val() as string)
                     .then((comment: CommentBS) => {
                         if (comment) {
                             $textarea.val('');
                             $textarea.siblings('button').attr('disabled', 'true');
-                            $textarea.parents('.comments').append(CommentBS.getTemplateComment(comment));
+                            const $comments = $textarea.parents('.writing').prev('.comments');
+                            if (this.order === OrderComments.DESC) {
+                                $comments.prepend(CommentBS.getTemplateComment(comment));
+                            } else {
+                                $comments.append(CommentBS.getTemplateComment(comment));
+                            }
+                            $comments.find(`.comment[data-comment-id="${comment.id}"]`).get(0).scrollIntoView();
                             self.addToPage(comment.id);
                         }
                     });
                 }
+                promise.then(() => {
+                    self.cleanEvents(() => {
+                        self.loadEvents($container, nbpp, funcPopup);
+                    });
+                });
             }
         });
         this._events.push({elt: $btnSend, event: 'click'});
@@ -629,7 +813,7 @@ export class CommentsBS implements implRepliesComment {
         /**
          * Permet de créer une réponse à un commentaire
          */
-        $btnResponse.click((e: JQuery.ClickEvent) => {
+        $btnResponse.click(async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -638,21 +822,7 @@ export class CommentsBS implements implRepliesComment {
             }
             const $btn: JQuery<HTMLElement> = $(e.currentTarget);
             const $comment: JQuery<HTMLElement> = $btn.parents('.comment');
-            const commentId: number = parseInt($comment.data('commentId'), 10);
-            let comment: CommentBS;
-            // Si il s'agit d'une réponse, il nous faut le commentaire parent
-            if ($comment.hasClass('iv_i5') || $comment.hasClass('it_i3')) {
-                const $parent = $comment.siblings('.comment:not(.iv_i5)').first();
-                const parentId: number = parseInt($parent.data('commentId'), 10);
-                if (commentId == parentId) {
-                    comment = this.getComment(commentId);
-                } else {
-                    const cmtParent = this.getComment(parentId);
-                    comment = cmtParent.getReply(commentId);
-                }
-            } else {
-                comment = this.getComment(commentId);
-            }
+            const comment: CommentBS = await getObjComment($comment);
             $container.find('textarea')
                 .val('@' + comment.login)
                 .attr('data-reply-to', comment.id);
@@ -680,7 +850,7 @@ export class CommentsBS implements implRepliesComment {
                     firstCmtId: number = self.comments[oldLastCmtIndex + 1].id;
                 for (let c = oldLastCmtIndex + 1; c < self.comments.length; c++) {
                     comment = self.comments[c];
-                    template += CommentBS.getTemplateComment(comment, true);
+                    template += CommentBS.getTemplateComment(comment);
                     // Si le commentaires à des réponses et qu'elles ne sont pas chargées
                     if (comment.nbReplies > 0 && comment.replies.length <= 0) {
                         // On récupère les réponses
@@ -688,12 +858,14 @@ export class CommentsBS implements implRepliesComment {
                         // On ajoute un boutton pour afficher/masquer les réponses
                     }
                     for (let r = 0; r < comment.replies.length; r++) {
-                        template += CommentBS.getTemplateComment(comment.replies[r], true);
+                        template += CommentBS.getTemplateComment(comment.replies[r]);
                     }
                 }
                 $btn.before(template);
                 jQuery(`.comment[data-comment-id="${firstCmtId.toString()}"]`).get(0).scrollIntoView();
-                self.cleanEvents(self.loadEvents);
+                self.cleanEvents(() => {
+                    self.loadEvents($container, nbpp, funcPopup);
+                });
                 if (self.comments.length >= self.nbComments) {
                     $btn.hide();
                 }
@@ -702,8 +874,63 @@ export class CommentsBS implements implRepliesComment {
             });
         });
         this._events.push({elt: $btnMore, event: 'click'});
-    }
 
+        const $btnEdit = $container.find('.btnEditComment');
+        $btnEdit.click(async (e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $comment = jQuery(e.currentTarget).parents('.comment');
+            const commentId = parseInt($comment.data('commentId'), 10);
+
+            const comment = await getObjComment($comment);
+            $textarea.val(comment.text);
+            $textarea.attr('data-action', 'edit');
+            $textarea.attr('data-comment-id', commentId);
+        });
+        this._events.push({elt: $btnEdit, event: 'click'});
+
+        const $btnDelete = $container.find('.btnDeleteComment');
+        $btnDelete.click(async (e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $comment = jQuery(e.currentTarget).parents('.comment');
+            const $options = jQuery(e.currentTarget).parents('.options-options');
+            let template = `
+                <div class="options-delete">
+                    <span class="mainTime">Supprimer mon commentaire :</span>
+                    <button type="button" class="btn-reset fontWeight700 btnYes" style="vertical-align: 0px; padding-left: 10px; padding-right: 10px; color: rgb(208, 2, 27);">Oui</button>
+                    <button type="button" class="btn-reset mainLink btnNo" style="vertical-align: 0px;">Non</button>
+                </div>
+            `;
+            $options.hide().after(template);
+            const $btnYes = $comment.find('.options-delete .btnYes');
+            const $btnNo = $comment.find('.options-delete .btnNo');
+            const comment = await getObjComment($comment);
+            $btnYes.click((e: JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                comment.delete();
+                let $next = $comment.next('.comment');
+                let $prev: JQuery<HTMLElement>;
+                while($next.hasClass('reply')) {
+                    $prev = $next;
+                    $next = $next.next('.comment');
+                    $prev.remove();
+                }
+                $comment.remove();
+                self.updateCounter();
+            });
+            $btnNo.click((e: JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                $comment.find('.options-delete').remove();
+                $options.show();
+                $btnYes.off('click');
+                $btnNo.off('click');
+            });
+        });
+        this._events.push({elt: $btnDelete, event: 'click'});
+    }
     /**
      * Nettoie les events créer par la fonction loadEvents
      * @param   {Function} onComplete - Fonction de callback
@@ -714,12 +941,13 @@ export class CommentsBS implements implRepliesComment {
             let data: CustomEvent;
             for (let e = 0; e < this._events.length; e++) {
                 data = this._events[e];
-                data.elt.off(data.event);
+                if (data.elt.length > 0)
+                    data.elt.off(data.event);
             }
         }
+        this._events = new Array();
         onComplete();
     }
-
     /**
      * Gère l'affichage de l'ensemble des commentaires
      * @returns {void}
@@ -781,6 +1009,7 @@ export class CommentsBS implements implRepliesComment {
                 $contentReact.find('.loaderCmt').remove();
                 $contentReact.append(template);
                 $contentReact.fadeIn();
+                self.cleanEvents();
                 self.loadEvents($contentReact, nbCmts, {hidePopup, showPopup});
             });
 
@@ -799,7 +1028,7 @@ export class CommentsBS implements implRepliesComment {
         const avatar = comment.avatar || 'https://img.betaseries.com/NkUiybcFbxbsT_EnzkGza980XP0=/42x42/smart/https%3A%2F%2Fwww.betaseries.com%2Fimages%2Fsite%2Favatar-default.png';
         const template = `
             <div class="slide_flex">
-                <div class="slide__comment positionRelative u-insideBorderOpacity u-insideBorderOpacity--01">
+                <div class="slide__comment positionRelative u-insideBorderOpacity u-insideBorderOpacity--01" data-comment-id="${comment.id}">
                     <p>${headMsg} ${hideMsg}</p>
                     <button type="button" class="btn-reset js-popup-comments zIndex10" data-comment-id="${comment.id}"></button>
                 </div>
@@ -825,6 +1054,72 @@ export class CommentsBS implements implRepliesComment {
                 </div>
             </div>`;
         jQuery('#comments .slides_flex').prepend(template);
+        // On met à jour le nombre de commentaires
+        jQuery('#comments .blockTitle').text(jQuery('#comments .blockTitle').text().replace(/\d+/, this._parent.nbComments.toString()));
         this._callListeners(EventTypes.ADD);
+    }
+    /**
+     * Supprime un commentaire dans la liste des commentaires de la page
+     * @param {number} cmtId - L'identifiant du commentaire
+     */
+    public removeFromPage(cmtId: number) {
+        const $vignette = jQuery(`#comments .slides_flex .slide__comment[data-comment-id="${cmtId}"]`);
+        $vignette.parents('.slide_flex').remove();
+    }
+    /**
+     * Retourne la template affichant les notes associés aux commentaires
+     * @returns {string} La template affichant les évaluations des commentaires
+     */
+    public showEvaluations(): Promise<string> {
+        const self = this;
+        const params = {
+            type: this.media.mediaType.singular,
+            id: this.media.id,
+            replies: 1,
+            nbpp: this.media.nbComments
+        };
+        return Base.callApi(HTTP_VERBS.GET, 'comments', 'comments', params)
+        .then((data: Obj) => {
+            let comments = data.comments || [];
+            comments = comments.filter((comment: Obj) => { return comment.user_note > 0; });
+            let notes = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+            const userIds = new Array();
+            let nbEvaluations = 0;
+            for (let c = 0; c < comments.length; c++) {
+                // Pour éviter les doublons
+                if (!userIds.includes(comments[c].user_id)) {
+                    userIds.push(comments[c].user_id);
+                    nbEvaluations++;
+                    notes[comments[c].user_note]++;
+                }
+            }
+            const buildline = function(index: number, notes: object): string {
+                const percent:number = (notes[index] * 100) / nbEvaluations;
+                return `<tr class="histogram-row">
+                    <td class="nowrap">${index} étoile${index > 1 ? 's':''}</td>
+                    <td class="span10">
+                        <div class="meter" role="progressbar" aria-valuenow="${percent.toFixed(1)}%">
+                            <div class="meter-filled" style="width: ${percent.toFixed(1)}%"></div>
+                        </div>
+                    </td>
+                    <td class="nowrap">${percent.toFixed(1)}%</td>
+                </tr>`;
+            };
+            /*
+             * Construction de la template
+             *  - Le nombre de notes
+             *  - La note moyenne
+             *  - Les barres de progression par note
+             */
+            let template = `
+                <div class="evaluations">
+                    <div class="size-base">${nbEvaluations} évaluation${nbEvaluations > 1 ? 's': ''} parmis les commentaires et ${this.media.objNote.total} au total</div>
+                    <div class="size-base average">Note globale: ${self._parent.objNote.mean.toFixed(2)}</div>
+                    <div><table><tbody>`;
+            for (let i = 5; i > 0; i--) {
+                template += buildline(i, notes);
+            }
+            return template + '</tbody></table><p class="alert alert-info"><small>Les pourcentages sont calculés uniquement sur les évaluations dans les commentaires.</small></p></div>';
+        });
     }
 }
