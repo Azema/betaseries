@@ -519,6 +519,23 @@ export class CommentsBS implements implRepliesComment {
         });
         this._events.push({elt: $btnClose, event: 'click'});
 
+        const $btnAllReplies = $container.find('.toggleAllReplies');
+        $btnAllReplies.click((e: JQuery.ClickEvent) => {
+            const $btn = jQuery(e.currentTarget);
+            const stateReplies = $btn.attr('data-toggle'); // 0: Etat masqué, 1: Etat affiché
+            const $btnReplies = $container.find(`.toggleReplies[data-toggle="${stateReplies}"]`);
+            if (stateReplies == '1') {
+                $btnReplies.trigger('click');
+                $btn.attr('data-toggle', '0');
+                $btn.text('Afficher toutes les réponses');
+            } else {
+                $btnReplies.trigger('click');
+                $btn.attr('data-toggle', '1');
+                $btn.text('Masquer toutes les réponses');
+            }
+        });
+        this._events.push({elt: $btnAllReplies, event: 'click'});
+
         const $btnSubscribe = $container.find('.btnSubscribe');
         /**
          * Met à jour l'affichage du bouton de souscription
@@ -788,8 +805,8 @@ export class CommentsBS implements implRepliesComment {
         $btnReplies.click((e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            const $btn: JQuery<HTMLElement> = $(e.currentTarget);
-            const state = $btn.data('toggle'); // 0: Etat masqué, 1: Etat affiché
+            const $btn: JQuery<HTMLElement> = jQuery(e.currentTarget);
+            const state = $btn.attr('data-toggle'); // 0: Etat masqué, 1: Etat affiché
             const $comment: JQuery<HTMLElement> = $btn.parents('.comment');
             const inner: string = $comment.data('commentInner');
             const $replies = $comment.parents('.comments').find(`.comment[data-comment-reply="${inner}"]`);
@@ -798,13 +815,13 @@ export class CommentsBS implements implRepliesComment {
                 $replies.fadeIn('fast');
                 $btn.find('.btnText').text(Base.trans("comment.hide_answers"));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s; transform: rotate(180deg);');
-                $btn.data('toggle', '1');
+                $btn.attr('data-toggle', '1');
             } else {
                 // On masque
                 $replies.fadeOut('fast');
                 $btn.find('.btnText').text(Base.trans("comment.button.reply", {"%count%": $replies.length.toString()}, $replies.length));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s;');
-                $btn.data('toggle', '0');
+                $btn.attr('data-toggle', '0');
             }
         });
         this._events.push({elt: $btnReplies, event: 'click'});
@@ -983,6 +1000,7 @@ export class CommentsBS implements implRepliesComment {
         // On ajoute le loader dans la popup et on l'affiche
         $contentReact.empty().append(`<div class="title" id="dialog-title" tabindex="0">${Base.trans("blog.title.comments")}</div>`);
         const $title = $contentReact.find('.title');
+        $title.append(`<button type="button" class="btn-primary toggleAllReplies" data-toggle="1" style="border-radius:4px;margin-left:10px;">Cacher toutes les réponses</button>`);
         let templateLoader = `
             <div class="loaderCmt">
                 <svg class="sr-only">
@@ -1012,7 +1030,6 @@ export class CommentsBS implements implRepliesComment {
                 self.cleanEvents();
                 self.loadEvents($contentReact, nbCmts, {hidePopup, showPopup});
             });
-
         });
     }
     /**
