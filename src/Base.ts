@@ -174,6 +174,11 @@ export abstract class Base implements implAddNote {
      */
     static serverBaseUrl: string = '';
     /**
+     * L'URL de base du serveur servant pour l'authentification
+     * @type {String}
+     */
+    static serverOauthUrl: string = '';
+    /**
      * Indique le theme d'affichage du site Web (light or dark)
      * @type {string}
      */
@@ -231,7 +236,7 @@ export abstract class Base implements implAddNote {
                         title="Connexion à BetaSeries"
                         width="50%"
                         height="400"
-                        src="${Base.serverBaseUrl}/index.html"
+                        src="${Base.serverOauthUrl}/index.html"
                         style="background:white;margin:auto;">
                 </iframe>
                 </div>'
@@ -239,7 +244,7 @@ export abstract class Base implements implAddNote {
         }
         return new Promise((resolve, reject) => {
             function receiveMessage(event) {
-                const origin = new URL(Base.serverBaseUrl).origin;
+                const origin = new URL(Base.serverOauthUrl).origin;
                 // if (debug) console.log('receiveMessage', event);
                 if (event.origin !== origin) {
                     if (Base.debug) console.error('receiveMessage {origin: %s}', event.origin, event);

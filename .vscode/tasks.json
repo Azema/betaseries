@@ -17,7 +17,19 @@
 		},
 		{
 			"type": "grunt",
-			"task": "build",
+			"task": "prod",
+			"group": "build",
+			"problemMatcher": [],
+			"options": {
+				"shell": {
+					"executable": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+				}
+			},
+			"label": "grunt: prod"
+		},
+		{
+			"type": "grunt",
+			"task": "dev",
 			"group": {
 				"kind": "build",
 				"isDefault": true
@@ -28,7 +40,7 @@
 					"executable": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
 				}
 			},
-			"label": "grunt: build"
+			"label": "grunt: build dev"
 		},
 		{
 			"type": "grunt",
@@ -40,6 +52,17 @@
 				}
 			},
 			"label": "grunt: version"
+		},
+		{
+			"type": "grunt",
+			"task": "connect",
+			"problemMatcher": [],
+			"options": {
+				"shell": {
+					"executable": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+				}
+			},
+			"label": "grunt: connect"
 		}
 	]
 }

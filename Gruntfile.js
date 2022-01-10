@@ -12,7 +12,11 @@ module.exports = function(grunt) {
     // On définit les fins de ligne en mode linux
     grunt.util.linefeed = '\n';
 
-    grunt.registerTask('build', [
+    grunt.registerTask('dev', [
+        'clean', 'ts', 'dtsGenerator', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
+        'copy:dist', 'sri:dist', 'version']
+    );
+    grunt.registerTask('prod', [
         'clean', 'ts', 'dtsGenerator', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
         'copy:dist', 'sri:dist', 'version', 'deploy']
     );
@@ -174,6 +178,38 @@ module.exports = function(grunt) {
             default: {
                 src: ['./src/*.ts']
             }
+        },
+        connect: {
+            server: {
+                options: {
+                    protocol: 'http',
+                    port: 9001,
+                    hostname: 'localhost',
+                    base: '<%= paths.oauth %>',
+                    debug: true,
+                    keepalive: true,
+                    // remove next from params
+                    middleware: function(connect, options, middlewares) {
+                        // inject a custom middleware into the array of default middlewares
+                        middlewares.unshift(function(req, res, next) {
+                            const url = /\?.*/.test(req.url) ? req.url.replace(/\?.*/, '') : req.url;
+                            if (!/.(css|js|png|jpg|jpeg|gif|webp)$/.test(url)) {
+                                console.log('URL is not static: %s', req.url);
+                                return next();
+                            }
+                            res.setHeader('Access-Control-Allow-Origin', '*');
+                            res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+                            res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+                            // don't just call next() return it
+                            return next();
+                        });
+
+                        // add other middlewares here
+                        // connect.static(require('path').resolve('<%= paths.oauth %>'));
+                        return middlewares;
+                    }
+                }
+            }
         }
     });
     grunt.loadNpmTasks('grunt-contrib-concat');
@@ -183,6 +219,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-lineending');
     grunt.loadNpmTasks('grunt-git');
     grunt.loadNpmTasks('dts-generator');
+    grunt.loadNpmTasks('grunt-contrib-connect');
     grunt.registerMultiTask('cleanExports', 'concatene all classes', function() {
         this.files.forEach(
             /**

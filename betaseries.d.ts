@@ -678,6 +678,7 @@ declare module 'Similar' {
 	    close: Function;
 	    setContent: Function;
 	    setCounter: Function;
+	    setTitle: Function;
 	    init: Function;
 	}
 	export class Similar extends Media implements implShow, implMovie {
@@ -1630,6 +1631,11 @@ declare module 'Base' {
 	     * @type {String}
 	     */
 	    static serverBaseUrl: string;
+	    /**
+	     * L'URL de base du serveur servant pour l'authentification
+	     * @type {String}
+	     */
+	    static serverOauthUrl: string;
 	    /**
 	     * Indique le theme d'affichage du site Web (light or dark)
 	     * @type {string}
