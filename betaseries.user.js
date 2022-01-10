@@ -39,9 +39,10 @@ let betaseries_api_user_key = '';
 /* Ajouter ici votre clé d'API V3 à themoviedb */
 let themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
+const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-/d/0w0zLlJzwpw6XFIHGjZYVHpm/Ls5hhQBkVe71zy9uUpvA2wp9GFm+U1wG3Cy+';
+const sriBundle = 'sha384-DjWq25SIzC3QLt00S6r24KiXxNg3avxk+dUDgrDr3F29uP1G1pVJ6dZ9M1heQAGy';
 /************************************************************************************************/
 
 /**
@@ -255,7 +256,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-hXQFIZhy0hCwt7Mtl45cEAfTR4u6zSyAzDxxfX98EaGBgH38910REar4AaSuWqnJ',
+            integrity: 'sha384-hnKzc8aFtKDuPJ8sTyEUpSSjKFZGZ6ph6GpOfr1f3lEN5yNcsw57kELUqZKhwkAz',
             media: 'all',
             called: false,
             loaded: false
@@ -273,7 +274,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'commentstyle',
             href: `${serverBaseUrl}/css/comments.min.css`,
-            integrity: 'sha384-vogsg+AsgoVXkf3O0b6lEGyme7Iei1YY+g7X5P2D5L8hVhRI1pwzWmN6dw9Il4mt',
+            integrity: 'sha384-XyHT1LS47qWWt8U0E6w1ZftpelwNob6APgaJO7BIW1o22850+55Y7oc5BsciNir2',
             media: 'all',
             called: false,
             loaded: false
@@ -1114,7 +1115,7 @@ const launchScript = function($) {
                 console.error("Le paramètre res n'est pas du type Show", res);
                 return;
             }
-            const seasons = $('#seasons .slide_flex');
+            const seasons = $('#seasons .slide_flex .slide__image');
             let vignettes = getVignettes();
             if (Base.debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
             /*
@@ -1338,7 +1339,7 @@ const launchScript = function($) {
                 });
             });
             // On active les menus dropdown
-            $('.dropdown-toggle').dropdown();
+            $('.blockInformations .dropdown-toggle').dropdown();
             // On récupère les vignettes des épisodes
             function getVignettes() {
                 return $('#episodes .slide__image');
@@ -3025,6 +3026,7 @@ const launchScript = function($) {
     Base.ratings = ratings;
     Base.themoviedb_api_user_key = themoviedb_api_user_key;
     Base.serverBaseUrl = serverBaseUrl;
+    Base.serverOauthUrl = serverOauthUrl;
     Base.theme = system.checkThemeStyle();
     UpdateAuto.getValue = GM_getValue;
     UpdateAuto.setValue = GM_setValue;
