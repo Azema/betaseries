@@ -70,7 +70,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
       - La suppression d'un commentaire entraîne la suppression des réponses qui lui sont associées
     * [X] Gérer l'affichage de l'ensemble des commentaires
     * [ ] Gérer l'envoi de message privé directement depuis la popup
-    * [ ] Ajouter un bouton pour afficher/masquer toutes les réponses lors de l'affichage de l'ensemble des commentaires.
+    * [X] Ajouter un bouton pour afficher/masquer toutes les réponses lors de l'affichage de l'ensemble des commentaires.
     * [ ] Ajouter la possibilité de modifier le tri des commentaires
 * Ajout d'une popup, au survol du titre de la section **commentaires**, qui affiche les évaluations du média par les membres ayant écrit un commentaire. Seules les évaluations des membres, ayant écrits un commentaire, sont disponibles. Il faudrait peut être demander d'avoir le détail des votes pour chaque média, afin d'améliorer les statistiques, par exemple, le nombre de votes pour chaque index, de 1 à 5.
 
