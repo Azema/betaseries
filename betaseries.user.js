@@ -764,7 +764,7 @@ const launchScript = function($) {
                 }
             }.init();
         }
-    };
+    }
     const medias = {
         /**
          * Cette fonction permet de retourner la ressource principale sous forme d'objet
@@ -1299,6 +1299,7 @@ const launchScript = function($) {
                                     $('#episodes .slides_flex').get(0).scrollLeft =
                                         $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
                                 }
+                                res.currentSeason.updateRender();
                                 res.update(true).then(() => {
                                     self.addClass('finish');
                                     fnLazy.init(); // On affiche les images lazyload

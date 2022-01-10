@@ -251,7 +251,7 @@ export class Episode extends Base implements implAddNote {
      * @return {void}
      */
     updateStatus(status: string, method: HTTP_VERBS): void {
-        const _this = this;
+        const self = this;
         const pos = this.elt.find('.checkSeen').data('pos');
         let promise = new Promise(resolve => { resolve(false); });
         let args = {id: this.id, bulk: true};
@@ -293,15 +293,15 @@ export class Episode extends Base implements implAddNote {
                 if (Base.debug) console.log('updateStatus %s episodes/watched', method, data);
                 // Si un épisode est vu et que la série n'a pas été ajoutée
                 // au compte du membre connecté
-                if (! _this._season.showInAccount() && data.episode.show.in_account) {
-                    _this._season.addShowToAccount();
+                if (! self._season.showInAccount() && data.episode.show.in_account) {
+                    self._season.addShowToAccount();
                 }
                 // On met à jour l'objet Episode
                 if (method === HTTP_VERBS.POST && response && pos) {
                     const $vignettes = jQuery('#episodes .slide_flex');
                     let episode: Episode = null;
                     for (let e = 0; e < pos; e++) {
-                        episode = _this._season.episodes[e];
+                        episode = self._season.episodes[e];
                         if (episode.elt === null) {
                             episode.elt = jQuery($vignettes.get(e));
                         }
@@ -313,27 +313,25 @@ export class Episode extends Base implements implAddNote {
                         }
                     }
                 }
-                _this
+                self
                     .fill(data.episode)
                     .updateRender(status, true)
                     ._callListeners(EventTypes.UPDATE)
-                    ._season.updateShow(() => {
-                        _this.toggleSpinner(false);
-                    });
+                    ._season
+                        .updateRender()
+                        .updateShow(() => {
+                            self.toggleSpinner(false);
+                        });
             })
             .catch(err => {
                 if (Base.debug) console.error('updateStatus error %s', err);
                 if (err && err == 'changeStatus') {
                     if (Base.debug) console.log('updateStatus error %s changeStatus', method);
-                    _this.updateRender(status);
-                    if (status === 'seen') {
-                        _this.user.seen = true;
-                    } else {
-                        _this.user.seen = false;
-                    }
-                    _this.toggleSpinner(false);
+                    self.user.seen = (status === 'seen') ? true : false;
+                    self.updateRender(status)
+                        .toggleSpinner(false);
                 } else {
-                    _this.toggleSpinner(false);
+                    self.toggleSpinner(false);
                     Base.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
                 }
             });
@@ -369,7 +367,6 @@ export class Episode extends Base implements implAddNote {
                 contVignette.addClass('slide--notSeen');
             }
         }
-        this._season.updateRender();
 
         return this;
     }
