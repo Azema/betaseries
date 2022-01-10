@@ -280,7 +280,7 @@ export class CommentBS {
                                         </g>
                                     </svg>
                                 </button>
-                                <strong class="mainLink thumbs">${comment.thumbs > 0 ? '+' + comment.thumbs : (comment.thumbs < 0) ? '-' + comment.thumbs : comment.thumbs}</strong>
+                                <strong class="mainLink thumbs${comment.thumbs < 0 ? ' negative' : comment.thumbs > 0 ? ' positive' : ''}">${comment.thumbs > 0 ? '+' + comment.thumbs : comment.thumbs}</strong>
                                 ${btnResponse}
                                 <span class="mainLink">∙</span>
                                 <span class="mainTime">Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('DD/MM/YYYY HH:mm') : comment.date.toString()}</span>
