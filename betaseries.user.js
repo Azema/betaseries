@@ -2245,15 +2245,89 @@ const launchScript = function($) {
         addStatusToGestionSeries: function() {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
             if (!system.userIdentified() || betaseries_api_user_key === '') return;
-            const $series = $('#member_shows div.showItem.cf');
-            if ($series.length <= 0) return;
-            $series.each(function (_index, serie) {
-                let id = parseInt($(serie).data('id'), 10), infos = $(serie).find('.infos');
-                Show.fetch(id).then(function (show) {
-                    infos.append(`<br>Statut: ${(show.isEnded()) ? 'Terminée' : 'En cours'}`);
-                }, (err) => {
-                    system.notification('Erreur de modification d\'une série', 'addStatusToGestionSeries: ' + err);
+            const $shows = $('#member_shows div.showItem.cf');
+            if ($shows.length <= 0) return;
+            let showIds = new Array();
+            for (let s = 0; s < $shows.length; s++) {
+                showIds.push(parseInt($($shows.get(s)).data('id'), 10));
+            }
+            /**
+             * @param {Array<Show>} shows - Tableau des séries
+             */
+            const addInfos = function (shows) {
+                let $infos;
+                for (let s = 0; s < shows.length; s++) {
+                    $infos = $(`#${shows[s].slug} .infos`);
+                    $infos.append(`<br>Statut: ${(shows[s].isEnded()) ? 'Terminée' : 'En cours'}`);
+                }
+            };
+            Show.fetchMulti(showIds).then(addInfos, (err) => {
+                system.notification('Erreur addStatusToGestionSeries', 'Erreur de récupération des séries: ' + err);
+            });
+        },
+        sortGestionSeries: function() {
+            // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
+            if (!system.userIdentified() || betaseries_api_user_key === '') return;
+
+            const $title = $('#right h1');
+            let templateListSort = `
+                <div class="sortShows" style="float:right;">
+                    <select class="selectSort">
+                        <option value="name-asc">Nom croissant</option>
+                        <option value="name-desc">Nom décroissant</option>
+                        <option value="episode-asc">Nb épisodes croissant</option>
+                        <option value="episode-desc">Nb épisodes décroissant</option>
+                        <option value="duration-asc">Durée croissant</option>
+                        <option value="duration-desc">Durée décroissant</option>
+                        <option value="vote-asc">Vote croissant</option>
+                        <option value="vote-desc">Vote décroissant</option>
+                    </select>
+                </div>
+            `;
+            $title.append(templateListSort);
+            $('.selectSort').change((e) => {
+                const $value = $(e.currentTarget).find('option:selected').val();
+                const sortName = $value.split('-')[0];
+                const sortOrder = $value.split('-')[1];
+                const $shows = $('#member_shows div.showItem.cf');
+                const sortList = Array.prototype.sort.bind($shows);
+                sortList(function ( a, b ) {
+                    let aText, bText;
+                    const ascending = sortOrder === 'asc' ? true : false;
+                    // Cache inner content from the first element (a) and the next sibling (b)
+                    switch (sortName) {
+                        case 'name':
+                            aText = $(a).find('.title a').text();
+                            bText = $(b).find('.title a').text();
+                            break;
+                        case 'episode':
+                            aText = $(a).data('eps') ? parseInt($(a).data('eps'), 10) : 0;
+                            bText = $(b).data('eps') ? parseInt($(b).data('eps'), 10) : 0;
+                            break;
+                        case 'duration':
+                            aText = $(a).data('mins') ? parseInt($(a).data('mins'), 10) : 0;
+                            bText = $(b).data('mins') ? parseInt($(b).data('mins'), 10) : 0;
+                            break;
+                        case 'vote':
+                            aText = $(a).data('vote') ? parseInt($(a).data('vote'), 10) : 0;
+                            bText = $(b).data('vote') ? parseInt($(b).data('vote'), 10) : 0;
+                            break;
+                    }
+
+                    // Returning -1 will place element `a` before element `b`
+                    if ( aText < bText ) {
+                        return ascending ? -1 : 1;
+                    }
+
+                    // Returning 1 will do the opposite
+                    if ( aText > bText ) {
+                        return ascending ? 1 : -1;
+                    }
+
+                    // Returning 0 leaves them as-is
+                    return 0;
                 });
+                $('#member_shows').append($shows);
             });
         }
     };
@@ -3067,6 +3141,7 @@ const launchScript = function($) {
     // Fonctions appeler pour la page de gestion des series
     else if (/^\/membre\/.*\/series$/.test(url)) {
         members.addStatusToGestionSeries();
+        members.sortGestionSeries();
     }
     // Fonctions appeler sur la page des membres
     else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && system.userIdentified()) {
