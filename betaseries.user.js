@@ -42,7 +42,7 @@ let themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-DjWq25SIzC3QLt00S6r24KiXxNg3avxk+dUDgrDr3F29uP1G1pVJ6dZ9M1heQAGy';
+const sriBundle = 'sha384-QcDkW/WIZpmX8indVDUdhWWSnS055AVOaKDMBGA/2hGJrVHSXLwGg8Ua+kji8IsF';
 /************************************************************************************************/
 
 /**
@@ -256,7 +256,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-hnKzc8aFtKDuPJ8sTyEUpSSjKFZGZ6ph6GpOfr1f3lEN5yNcsw57kELUqZKhwkAz',
+            integrity: 'sha384-h2t4o9pIbV3cnrh65+Du6iJDMWVMZVpd8qgwMNN/tXhFHh4cWbl/ngeouxfdlMuf',
             media: 'all',
             called: false,
             loaded: false
@@ -1707,6 +1707,31 @@ const launchScript = function($) {
                                 }, err => {
                                     console.error('Popover addShow error', err);
                                 });
+                            });
+                            const toggleToSeeShow = (showId) => {
+                                let showsToSee = GM_getValue('toSee', {});
+                                let toSee;
+                                if (showsToSee[showId] !== undefined) {
+                                    delete showsToSee[showId];
+                                    toSee = false;
+                                } else {
+                                    showsToSee[showId] = true;
+                                    toSee = true;
+                        }
+                                GM_setValue('toSee', showsToSee);
+                                return toSee;
+                            };
+                            $('.popover .toSeeShow').click(e => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                const $link = $(e.currentTarget);
+                                const showId = parseInt($link.data('showId'), 10);
+                                const toSee = toggleToSeeShow(showId);
+                                if (toSee) {
+                                    $link.children('span').text('Ne plus voir');
+                                } else {
+                                    $link.children('span').text('A voir');
+                                }
                             });
                         }
                     })

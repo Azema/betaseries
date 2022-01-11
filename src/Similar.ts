@@ -201,7 +201,7 @@ export class Similar extends Media implements implShow, implMovie {
      * @return {string}
      */
     getContentPopup() {
-        const _this = this;
+        const self = this;
         //if (debug) console.log('similars tempContentPopup', objRes);
         let description = this.description;
         if (description.length > 200) {
@@ -210,24 +210,24 @@ export class Similar extends Media implements implShow, implMovie {
         let template = '';
         function _renderCreation() {
             let html = '';
-            if (_this.creation || _this.country || _this.production_year) {
+            if (self.creation || self.country || self.production_year) {
                 html += '<p>';
-                if (_this.creation) {
-                    html += `<u>Création:</u> <strong>${_this.creation}</strong>`;
+                if (self.creation) {
+                    html += `<u>Création:</u> <strong>${self.creation}</strong>`;
                 }
-                if (_this.production_year) {
-                    html += `<u>Production:</u> <strong>${_this.production_year}</strong>`;
+                if (self.production_year) {
+                    html += `<u>Production:</u> <strong>${self.production_year}</strong>`;
                 }
-                if (_this.country) {
-                    html += `, <u>Pays:</u> <strong>${_this.country}</strong>`;
+                if (self.country) {
+                    html += `, <u>Pays:</u> <strong>${self.country}</strong>`;
                 }
                 html += '</p>';
             }
             return html;
         }
         function _renderGenres() {
-            if (_this.genres && _this.genres.length > 0) {
-                return '<p><u>Genres:</u> ' + _this.genres.join(', ') + '</p>';
+            if (self.genres && self.genres.length > 0) {
+                return '<p><u>Genres:</u> ' + self.genres.join(', ') + '</p>';
             }
             return '';
         }
@@ -246,7 +246,9 @@ export class Similar extends Media implements implShow, implMovie {
                 template += 'Aucun vote</p>';
             }
             if (! this.in_account) {
-                template += '<p><a href="javascript:;" class="addShow">Ajouter</a></p>';
+                template += `<p>
+                    <a href="javascript:;" class="addShow">Ajouter</a> - <a href="javascript:;" class="toSeeShow" data-show-id="${self.id}"><i class="fa fa-clock-o" aria-hidden="true"></i> <span>A voir</span></a>
+                </p>`;
             }
             template += _renderGenres();
             template += _renderCreation();
