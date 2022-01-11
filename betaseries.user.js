@@ -464,9 +464,9 @@ const launchScript = function($) {
             let loopMax = (timeout * 1000) / interval;
             let timer = setInterval(() => {
                 if (--loopMax <= 0) {
-                    if (debug) console.log('waitDomPresent timeout');
+                    if (debug) console.warn('waitPresent timeout');
                     clearInterval(timer);
-                    return;
+                    return cb('error');
                 }
                 if (!check()) return;
                 clearInterval(timer);
@@ -484,7 +484,13 @@ const launchScript = function($) {
             const check = function() {
                 return $(selector).length > 0;
             }
-            system.waitPresent(check, cb, timeout, interval);
+            system.waitPresent(check, (err) => {
+                if (err) {
+                    console.warn('Timeout waitDomPresent: %s', selector);
+                    return;
+                }
+                cb();
+            }, timeout, interval);
         },
         /**
          * Verifie si l'élément est tronqué, généralement, du texte
