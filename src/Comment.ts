@@ -319,10 +319,17 @@ export class CommentBS {
     }
     /**
      * Renvoie la template HTML pour l'écriture d'un commentaire
+     * @param   {CommentBS} [comment?] - L'objet commentaire sur lequel envoyé les réponses
      * @returns {string}
      */
-    public static getTemplateWriting(): string {
+    public static getTemplateWriting(comment?: CommentBS): string {
         const login = Base.userIdentified() ? currentLogin : '';
+        let replyTo = '',
+            placeholder = Base.trans("timeline.comment.write");
+        if (comment) {
+            replyTo = ` data-reply-to="${comment.id}"`;
+            placeholder = "Ecrivez une réponse à ce commentaire";
+        }
         return `
             <div class="writing">
                 <div class="media">
@@ -333,7 +340,7 @@ export class CommentBS {
                     </div>
                     <div class="media-body">
                         <form class="gz_g1">
-                            <textarea rows="2" placeholder="${Base.trans("timeline.comment.write")}" class="form-control"></textarea>
+                            <textarea rows="2" placeholder="${placeholder }" class="form-control"${replyTo}></textarea>
                             <button class="btn-reset sendComment" disabled="" aria-label="${Base.trans("comment.send.label")}" title="${Base.trans("comment.send.label")}">
                                 <span class="svgContainer" style="width: 16px; height: 16px;">
                                     <svg fill="${Base.theme === 'dark' ? "#fff" : "#333"}" width="15" height="12" xmlns="http://www.w3.org/2000/svg">
@@ -921,7 +928,7 @@ export class CommentBS {
         }
         template += '</div>';
         if (this.getCollectionComments().isOpen() && Base.userIdentified()) {
-            template += CommentBS.getTemplateWriting();
+            template += CommentBS.getTemplateWriting(self);
         }
         template += '</div>';
         // On définit le type d'affichage de la popup

@@ -274,9 +274,10 @@ declare module 'Comment' {
 	    static getTemplateComment(comment: CommentBS): string;
 	    /**
 	     * Renvoie la template HTML pour l'écriture d'un commentaire
+	     * @param   {CommentBS} [comment?] - L'objet commentaire sur lequel envoyé les réponses
 	     * @returns {string}
 	     */
-	    static getTemplateWriting(): string;
+	    static getTemplateWriting(comment?: CommentBS): string;
 	    /**
 	     * Met à jour le rendu des votes de ce commentaire
 	     * @param   {number} vote Le vote
