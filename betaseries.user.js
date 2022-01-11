@@ -2277,13 +2277,16 @@ const launchScript = function($) {
              * @param {Array<Show>} shows - Tableau des séries
              */
             const addInfos = function (shows) {
-                let $infos;
+                let $show, $infos;
                 for (let s = 0; s < shows.length; s++) {
+                    $show = $(`#${shows[s].slug}`);
+                    $show.attr('data-status', shows[s].status);
                     $infos = $(`#${shows[s].slug} .infos`);
                     $infos.append(`<br>Statut: ${(shows[s].isEnded()) ? 'Terminée' : 'En cours'}`);
                 }
+                return shows;
             };
-            Show.fetchMulti(showIds).then(addInfos, (err) => {
+            return Show.fetchMulti(showIds).then(addInfos, (err) => {
                 system.notification('Erreur addStatusToGestionSeries', 'Erreur de récupération des séries: ' + err);
             });
         },
@@ -2294,23 +2297,27 @@ const launchScript = function($) {
             const $title = $('#right h1');
             let templateListSort = `
                 <div class="sortShows" style="float:right;">
-                    <select class="selectSort">
-                        <option value="name-asc">Nom croissant</option>
-                        <option value="name-desc">Nom décroissant</option>
-                        <option value="episode-asc">Nb épisodes croissant</option>
-                        <option value="episode-desc">Nb épisodes décroissant</option>
-                        <option value="duration-asc">Durée croissant</option>
-                        <option value="duration-desc">Durée décroissant</option>
-                        <option value="vote-asc">Vote croissant</option>
-                        <option value="vote-desc">Vote décroissant</option>
+                    <select class="selectSort" style="font-family: 'FontAwesome',Muli,'Lucida Grande','Trebuchet MS',sans-serif;">
+                        <option value="">--Select--</option>
+                        <option value="name-asc">Nom &#xf0de</option>
+                        <option value="name-desc">Nom &#xf0dd</i></option>
+                        <option value="duration-asc">Durée &#xf0de</option>
+                        <option value="duration-desc">Durée &#xf0dd</i></option>
+                        <option value="episode-asc">Nb épisodes &#xf0de</option>
+                        <option value="episode-desc">Nb épisodes &#xf0dd</i></option>
+                        <option value="status-asc">Statut &#xf0de</option>
+                        <option value="status-desc">Statut &#xf0dd</i></option>
+                        <option value="vote-asc">Vote &#xf0de</option>
+                        <option value="vote-desc">Vote &#xf0dd</i></option>
                     </select>
                 </div>
             `;
             $title.append(templateListSort);
             $('.selectSort').change((e) => {
-                const $value = $(e.currentTarget).find('option:selected').val();
-                const sortName = $value.split('-')[0];
-                const sortOrder = $value.split('-')[1];
+                const value = $(e.currentTarget).find('option:selected').val();
+                if (value == '') return;
+                const sortName = value.split('-')[0];
+                const sortOrder = value.split('-')[1];
                 const $shows = $('#member_shows div.showItem.cf');
                 const sortList = Array.prototype.sort.bind($shows);
                 sortList(function ( a, b ) {
@@ -2322,13 +2329,17 @@ const launchScript = function($) {
                             aText = $(a).find('.title a').text();
                             bText = $(b).find('.title a').text();
                             break;
+                        case 'duration':
+                            aText = $(a).data('mins') ? parseInt($(a).data('mins'), 10) : 0;
+                            bText = $(b).data('mins') ? parseInt($(b).data('mins'), 10) : 0;
+                            break;
                         case 'episode':
                             aText = $(a).data('eps') ? parseInt($(a).data('eps'), 10) : 0;
                             bText = $(b).data('eps') ? parseInt($(b).data('eps'), 10) : 0;
                             break;
-                        case 'duration':
-                            aText = $(a).data('mins') ? parseInt($(a).data('mins'), 10) : 0;
-                            bText = $(b).data('mins') ? parseInt($(b).data('mins'), 10) : 0;
+                        case 'status':
+                            aText = $(a).data('status') || '';
+                            bText = $(b).data('status') || '';
                             break;
                         case 'vote':
                             aText = $(a).data('vote') ? parseInt($(a).data('vote'), 10) : 0;
@@ -3162,8 +3173,10 @@ const launchScript = function($) {
     }
     // Fonctions appeler pour la page de gestion des series
     else if (/^\/membre\/.*\/series$/.test(url)) {
-        members.addStatusToGestionSeries();
+        members.addStatusToGestionSeries().then((shows) => {
+            Base.shows = shows;
         members.sortGestionSeries();
+        });
     }
     // Fonctions appeler sur la page des membres
     else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && system.userIdentified()) {
