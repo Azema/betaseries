@@ -1207,15 +1207,6 @@ const launchScript = function($) {
                                 boundary: 'window'
                             });
                         }
-                        /* $('#episodes .slide__image').on('inserted.bs.popover', function () {
-                        const $checkSeen = $(this).find('.checkSeen'),
-                              episodeId = parseInt($checkSeen.data('id'), 10),
-                              episode = res.currentSeason.getEpisode(episodeId);
-                        if (!episode) {
-                            console.warn('episode title popup', episodeId, res);
-                        }
-                            // $('#episodes .slide__image .popover-header').html(episode.getTitlePopup());
-                        }); */
                         // On ajoute un event click sur la case 'checkSeen'
                         $('#episodes .checkSeen').click(function (e) {
                             e.stopPropagation();
