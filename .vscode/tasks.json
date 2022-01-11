@@ -63,6 +63,17 @@
 				}
 			},
 			"label": "grunt: connect"
+		},
+		{
+			"type": "grunt",
+			"task": "replace_sri",
+			"problemMatcher": [],
+			"options": {
+				"shell": {
+					"executable": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+				}
+			},
+			"label": "grunt: replace SRI"
 		}
 	]
 }

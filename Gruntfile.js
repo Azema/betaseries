@@ -18,7 +18,7 @@ module.exports = function(grunt) {
     );
     grunt.registerTask('prod', [
         'clean', 'ts', 'dtsGenerator', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
-        'copy:dist', 'sri:dist', 'version', 'deploy']
+        'copy:dist', 'sri:dist', 'replace_sri:dist', 'version', 'deploy']
     );
     grunt.registerTask('deploy', ['gitadd:oauth', 'gitcommit:oauth', 'gitpush:oauth']);
 
@@ -123,6 +123,12 @@ module.exports = function(grunt) {
             test: {
                 src: '<%= distdir %>/app-bundle.js',
                 dest: './betaseries.user.js'
+            }
+        },
+        replace_sri: {
+            dist: {
+                src: '<%= paths.oauth %>/sri.sha384',
+                dest: ['./local.betaseries.user.js', './betaseries.user.js']
             }
         },
         version: {
@@ -336,6 +342,67 @@ module.exports = function(grunt) {
             }
         } else {
             changeSri(this.data.dest, sri);
+        }
+    });
+    grunt.registerMultiTask('replace_sri', 'Remplace les SRI des fichiers static', function() {
+        if (!this.data.src || !this.data.dest) {
+            grunt.log.error("Veuillez fournir les paramètres 'src' et 'dest' à la tâche");
+            return false;
+        }
+        if (!grunt.file.exists(this.data.src)) {
+            grunt.log.error(`Le fichier de destination (${this.data.src}) n'existe pas.`);
+            return;
+        }
+        const srcPath = path.resolve(this.data.src);
+        const content = grunt.file.read(srcPath);
+        const lines = content.split('\n');
+        const reg = new RegExp(/^(\w+).min.*:\s(.*)$/);
+        let results = new Array();
+        for (let l = 0; l < lines.length; l++) {
+            let matches = reg.exec(lines[l]);
+            if (matches && matches.length > 2) {
+                let filename = matches[1];
+                let sri = matches[2];
+                results.push({name: filename, sri});
+            }
+        }
+        const changeSri = function(dest, results) {
+            if (!grunt.file.exists(dest)) {
+                grunt.log.error(`Le fichier de destination (${dest}) n'existe pas.`);
+                return;
+            }
+            let content = grunt.file.read(dest);
+            const lines = content.split('\n');
+            const regIntegrity = new RegExp(/^(\s*)integrity:\s*'[^']*',/);
+            for (let r = 0; r < results.length; r++) {
+                let found = false,
+                    foundSection = false,
+                    name = results[r].name,
+                    sri = results[r].sri,
+                    regName = new RegExp(`"${name}`);
+                for (let l = 0; l < lines.length; l++) {
+                    if (!foundSection && !/scriptsAndStyles/.test(lines[l])) { continue; }
+                    foundSection = true;
+                    if (!found && regName.test(lines[l])) {
+                        found = true;
+                        grunt.verbose.writeln('Replace SRI name found: ' + name + ', line: ' + lines[l]);
+                    } else if (found && regIntegrity.test(lines[l])) {
+                        lines[l] = lines[l].replace(regIntegrity, `$1integrity: '${sri}',`);
+                        grunt.verbose.writeln('Replace SRI: ' + name + ', line: ' + lines[l]);
+                        break;
+                    }
+                }
+            }
+            content = lines.join('\n');
+            if (content.length > 0)
+                grunt.file.write(dest, content);
+        }
+        if (this.data.dest instanceof Array) {
+            for (let d = 0; d < this.data.dest.length; d++) {
+                changeSri(path.resolve(this.data.dest[d]), results);
+            }
+        } else {
+            changeSri(path.resolve(this.data.dest), results);
         }
     });
     grunt.registerMultiTask('version', 'Remplace le numéro de version du userscript par celle du package', function() {
