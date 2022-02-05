@@ -2,6 +2,7 @@ import {Base, Obj, EventTypes, Rating, HTTP_VERBS, MediaType} from "./Base";
 import { implAddNote } from "./Note";
 import {Media} from "./Media";
 import {Season} from "./Season";
+import { Character } from "./Character";
 
 declare var PopupAlert: any;
 
@@ -139,6 +140,20 @@ export class Show extends Media implements implShow, implAddNote {
         });
     }
 
+    static fetchLastSeen(limit: number = 10): Promise<Array<Show>> {
+        return new Promise((resolve: Function, reject: Function) => {
+            Base.callApi(HTTP_VERBS.GET, 'shows', 'member', {order: 'last_seen', limit})
+            .then((data: Obj) => {
+                const shows: Array<Show> = new Array();
+                for (let s = 0; s < data.shows.length; s++) {
+                    shows.push(new Show(data.shows[s], jQuery('body')));
+                }
+                resolve(shows);
+            })
+            .catch(err => reject(err));
+        });
+    }
+
     /**
      * Méthode static servant à récupérer plusieurs séries sur l'API BS
      * @param  {Array<number>} ids - Les identifiants des séries recherchées
@@ -264,6 +279,10 @@ export class Show extends Media implements implShow, implAddNote {
      * @type {number} Identifiant TheTVDB de la série
      */
     thetvdb_id: number;
+    /**
+     * @type {boolean} Indique si la série se trouve dans les séries à voir
+     */
+    markToSee: boolean;
 
     /***************************************************/
     /*                      METHODS                    */
@@ -283,7 +302,8 @@ export class Show extends Media implements implShow, implAddNote {
      * Initialise l'objet lors de sa construction et après son remplissage
      * @returns {Show}
      */
-    public init(): Show {
+    public init(): this {
+        this.fetchSeasons();
         // On gère l'ajout et la suppression de la série dans le compte utilisateur
         if (this.in_account) {
             this.deleteShowClick();
@@ -292,7 +312,6 @@ export class Show extends Media implements implShow, implAddNote {
         }
         return this;
     }
-
     /**
      * Récupère les données de la série sur l'API
      * @param  {boolean} [force=true]   Indique si on utilise les données en cache
@@ -301,7 +320,51 @@ export class Show extends Media implements implShow, implAddNote {
     fetch(force: boolean = true): Promise<any> {
         return Base.callApi('GET', 'shows', 'display', {id: this.id}, force);
     }
-
+    /**
+     * Récupère les saisons de la série
+     * @returns {Promise<Show>}
+     */
+    fetchSeasons(): Promise<Show> {
+        const self = this;
+        let params: Obj = {thetvdb_id: this.thetvdb_id};
+        let force: boolean = false;
+        if (this.thetvdb_id <= 0) {
+            delete params.thetvdb_id;
+            params.id = this.id;
+            force = true;
+        }
+        return Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
+        .then((data: Obj) => {
+            self.seasons = new Array();
+            if (data?.seasons?.length <= 0) {
+                return self;
+            }
+            let seasonNumber;
+            for (let s = 0; s < data.seasons.length; s++) {
+                seasonNumber = parseInt(data.seasons[s].number, 10);
+                self.seasons[seasonNumber - 1] = new Season(data.seasons[s], this);
+            }
+            return self;
+        });
+    }
+    /**
+     * Récupère les personnages de la série
+     * @returns {Promise<Show>}
+     */
+    fetchCharacters(): Promise<Show> {
+        const self = this;
+        return Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
+        .then((data: Obj) => {
+            self.characters = new Array();
+            if (data?.characters?.length <= 0) {
+                return self;
+            }
+            for (let c = 0; c < data.characters.length; c++) {
+                self.characters.push(new Character(data.characters[c]));
+            }
+            return self;
+        });
+    }
     /**
      * isEnded - Indique si la série est terminée
      *
@@ -325,6 +388,14 @@ export class Show extends Media implements implShow, implAddNote {
      */
     isFavorite(): boolean {
         return this.user.favorited;
+    }
+    /**
+     * isMarkToSee - Indique si la série se trouve dans les séries à voir
+     * @returns {boolean}
+     */
+    isMarkedToSee(): boolean {
+        const toSee: Obj = Base.gm_funcs.getValue('toSee', {});
+        return toSee[this.id] !== undefined;
     }
     /**
      * addToAccount - Ajout la série sur le compte du membre connecté
@@ -646,6 +717,11 @@ export class Show extends Media implements implShow, implAddNote {
                     <div class="label">Ajouter</div>
                 </div>`
             );
+            this.addBtnToSee();
+            let title = this.title.replace(/"/g, '\\"').replace(/'/g, "\\'");
+            const templateOpts = `<a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${this.id}, '0')">Demander une mise à jour</a>`;
+            jQuery('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
+                    .append(templateOpts);
             // On ajoute un event click pour masquer les vignettes
             jQuery('#reactjs-show-actions > div > button').off('click').one('click', (e: JQuery.ClickEvent) => {
                 e.stopPropagation();
@@ -679,39 +755,38 @@ export class Show extends Media implements implShow, implAddNote {
          * @return {void}
          */
         function changeBtnAdd(show: Show): void {
-            let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
-            if ($optionsLinks.length <= 2) {
+            let $optionsLinks = jQuery('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
+            if ($optionsLinks.length <= 3) {
                 let react_id = jQuery('script[id^="/reactjs/"]').get(0).id.split('.')[1],
                     urlShow = show.resource_url.substring(location.origin.length),
                     title = show.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
                     templateOpts = `
-                            <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
-                            showClose: true,
-                            type: "popin-subtitles",
-                            reactModuleId: "reactjs-subtitles",
-                            params: {
-                                mediaId: "${show.id}",
-                                type: "show",
-                                titlePopin: "${title}";
-                            },
-                            callback: function() {
-                                loadRecommendationModule('subtitles');
-                                //addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
-                            },
-                            });">Sous-titres</button>
-                            <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${show.id}, 'show');">Signaler un problème</a>
-                            <a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${show.id}, '0')">Demander une mise à jour</a>
-                            <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
+                        <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
+                        showClose: true,
+                        type: "popin-subtitles",
+                        reactModuleId: "reactjs-subtitles",
+                        params: {
+                            mediaId: "${show.id}",
+                            type: "show",
+                            titlePopin: "${title}";
+                        },
+                        callback: function() {
+                            loadRecommendationModule('subtitles');
+                            //addScript("/reactjs/subtitles.${react_id}.js", "module-reactjs-subtitles");
+                        },
+                        });">Sous-titres</button>
+                        <a class="header-navigation-item" href="javascript:;" onclick="reportItem(${show.id}, 'show');">Signaler un problème</a>
+                        <a class="header-navigation-item" href="webcal://www.betaseries.com/cal/i${urlShow}">Planning iCal de la série</a>
 
-                            <form class="autocomplete js-autocomplete-form header-navigation-item">
+                        <form class="autocomplete js-autocomplete-form header-navigation-item">
                             <button type="reset" class="btn-reset fontWeight700 js-autocomplete-show" style="color: inherit">Recommander la série</button>
                             <div class="autocomplete__toShow" hidden="">
                                 <input placeholder="Nom d'un ami" type="text" class="autocomplete__input js-search-friends">
                                 <div class="autocomplete__response js-display-response"></div>
                             </div>
-                            </form>
-                            <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
-                if ($optionsLinks.length === 1) {
+                        </form>
+                        <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
+                if ($optionsLinks.length === 2) {
                     templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
                 }
                 jQuery('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
@@ -772,6 +847,13 @@ export class Show extends Media implements implShow, implAddNote {
                 );
                 self.elt = $('.blockInformations');
                 self.addNumberVoters();
+                // On supprime le btn ToSeeLater
+                self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
+                let toSee = Base.gm_funcs.getValue('toSee', {});
+                if (toSee[self.id] !== undefined) {
+                    delete toSee[self.id];
+                    Base.gm_funcs.setValue('toSee', toSee);
+                }
             }
             self.addEventBtnsArchiveAndFavoris();
             self.deleteShowClick();
@@ -787,7 +869,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {void}
      */
     deleteShowClick(): void {
-        const _this = this;
+        const self = this;
         let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
         // Le menu Options est au complet
         if (this.in_account && $optionsLinks.length > 2) {
@@ -800,13 +882,13 @@ export class Show extends Media implements implShow, implAddNote {
                 const done = function() {
                     const afterNotif = function() {
                         // On nettoie les propriétés servant à l'update de l'affichage
-                        _this.user.status = 0;
-                        _this.user.archived = false;
-                        _this.user.favorited = false;
-                        _this.user.remaining = 0;
-                        _this.user.last = "S00E00";
-                        _this.user.next.id = NaN;
-                        _this.save();
+                        self.user.status = 0;
+                        self.user.archived = false;
+                        self.user.favorited = false;
+                        self.user.remaining = 0;
+                        self.user.last = "S00E00";
+                        self.user.next.id = NaN;
+                        self.save();
 
                         // On remet le bouton Ajouter
                         jQuery('#reactjs-show-actions').html(`
@@ -827,10 +909,10 @@ export class Show extends Media implements implShow, implAddNote {
                         const checks: JQuery<HTMLElement> = jQuery('#episodes .slide_flex');
                         let promise: Promise<any>,
                             update: boolean = false; // Flag pour l'update de l'affichage
-                        if (_this.currentSeason.episodes && _this.currentSeason.episodes.length > 0) {
-                            promise = new Promise(resolve => resolve(_this.currentSeason));
+                        if (self.currentSeason.episodes && self.currentSeason.episodes.length > 0) {
+                            promise = new Promise(resolve => resolve(self.currentSeason));
                         } else {
-                            promise = _this.currentSeason.fetchEpisodes();
+                            promise = self.currentSeason.fetchEpisodes();
                         }
                         promise.then((season: Season) => {
                             for (let e = 0; e < season.episodes.length; e++) {
@@ -845,18 +927,21 @@ export class Show extends Media implements implShow, implAddNote {
                         // On doit supprimer le bouton pour noter le média
                         const $stars: JQuery<HTMLElement> = jQuery('.blockInformations__metadatas .js-render-stars');
                         $stars.parent().replaceWith(`
-                        <span class="stars js-render-stars">
-                        ${$stars.html()}
-                        </span>`
+                            <span class="stars js-render-stars">
+                                ${$stars.html()}
+                            </span>`
                         );
-                        _this.elt = $('.blockInformations');
-                        _this.addNumberVoters();
-                        _this.addShowClick();
+                        self.elt = $('.blockInformations');
+                        self.addNumberVoters();
+                        self.addBtnToSee();
+                        self.addShowClick();
+                        self.updateProgressBar();
+                        self.updateNextEpisode();
                     };
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: Base.trans("popup.delete_show_success.title"),
-                        text: Base.trans("popup.delete_show_success.text", { "%title%": _this.title }),
+                        text: Base.trans("popup.delete_show_success.text", { "%title%": self.title }),
                         yes: Base.trans("popup.delete_show_success.yes"),
                         callback_yes: afterNotif
                     });
@@ -864,12 +949,12 @@ export class Show extends Media implements implShow, implAddNote {
                 // Supprimer la série du compte utilisateur
                 // eslint-disable-next-line no-undef
                 new PopupAlert({
-                    title: Base.trans("popup.delete_show.title", { "%title%": _this.title }),
-                    text: Base.trans("popup.delete_show.text", { "%title%": _this.title }),
+                    title: Base.trans("popup.delete_show.title", { "%title%": self.title }),
+                    text: Base.trans("popup.delete_show.text", { "%title%": self.title }),
                     callback_yes: function() {
                         if (Base.debug) console.groupCollapsed('delete show');
-                        _this.removeFromAccount()
-                        .then(() => done(), err => {
+                        self.removeFromAccount()
+                        .then(done, err => {
                             if (err && err.code !== undefined && err.code === 2004) {
                                 done();
                                 if (Base.debug) console.groupEnd();
@@ -882,6 +967,57 @@ export class Show extends Media implements implShow, implAddNote {
                     callback_no: function() {}
                 });
             });
+        }
+    }
+    /**
+     * Ajoute le bouton toSee dans les actions de la série
+     */
+    addBtnToSee(): void {
+        if (this.elt.find('.btnMarkToSee').length > 0) return;
+        const self = this;
+        const btnHTML = `
+            <div class="blockInformations__action">
+                <button class="btn-reset btn-transparent btnMarkToSee" type="button" title="Ajouter la série aux séries à voir">
+                    <i class="fa fa-clock-o" aria-hidden="true"></i>
+                </button>
+                <div class="label">A voir</div>
+            </div>`;
+        const toggleToSeeShow = (showId: number): boolean => {
+            let storeToSee = Base.gm_funcs.getValue('toSee', {});
+            let toSee: boolean;
+            if (storeToSee[showId] === undefined) {
+                storeToSee[showId] = true;
+                toSee = true;
+            } else {
+                delete storeToSee[showId];
+                toSee = false;
+            }
+            Base.gm_funcs.setValue('toSee', storeToSee);
+            return toSee;
+        };
+        this.elt.find('.blockInformations__actions').append(btnHTML);
+        const $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
+        $btn.click((e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $btn = jQuery(e.currentTarget);
+            const toSee = toggleToSeeShow(self.id);
+            if (toSee) {
+                $btn.find('i.fa').css('color', 'var(--body_background)');
+                $btn.attr('title', 'Retirer la série des séries à voir');
+                self.elt.find('.blockInformations__title').append('<i class="fa fa-clock-o" aria-hidden="true" style="font-size:0.6em;" title="Série à voir plus tard"></i>');
+            } else {
+                $btn.find('i.fa').css('color', 'var(--default-color)');
+                $btn.attr('title', 'Ajouter la série aux séries à voir');
+                self.elt.find('.blockInforations__title .fa').remove();
+            }
+            $btn.blur();
+        });
+        let toSee: Obj = Base.gm_funcs.getValue('toSee', {});
+        if (toSee[this.id] !== undefined) {
+            $btn.find('i.fa').css('color', 'var(--body_background)');
+            $btn.attr('title', 'Retirer la série des séries à voir');
+            self.elt.find('.blockInformations__title').append('<i class="fa fa-clock-o" aria-hidden="true" style="font-size:0.6em;" title="Série à voir plus tard"></i>');
         }
     }
     /**
@@ -992,7 +1128,20 @@ export class Show extends Media implements implShow, implAddNote {
         if (seasonNumber <= 0 || seasonNumber > this.seasons.length) {
             throw new Error("seasonNumber is out of range of seasons");
         }
-        this.currentSeason = this.seasons[seasonNumber - 1];
+        this.currentSeason = this.getSeason(seasonNumber);
         return this;
+    }
+    /**
+     * Retourne l'objet Season correspondant au numéro de saison fournit en paramètre
+     * @param   {number} seasonNumber - Numéro de saison (base: 1)
+     * @returns {Season}
+     */
+    getSeason(seasonNumber: number): Season {
+        for (let s = 0; s < this.seasons.length; s++) {
+            if (this.seasons[s].number == seasonNumber) {
+                return this.seasons[s];
+            }
+        }
+        return null;
     }
 }
