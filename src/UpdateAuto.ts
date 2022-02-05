@@ -4,12 +4,6 @@ import { Show } from "./Show";
 declare var moment;
 // eslint-disable-next-line no-unused-vars
 export class UpdateAuto {
-    static getValue = function(name: string, defaultVal: Obj): Obj {
-        return Base.cache.getOrDefault(DataTypesCache.updates, 'updateAuto', defaultVal);
-    };
-    static setValue = function(name: string, val: Obj): void {
-        Base.cache.set(DataTypesCache.updates, 'updateAuto', val);
-    };
     private static instance: UpdateAuto;
 
     static intervals: Array<Obj> = [
@@ -37,7 +31,7 @@ export class UpdateAuto {
         }
         this._show = show;
         this._showId = show.id;
-        let objUpAuto = UpdateAuto.getValue('objUpAuto', {});
+        let objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
         this._exist = false;
         if (objUpAuto[this._showId] !== undefined) {
             this._exist = true;
@@ -72,14 +66,14 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     _save() {
-        let objUpAuto = UpdateAuto.getValue('objUpAuto', {});
+        let objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
         let obj = {
             status: this._status,
             auto: this._auto,
             interval: this._interval
         };
         objUpAuto[this._showId] = obj;
-        UpdateAuto.setValue('objUpAuto', objUpAuto);
+        Base.gm_funcs.setValue('objUpAuto', objUpAuto);
         this._exist = true;
         this.changeColorBtn();
         return this;
@@ -205,10 +199,10 @@ export class UpdateAuto {
      */
     delete(): UpdateAuto {
         this.stop();
-        let objUpAuto = UpdateAuto.getValue('objUpAuto', {});
+        let objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
         if (objUpAuto[this._showId] !== undefined) {
             delete objUpAuto[this._showId];
-            UpdateAuto.setValue('objUpAuto', objUpAuto);
+            Base.gm_funcs.setValue('objUpAuto', objUpAuto);
             this._auto = false;
             this._interval = 0;
             this._exist = false;
