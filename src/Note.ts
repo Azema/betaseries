@@ -152,7 +152,7 @@ export class Note {
         const $stars: JQuery<HTMLElement> = elt.find('.star-svg use');
         let className: string;
         for (let s = 0; s < 5; s++) {
-            className = (this.mean <= s) ? StarTypes.EMPTY : (this.mean < s + 1) ? StarTypes.HALF : StarTypes.FULL;
+            className = (this.mean <= s) ? StarTypes.EMPTY : (this.mean < s + 1) ? (this.mean >= s + 0.5) ? StarTypes.HALF : StarTypes.EMPTY : StarTypes.FULL;
             $($stars.get(s)).attr('xlink:href', `#icon-star-${className}`);
         }
     }
@@ -165,10 +165,13 @@ export class Note {
     public static renderStars(note: number = 0, color: string = ''): string {
         let typeSvg: string,
             template: string = '';
+        if (note == 0) {
+            color = 'grey';
+        }
         Array.from({
             length: 5
         }, (_index: number, number: number) => {
-            typeSvg = note <= number ? 'empty' : (note < number + 1) ? 'half' : 'full';
+            typeSvg = note <= number ? 'empty' : (note < number + 1) ? (note >= number + 0.5) ? 'half' : 'empty' : 'full';
             template += `
                 <svg viewBox="0 0 100 100" class="star-svg">
                     <use xmlns:xlink="http://www.w3.org/1999/xlink"
