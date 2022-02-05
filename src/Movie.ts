@@ -40,7 +40,7 @@ export class Movie extends Media implements implAddNote {
      * @param  {boolean} [force=false] Indique si on utilise le cache ou non
      * @return {Promise<Movie>}
      */
-    static fetch(id: number, force: boolean = false): Promise<Movie> {
+    public static fetch(id: number, force: boolean = false): Promise<Movie> {
         return new Promise((resolve: Function, reject: Function) => {
             Base.callApi('GET', 'movies', 'movie', {id: id}, force)
             .then(data => resolve(new Movie(data.movie, jQuery('.blockInformations'))) )

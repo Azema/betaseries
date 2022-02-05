@@ -30,7 +30,7 @@ import { Similar } from "./Similar";
         this.platforms = new Platforms(data.platforms);
     }
     if (this.id == null && this.seasons == null) {
-        this.seasons = new Array();
+        this.seasons = new Array(parseInt(data.seasons, 10));
         for (let s = 0; s < data.seasons_details.length; s++) {
             this.seasons.push(new Season(data.seasons_details[s], this));
         }
