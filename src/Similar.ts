@@ -344,16 +344,16 @@ export class Similar extends Media implements implShow, implMovie {
      */
     checkImg(): Similar {
         const $img = this.elt.find('img.js-lazy-image'),
-                _this = this;
+              self = this;
         if ($img.length <= 0) {
-            if (this.mediaType.singular === MediaType.show && this.thetvdb_id && this.thetvdb_id > 0) {
+            if (this.mediaType.singular === MediaType.show && this.images.show != null) {
                 // On tente de remplacer le block div 404 par une image
                 this.elt.find('div.block404').replaceWith(`
                     <img class="u-opacityBackground fade-in"
                             width="125"
                             height="188"
                             alt="Poster de ${this.title}"
-                            src="https://artworks.thetvdb.com/banners/posters/${this.thetvdb_id}-1.jpg"/>`
+                            src="${this.images.show}"/>`
                 );
             }
             else if (this.mediaType.singular === MediaType.movie && this.tmdb_id && this.tmdb_id > 0) {
@@ -364,11 +364,11 @@ export class Similar extends Media implements implShow, implMovie {
                     return response.json();
                 }).then(data => {
                     if (data !== null && data.poster_path !== undefined && data.poster_path !== null) {
-                        _this.elt.find('div.block404').replaceWith(`
+                        self.elt.find('div.block404').replaceWith(`
                             <img class="u-opacityBackground fade-in"
                                     width="125"
                                     height="188"
-                                    alt="Poster de ${_this.title}"
+                                    alt="Poster de ${self.title}"
                                     src="https://image.tmdb.org/t/p/original${data.poster_path}"/>`
                         );
                     }
