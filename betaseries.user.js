@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.2.0
+// @version      1.2.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -10,6 +10,7 @@
 // @match        https://www.betaseries.com/series/*
 // @match        https://www.betaseries.com/episode/*
 // @match        https://www.betaseries.com/film/*
+// @match        https://www.betaseries.com/films/*
 // @match        https://www.betaseries.com/membre/*
 // @exclude      https://www.betaseries.com/membre/*/badges
 // @match        https://www.betaseries.com/api/*
@@ -29,7 +30,7 @@
 
    betaseries_api_user_token:  true, betaseries_user_id: false, trans: false, lazyLoad: false, deleteFilterOthersCountries: false, generate_route: false,
    CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
-   viewMoreFriends: false, bootstrap: false, PopupAlert: false, moment, faceboxDisplay: false
+   viewMoreFriends: false, PopupAlert: false, moment, faceboxDisplay: false
  */
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
@@ -42,7 +43,7 @@ let themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-QcDkW/WIZpmX8indVDUdhWWSnS055AVOaKDMBGA/2hGJrVHSXLwGg8Ua+kji8IsF';
+const sriBundle = 'sha384-y9cn188+VaQljcucJUmu3vkfM1r7a8XMo0Z3gfDoPZm9r84Dttp5yowih4FMuP3m';
 /************************************************************************************************/
 
 /**
@@ -256,7 +257,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-h2t4o9pIbV3cnrh65+Du6iJDMWVMZVpd8qgwMNN/tXhFHh4cWbl/ngeouxfdlMuf',
+            integrity: 'sha384-1OR+NTqjm9jVmnu5i8clwOJ19xmkW4+Y/4bHEhzE8Nl6QZD1X9iSFAnXVMFKp7To',
             media: 'all',
             called: false,
             loaded: false
@@ -276,6 +277,14 @@ const launchScript = function($) {
             href: `${serverBaseUrl}/css/comments.min.css`,
             integrity: 'sha384-XyHT1LS47qWWt8U0E6w1ZftpelwNob6APgaJO7BIW1o22850+55Y7oc5BsciNir2',
             media: 'all',
+            called: false,
+            loaded: false
+        },
+        "textcomplete": {
+            type: 'script',
+            id: 'jstextcomplete',
+            src: `${serverBaseUrl}/js/jquery.textcomplete.min.js`,
+            integrity: 'sha384-kf6mqav/ZhBkPgNGorOiE7+/0GmfN9NDz0ov5G3fy6PuV/wqAggrTaWkTVfPM79L',
             called: false,
             loaded: false
         }
@@ -342,11 +351,18 @@ const launchScript = function($) {
             img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
             title: 'Interdit aux enfants de 17 ans et moins'
         }
-    };
-    let timer, timerUA, currentUser, cache, fnLazy, state = {},
+    },
+    templatePopover = `
+        <div class="popover" role="tooltip">
+            <div class="arrow"></div>
+            <h3 class="popover-header"></h3>
+            <div class="popover-body"></div>
+        </div>`;
+    // let indexCallLoad = 0;
+    let timer, currentUser, cache, fnLazy, state = {},
         mainLogoMargins = {top: 0, bottom: 0}, mainlogoModified = false;
     /**
-     * @type Member
+     * @type {Member}
      */
     let user;
 
@@ -568,6 +584,7 @@ const launchScript = function($) {
             $('.userscript-notifications .title').html(title);
             $('.userscript-notifications .text').html(text);
             notifContainer.slideDown().delay(5000).slideUp();
+            console.warn(text);
             console.trace('Notification');
         },
         /**
@@ -667,7 +684,7 @@ const launchScript = function($) {
             //$('.breadcrumb').hide();
         },
         /**
-         *
+         * Retourne une boîte de dialogue
          * @returns {Dialog}
          */
         getDialog: function() {
@@ -769,7 +786,34 @@ const launchScript = function($) {
                         this._dialog.find('style').append(style);
                 }
             }.init();
+        },
+        /**
+         * Fonction d'ajout d'un paginateur en haut de liste des séries
+         * @return {void}
+         */
+        waitPagination: function() {
+            let loaded = false;
+            let selectors = {result: '#results', pagination: '#pagination'};
+            if (/^\/series\//.test(url)) {
+                selectors.result += '-shows';
+                selectors.pagination += '-shows';
+            } else if (/^\/films\//.test(url)) {
+                selectors.pagination += '-movies';
         }
+            // On attend la présence du paginateur
+            system.waitDomPresent(selectors.pagination, () => {
+                // On copie colle le paginateur en haut de la liste des séries
+                // $('#results-shows').prepend($('#pagination-shows').clone(true, true));
+                // On observe les modifications dans le noeud du paginateur
+                $(selectors.result).on('DOMSubtreeModified', selectors.pagination, function () {
+                    if (!loaded) {
+                        system.waitPagination();
+                        loaded = true;
+                        document.getElementsByClassName('maintitle')[0].scrollIntoView();
+    }
+                });
+            }, 10);
+        },
     }
     const medias = {
         /**
@@ -780,19 +824,14 @@ const launchScript = function($) {
          */
         getResource: function(nocache = false, id = null) {
             // Indique de quel type de ressource il s'agit
-            const type = medias.getApiResource(location.pathname.split('/')[1]),
-                  // Indique la fonction à appeler en fonction de la ressource
-                  fonction = type.singular === 'show' || type.singular === 'episode' ? 'display' : 'movie';
-            id = (id === null) ? medias.getResourceId() : id;
+            const type = medias.getApiResource(location.pathname.split('/')[1]);
+            id = id || medias.getResourceId();
             if (Base.debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
-            return new Promise((resolve, reject) => {
-                Base.callApi('GET', type.plural, fonction, { 'id': id }, nocache)
-                .then(data => {
-                    resolve(new type.class(data[type.singular], $('.blockInformations')).init());
-                }, err => {
-                    reject(err);
+            return type.class.fetch(id).then(resource => {
+                return resource.init();
+            }).catch(err => {
+                system.notification('fetch Resource', 'Erreur de récupération de la resource de type ' + type.singular + ', Erreur: ' + err);
                 });
-            });
         },
         /**
          * Cette fonction permet de récupérer les données API de la ressource principale
@@ -910,7 +949,7 @@ const launchScript = function($) {
             const getIntervalProp = function(duration) {
                 if (duration <= 25) return 10;
                 else if (duration <= 45) return 15;
-                else if (duration < 60) return 30;
+                else if (duration <= 60) return 30;
                 else return 45;
             }
             /**
@@ -993,10 +1032,7 @@ const launchScript = function($) {
             else if (objUpAuto.status) {
                 objUpAuto.stop();
             }
-            const check = function() {
-                return typeof bootstrap !== 'undefined' && typeof bootstrap.Popover === 'function';
-            }
-            system.waitPresent(check, () => {
+            system.addScriptAndLink(['popover', 'bootstrap'], function() {
                 if (Base.debug) console.log('Loaded popover updateEpisodes');
                 $('#updateEpisodeList .updateElement').popover({
                     container: $('#updateEpisodeList'),
@@ -1004,6 +1040,7 @@ const launchScript = function($) {
                     html: true,
                     content: ' ',
                     placement: 'right',
+                    template: templatePopover,
                     title: ' ',
                     trigger: 'manual',
                     boundary: 'window'
@@ -1108,7 +1145,7 @@ const launchScript = function($) {
                         });
                     }
                 });
-            }, 10, 500);
+            });
         },
         /**
          * Ajoute un bouton Vu sur la vignette d'un épisode
@@ -1157,10 +1194,11 @@ const launchScript = function($) {
             function addCheckSeen() {
                 vignettes = getVignettes();
                 const seasonNum = parseInt($('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(), 10);
-                if (Base.debug) console.log('currentSeason: ', res.currentSeason);
+                if (Base.debug) console.log('season number: ', seasonNum);
                 if (res.currentSeason === undefined || res.currentSeason.number !== seasonNum) {
                     res.setCurrentSeason(seasonNum);
                 }
+                if (Base.debug) console.log('currentSeason: ', res.currentSeason);
                 // Contient la promesse de récupérer les épisodes de la saison courante
                 res.currentSeason.fetchEpisodes()
                 // On ajoute la description des épisodes dans des Popup
@@ -1202,6 +1240,7 @@ const launchScript = function($) {
                                 html: true,
                                 content: `<p>${description}</p>`,
                                 placement: funcPlacement,
+                                template: templatePopover,
                                 title: `<span style="color: var(--link_color);">Synopsis épisode ${objEpisode.code}</span>`,
                                 trigger: 'hover',
                                 boundary: 'window'
@@ -1342,6 +1381,25 @@ const launchScript = function($) {
             function getVignettes() {
                 return $('#episodes .slide__image');
             }
+        },
+        /**
+         * Modifie le comportement des actions sur les vignettes des saisons
+         * @param {Show} res - L'objet Show
+         */
+        upgradeSeasonsActions: function(res) {
+            $('#seasons .slide_flex .dropdown-menu button').off('click').click(e => {
+                e.stopPropagation();
+                e.preventDefault();
+                const $btn = $(e.currentTarget);
+                let typeBtn = 'watched';
+                if ($btn.hasClass('btn--grey')) {
+                    typeBtn = 'hide';
+                }
+                const seasonNum = parseInt($btn.parents('.dropdown-menu').siblings('.slide__title').text().match(/\d+/).shift(), 10);
+                res.seasons[seasonNum-1].fetchEpisodes().then(season => {
+                    season[typeBtn]();
+                });
+            });
         },
         /**
          * Modifie le fonctionnement d'ajout d'un similar
@@ -1520,7 +1578,7 @@ const launchScript = function($) {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
             if (!system.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
             if (Base.debug) console.groupCollapsed('similarsViewed');
-            if (res instanceof Media && $('#similars').length <= 0) {
+            if (res instanceof Show && $('#similars').length <= 0) {
                 res.addListener(EventTypes.ADD, medias.addSimilarsSection);
             }
             let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
@@ -1578,10 +1636,7 @@ const launchScript = function($) {
             }
             let objSimilars = [];
             res.fetchSimilars().then(function (res) {
-                const check = function() {
-                    return typeof bootstrap !== 'undefined' && typeof bootstrap.Popover === 'function';
-                }
-                system.waitPresent(check, () => {
+                system.addScriptAndLink(['popover', 'bootstrap'], () => {
                     /**
                      * Retourne la position de la popup par rapport à l'image du similar
                      * @param  {Object}         _tip Unknown
@@ -1590,7 +1645,9 @@ const launchScript = function($) {
                      */
                     let funcPlacement = (_tip, elt) => {
                         //if (Base.debug) console.log('funcPlacement', tip, $(tip).width());
-                        let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
+                        let rect = elt.getBoundingClientRect(),
+                            width = $(window).width(),
+                            sizePopover = 320;
                         return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                     };
                     const dialog = system.getDialog();
@@ -1607,10 +1664,10 @@ const launchScript = function($) {
                         if (Base.debug) {
                             similar.wrench(dialog);
                         }
-                        $link.attr('data-placement', funcPlacement(null, $elt.get(0)));
+                        //$link.attr('data-placement', funcPlacement(null, $elt.get(0)));
                         similar
                             // On vérifie la présence de l'image du similar
-                            // .checkImg()
+                            .checkImg()
                             // On ajoute le bandeau viewed sur le similar
                             .addViewed()
                             // On ajoute le code HTML pour le rendu de la note
@@ -1621,6 +1678,8 @@ const launchScript = function($) {
                             delay: { "show": 250, "hide": 100 },
                             html: true,
                             content: ' ',
+                            placement: funcPlacement,
+                            template: templatePopover,
                             title: ' ',
                             trigger: 'hover',
                             fallbackPlacement: ['left', 'right']
@@ -1734,22 +1793,23 @@ const launchScript = function($) {
                     })
                     .on('inserted.bs.popover', function() {
                         const $link = $(this),
+                              $popover = $('.popover'),
+                              placement = funcPlacement(null, this),
                             resId = parseInt($link.data('id'), 10),
                             objSimilar = res.getSimilar(resId);
+                        // if (debug) console.log('placement similar: ', placement);
                         $('.popover-header').html(objSimilar.getTitlePopup());
                         $('.popover-body').html(objSimilar.getContentPopup());
                         // On gère le placement de la Popover par rapport à l'image du similar
-                        const placement = $link.attr('data-placement');
                         if (placement == 'left') {
-                            const popover = $('.popover'),
-                                img = popover.siblings('img.js-lazy-image'),
-                            space = popover.width() + (img.width() / 2) + 5;
-                            popover.css('left', `-${space}px`);
+                            const img = $popover.siblings('img.js-lazy-image'),
+                                  space = $popover.width() + (img.width() / 2) + 5;
+                            $popover.css('left', `-${space}px`);
                         }
                     });
                     $('.updateSimilars').addClass('finish');
                     console.groupEnd();
-                }, 10, 500);
+                });
             }, (err) => {
                 system.notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
             });
@@ -1761,7 +1821,11 @@ const launchScript = function($) {
          */
         comments: function(res) {
             // On charge le style pour l'affichage des commentaires
-            system.addScriptAndLink('comments');
+            system.addScriptAndLink(['comments', 'textcomplete']);
+            let $star = $('symbol#icon-star-empty').clone();
+            $star.attr('id', 'icon-stargrey-empty');
+            $star.children('path').attr('fill', 'rgba(255,255,255,.5)');
+            $('symbol#icon-star-empty').parent().append($star);
             // On remplace les boutons des commentaires, pour supprimer les events
             [].forEach.call(document.querySelectorAll(".js-popinalert-comments"), function(el) {
                 const cId = el.getAttribute('data-comment-id');
@@ -1773,7 +1837,7 @@ const launchScript = function($) {
                  * @type {JQuery<HTMLElement>}
                  */
                 const $comments = $('#comments .slide__comment .js-popup-comments');
-                if (debug) console.log('eventComments', $comments);
+                if (debug) console.log('eventComments');
                 $comments.off('click').click(e => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -1795,6 +1859,20 @@ const launchScript = function($) {
                         console.warn('Commentaire introuvable', {commentId, objComment, 'comments': res.comments});
                         return;
                     }
+                        objComment.addListener('show', () => {
+                            const $textarea = $('.writing textarea');
+                            const users = objComment.getLogins();
+                            $textarea.textcomplete([{
+                                match: /(^|\b)@(\w{1,})/,
+                                search: function (term, callback) {
+                                    console.log('textcomplete search term', term);
+                                    callback(users.filter(user => { return user.startsWith(term); }));
+                                },
+                                replace: function (word) {
+                                    return '@' + word + ' ';
+                                }
+                            }]);
+                        });
                         objComment.render();
                 });
             });
@@ -1802,12 +1880,27 @@ const launchScript = function($) {
                 e.stopPropagation();
                 e.preventDefault();
                 res.comments.render();
-            });
+                    res.comments.addListener('show', () => {
+                        const $textarea = $('.writing textarea');
+                        const users = res.comments.getLogins();
+                        $textarea.textcomplete([{
+                            match: /(^|\b)@(\w{1,})/,
+                            search: function (term, callback) {
+                                const results = users.filter(user => { return user.startsWith(term); });
+                                console.log('textcomplete search term', term, results);
+                                callback(results);
+                            },
+                            replace: function (word) {
+                                return '@' + word + ' ';
+                            }
+                        }]);
+                    });
+                });
             };
             $('#comments .slide__comment').off('click');
-            system.addScriptAndLink(['moment', 'localefr'], eventComments);
+            system.addScriptAndLink(['moment', 'localefr', 'textcomplete'], eventComments);
             const evaluations = function() {
-                // if (debug) console.log('evaluations', e);
+                if (debug) console.log('evaluations');
                 res.comments.showEvaluations().then((template) => {
                     const $title = $('#comments .blockTitle');
                     $title.popover('dispose');
@@ -1817,6 +1910,7 @@ const launchScript = function($) {
                         html: true,
                         content: template,
                         placement: 'auto',
+                        template: templatePopover,
                         title: 'Evaluations',
                         trigger: 'hover',
                         boundary: 'window'
@@ -1865,6 +1959,7 @@ const launchScript = function($) {
                         html: true,
                         content: popupVote,
                         placement: 'bottom',
+                        template: templatePopover,
                         title: 'Notes du média',
                         trigger: 'hover',
                         // boundary: $btnVote.get(0)
@@ -1963,52 +2058,20 @@ const launchScript = function($) {
          * Ajoute la série aux séries à voir
          * @param {Show} res
          */
-        addBtnToSee: function(res) {
-            const btnHTML = `<div class="blockInformations__action">
-                <button class="btn-reset btn-transparent btnMarkToSee" type="button" style="height:44px;width:64px;" title="Ajouter la série aux séries à voir">
-                    <i class="fa fa-clock-o" aria-hidden="true" style="font-size:1.5em;color:var(--default-color);"></i>
-                </button>
-                <div class="label">A voir</div>
-            </div>`;
-            if (!res.in_account) {
-                $('.blockInformations__actions').append(btnHTML);
-                $('.blockInformations__action .btnMarkToSee').click(e => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    const $btn = $(e.currentTarget);
-                    let toSee = GM_getValue('toSee', {});
-                    if (toSee[res.id] === undefined) {
-                        toSee[res.id] = true;
-                        $btn.find('i.fa').css('color', 'var(--body_background)');
-                        $btn.attr('title', 'Retirer la série des séries à voir');
+        addBtnToSee: function() {
+            const toggleToSeeShow = (showId) => {
+                let storeToSee = GM_getValue('toSee', {});
+                let toSee;
+                if (storeToSee[showId] === undefined) {
+                    storeToSee[showId] = true;
+                    toSee = true;
                     } else {
-                        delete toSee[res.id];
-                        $btn.find('i.fa').css('color', 'var(--default-color)');
-                        $btn.attr('title', 'Ajouter la série aux séries à voir');
+                    delete storeToSee[showId];
+                    toSee = false;
                     }
-                    GM_setValue('toSee', toSee);
-                    $btn.blur();
-                });
-                let toSee = GM_getValue('toSee', {});
-                const $btn = $('.blockInformations__action .btnMarkToSee');
-                if (toSee[res.id] !== undefined) {
-                    $btn.find('i.fa').css('color', 'var(--body_background)');
-                    $btn.attr('title', 'Retirer la série des séries à voir');
-                }
-                const eventAddShow = function() {
-                    if (debug) console.log('Show Event ADD btnToSee');
-                    let toSee = GM_getValue('toSee', {});
-                    if (toSee[res.id] !== undefined) {
-                        if (debug) console.log('toSee[%d] found', res.id);
-                        delete toSee[res.id];
-                        GM_setValue('toSee', toSee);
-                        const $btn = $('.blockInformations__action .btnMarkToSee');
-                        $btn.find('i.fa').css('color', 'var(--default-color)');
-                        $btn.attr('title', 'Ajouter la série aux séries à voir');
-                    }
-                };
-                res.addListener(EventTypes.ADD, eventAddShow);
-            }
+                GM_setValue('toSee', storeToSee);
+                return toSee;
+            };
             const $navSeries = $('#js-menu-aim > div.menu-item:nth-child(3) > div.header-navigation');
             $navSeries.append(`<a href="#" class="seriesToSee">Séries à voir</a>`);
             /**
@@ -2023,13 +2086,16 @@ const launchScript = function($) {
                     let template = '<div id="annuaire-list" class="gridSeries">';
                     for (let s = 0; s < shows.length; s++) {
                         template += `
-                        <a class="movie-link" href="${shows[s].resource_url}">
+                        <a class="show-link" href="${shows[s].resource_url}">
                             <div class="blockSearch greyBorder blogThumbnailShowContainer mainBlock position-relative">
-                                <div class="media">
+                                <div class="media" data-show-id="${shows[s].id}">
                                     <div class="media-left">
                                         <img src="${shows[s].images.poster}" alt="${shows[s].title}" width="119" height="174">
                                     </div>
                                     <div class="media-body" style="height:174px;position:relative;">
+                                        <div class="remove" style="">
+                                            <span aria-hidden="true">&times;</span>
+                                        </div>
                                         <div class="thumbnailSearchTitle mainLink">${shows[s].title}</div>
                                         <p class="genre-result-search">${shows[s].genres.join(', ')}</p>
                                         <div class="info-result-search">
@@ -2038,7 +2104,7 @@ const launchScript = function($) {
                                         <p class="statut-result-search">Statut : ${shows[s].isEnded() ? 'Terminée': 'En cours'}</p>
                                         <div class="displayFlex">
                                             <time class="mainTime" datetime="${shows[s].creation}">${shows[s].creation}</time>
-                                            <div class="stars">${Note.renderStars(shows[s].objNote.mean)}</div>
+                                            <div class="stars" title="${shows[s].objNote.toString()}">${Note.renderStars(shows[s].objNote.mean)}</div>
                                         </div>
                                         <p class="block-with-text">${shows[s].description.substring(0, 200) + '...'}</p>
                                     </div>
@@ -2049,7 +2115,7 @@ const launchScript = function($) {
                     }
                     dialog.setContent(template + '</div>');
                     dialog.setCounter(Base.counter.toString());
-                    dialog.setTitle('Séries à regarder plus tard');
+                    dialog.setTitle(shows.length + ' séries à regarder plus tard');
                     dialog.addStyle(`
                         #annuaire-list .blockSearch {
                             cursor: pointer;
@@ -2060,7 +2126,27 @@ const launchScript = function($) {
                             padding-top: 0;
                             padding-left: 0;
                         }
+                        #annuaire-list .blockSearch .media .remove {
+                            float: right;
+                            top: 2px;
+                            right: 5px;
+                            font-size: 1.2em;
+                            font-weight: 400;
+                            cursor: pointer;
+                        }
+                        #annuaire-list .blockSearch .media .remove:hover {
+                            color: var(--default_color);
+                        }
                     `);
+                    $('#annuaire-list .blockSearch .media .remove').click(e => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const $btn = $(e.currentTarget);
+                        const showId = parseInt($btn.parents('.media').data('showId'), 10);
+                        toggleToSeeShow(showId);
+                        $btn.off('click');
+                        $btn.parents('.show-link').remove();
+                    });
                     dialog.show();
                 });
             });
@@ -2281,6 +2367,7 @@ const launchScript = function($) {
                 for (let s = 0; s < shows.length; s++) {
                     $show = $(`#${shows[s].slug}`);
                     $show.attr('data-status', shows[s].status);
+                    $show.attr('data-advance', shows[s].user.status);
                     $infos = $(`#${shows[s].slug} .infos`);
                     $infos.append(`<br>Statut: ${(shows[s].isEnded()) ? 'Terminée' : 'En cours'}`);
                 }
@@ -2309,6 +2396,8 @@ const launchScript = function($) {
                         <option value="status-desc">Statut &#xf0dd</i></option>
                         <option value="vote-asc">Vote &#xf0de</option>
                         <option value="vote-desc">Vote &#xf0dd</i></option>
+                        <option value="advance-asc">Avancement &#xf0de</option>
+                        <option value="advance-desc">Avancement &#xf0dd</i></option>
                     </select>
                 </div>
             `;
@@ -2345,6 +2434,10 @@ const launchScript = function($) {
                             aText = $(a).data('vote') ? parseInt($(a).data('vote'), 10) : 0;
                             bText = $(b).data('vote') ? parseInt($(b).data('vote'), 10) : 0;
                             break;
+                        case 'advance':
+                            aText = $(a).data('advance') ? parseInt($(a).data('advance'), 10) : 0;
+                            bText = $(b).data('advance') ? parseInt($(b).data('advance'), 10) : 0;
+                            break;
                     }
 
                     // Returning -1 will place element `a` before element `b`
@@ -2362,6 +2455,76 @@ const launchScript = function($) {
                 });
                 $('#member_shows').append($shows);
             });
+        },
+        lastSeen: function() {
+            const $navSeries = $('#js-menu-aim > div.menu-item:nth-child(3) > div.header-navigation');
+            $navSeries.append(`<a href="#" class="lastSeen">10 last seen</a>`);
+            /**
+             * @type {Dialog}
+             */
+            const dialog = system.getDialog();
+            $('#js-menu-aim a.lastSeen').click(e => {
+                e.stopPropagation();
+                e.preventDefault();
+                dialog.setContent('<div style="text-align:center;"><i class="fa fa-spinner fa-3x" aria-hidden="true"></i></div>');
+                dialog.setCounter(Base.counter.toString());
+                dialog.setTitle('10 dernières séries vues');
+                dialog.show();
+                Show.fetchLastSeen().then(shows => {
+                    let template = '<div id="annuaire-list" class="gridSeries">';
+                    for (let s = 0; s < shows.length; s++) {
+                        template += `
+                        <a class="show-link" href="${shows[s].resource_url}">
+                            <div class="blockSearch greyBorder blogThumbnailShowContainer mainBlock position-relative">
+                                <div class="media" data-show-id="${shows[s].id}">
+                                    <div class="media-left">
+                                        <img src="${shows[s].images.poster}" alt="${shows[s].title}" width="119" height="174">
+                                    </div>
+                                    <div class="media-body" style="height:174px;position:relative;">
+                                        <div class="thumbnailSearchTitle mainLink">${shows[s].title}</div>
+                                        <p class="genre-result-search">${shows[s].genres.join(', ')}</p>
+                                        <div class="info-result-search">
+                                            <p style="min-width: fit-content;">${shows[s].nbEpisodes} Épisodes</p>
+                                        </div>
+                                        <p class="statut-result-search">Statut : ${shows[s].isEnded() ? 'Terminée': 'En cours'}</p>
+                                        <div class="displayFlex">
+                                            <time class="mainTime" datetime="${shows[s].creation}">${shows[s].creation}</time>
+                                            <div class="stars">${Note.renderStars(shows[s].objNote.user, 'blue')}</div>
+                                        </div>
+                                        <p class="block-with-text">${shows[s].description.substring(0, 200) + '...'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                        `;
+                    }
+                    dialog.setContent(template + '</div>');
+                    dialog.setCounter(Base.counter.toString());
+                    dialog.addStyle(`
+                        #annuaire-list .blockSearch {
+                            cursor: pointer;
+                            margin: 5px;
+                            margin-left: 3px;
+                            background: var(--gray_hover);
+                            padding-bottom: 0;
+                            padding-top: 0;
+                            padding-left: 0;
+                        }
+                        #annuaire-list .blockSearch .media .remove {
+                            float: right;
+                            top: 2px;
+                            right: 5px;
+                            font-size: 1.2em;
+                            font-weight: 400;
+                            cursor: pointer;
+                        }
+                        #annuaire-list .blockSearch .media .remove:hover {
+                            color: var(--default_color);
+                        }
+                    `);
+                    //dialog.show();
+                });
+             })
         }
     };
     const series = {
@@ -2422,26 +2585,6 @@ const launchScript = function($) {
             }
         },
         /**
-         * Fonction d'ajout d'un paginateur en haut de liste des séries
-         * @return {void}
-         */
-        waitPagination: function() {
-            let loaded = false;
-            // On attend la présence du paginateur
-            system.waitDomPresent('#pagination-shows', () => {
-                // On copie colle le paginateur en haut de la liste des séries
-                // $('#results-shows').prepend($('#pagination-shows').clone(true, true));
-                // On observe les modifications dans le noeud du paginateur
-                $('#results-shows').on('DOMSubtreeModified', '#pagination-shows', function () {
-                    if (!loaded) {
-                        series.waitPagination();
-                        loaded = true;
-                        document.getElementsByClassName('maintitle')[0].scrollIntoView();
-                    }
-                });
-            }, 10);
-        },
-        /**
          * Permet de mettre à jour la liste des épisodes à voir
          * sur la page de l'agenda
          * @return {void}
@@ -2449,14 +2592,12 @@ const launchScript = function($) {
         updateAgenda: function() {
             // Identifier les informations des épisodes à voir
             // Les containers
-            let $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer'), len = $containersEpisode.length, currentShowIds = {};
+            let $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer'),
+                len = $containersEpisode.length,
+                currentShowIds = {};
             // En attente du chargement des épisodes
-            if (len > 0) {
+            if (len <= 0) {
                 if (Base.debug) console.log('updateAgenda - nb containers: %d', len);
-                clearInterval(timerUA);
-            }
-            else {
-                if (Base.debug) console.log('updateAgenda en attente');
                 return;
             }
             const params = {
@@ -2772,6 +2913,30 @@ const launchScript = function($) {
             }
         }
     };
+    const movies = {
+        updateAgenda: function() {
+            // Les containers
+            let $containersMovie = $('#reactjs-movies-to-watch .ComponentEpisodeContainer'),
+                len = $containersMovie.length;
+            // En attente du chargement des épisodes
+            if (len <= 0) {
+                if (Base.debug) console.log('updateAgenda - nb containers: %d', len);
+                return;
+            }
+            const params = {
+                limit: len,
+                state: 0
+            };
+            Base.callApi('GET', 'movies', 'member', params)
+            .then((data) => {
+                for (let t = 0; t < len; t++) {
+                    $($containersMovie.get(t))
+                        .data('movieId', data.movies[t].id)
+                        .find('.stars').attr('title', data.movies[t].notes.mean.toFixed(2) + ' / 5');
+                }
+            });
+        }
+    };
     const api = {
         /**
          * Ajoute des améliorations sur la page de la console de l'API
@@ -3079,6 +3244,7 @@ const launchScript = function($) {
                                 html: true,
                                 content: data.html,
                                 placement: 'bottom',
+                                    template: templatePopover,
                                 title: data.title,
                                 trigger: 'hover'
                             });
@@ -3091,6 +3257,7 @@ const launchScript = function($) {
                             html: true,
                             content: popups[key].html,
                             placement: 'bottom',
+                                template: templatePopover,
                             title: popups[key].title,
                             trigger: 'hover'
                         });
@@ -3136,8 +3303,8 @@ const launchScript = function($) {
     Base.serverBaseUrl = serverBaseUrl;
     Base.serverOauthUrl = serverOauthUrl;
     Base.theme = system.checkThemeStyle();
-    UpdateAuto.getValue = GM_getValue;
-    UpdateAuto.setValue = GM_setValue;
+    Base.gm_funcs.getValue = GM_getValue;
+    Base.gm_funcs.setValue = GM_setValue;
 
     /**
      * Initialization du script
@@ -3160,11 +3327,12 @@ const launchScript = function($) {
             medias.upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
             medias.comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
             medias.replaceVoteFn(objRes);
+            medias.addBtnToSee();
+            members.lastSeen();
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 // On ajoute la gestion des épisodes
                 medias.waitSeasonsAndEpisodesLoaded(() => medias.upgradeEpisodes(objRes));
-                medias.addBtnToSee(objRes);
             }
             else if (/^\/film\//.test(url)) {
                 medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
@@ -3177,6 +3345,8 @@ const launchScript = function($) {
             Base.shows = shows;
         members.sortGestionSeries();
         });
+        medias.addBtnToSee();
+        members.lastSeen();
     }
     // Fonctions appeler sur la page des membres
     else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && system.userIdentified()) {
@@ -3196,6 +3366,8 @@ const launchScript = function($) {
         else {
             members.searchFriends();
         }
+        medias.addBtnToSee();
+        members.lastSeen();
     }
     // Fonctions appeler sur les pages des méthodes de l'API
     else if (/^\/api/.test(url)) {
@@ -3209,18 +3381,22 @@ const launchScript = function($) {
     // Fonctions appeler sur les pages des séries
     else if (/^\/series\//.test(url)) {
         if (Base.debug) console.log('Page des séries');
-        series.waitPagination();
+        system.waitPagination();
         series.seriesFilterPays();
         if (/agenda/.test(url)) {
-            let countTimer = 0;
-            timerUA = setInterval(function () {
-                if (++countTimer > 50) {
-                    clearInterval(timerUA);
-                    system.notification('Erreur Update Agenda', 'Le timer de chargement a dépassé le temps max autorisé.');
-                    return;
+            system.waitDomPresent('#reactjs-episodes-to-watch .ComponentEpisodeContainer', series.updateAgenda, 50, 1000);
+        }
+        medias.addBtnToSee();
+        members.lastSeen();
                 }
-                series.updateAgenda();
-            }, 1000);
+    // Fonctions appeler sur les pages des films
+    else if (/^\/films\//.test(url)) {
+        if (debug) console.log('Pages des films');
+        system.waitPagination();
+        medias.addBtnToSee();
+        members.lastSeen();
+        if (/agenda/.test(url)) {
+            system.waitDomPresent('#reactjs-movies-to-watch .ComponentEpisodeContainer', movies.updateAgenda, 50, 1000);
         }
     }
     // Fonctions appeler sur les pages des articles
@@ -3228,6 +3404,8 @@ const launchScript = function($) {
         if (Base.debug) console.log('Page d\'un article');
         articles.checkArticle();
         articles.addPopupOnLinks();
+        medias.addBtnToSee();
+        members.lastSeen();
     }
 };
 /*
