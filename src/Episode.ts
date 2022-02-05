@@ -39,6 +39,12 @@ export type WatchedBy = {
 };
 
 export class Episode extends Base implements implAddNote {
+    public static fetch(epId: number): Promise<Episode> {
+        return Base.callApi(HTTP_VERBS.GET, 'episodes', 'display', {id: epId})
+        .then((data: Obj) => {
+            return new Episode(data.episode);
+        });
+    }
     /**
      * @type {Season} L'objet Season contenant l'épisode
      */
@@ -110,7 +116,7 @@ export class Episode extends Base implements implAddNote {
      * @param   {Season}    season  L'objet Season contenant l'épisode
      * @returns {Episode}
      */
-    constructor(data: any, season: Season) {
+    constructor(data: any, season?: Season) {
         super(data);
         this._season = season;
         return this.fill(data);
@@ -194,6 +200,7 @@ export class Episode extends Base implements implAddNote {
      */
     updateCheckSeen(pos: number): boolean {
         const $checkSeen = this.elt.find('.checkSeen');
+
         let changed = false;
         if ($checkSeen.length > 0 && $checkSeen.attr('id') === undefined) {
             if (Base.debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
@@ -220,7 +227,18 @@ export class Episode extends Base implements implAddNote {
             $checkSeen.remove();
             changed = true;
         }
+        this.updateTitle();
         return changed;
+    }
+    /**
+     * Met à jour le titre de l'épisode sur la page de la série
+     * @returns {void}
+     */
+    updateTitle(): void {
+        const $title = this.elt.find('.slide__title');
+        if (`${this.code.toUpperCase()} - ${this.title}` !== $title.text().trim()) {
+            $title.text(`${this.code.toUpperCase()} - ${this.title}`);
+        }
     }
     /**
      * Retourne le code HTML du titre de la popup
@@ -329,7 +347,11 @@ export class Episode extends Base implements implAddNote {
                     if (Base.debug) console.log('updateStatus error %s changeStatus', method);
                     self.user.seen = (status === 'seen') ? true : false;
                     self.updateRender(status)
-                        .toggleSpinner(false);
+                        ._season
+                            .updateRender()
+                            .updateShow(() => {
+                                self.toggleSpinner(false);
+                            });
                 } else {
                     self.toggleSpinner(false);
                     Base.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
@@ -353,7 +375,7 @@ export class Episode extends Base implements implAddNote {
             // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
             $elt.parents('div.slide__image').first().find('img').removeAttr('style');
             $elt.parents('div.slide_flex').first().removeClass('slide--notSeen');
-        } else {
+        } else if (newStatus === 'notSeen') {
             $elt.css('background', 'rgba(13,21,28,.2)'); // On enlève le check dans la case à cocher
             $elt.removeClass('seen'); // On supprime la classe 'seen'
             $elt.attr('title', Base.trans("member_shows.markas"));
@@ -366,6 +388,11 @@ export class Episode extends Base implements implAddNote {
             if (!contVignette.hasClass('slide--notSeen')) {
                 contVignette.addClass('slide--notSeen');
             }
+        } else if (newStatus === 'hidden') {
+            $elt.removeClass('seen');
+            $elt.parents('.slide__image')
+                .append('<div class="hideIcon"></div>')
+                .attr('style', 'filter: blur(5px);');
         }
 
         return this;
