@@ -32,7 +32,8 @@ export class CommentsBS implements implRepliesComment {
         'update',
         'save',
         'add',
-        'delete'
+        'delete',
+        'show'
     );
 
     /**
@@ -153,7 +154,7 @@ export class CommentsBS implements implRepliesComment {
      */
     public addListener(name: EventTypes, fn: Function): this {
         // On vérifie que le type d'event est pris en charge
-        if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
+        if (CommentsBS.EventTypes.indexOf(name) < 0) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
         }
         if (this._listeners[name] === undefined) {
@@ -280,6 +281,8 @@ export class CommentsBS implements implRepliesComment {
         }
         this.nbComments++;
         this.media.nbComments++;
+        if (Base.debug) console.log('addComment listeners', this._listeners);
+        this._callListeners(EventTypes.ADD);
         return this;
     }
     /**
@@ -463,6 +466,19 @@ export class CommentsBS implements implRepliesComment {
                 reject(err);
             });
         });
+    }
+    /**
+     * Retourne un tableau contenant les logins des commentaires
+     * @returns {Array<string>}
+     */
+    protected getLogins(): Array<string> {
+        let users = new Array();
+        for (let c = 0; c < this.comments.length; c++) {
+            if (!users.includes(this.comments[c].login)) {
+                users.push(this.comments[c].login);
+            }
+        }
+        return users;
     }
     /**
      * Met à jour le nombre de commentaires sur la page
@@ -770,7 +786,7 @@ export class CommentsBS implements implRepliesComment {
          * On active / desactive le bouton d'envoi du commentaire
          * en fonction du contenu du textarea
          */
-        const $textarea = $container.find('textarea')
+        const $textarea = $container.find('textarea');
         $textarea.keypress((e: JQuery.KeyPressEvent) => {
             const $textarea = $(e.currentTarget);
             if (($textarea.val() as string).length > 0) {
@@ -947,6 +963,7 @@ export class CommentsBS implements implRepliesComment {
             });
         });
         this._events.push({elt: $btnDelete, event: 'click'});
+        this._callListeners(EventTypes.SHOW);
     }
     /**
      * Nettoie les events créer par la fonction loadEvents
@@ -1038,10 +1055,10 @@ export class CommentsBS implements implRepliesComment {
      */
     public addToPage(cmtId: number) {
         const comment: CommentBS = this.getComment(cmtId);
-        const headMsg = comment.text.substring(0, 275);
+        const headMsg = comment.text.substring(0, 210);
         let hideMsg = '';
-        if (comment.text.length > 275)
-            hideMsg = '<span class="u-colorWhiteOpacity05 u-show-fulltext positionRelative zIndex1"></span><span class="sr-only">' + comment.text.substring(275) + '</span>';
+        if (comment.text.length > 210)
+            hideMsg = '<span class="u-colorWhiteOpacity05 u-show-fulltext positionRelative zIndex1"></span><span class="sr-only">' + comment.text.substring(210) + '</span>';
         const avatar = comment.avatar || 'https://img.betaseries.com/NkUiybcFbxbsT_EnzkGza980XP0=/42x42/smart/https%3A%2F%2Fwww.betaseries.com%2Fimages%2Fsite%2Favatar-default.png';
         const template = `
             <div class="slide_flex">
@@ -1073,7 +1090,6 @@ export class CommentsBS implements implRepliesComment {
         jQuery('#comments .slides_flex').prepend(template);
         // On met à jour le nombre de commentaires
         jQuery('#comments .blockTitle').text(jQuery('#comments .blockTitle').text().replace(/\d+/, this._parent.nbComments.toString()));
-        this._callListeners(EventTypes.ADD);
     }
     /**
      * Supprime un commentaire dans la liste des commentaires de la page
@@ -1111,7 +1127,7 @@ export class CommentsBS implements implRepliesComment {
                 }
             }
             const buildline = function(index: number, notes: object): string {
-                const percent:number = (notes[index] * 100) / nbEvaluations;
+                let percent:number = nbEvaluations > 0 ? (notes[index] * 100) / nbEvaluations : 0;
                 return `<tr class="histogram-row">
                     <td class="nowrap">${index} étoile${index > 1 ? 's':''}</td>
                     <td class="span10">
