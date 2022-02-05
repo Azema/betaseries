@@ -28,7 +28,9 @@ export enum EventTypes {
     REMOVE = 'remove',
     NOTE = 'note',
     ARCHIVE = 'archive',
-    UNARCHIVE = 'unarchive'
+    UNARCHIVE = 'unarchive',
+    SHOW = 'show',
+    HIDE = 'hide'
 };
 export enum HTTP_VERBS {
     GET = 'GET',
@@ -43,6 +45,9 @@ export type Rating = {
 };
 export type Ratings = {
     [key: string]: Rating;
+};
+export type GM_funcs = {
+    [key: string]: Function;
 };
 export type Obj = {
     [key: string]: any;
@@ -212,6 +217,10 @@ export abstract class Base implements implAddNote {
      * @type {Ratings}
      */
     static ratings: Ratings = null;
+    static gm_funcs: GM_funcs = {
+        getValue: this.noop,
+        setValue: this.noop
+    };
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}
@@ -466,7 +475,9 @@ export abstract class Base implements implAddNote {
             }
         }
         this.nbComments = data.comments ? parseInt(data.comments, 10) : 0;
-        this.comments = new CommentsBS(this.nbComments, this);
+        if (!(this.comments instanceof CommentsBS)) {
+            this.comments = new CommentsBS(this.nbComments, this);
+        }
         this.objNote = (data.note) ? new Note(data.note, this) : new Note(data.notes, this);
         this.resource_url = data.resource_url;
         this.title = data.title;
@@ -537,7 +548,9 @@ export abstract class Base implements implAddNote {
         }
         return this;
     }
-    public init() {}
+    public init(): this {
+        return this;
+    }
     /**
      * Sauvegarde l'objet en cache
      * @return {Base} L'instance du média
