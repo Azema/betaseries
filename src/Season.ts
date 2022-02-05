@@ -1,4 +1,4 @@
-import { Base, Obj } from "./Base";
+import { Base, HTTP_VERBS, Obj } from "./Base";
 import { Episode } from "./Episode";
 import { Show } from "./Show";
 
@@ -13,6 +13,22 @@ export class Season {
      * @type {Array<Episode>} Tableau des épisodes de la saison
      */
     episodes: Array<Episode>;
+    /**
+     * @type {boolean} Possède des sous-titres
+     */
+    has_subtitles: boolean;
+    /**
+     * @type {boolean} Saison pas vu
+     */
+    hidden: boolean;
+    /**
+     * @type {string} URL de l'image
+     */
+    image: string;
+    /**
+     * @type {boolean} Saison vu
+     */
+    seen: boolean;
     /**
      * @type {Show} L'objet Show auquel est rattaché la saison
      */
@@ -31,12 +47,21 @@ export class Season {
     constructor(data: Obj, show: Show) {
         this.number = parseInt(data.number, 10);
         this._show = show;
+        this.episodes = new Array();
+        this.has_subtitles = !!data.has_subtitles || false;
+        this.hidden = !!data.hidden || false;
+        this.seen = !!data.seen || false;
+        this.image = data.image || null;
         // document.querySelector("#seasons > div > div.positionRelative > div > div:nth-child(2)")
         this._elt = jQuery(`#seasons .slides_flex .slide_flex:nth-child(${this.number.toString()})`);
         if (data.episodes && data.episodes instanceof Array && data.episodes[0] instanceof Episode) {
             this.episodes = data.episodes;
         }
         return this;
+    }
+
+    get length(): number {
+        return this.episodes.length;
     }
 
     /**
@@ -60,6 +85,38 @@ export class Season {
                 reject(err);
             });
         });
+    }
+
+    watched(): Promise<Season> {
+        const self = this;
+        const params = {id: this.episodes[this.length - 1].id, bulk: true};
+        return Base.callApi(HTTP_VERBS.POST, 'episodes', 'watched', params)
+        .then((data: Obj) => {
+            let update = false;
+            for (let e = 0; e < self.episodes.length; e++) {
+                if (e == self.episodes.length - 1) update = true;
+                self.episodes[e].user.seen = true;
+                self.episodes[e].updateRender('seen', update);
+            }
+            return self;
+        });
+    }
+
+    hide(): Promise<Season> {
+        const self = this;
+        const params = {id: this._show.id, season: this.number};
+        return Base.callApi(HTTP_VERBS.POST, 'seasons', 'hide', params)
+        .then((data: Obj) => {
+            self.hidden = true;
+            jQuery(`#seasons .slide_flex:nth-child(${self.number}) .slide__image`).prepend('<div class="checkSeen"></div><div class="hideIcon"></div>');
+            let update = false;
+            for (let e = 0; e < self.episodes.length; e++) {
+                if (e == self.episodes.length - 1) update = true;
+                self.episodes[e].user.hidden = true;
+                self.episodes[e].updateRender('hidden', update);
+            }
+            return self;
+        })
     }
 
     /**
@@ -128,17 +185,17 @@ export class Season {
         const seasonViewed = function(): void {
             // On check la saison
             self._elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
-            self._elt
-                .removeClass('slide--notSeen')
-                .addClass('slide--seen');
-            if (Base.debug) console.log('Tous les épisodes de la saison ont été vus');
+            if (Base.debug) console.log('Tous les épisodes de la saison ont été vus', self._elt, self._elt.next());
             // Si il y a une saison suivante, on la sélectionne
             if (self._elt.next().length > 0) {
                 if (Base.debug) console.log('Il y a une autre saison');
-                self.changeCurrentSeason(self.number + 1);
                 self._elt.removeClass('slide--current');
-                self._elt.next().trigger('click');
+                self._elt.next('.slide_flex').find('.slide__image').trigger('click');
             }
+            self._elt
+                .removeClass('slide--notSeen')
+                .addClass('slide--seen');
+            self.seen = true;
         };
         // Si tous les épisodes de la saison ont été vus
         if (lenSeen === lenEpisodes) {
