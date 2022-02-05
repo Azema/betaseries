@@ -12,11 +12,32 @@ export type implReplyUser = {
     login: string;
 };
 export class CommentBS {
+    /*************************************************/
+    /*                  STATIC                       */
+    /*************************************************/
+
+    /**
+     * Types d'évenements gérés par cette classe
+     * @type {Array}
+     */
+     static EventTypes: Array<string> = new Array(
+        'update',
+        'save',
+        'add',
+        'delete',
+        'show',
+        'hide'
+    );
+
     /**
      * Contient le nom des classes CSS utilisées pour le rendu du commentaire
      * @type Obj
      */
     static classNamesCSS: Obj = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
+
+    /*************************************************/
+    /*                  PROPERTIES                   */
+    /*************************************************/
 
     id: number;
     /**
@@ -104,10 +125,15 @@ export class CommentBS {
      * @type {Array<CustomEvent>} Liste des events déclarés par la fonction loadEvents
      */
     private _events: Array<CustomEvent>;
+    /**
+     * @type {object} Objet contenant les fonctions à l'écoute des changements
+     * @private
+     */
+    private _listeners: object;
 
     constructor(data: any, parent: CommentsBS | CommentBS) {
         this._parent = parent;
-        return this.fill(data);
+        return this.fill(data)._initListeners();
     }
 
     /**
@@ -136,6 +162,69 @@ export class CommentBS {
         this.replies = new Array();
         this.from_admin = data.from_admin;
         this.user_rank = data.user_rank;
+        return this;
+    }
+    /**
+     * Initialize le tableau des écouteurs d'évènements
+     * @returns {Base}
+     * @private
+     */
+    private _initListeners(): this {
+        this._listeners = {};
+        const EvtTypes = CommentBS.EventTypes;
+        for (let e = 0; e < EvtTypes.length; e++) {
+            this._listeners[EvtTypes[e]] = new Array();
+        }
+        return this;
+    }
+    /**
+     * Permet d'ajouter un listener sur un type d'évenement
+     * @param  {EventTypes} name - Le type d'évenement
+     * @param  {Function}   fn   - La fonction à appeler
+     * @return {Base} L'instance du média
+     */
+    public addListener(name: EventTypes, fn: Function): this {
+        // On vérifie que le type d'event est pris en charge
+        if (!CommentBS.EventTypes.includes(name)) {
+            throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
+        }
+        if (this._listeners[name] === undefined) {
+            this._listeners[name] = new Array();
+        }
+        this._listeners[name].push(fn);
+        return this;
+    }
+    /**
+     * Permet de supprimer un listener sur un type d'évenement
+     * @param  {string}   name - Le type d'évenement
+     * @param  {Function} fn   - La fonction qui était appelée
+     * @return {Base} L'instance du média
+     */
+    public removeListener(name: EventTypes, fn: Function): this {
+        if (this._listeners[name] !== undefined) {
+            for (let l = 0; l < this._listeners[name].length; l++) {
+                if (this._listeners[name][l] === fn)
+                    this._listeners[name].splice(l, 1);
+            }
+        }
+        return this;
+    }
+    /**
+     * Appel les listeners pour un type d'évenement
+     * @param  {EventTypes} name - Le type d'évenement
+     * @return {Base} L'instance du média
+     */
+    protected _callListeners(name: EventTypes): this {
+        // On vérifie que le type d'event est pris en charge
+        if (!CommentBS.EventTypes.includes(name)) {
+            throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
+        }
+        const event = new CustomEvent('betaseries', {detail: {name: name}});
+        if (this._listeners[name].length > 0)
+            if (Base.debug) console.log('Comment call %d Listeners on event %s', this._listeners[name].length, name);
+        for (let l = 0; l < this._listeners[name].length; l++) {
+            this._listeners[name][l].call(this, event, this);
+        }
         return this;
     }
     /**
@@ -354,6 +443,16 @@ export class CommentBS {
                 </div>
             </div>
         `;
+    }
+    public getLogins(): Array<string> {
+        let users = new Array();
+        users.push(this.login);
+        for (let r = 0; r < this.replies.length; r++) {
+            if (!users.includes(this.replies[r].login)) {
+                users.push(this.replies[r].login);
+            }
+        }
+        return users;
     }
     /**
      * Met à jour le rendu des votes de ce commentaire
@@ -871,6 +970,7 @@ export class CommentBS {
                   $contentReact.empty();
                   $contentHtml.hide();
                   self.cleanEvents();
+                  self._callListeners(EventTypes.HIDE);
                 },
               showPopup = () => {
                   document.body.style.overflow = "hidden";
@@ -947,6 +1047,7 @@ export class CommentBS {
             $contentReact.fadeIn();
             // On active les boutons de l'affichage du commentaire
             self.loadEvents($contentReact, {hidePopup, showPopup});
+            self._callListeners(EventTypes.SHOW);
         });
     }
     /**
