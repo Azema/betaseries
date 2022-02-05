@@ -72,6 +72,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
     * [ ] Gérer l'envoi de message privé directement depuis la popup
     * [X] Ajouter un bouton pour afficher/masquer toutes les réponses lors de l'affichage de l'ensemble des commentaires.
     * [ ] Ajouter la possibilité de modifier le tri des commentaires
+    * [X] Ajouter l'autocomplétion sur les noms des membres dans les commentaires (ils doivent être précédé par un arobase @ )
 * Ajout d'une popup, au survol du titre de la section **commentaires**, qui affiche les évaluations du média par les membres ayant écrit un commentaire. Seules les évaluations des membres, ayant écrits un commentaire, sont disponibles. Il faudrait peut être demander d'avoir le détail des votes pour chaque média, afin d'améliorer les statistiques, par exemple, le nombre de votes pour chaque index, de 1 à 5.
 
 ![Evaluations du média dans les commentaires](./screenshots/evaluationsComments.jpg "Evaluations du média dans les commentaires")
@@ -99,6 +100,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Un lien a été ajouté dans le menu "_Séries_" (Séries à voir) pour afficher le détail des séries à voir plus tard.
 
 !["Display séries à voir plus tard"](./screenshots/displayShowsToSee.jpg "Display séries à voir plus tard")
+* Un lien a été ajouté dans le menu "_Séries_" (10 last seen) pour afficher les 10 dernières séries vues par le membre, dans le même style que les séries à voir plus tard.
 
 #### Gestion des épisodes
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
