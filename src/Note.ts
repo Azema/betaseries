@@ -1,4 +1,4 @@
-import { Base, MediaType } from "./Base";
+import { Base, EventTypes, MediaType } from "./Base";
 
 export interface implAddNote {
     addVote(note: number): Promise<boolean>;
@@ -55,8 +55,6 @@ export class Note {
               $popup = jQuery('#popin-dialog'),
               $contentHtmlElement = $popup.find(".popin-content-html"),
               $contentReact = $popup.find('.popin-content-reactmodule'),
-              $title = $contentHtmlElement.find(".title"),
-              $text = $popup.find("p"),
               $closeButtons = $popup.find(".js-close-popupalert"),
               hidePopup = () => {
                   if (Base.debug) console.log('objNote createPopupForVote hidePopup');
@@ -65,15 +63,17 @@ export class Note {
                   $contentHtmlElement.hide();
                   // On désactive les events
                   $text.find('.star-svg').off('mouseenter').off('mouseleave').off('click');
-              },
-              showPopup = () => {
-                  if (Base.debug) console.log('objNote createPopupForVote showPopup');
-                  $contentHtmlElement.find(".button-set").hide();
-                  $contentHtmlElement.show();
-                  $contentReact.hide();
-                  $closeButtons.show();
-                  $popup.attr('aria-hidden', 'false');
-              };
+                },
+                showPopup = () => {
+                    if (Base.debug) console.log('objNote createPopupForVote showPopup');
+                    $contentHtmlElement.find(".button-set").hide();
+                    $contentHtmlElement.show();
+                    $contentReact.hide();
+                    $closeButtons.show();
+                    $popup.attr('aria-hidden', 'false');
+                };
+        let $text = $popup.find("p"),
+            $title = $contentHtmlElement.find(".title");
         // On vérifie que la popup est masquée
         hidePopup();
         // Ajouter les étoiles
@@ -85,6 +85,17 @@ export class Note {
                 <svg viewBox="0 0 100 100" class="star-svg" data-number="${i}" style="width: 30px; height: 30px;">
                     <use xlink:href="#icon-starblue-${className}"></use>
                 </svg>`;
+        }
+        if ($text.length <= 0) {
+            $contentHtmlElement.replaceWith(`
+                <div class="popin-content-html">
+                    <div class="title" id="dialog-title" tabindex="0"></div>
+                    <div class="popin-content-ajax">
+                        <p></p>
+                    </div>
+                </div>`);
+            $text = $contentHtmlElement.find('p');
+            $title = $contentHtmlElement.find(".title");
         }
         // On vide la popup et on ajoute les étoiles
         $text.empty().append(template + '</div></div>');
@@ -116,14 +127,15 @@ export class Note {
                 $($stars.get(s)).attr('xlink:href', `#icon-starblue-${className}`);
             }
         };
-        $text.find('.star-svg').mouseenter((e: JQuery.MouseEnterEvent) => {
+        const $stars = $text.find('.star-svg');
+        $stars.mouseenter((e: JQuery.MouseEnterEvent) => {
             const note:number = parseInt($(e.currentTarget).data('number'), 10);
             updateStars(e, note);
         });
-        $text.find('.star-svg').mouseleave((e: JQuery.MouseLeaveEvent) => {
+        $stars.mouseleave((e: JQuery.MouseLeaveEvent) => {
             updateStars(e, _this.user);
         });
-        $text.find('.star-svg').click((e: JQuery.ClickEvent) => {
+        $stars.click((e: JQuery.ClickEvent) => {
             const note:number = parseInt(jQuery(e.currentTarget).data('number'), 10),
                   $stars = jQuery(e.currentTarget).parent().find('.star-svg');
             // On supprime les events
@@ -134,6 +146,7 @@ export class Note {
                     if (result) {
                         // TODO: Mettre à jour la note du média
                         _this._parent.changeTitleNote(true);
+                        _this._parent._callListeners(EventTypes.NOTE);
                         if (cb) cb.call(_this);
                     } else {
                         Base.notification('Erreur Vote', "Une erreur s'est produite durant le vote");
