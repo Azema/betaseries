@@ -289,6 +289,10 @@ export class Episode extends Base implements implAddNote {
                             resolve(false);
                         }
                     });
+                    let btnNo = jQuery('#popin-dialog #popupalertno'),
+                        btnYes = jQuery('#popin-dialog #popupalertyes');
+                    btnNo.attr('tabIndex', 0).focus();
+                    btnYes.attr('tabIndex', 0);
                 });
             };
             const $vignettes = jQuery('#episodes .checkSeen');
@@ -338,6 +342,11 @@ export class Episode extends Base implements implAddNote {
                     ._season
                         .updateRender()
                         .updateShow(() => {
+                            // Si il reste des épisodes à voir, on scroll
+                            if (jQuery('#episodes .slide_flex.slide--notSeen').length > 0) {
+                                jQuery('#episodes .slides_flex').get(0).scrollLeft =
+                                    jQuery('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
+                            }
                             self.toggleSpinner(false);
                         });
             })
