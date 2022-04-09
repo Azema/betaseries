@@ -160,6 +160,10 @@ export class CommentsBS implements implRepliesComment {
         if (this._listeners[name] === undefined) {
             this._listeners[name] = new Array();
         }
+        for (let func in this._listeners[name]) {
+            console.log('func', func.toString(), 'fn', fn.toString());
+            if (func.toString() == fn.toString()) return;
+        }
         this._listeners[name].push(fn);
         return this;
     }
