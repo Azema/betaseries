@@ -33,9 +33,9 @@
 /************************************************************************************************/
 
 /* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
-constt betaseries_api_user_key = '';
+const betaseries_api_user_key = '';
 /* Ajouter ici votre clé d'API V3 à themoviedb */
-constt themoviedb_api_user_key = '';
+const themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
