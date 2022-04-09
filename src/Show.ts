@@ -119,6 +119,7 @@ export class Show extends Media implements implShow, implAddNote {
         EventTypes.UPDATE,
         EventTypes.SAVE,
         EventTypes.ADD,
+        EventTypes.ADDED,
         EventTypes.REMOVE,
         EventTypes.NOTE,
         EventTypes.ARCHIVE,
@@ -224,9 +225,9 @@ export class Show extends Media implements implShow, implAddNote {
      */
     country: string;
     /**
-     * @type {Season} Pointeur vers la saison courante
+     * @type {number} Pointeur vers la saison courante
      */
-    currentSeason: Season;
+    _currentSeason: number;
     /**
      * @type {Images} Contient les URLs d'accès aux images de la série
      */
@@ -671,7 +672,7 @@ export class Show extends Media implements implShow, implAddNote {
                     src = `${Base.api.url}/pictures/episodes?key=${Base.userKey}&id=${res.user.next.id}&width=${width}&height=${height}`,
                     serieTitle = res.resource_url.split('/').pop();
 
-            jQuery('.blockInformations__actions').after(
+            jQuery('.blockInformations__actions').last().after(
                 `<a href="/episode/${serieTitle}/${res.user.next.code.toLowerCase()}" class="blockNextEpisode media">
                     <div class="media-left">
                     <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
@@ -707,14 +708,14 @@ export class Show extends Media implements implShow, implAddNote {
             // Remplacer le DOMElement supprime l'eventHandler
             jQuery('#reactjs-show-actions').html(`
                 <div class="blockInformations__action">
-                    <button class="btn-reset btn-transparent" type="button">
-                    <span class="svgContainer">
-                        <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
-                        </svg>
-                    </span>
+                    <button class="btn-reset btn-transparent btn-add" type="button">
+                        <span class="svgContainer">
+                            <svg fill="#0D151C" width="14" height="14" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 8H8v6H6V8H0V6h6V0h2v6h6z" fill-rule="nonzero"></path>
+                            </svg>
+                        </span>
                     </button>
-                    <div class="label">Ajouter</div>
+                    <div class="label">${Base.trans('show.button.add.label')}</div>
                 </div>`
             );
             this.addBtnToSee();
@@ -732,6 +733,7 @@ export class Show extends Media implements implShow, implAddNote {
                     changeBtnAdd(self);
                     // On met à jour le bloc du prochain épisode à voir
                     self.updateNextEpisode(function() {
+                        self._callListeners(EventTypes.ADDED);
                         if (Base.debug) console.groupEnd();
                     });
                 };
@@ -808,24 +810,24 @@ export class Show extends Media implements implShow, implAddNote {
                                 data-user-id="${Base.userId}"
                                 data-show-favorised="${show.user.favorited ? '1' : ''}">
                             <div class="blockInformations__action">
-                            <button class="btn-reset btn-transparent btn-archive" type="button">
-                                <span class="svgContainer">
-                                <svg fill="#0d151c" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="m16 8-1.41-1.41-5.59 5.58v-12.17h-2v12.17l-5.58-5.59-1.42 1.42 8 8z"></path>
-                                </svg>
-                                </span>
-                            </button>
-                            <div class="label">${Base.trans('show.button.archive.label')}</div>
+                                <button class="btn-reset btn-transparent btn-archive" type="button">
+                                    <span class="svgContainer">
+                                    <svg fill="#0d151c" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="m16 8-1.41-1.41-5.59 5.58v-12.17h-2v12.17l-5.58-5.59-1.42 1.42 8 8z"></path>
+                                    </svg>
+                                    </span>
+                                </button>
+                                <div class="label">${Base.trans('show.button.archive.label')}</div>
                             </div>
                             <div class="blockInformations__action">
-                            <button class="btn-reset btn-transparent btn-favoris" type="button">
-                                <span class="svgContainer">
-                                <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
-                                </svg>
-                                </span>
-                            </button>
-                            <div class="label">${Base.trans('show.button.favorite.label')}</div>
+                                <button class="btn-reset btn-transparent btn-favoris" type="button">
+                                    <span class="svgContainer">
+                                    <svg fill="#FFF" width="20" height="19" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
+                                    </svg>
+                                    </span>
+                                </button>
+                                <div class="label">${Base.trans('show.button.favorite.label')}</div>
                             </div>
                         </div>`);
                 // On ofusque l'image des épisodes non-vu
@@ -846,9 +848,16 @@ export class Show extends Media implements implShow, implAddNote {
                     </button>`
                 );
                 self.elt = $('.blockInformations');
+                const btnAddSimilars = `<button
+                    type="button"
+                    class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05"
+                >
+                    ${Base.trans("popup.suggest_show.title", {'%title%': "une série"})}</button>`;
+                jQuery('#similars h2.blockTitle').after(btnAddSimilars);
                 self.addNumberVoters();
                 // On supprime le btn ToSeeLater
                 self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
+                self.elt.find('.blockInformations__title .fa-clock-o').remove();
                 let toSee = Base.gm_funcs.getValue('toSee', {});
                 if (toSee[self.id] !== undefined) {
                     delete toSee[self.id];
@@ -995,7 +1004,7 @@ export class Show extends Media implements implShow, implAddNote {
             Base.gm_funcs.setValue('toSee', storeToSee);
             return toSee;
         };
-        this.elt.find('.blockInformations__actions').append(btnHTML);
+        this.elt.find('.blockInformations__actions').last().append(btnHTML);
         const $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
         $btn.click((e: JQuery.ClickEvent) => {
             e.stopPropagation();
@@ -1128,15 +1137,25 @@ export class Show extends Media implements implShow, implAddNote {
         if (seasonNumber <= 0 || seasonNumber > this.seasons.length) {
             throw new Error("seasonNumber is out of range of seasons");
         }
-        this.currentSeason = this.getSeason(seasonNumber);
+        this._currentSeason = seasonNumber - 1;
         return this;
     }
+
+    /**
+     * Retourne la saison courante
+     * @return {Season}
+     */
+    public get currentSeason() : Season {
+        return this.seasons[this._currentSeason];
+    }
+
     /**
      * Retourne l'objet Season correspondant au numéro de saison fournit en paramètre
      * @param   {number} seasonNumber - Numéro de saison (base: 1)
      * @returns {Season}
      */
     getSeason(seasonNumber: number): Season {
+        if (Base.debug) console.log('getSeason: ', seasonNumber);
         for (let s = 0; s < this.seasons.length; s++) {
             if (this.seasons[s].number == seasonNumber) {
                 return this.seasons[s];
