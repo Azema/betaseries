@@ -25,6 +25,7 @@ export enum EventTypes {
     UPDATE = 'update',
     SAVE = 'save',
     ADD = 'add',
+    ADDED = 'added',
     REMOVE = 'remove',
     NOTE = 'note',
     ARCHIVE = 'archive',
@@ -505,7 +506,8 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      * @sealed
      */
-    public addListener(name: EventTypes, fn: Function): this {
+    public addListener(name: EventTypes, fn: Function, ...args): this {
+        //if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name);
         // On vérifie que le type d'event est pris en charge
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
@@ -513,7 +515,15 @@ export abstract class Base implements implAddNote {
         if (this._listeners[name] === undefined) {
             this._listeners[name] = new Array();
         }
-        this._listeners[name].push(fn);
+        for (let func in this._listeners[name]) {
+            if (func.toString() == fn.toString()) return;
+        }
+        if (args.length > 0) {
+            this._listeners[name].push({fn: fn, args: args});
+        } else {
+            this._listeners[name].push(fn);
+        }
+        if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name, this._listeners[name]);
         return this;
     }
     /**
@@ -538,12 +548,16 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      * @sealed
      */
-    protected _callListeners(name: EventTypes): this {
-        const event = new CustomEvent('betaseries', {detail: {name: name}});
-        if (this._listeners[name] !== undefined && this._listeners[name].length > 0) {
-            if (Base.debug) console.log('Base call %d Listeners on event %s', this._listeners[name].length, name);
+    public _callListeners(name: EventTypes): this {
+        if ((this.constructor as typeof Base).EventTypes.indexOf(name) >= 0 && this._listeners[name].length > 0) {
+            if (Base.debug) console.log('Base[%s] call %d Listeners on event %s', this.constructor.name, this._listeners[name].length, name, this._listeners);
+            const event = new CustomEvent('betaseries', {detail: {name: name}});
             for (let l = 0; l < this._listeners[name].length; l++) {
-                this._listeners[name][l].call(this, event, this);
+                if (typeof this._listeners[name][l] === 'function') {
+                    this._listeners[name][l].call(this, event, this);
+                } else {
+                    this._listeners[name][l].fn.apply(this, this._listeners[name][l].args);
+                }
             }
         }
         return this;
