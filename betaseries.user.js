@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.2.1
+// @version      1.3.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -17,34 +17,32 @@
 // @match        https://www.betaseries.com/article/*
 // @icon         https://www.betaseries.com/images/site/favicon-32x32.png
 // @require      https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.27.0/humanize-duration.min.js#sha512-C6XM91cD52KknT8jaQF1P2PrIRTrbMzq6hzFkc22Pionu774sZwVPJInNxfHNwPvPne3AMtnRWKunr9+/gQR5g==
-// @require      https://azema.github.io/betaseries-oauth/js/renderjson.min.js#sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_notification
 // ==/UserScript==
+
+/* global A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans lazyLoad
+   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT hideButtonReset moment PopupAlert */
+/* jslint unparam: true, eqnull:true, unused:true */
+
 'use strict';
 
-/* globals Base:false, CacheUS: false, Episode: false, Media: false, Movie: false, Show: false,
-   UpdateAuto: false, EventTypes: false, HTTP_VERBS: false, MediaType: false, CommentBS: false,
-   MovieStatus: false, Member: false, DataTypesCache: false, Note: false,
-
-   betaseries_api_user_token:  true, betaseries_user_id: false, trans: false, lazyLoad: false, deleteFilterOthersCountries: false, generate_route: false,
-   CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
-   viewMoreFriends: false, PopupAlert: false, moment, faceboxDisplay: false
- */
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
 /************************************************************************************************/
+
 /* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
-let betaseries_api_user_key = '';
+constt betaseries_api_user_key = '';
 /* Ajouter ici votre clé d'API V3 à themoviedb */
-let themoviedb_api_user_key = '';
+constt themoviedb_api_user_key = '';
 /* Ajouter ici l'URL de base de votre serveur distribuant les CSS, IMG et JS */
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-y9cn188+VaQljcucJUmu3vkfM1r7a8XMo0Z3gfDoPZm9r84Dttp5yowih4FMuP3m';
+const sriBundle = 'sha384-Ox9VWotrqoGdEO/1NjNyEjFzjLtU8qsuf207mNCq9TeTpk/FANs3dpXLn/E/uH+t';
 /************************************************************************************************/
+// @ts-check
 
 /**
  * Fonction de chargement dynamique de feuilles de style CSS
@@ -219,6 +217,14 @@ const launchScript = function($) {
             called: false,
             loaded: false
         },
+        "renderjson": {
+            type: 'script',
+            id: 'renderjson',
+            src: 'https://azema.github.io/betaseries-oauth/js/renderjson.min.js',
+            integrity: 'sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D',
+            called: false,
+            loaded: false
+        },
         "localefr": {
             type: 'script',
             id: 'jslocalefr',
@@ -257,7 +263,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-1OR+NTqjm9jVmnu5i8clwOJ19xmkW4+Y/4bHEhzE8Nl6QZD1X9iSFAnXVMFKp7To',
+            integrity: 'sha384-By4NZ4nj2k+cq44qVxxoWfIkmjYI9evsuTfjUgSszMjAw5uHo8E2Y1Kr2uM/s6iD',
             media: 'all',
             called: false,
             loaded: false
@@ -275,7 +281,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'commentstyle',
             href: `${serverBaseUrl}/css/comments.min.css`,
-            integrity: 'sha384-XyHT1LS47qWWt8U0E6w1ZftpelwNob6APgaJO7BIW1o22850+55Y7oc5BsciNir2',
+            integrity: 'sha384-kKsnxtsYz2cZTV2MOdDUJh3mOMOKqfuGMut+qVlM5k2NoRgDhpuGqR9ZVtfWoxsz',
             media: 'all',
             called: false,
             loaded: false
@@ -381,7 +387,7 @@ const launchScript = function($) {
                 });
             } else {
                 // On affiche la version du script
-                if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version);
+                    if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version);
             }
             system.checkApiVersion();
             const $mainlogo = $('nav .mainlogo');
@@ -416,7 +422,7 @@ const launchScript = function($) {
                     }
                     mainlogoModified = false;
                 }
-                    system.waitDomPresent('#reactjs-header-search .menu-item form .c4_c8', () => {
+                system.waitDomPresent('#reactjs-header-search .menu-item form .c4_c8', () => {
                     $('#reactjs-header-search .menu-item form .c4_c8').click(boundHandleScroll);
                 });
             });
@@ -598,11 +604,11 @@ const launchScript = function($) {
                 // if (Base.debug) console.log('addScriptAndLink array.length = %d', name.length);
                 if (name.length > 1) {
                     const elt = name.shift();
-                        system.addScriptAndLink(elt, () => system.addScriptAndLink(name, onloadFunction) );
+                    system.addScriptAndLink(elt, () => system.addScriptAndLink(name, onloadFunction) );
                     return;
                 } else if (name.length === 1) {
                     name = name.shift();
-                        } else {
+                } else {
                     return;
                 }
             }
@@ -618,7 +624,7 @@ const launchScript = function($) {
                 // if (Base.debug) console.log('[%d] %s(%s) déjà appelé et chargé, on renvoie direct', index, data.type, name);
                 return onloadFunction();
             } else if (data.called && !data.loaded) {
-                    system.waitPresent(() => { return scriptsAndStyles[name].loaded; }, onloadFunction, 10, 10);
+                system.waitPresent(() => { return scriptsAndStyles[name].loaded; }, onloadFunction, 10, 10);
                 return;
             }
             scriptsAndStyles[name].called = true;
@@ -677,8 +683,8 @@ const launchScript = function($) {
                     $frame = $(elt);
                     if (!$frame.hasClass('embed-responsive-item')) {
                         $frame.remove();
-                }
-            });
+                    }
+                });
             }, 1000);
             $('.blockPartner').attr('style', 'display: none !important');
             //$('.breadcrumb').hide();
@@ -712,21 +718,21 @@ const launchScript = function($) {
                         .dialog-container .counter {margin-left: 15px;}
                         .dialog-container .counter, .dialog-container .suffixCounter {font-size:0.8em;}
                     </style>
-                        <div class="dialog-overlay"></div>
-                        <div class="dialog-content" role="document" style="width: 80%;">
-                            <h1 id="dialog-resource-title"><span class="blockTitle">Données de la ressource</span>
-                            <span class="counter"></span> <span class="suffixCounter">appels à l'API</span>
-                                <button type = "button"
-                                        class = "close"
-                                        aria-label = "Close"
-                                        title = "Fermer la boîte de dialogue">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </h1>
-                            <div class="data-resource content"></div>
-                        </div>
+                    <div class="dialog-overlay"></div>
+                    <div class="dialog-content" role="document" style="width: 80%;">
+                    <h1 id="dialog-resource-title"><span class="blockTitle">Données de la ressource</span>
+                        <span class="counter"></span> <span class="suffixCounter">appels à l'API</span>
+                        <button type = "button"
+                                class = "close"
+                                aria-label = "Close"
+                                title = "Fermer la boîte de dialogue">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </h1>
+                    <div class="data-resource content"></div>
                     </div>
-                `;
+                </div>
+            `;
             if ($('#dialog-resource').length <= 0) {
                 $('body').append(dialogHTML);
             }
@@ -737,7 +743,7 @@ const launchScript = function($) {
                 _onShow: function () {
                     this._html.style.overflowY = 'hidden';
                     this._dialog
-                    .css('z-index', '1005')
+                        .css('z-index', '1005')
                         .css('overflow', 'scroll')
                         .find('button.close').click(this.close.bind(this));
                     this._dialog.find('.dialog-overlay').click(this.close.bind(this));
@@ -747,14 +753,14 @@ const launchScript = function($) {
                     e.stopPropagation();
                     // console.log('_bindKeypress', this, e);
                     if (27 === e.which) {
-                            e.preventDefault();
+                        e.preventDefault();
                         this.close();
                     }
                 },
                 _onHide: function () {
                     this._html.style.overflowY = '';
                     this._dialog
-                    .css('z-index', '0')
+                        .css('z-index', '0')
                         .css('overflow', 'none')
                         .find('button.close').off('click');
                     this._dialog.find('.dialog-overlay').off('click');
@@ -778,12 +784,12 @@ const launchScript = function($) {
                 },
                 setContent: function(content) {
                     this._dialog.find('.data-resource').html(content);
-                    },
-                    setTitle: function(title) {
-                        this._dialog.find('.blockTitle').text(title);
-                    },
-                    addStyle: function(style) {
-                        this._dialog.find('style').append(style);
+                },
+                setTitle: function(title) {
+                    this._dialog.find('.blockTitle').text(title);
+                },
+                addStyle: function(style) {
+                    this._dialog.find('style').append(style);
                 }
             }.init();
         },
@@ -799,7 +805,7 @@ const launchScript = function($) {
                 selectors.pagination += '-shows';
             } else if (/^\/films\//.test(url)) {
                 selectors.pagination += '-movies';
-        }
+            }
             // On attend la présence du paginateur
             system.waitDomPresent(selectors.pagination, () => {
                 // On copie colle le paginateur en haut de la liste des séries
@@ -810,7 +816,7 @@ const launchScript = function($) {
                         system.waitPagination();
                         loaded = true;
                         document.getElementsByClassName('maintitle')[0].scrollIntoView();
-    }
+                    }
                 });
             }, 10);
         },
@@ -831,7 +837,7 @@ const launchScript = function($) {
                 return resource.init();
             }).catch(err => {
                 system.notification('fetch Resource', 'Erreur de récupération de la resource de type ' + type.singular + ', Erreur: ' + err);
-                });
+            });
         },
         /**
          * Cette fonction permet de récupérer les données API de la ressource principale
@@ -919,7 +925,7 @@ const launchScript = function($) {
                 // On évite une boucle infinie
                 if (++waitEpisodes >= 100) {
                     clearInterval(timer);
-                        system.notification('Wait Episodes List', 'Les vignettes des saisons et des épisodes n\'ont pas été trouvées.');
+                    system.notification('Wait Episodes List', 'Les vignettes des saisons et des épisodes n\'ont pas été trouvées.');
                     errorCb('timeout');
                     return;
                 }
@@ -960,9 +966,10 @@ const launchScript = function($) {
              */
             const contentUp = function (objUpAuto) {
                 const intervals = UpdateAuto.intervals;
-                    const propNumber = getIntervalProp(objUpAuto.show.length);
-                    const propText = objUpAuto.show.in_account && objUpAuto.interval <= 0 ? `
-                    <div class="form-group"><p class="alert alert-info">Pour cette série, nous vous conseillons une intervalle de <span id="propNumber" data-value="${propNumber}">${propNumber.toString()}</span> minutes.</p></div>` : '';
+                const propNumber = getIntervalProp(objUpAuto.show.length);
+                const propText = objUpAuto.show.in_account && objUpAuto.interval <= 0 ? `
+                <div class="form-group"><p class="alert alert-info">Pour cette série, nous vous conseillons une intervalle de <span id="propNumber" data-value="${propNumber}">${propNumber.toString()}</span> minutes.</p></div>` : '';
+                const timerText = objUpAuto.status ? `<div class="form-group"><p class="alert alert-success">Prochain update: <span id="timer_remaining" value="${objUpAuto._remaining}">${objUpAuto.remaining()}</span></p></div>` : '';
                 let contentUpdate = `
                         <form id="optionsUpdateEpisodeList">
                         <div class="form-group form-check">
@@ -986,9 +993,11 @@ const launchScript = function($) {
                 }
                 contentUpdate += `</select></div>
                         ${!objUpAuto.show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>' : ''}
-                            ${propText}
+                        ${propText}
+                        ${timerText}
                         <button type="submit" class="btn btn-primary"${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>Sauver</button>
                         <button type="button" class="close btn btn-danger">Annuler</button>
+                        <button type="button" class="btn btn-info relaunch" style="${!objUpAuto.status ? 'display:none;' : ''}">Relancer</button>
                     </form>`;
                 return contentUpdate;
             };
@@ -1011,13 +1020,13 @@ const launchScript = function($) {
                                 background: transparent;
                                 font-size: 1.5em;
                                 top: 0;
-                                    color: var(--default_color);
+                                color: var(--default_color);
                             }
                             .optionsUpAuto .badge {cursor: pointer;}
                             .optionsUpAuto .close:hover {border: none;outline: none;}
                             .optionsUpAuto .close:focus {border: none;outline: none;}
                         </style>
-                            <div class="optionsUpAuto">Options de mise à jour
+                        <div class="optionsUpAuto">Options de mise à jour
                         <span class="badge badge-pill badge-${className}" title="${title}">${label}</span>
                         <button type="button" class="close" aria-label="Close" title="Fermer">
                             <span aria-hidden="true">&times;</span>
@@ -1045,7 +1054,8 @@ const launchScript = function($) {
                     trigger: 'manual',
                     boundary: 'window'
                 });
-                let timeoutHover = null;
+                let timeoutHover = null,
+                    timerRemaining = null;
                 $('#updateEpisodeList .updateElement').hover(
                     // In
                     function (e) {
@@ -1065,6 +1075,10 @@ const launchScript = function($) {
                     const $updateElement = $('#episodes .slide__image');
                     $updateElement.popover('hide');
                     $updateElement.popover('disable');
+                    timerRemaining = setInterval(() => {
+                        $('#timer_remaining').text(objUpAuto.remaining());
+                        $('#timer_remaining').attr('value', objUpAuto._remaining);
+                    }, 1000);
                 });
                 // On réactive les autres popus lorsque celle des options se ferme
                 // Et on supprime les listeners de la popup
@@ -1073,7 +1087,8 @@ const launchScript = function($) {
                     $('.optionsUpAuto .badge').off('click');
                     $('#updateEpisodeList button.close').off('click');
                     $('#optionsUpdateEpisodeList button.btn-primary').off('click');
-                        $('#updateEpisodeListAuto').off('change');
+                    $('#updateEpisodeListAuto').off('change');
+                    clearInterval(timerRemaining);
                 });
                 $('#updateEpisodeList .updateElement').on('inserted.bs.popover', function () {
                     $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
@@ -1118,6 +1133,11 @@ const launchScript = function($) {
                         e.stopPropagation();
                         e.preventDefault();
                         $('#updateEpisodeList .updateElement').popover('hide');
+                    });
+                    $('#updateEpisodeList button.relaunch').click((e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        objUpAuto.stop().launch();
                     });
                     $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
                         e.stopPropagation();
@@ -1300,7 +1320,7 @@ const launchScript = function($) {
                             aria-hidden="true"></i>
                         </div>`);
                     // On ajoute l'update auto des épisodes de la saison courante
-                        medias.updateAutoEpisodeList(res);
+                    medias.updateAutoEpisodeList(res);
                     // On ajoute la gestion de l'event click sur le bouton
                     $('.updateEpisodes').click((e) => {
                         e.stopPropagation();
@@ -1353,7 +1373,7 @@ const launchScript = function($) {
                                 if (Base.debug) console.groupEnd(); // On clos le groupe de console
                             }
                         }, (err) => {
-                                system.notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
+                            system.notification('Erreur de mise à jour des épisodes', 'updateEpisodeList: ' + err);
                             self.addClass('finish');
                             if (Base.debug) console.groupEnd();
                         });
@@ -1367,7 +1387,7 @@ const launchScript = function($) {
                 $('#episodes .slide__image').off('inserted.bs.popover');
                 $('#episodes .slide__image').popover('dispose');
                 // On attend que les vignettes de la saison choisie soient chargées
-                    medias.waitSeasonsAndEpisodesLoaded(() => {
+                medias.waitSeasonsAndEpisodesLoaded(() => {
                     addCheckSeen();
                     if (Base.debug) console.groupEnd();
                 }, () => {
@@ -1409,6 +1429,7 @@ const launchScript = function($) {
          * @return {void}
          */
         replaceSuggestSimilarHandler: function($elt, objSimilars = []) {
+            if (typeof $elt === 'string') $elt = $($elt);
             if ($elt.hasClass('usbs')) return;
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
             if (!system.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
@@ -1428,7 +1449,7 @@ const launchScript = function($) {
                             let search = $(e.currentTarget).val().toString();
                             if (search.length > 0 && e.which != 40 && e.which != 38) {
                                 Base.callApi('GET', 'search', type.plural, { autres: 'mine', text: search })
-                                    .then((data) => {
+                                .then((data) => {
                                     const medias = data[type.plural];
                                     $("#search_results .title").remove();
                                     $("#search_results .item").remove();
@@ -1536,6 +1557,7 @@ const launchScript = function($) {
                         <div class="container-padding60">
                             <div class="blockTitles">
                                 <h2 class="blockTitle">Séries similaires</h2>
+                                <button type="button" class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05 usbs">Suggérer une série</button>
                             </div>
                         </div>
                         <div class="positionRelative">
@@ -1613,7 +1635,7 @@ const launchScript = function($) {
                     $('#similars .blockTitle')
                         .after(`<button type="button"
                                         class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05">
-                                            Suggérer une série
+                                            ${trans("popup.suggest_show.title", {'%title%': "une série"})}
                                 </button>`);
                 }
                 // On ajoute la gestion de l'event click sur le bouton d'update des similars
@@ -1712,7 +1734,7 @@ const launchScript = function($) {
                                 promise.then(resp => {
                                     if (!resp) {
                                         return;
-                                }
+                                    }
                                     objSimilar.changeState(-1).then(() => {
                                         const checked = $(e.currentTarget).siblings('input:checked');
                                         // if (Base.debug) console.log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
@@ -1721,9 +1743,9 @@ const launchScript = function($) {
                                         // On supprime le bandeau Vu
                                         if ($parent.find('.bandViewed').length > 0) {
                                             $parent.find('.bandViewed').remove();
-                                }
+                                        }
                                         $(e.currentTarget).hide();
-                                });
+                                    });
                                 });
                             });
                             $('.popover input.movie').click((e) => {
@@ -1773,7 +1795,7 @@ const launchScript = function($) {
                                 } else {
                                     showsToSee[showId] = true;
                                     toSee = true;
-                        }
+                                }
                                 GM_setValue('toSee', showsToSee);
                                 return toSee;
                             };
@@ -1795,8 +1817,8 @@ const launchScript = function($) {
                         const $link = $(this),
                               $popover = $('.popover'),
                               placement = funcPlacement(null, this),
-                            resId = parseInt($link.data('id'), 10),
-                            objSimilar = res.getSimilar(resId);
+                              resId = parseInt($link.data('id'), 10),
+                              objSimilar = res.getSimilar(resId);
                         // if (debug) console.log('placement similar: ', placement);
                         $('.popover-header').html(objSimilar.getTitlePopup());
                         $('.popover-body').html(objSimilar.getContentPopup());
@@ -1814,6 +1836,7 @@ const launchScript = function($) {
                 system.notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
             });
             medias.replaceSuggestSimilarHandler($('#similars button.blockTitle-subtitle'), objSimilars);
+            res.addListener(EventTypes.ADDED, medias.replaceSuggestSimilarHandler, '#similars button.blockTitle-subtitle', objSimilars);
         },
         /**
          * Gère l'affichage des commentaires
@@ -1845,7 +1868,7 @@ const launchScript = function($) {
                     let promise = Promise.resolve();
                     if (res.comments.length <= 0 || res.comments.length < $comments.length) {
                         if (debug) console.log('eventComments fetchComments', {comments: res.comments.length, vignettes: $comments.length});
-                    promise = res.comments.fetchComments();
+                        promise = res.comments.fetchComments();
                     }
                     promise.then(() => {
                         const commentId = parseInt($(e.currentTarget).data('commentId'), 10),
@@ -1856,45 +1879,37 @@ const launchScript = function($) {
                         if (debug) console.log('eventComments promise commentId: %d', commentId, objComment);
                         if (!(objComment instanceof CommentBS)) {
                             system.notification('Affichage commentaire', "Le commentaire n'a pas été retrouvé");
-                        console.warn('Commentaire introuvable', {commentId, objComment, 'comments': res.comments});
-                        return;
-                    }
+                            console.warn('Commentaire introuvable', {commentId, objComment, 'comments': res.comments});
+                            return;
+                        }
                         objComment.addListener('show', () => {
                             const $textarea = $('.writing textarea');
                             const users = objComment.getLogins();
                             $textarea.textcomplete([{
-                                match: /(^|\b)@(\w{1,})/,
+                                match: /(^|\s)@(\w{1,})$/,
                                 search: function (term, callback) {
                                     console.log('textcomplete search term', term);
                                     callback(users.filter(user => { return user.startsWith(term); }));
                                 },
                                 replace: function (word) {
-                                    return '@' + word + ' ';
+                                    return '$1@' + word + ' ';
                                 }
-                            }]);
+                            }])
+                            .on({
+                                'textComplete:show': function (e) {
+                                    if (debug) console.log('textComplete:show', e, this);
+                                    $('ul.textcomplete-dropdown').get(0).style.zIndex = 2050;
+                                }
+                            });
                         });
                         objComment.render();
-                });
-            });
-            $('#comments .blockTitles button').removeAttr('onclick').off('click').click(e => {
-                e.stopPropagation();
-                e.preventDefault();
-                res.comments.render();
-                    res.comments.addListener('show', () => {
-                        const $textarea = $('.writing textarea');
-                        const users = res.comments.getLogins();
-                        $textarea.textcomplete([{
-                            match: /(^|\b)@(\w{1,})/,
-                            search: function (term, callback) {
-                                const results = users.filter(user => { return user.startsWith(term); });
-                                console.log('textcomplete search term', term, results);
-                                callback(results);
-                            },
-                            replace: function (word) {
-                                return '@' + word + ' ';
-                            }
-                        }]);
                     });
+                });
+                $('#js-open-comments-modal').removeAttr('onclick').off('click').click(e => {
+                    if (debug) console.log('Event click on comments');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    res.comments.render();
                 });
             };
             $('#comments .slide__comment').off('click');
@@ -1917,8 +1932,31 @@ const launchScript = function($) {
                     });
                 });
             }
+            // const $btnCmt = $('#comments div.slide__image > button');
             res.comments.addListener(EventTypes.ADD, eventComments);
             res.comments.addListener(EventTypes.ADD, evaluations);
+            res.comments.addListener('show', () => {
+                if (debug) console.log('Listener show of comments');
+                const $textarea = $('.writing textarea');
+                const users = res.comments.getLogins();
+                $textarea.textcomplete([{
+                    match: /(^|\s)@(\w{1,})$/,
+                    search: function (term, callback) {
+                        const results = users.filter(user => { return user.startsWith(term); });
+                        console.log('textcomplete search term', term, results);
+                        callback(results);
+                    },
+                    replace: function (word) {
+                        return '$1@' + word + ' ';
+                    }
+                }])
+                .on({
+                    'textComplete:show': function (e) {
+                        if (debug) console.log('textComplete:show', e, this);
+                        $('ul.textcomplete-dropdown').get(0).style.zIndex = 2050;
+                    }
+                });
+            });
             system.addScriptAndLink(['popover', 'bootstrap'], evaluations);
             res.comments.init();
         },
@@ -1928,11 +1966,11 @@ const launchScript = function($) {
          */
         replaceVoteFn: function(res) {
             const $blockMeta = $('.blockInformations__metadatas'),
-                $btnVote = $blockMeta.find('button');
+                  $btnVote = $blockMeta.find('button');
             const displayNotesInPopup = function() {
                 system.addScriptAndLink(['popover', 'bootstrap'], () => {
                     if (Base.debug) console.log('callback after load popover and bootstrap');
-                    res.removeListener(EventTypes.NOTE, displayNotesInPopup);
+                    //res.removeListener(EventTypes.NOTE, displayNotesInPopup);
                     const popupVote = function() {
                         // On met en forme le nombre de votes
                         const total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(res.objNote.total);
@@ -1982,12 +2020,12 @@ const launchScript = function($) {
                 e.preventDefault();
                 res.objNote.createPopupForVote((note) => {
                     if (Base.debug) console.log('createPopupForVote callback', note);
-            });
-                res.addListener(EventTypes.NOTE, displayNotesInPopup);
+                });
             });
             if (res.objNote.user > 0) {
                 displayNotesInPopup();
             }
+            res.addListener(EventTypes.NOTE, displayNotesInPopup);
         },
         /**
          * Redéfinit l'event click sur le bouton Vu sur la page d'un film
@@ -2034,7 +2072,7 @@ const launchScript = function($) {
          */
         addBtnDev: function() {
             const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>';
-            $('.blockInformations__actions').append(btnHTML);
+            $('.blockInformations__actions').last().append(btnHTML);
             /**
              * @type {Dialog}
              */
@@ -2065,10 +2103,10 @@ const launchScript = function($) {
                 if (storeToSee[showId] === undefined) {
                     storeToSee[showId] = true;
                     toSee = true;
-                    } else {
+                } else {
                     delete storeToSee[showId];
                     toSee = false;
-                    }
+                }
                 GM_setValue('toSee', storeToSee);
                 return toSee;
             };
@@ -2101,7 +2139,9 @@ const launchScript = function($) {
                                         <div class="info-result-search">
                                             <p style="min-width: fit-content;">${shows[s].nbEpisodes} Épisodes</p>
                                         </div>
-                                        <p class="statut-result-search">Statut : ${shows[s].isEnded() ? 'Terminée': 'En cours'}</p>
+                                        <p class="statut-result-search">
+                                            Statut : ${shows[s].isEnded() ? 'Terminée': 'En cours'} - Pays: ${shows[s].country}
+                                        </p>
                                         <div class="displayFlex">
                                             <time class="mainTime" datetime="${shows[s].creation}">${shows[s].creation}</time>
                                             <div class="stars" title="${shows[s].objNote.toString()}">${Note.renderStars(shows[s].objNote.mean)}</div>
@@ -2622,7 +2662,7 @@ const launchScript = function($) {
                 // On ajoute le bouton de mise à jour des similaires
                 $('.maintitle > div:nth-child(1)').after(`
                     <div class="updateElements">
-                    <img src="${serverBaseUrl}/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
+                      <img src="${serverBaseUrl}/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
                     </div>
                 `);
                 system.addScriptAndLink(['moment', 'localefr']);
@@ -2708,7 +2748,7 @@ const launchScript = function($) {
                             if (Base.debug) console.groupEnd();
                         }, 30, 500);
                     }, (err) => {
-                            system.notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
+                        system.notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
                         if (Base.debug) console.groupEnd();
                     });
                 });
@@ -2734,114 +2774,114 @@ const launchScript = function($) {
              * @param  {Object} unseen Correspond à l'objet Episode non vu
              * @return {String}
              */
-        function buildContainer(unseen) {
-            let description = unseen.description;
-            if (description.length <= 0) {
-                description = 'Aucune description';
-            }
-            else if (description.length > 145) {
-                description = description.substring(0, 145) + '…';
-            }
-            const urlShow = unseen.resource_url.replace('episode', 'serie').replace(/\/s\d{2}e\d{2}$/, '');
-            let template = `
-            <div class="a6_ba displayFlex justifyContentSpaceBetween" style="opacity: 1; transition: opacity 300ms ease-out 0s, transform;">
-              <div class="a6_a8 ComponentEpisodeContainer media">
-                <div class="media-left">
-                  <img class="js-lazy-image greyBorder a6_a2" data-src="https://api.betaseries.com/pictures/shows?key=${betaseries_api_user_key}&id=${unseen.show.id}&width=119&height=174" width="119" height="174" alt="Affiche de la série ${unseen.show.title}">
-                </div>
-                <div class="a6_bc media-body alignSelfStretch displayFlex flexDirectionColumn">
-                  <div class="media">
-                    <div class="media-body minWidth0 alignSelfStretch displayFlex flexDirectionColumn alignItemsFlexStart">
-                      <a class="a6_bp displayBlock nd" href="${urlShow}" title="${trans("agenda.episodes_watch.show_link_title", { title: unseen.show.title })}">
-                        <strong>${unseen.show.title}</strong>
-                      </a>
-                      <a class="a6_bp a6_ak mainLink displayBlock nd" href="${unseen.resource_url}" title="${trans("agenda.episodes_watch.episode_link_title", { code: unseen.code.toUpperCase(), title: unseen.title })}">${unseen.code.toUpperCase()} - ${unseen.title}</a>
-                      <div class="date displayFlex a6_bv">
-                        <time class="mainTime">${moment(unseen.date).format('D MMMM YYYY')}</time>
-                        <span class="stars" title=""></span>
-                      </div>
+            function buildContainer(unseen) {
+                let description = unseen.description;
+                if (description.length <= 0) {
+                    description = 'Aucune description';
+                }
+                else if (description.length > 145) {
+                    description = description.substring(0, 145) + '…';
+                }
+                const urlShow = unseen.resource_url.replace('episode', 'serie').replace(/\/s\d{2}e\d{2}$/, '');
+                let template = `
+                <div class="a6_ba displayFlex justifyContentSpaceBetween" style="opacity: 1; transition: opacity 300ms ease-out 0s, transform;">
+                  <div class="a6_a8 ComponentEpisodeContainer media">
+                    <div class="media-left">
+                      <img class="js-lazy-image greyBorder a6_a2" data-src="https://api.betaseries.com/pictures/shows?key=${betaseries_api_user_key}&id=${unseen.show.id}&width=119&height=174" width="119" height="174" alt="Affiche de la série ${unseen.show.title}">
                     </div>
-                    <div class="a6_bh media-right" data-tour="step: 6; title: ${trans("tourguide.series-agenda.6.title")}; content: ${trans("tourguide.series-agenda.6.content")};">
-                      <div class="displayFlex alignItemsCenter">
-                        <button type="button" class="btn-reset alignSelfCenter ij_il ij_in"></button>
-                      </div>
-                    </div>
-                  </div>
-                  <p class="a6_bt" style="margin: 11px 0px 10px;">${description}</p>
-                  <div class="media">
-                    <div class="media-left alignSelfCenter">
-                      <div class="a6_bj">
-                        <div class="a6_bn" style="width: ${unseen.show.progress}%;"></div>
-                      </div>
-                    </div>
-                    <div class="media-body alignSelfCenter displayFlex flexDirectionColumn alignItemsFlexStart">
-                      <span class="a6_bl">${secondsToDhms(unseen.show.minutes_remaining * 60)} (${unseen.show.remaining} ép.)</span>
-                    </div>
-                  </div>
-                  <div class="media" style="margin-top: 9px;">
-                    <div class="media-body alignSelfCenter">
-                      <div class="listAvatars listAvatars--small marginTopAuto">${watchedAvatar(unseen.watched_by)}</div>
-                    </div>
-                    <div class="a6_aq media-right alignSelfCenter positionRelative" data-tour="step: 5; title: Masquer un épisode; content: Si vous le souhaitez, choisissez de masquer cet épisode de votre liste d’épisodes à regarder ou retrouvez-en les sous-titres.;">
-                      <div class="displayFlex">`;
-            if (unseen.subtitles.length > 0) {
-                template += `
-                        <div class="svgContainer a6_0">
-                          <svg class="SvgSubtitles" width="20" height="16" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
-                            <g fill="none">
-                              <path d="M2.083.751c2.389-.501 5.028-.751 7.917-.751 2.939 0 5.619.259 8.04.778.75.161 1.342.736 1.524 1.481.29 1.188.435 3.102.435 5.742s-.145 4.554-.435 5.742c-.182.745-.774 1.32-1.524 1.481-2.421.518-5.101.778-8.04.778-2.89 0-5.529-.25-7.917-.751-.734-.154-1.321-.706-1.519-1.43-.376-1.375-.564-3.315-.564-5.819s.188-4.443.564-5.819c.198-.724.784-1.276 1.519-1.43z"></path>
-                              <path class="SvgSubtitles__stroke" stroke="#C1E1FA" d="M2.237 1.485c-.459.096-.825.441-.949.894-.356 1.3-.538 3.178-.538 5.621 0 2.443.182 4.321.538 5.621.124.452.49.797.949.894 2.336.49 4.923.735 7.763.735 2.889 0 5.516-.254 7.883-.761.469-.1.839-.46.953-.926.273-1.116.414-2.979.414-5.564 0-2.584-.141-4.447-.414-5.563-.114-.466-.484-.825-.953-.926-2.367-.507-4.995-.761-7.883-.761-2.84 0-5.428.246-7.763.735z"></path>
-                              <path class="SvgSubtitles__fill" fill="#C1E1FA" d="M4 7h12v2h-12zm2 3h8v2h-8z"></path>
-                            </g>
-                          </svg>
-                        </div>`;
-            }
-            template += `
-                      </div>
-                    </div>
-                    <div class="media-right alignSelfCenter positionRelative" style="min-height: 24px;">
-                      <div class="positionRelative">
-                        <div class="btn-group">
-                          <button id="dropdownSubtitle-8899" role="button" aria-haspopup="true" aria-expanded="false" type="button" class="a6_as btn-reset dropdown-toggle -toggle btn btn-default">
-                            <span class="svgContainer">
-                              <svg fill="#999" width="4" height="16" viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M2 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill-rule="nonzero" fill="inherit"></path>
-                              </svg>
-                            </span>
-                            <span class="caret"></span>
-                          </button>
-                          <ul role="menu" class="-menu" aria-labelledby="dropdownSubtitle-8899"></ul>
+                    <div class="a6_bc media-body alignSelfStretch displayFlex flexDirectionColumn">
+                      <div class="media">
+                        <div class="media-body minWidth0 alignSelfStretch displayFlex flexDirectionColumn alignItemsFlexStart">
+                          <a class="a6_bp displayBlock nd" href="${urlShow}" title="${trans("agenda.episodes_watch.show_link_title", { title: unseen.show.title })}">
+                            <strong>${unseen.show.title}</strong>
+                          </a>
+                          <a class="a6_bp a6_ak mainLink displayBlock nd" href="${unseen.resource_url}" title="${trans("agenda.episodes_watch.episode_link_title", { code: unseen.code.toUpperCase(), title: unseen.title })}">${unseen.code.toUpperCase()} - ${unseen.title}</a>
+                          <div class="date displayFlex a6_bv">
+                            <time class="mainTime">${moment(unseen.date).format('D MMMM YYYY')}</time>
+                            <span class="stars" title=""></span>
+                          </div>
                         </div>
-                        <div class="dropdown-menu dropdown-menu--topRight ho_hy" aria-labelledby="dropdownSubtitle-8899" style="top: 0px;">
-                          <div class="sousTitres">
-                            <div class="ho_hu">
-                              <button type="button" class="ho_g btn-reset btn-btn btn--grey">Ne pas regarder cet épisode</button>
-                              <button type="button" class="ho_g btn-reset btn-btn btn-blue2">J'ai récupéré cet épisode</button>
+                        <div class="a6_bh media-right" data-tour="step: 6; title: ${trans("tourguide.series-agenda.6.title")}; content: ${trans("tourguide.series-agenda.6.content")};">
+                          <div class="displayFlex alignItemsCenter">
+                            <button type="button" class="btn-reset alignSelfCenter ij_il ij_in"></button>
+                          </div>
+                        </div>
+                      </div>
+                      <p class="a6_bt" style="margin: 11px 0px 10px;">${description}</p>
+                      <div class="media">
+                        <div class="media-left alignSelfCenter">
+                          <div class="a6_bj">
+                            <div class="a6_bn" style="width: ${unseen.show.progress}%;"></div>
+                          </div>
+                        </div>
+                        <div class="media-body alignSelfCenter displayFlex flexDirectionColumn alignItemsFlexStart">
+                          <span class="a6_bl">${secondsToDhms(unseen.show.minutes_remaining * 60)} (${unseen.show.remaining} ép.)</span>
+                        </div>
+                      </div>
+                      <div class="media" style="margin-top: 9px;">
+                        <div class="media-body alignSelfCenter">
+                          <div class="listAvatars listAvatars--small marginTopAuto">${watchedAvatar(unseen.watched_by)}</div>
+                        </div>
+                        <div class="a6_aq media-right alignSelfCenter positionRelative" data-tour="step: 5; title: Masquer un épisode; content: Si vous le souhaitez, choisissez de masquer cet épisode de votre liste d’épisodes à regarder ou retrouvez-en les sous-titres.;">
+                          <div class="displayFlex">`;
+                if (unseen.subtitles.length > 0) {
+                    template += `
+                            <div class="svgContainer a6_0">
+                              <svg class="SvgSubtitles" width="20" height="16" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+                                <g fill="none">
+                                  <path d="M2.083.751c2.389-.501 5.028-.751 7.917-.751 2.939 0 5.619.259 8.04.778.75.161 1.342.736 1.524 1.481.29 1.188.435 3.102.435 5.742s-.145 4.554-.435 5.742c-.182.745-.774 1.32-1.524 1.481-2.421.518-5.101.778-8.04.778-2.89 0-5.529-.25-7.917-.751-.734-.154-1.321-.706-1.519-1.43-.376-1.375-.564-3.315-.564-5.819s.188-4.443.564-5.819c.198-.724.784-1.276 1.519-1.43z"></path>
+                                  <path class="SvgSubtitles__stroke" stroke="#C1E1FA" d="M2.237 1.485c-.459.096-.825.441-.949.894-.356 1.3-.538 3.178-.538 5.621 0 2.443.182 4.321.538 5.621.124.452.49.797.949.894 2.336.49 4.923.735 7.763.735 2.889 0 5.516-.254 7.883-.761.469-.1.839-.46.953-.926.273-1.116.414-2.979.414-5.564 0-2.584-.141-4.447-.414-5.563-.114-.466-.484-.825-.953-.926-2.367-.507-4.995-.761-7.883-.761-2.84 0-5.428.246-7.763.735z"></path>
+                                  <path class="SvgSubtitles__fill" fill="#C1E1FA" d="M4 7h12v2h-12zm2 3h8v2h-8z"></path>
+                                </g>
+                              </svg>
+                            </div>`;
+                }
+                template += `
+                          </div>
+                        </div>
+                        <div class="media-right alignSelfCenter positionRelative" style="min-height: 24px;">
+                          <div class="positionRelative">
+                            <div class="btn-group">
+                              <button id="dropdownSubtitle-8899" role="button" aria-haspopup="true" aria-expanded="false" type="button" class="a6_as btn-reset dropdown-toggle -toggle btn btn-default">
+                                <span class="svgContainer">
+                                  <svg fill="#999" width="4" height="16" viewBox="0 0 4 16" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill-rule="nonzero" fill="inherit"></path>
+                                  </svg>
+                                </span>
+                                <span class="caret"></span>
+                              </button>
+                              <ul role="menu" class="-menu" aria-labelledby="dropdownSubtitle-8899"></ul>
                             </div>
-                            ${renderSubtitles(unseen)}
+                            <div class="dropdown-menu dropdown-menu--topRight ho_hy" aria-labelledby="dropdownSubtitle-8899" style="top: 0px;">
+                              <div class="sousTitres">
+                                <div class="ho_hu">
+                                  <button type="button" class="ho_g btn-reset btn-btn btn--grey">Ne pas regarder cet épisode</button>
+                                  <button type="button" class="ho_g btn-reset btn-btn btn-blue2">J'ai récupéré cet épisode</button>
+                                </div>
+                                ${renderSubtitles(unseen)}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            `;
-            return template;
-            function watchedAvatar(friends) {
-                let template = '', friend;
-                for (let f = 0; f < friends.length; f++) {
-                    friend = friends[f];
-                    template += `
-                        <a href="/membre/${friend.login}" class="listAvatar">
-                          <img class="js-lazy-image" data-src="https://api.betaseries.com/pictures/members?key=${betaseries_api_user_key}&id=${friend.id}&width=24&height=24&placeholder=png" width="24" height="24" alt="Avatar de ${friend.login}">
-                        </a>`;
-                }
+                `;
                 return template;
-            }
-            function secondsToDhms(seconds) {
-                seconds = Number(seconds);
+                function watchedAvatar(friends) {
+                    let template = '', friend;
+                    for (let f = 0; f < friends.length; f++) {
+                        friend = friends[f];
+                        template += `
+                            <a href="/membre/${friend.login}" class="listAvatar">
+                              <img class="js-lazy-image" data-src="https://api.betaseries.com/pictures/members?key=${betaseries_api_user_key}&id=${friend.id}&width=24&height=24&placeholder=png" width="24" height="24" alt="Avatar de ${friend.login}">
+                            </a>`;
+                    }
+                    return template;
+                }
+                function secondsToDhms(seconds) {
+                    seconds = Number(seconds);
                     const d = Math.floor(seconds / (3600 * 24)),
                           h = Math.floor(seconds % (3600 * 24) / 3600),
                           m = Math.floor(seconds % 3600 / 60);
@@ -2852,47 +2892,47 @@ const launchScript = function($) {
                     //sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
                     return dDisplay + hDisplay + mDisplay;
                 }
-            function renderSubtitles(unseen) {
-                if (unseen.subtitles.length <= 0) return '';
-                let template = `
-                <div>
-                  <div class="ho_gh ComponentTitleDropdown">Sous-titres de l'épisode</div>
-                  <div style="display: grid; row-gap: 5px;">
-                    <div class="maxHeight280px overflowYScroll">
-                      <div>`;
+                function renderSubtitles(unseen) {
+                    if (unseen.subtitles.length <= 0) return '';
+                    let template = `
+                        <div>
+                            <div class="ho_gh ComponentTitleDropdown">Sous-titres de l'épisode</div>
+                            <div style="display: grid; row-gap: 5px;">
+                                <div class="maxHeight280px overflowYScroll">
+                                    <div>`;
                     let subtitle;
                     for (let st = 0; st < unseen.subtitles.length; st++) {
                         subtitle = unseen.subtitles[st];
                         if (st > 0) template += '<div style="margin-top: 5px;">';
                         template += `
                             <div style="align-items: center; display: flex; justify-content: flex-start;">
-                            <div class="svgContainer">
+                              <div class="svgContainer">
                                 <svg class="SvgPertinence" fill="#EEE" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-                                <rect fill="${subtitle.quality >= 1 ? '#999' : 'inherit'}" x="0" y="10" width="4" height="6"></rect>
-                                <rect fill="${subtitle.quality >= 3 ? '#999' : 'inherit'}" x="6" y="5" width="4" height="11"></rect>
-                                <rect fill="${subtitle.quality >= 5 ? '#999' : 'inherit'}" x="12" y="0" width="4" height="16"></rect>
+                                  <rect fill="${subtitle.quality >= 1 ? '#999' : 'inherit'}" x="0" y="10" width="4" height="6"></rect>
+                                  <rect fill="${subtitle.quality >= 3 ? '#999' : 'inherit'}" x="6" y="5" width="4" height="11"></rect>
+                                  <rect fill="${subtitle.quality >= 5 ? '#999' : 'inherit'}" x="12" y="0" width="4" height="16"></rect>
                                 </svg>
-                            </div>
-                            <div class="ComponentLang" style="border: 1px solid currentcolor; border-radius: 4px; color: rgb(51, 51, 51); flex-shrink: 0; font-size: 10px; font-weight: 700; height: 18px; line-height: 17px; margin: 0px 10px 0px 5px; min-width: 22px; padding: 0px 3px; text-align: center;">${subtitle.language}</div>
-                            <div class="minWidth0" style="flex-grow: 1;">
+                              </div>
+                              <div class="ComponentLang" style="border: 1px solid currentcolor; border-radius: 4px; color: rgb(51, 51, 51); flex-shrink: 0; font-size: 10px; font-weight: 700; height: 18px; line-height: 17px; margin: 0px 10px 0px 5px; min-width: 22px; padding: 0px 3px; text-align: center;">${subtitle.language}</div>
+                              <div class="minWidth0" style="flex-grow: 1;">
                                 <a href="${subtitle.url}" class="displayBlock mainLink nd" title="Provenance : ${subtitle.source} / ${subtitle.file} / Ajouté le ${moment(subtitle.date).format('DD/MM/YYYY')}" style="max-width: 365px; margin: 0px; font-size: 12px;">
-                                ${ellipsisSubtitles(subtitle)}
+                                  ${ellipsisSubtitles(subtitle)}
                                 </a>
-                            </div>
-                            <button title="Signaler ce sous-titre" type="button" class="btn-reset" onclick="srtInaccurate(${subtitle.id});">
+                              </div>
+                              <button title="Signaler ce sous-titre" type="button" class="btn-reset" onclick="srtInaccurate(${subtitle.id});">
                                 <span class="svgContainer">
-                                <svg fill="#eee" width="22" height="19" viewBox="0 0 22 19" xmlns="http://www.w3.org/2000/svg">
+                                  <svg fill="#eee" width="22" height="19" viewBox="0 0 22 19" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M0 19h22l-11-19-11 19zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill-rule="nonzero" fill="inherit"></path>
-                                </svg>
+                                  </svg>
                                 </span>
-                            </button>
+                              </button>
                             </div>
                             `;
                     }
                     template += `
+                          </div>
                         </div>
-                        </div>
-                    </div>
+                      </div>
                     </div>
                     `;
                     function ellipsisSubtitles(subtitle) {
@@ -2902,10 +2942,10 @@ const launchScript = function($) {
                         }
                         let LENGTH_LAST_ELLIPSIS = 45;
                         return `
-                        <div>
+                          <div>
                             <div class="nd displayInlineBlock" style="max-width: 40px;">${subtitleName}</div>
                             <div class="nd displayInlineBlock">${subtitleName.slice(-LENGTH_LAST_ELLIPSIS)}</div>
-                        </div>
+                          </div>
                         `;
                     }
                     return template;
@@ -3026,10 +3066,10 @@ const launchScript = function($) {
                 });
             }
         },
-        /*
-        * Ajoute un sommaire sur les pages de documentation des méthodes de l'API
-        * Le sommaire est constitué des liens vers les fonctions des méthodes.
-        */
+        /**
+         * Ajoute un sommaire sur les pages de documentation des méthodes de l'API
+         * Le sommaire est constitué des liens vers les fonctions des méthodes.
+         */
         sommaireDevApi: function() {
             if (Base.debug) console.log('build sommaire');
             let titles = $('.maincontent h2'), methods = {};
@@ -3131,9 +3171,9 @@ const launchScript = function($) {
                     else {
                         $(e.currentTarget).removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
                     }
+                });
             });
-        });
-    }
+        }
     };
     const articles = {
         /**
@@ -3161,128 +3201,128 @@ const launchScript = function($) {
             system.addScriptAndLink(['popover', 'bootstrap', 'moment', 'localefr'], () => {
                 system.waitDomPresent('.blogArticleMain .blogArticleContent a', () => {
                     const $article = $('.blogArticleMain .blogArticleContent');
-                let $links = $article.find('a');
-                if (Base.debug) console.log('links(%d) before filter', $links.length);
-                $links = $links.filter(function() {
-                    // console.log('filter', this);
-                    return /^\/(serie|film)\//.test(this.pathname);
-                });
-                if (Base.debug) console.log('links(%d) after filter', $links.length);
-                let popups = {};
-                $('head').append(`
-                    <style type="text/css">
-                        .popover { min-width: 350px !important; }
-                        .popover .popover-header { margin-top: 0; display: block; }
-                        .popover .popover-body { padding-top: 0; }
-                        .popover .popover-body .media .mainTime { color: #212529; }
-                        .popover .popover-body .media p { font-size: 13px; }
-                    </style>
-                `);
-                const createMedia = function(link) {
-                    const url = link.href.substring(link.href.lastIndexOf('/') + 1)
-                    if (/^\/serie\//.test(link.pathname)) {
-                        return Show.fetchByUrl(url).then(show => {
-                            return {
-                                title: '<i class="fa fa-film" aria-hidden="true"></i> Détails de la série',
-                                html: `
-                                <div class="media">
-                                    <div class="media-left">
-                                        <img src="${show.images.poster}" alt="${show.title}" width="119" height="174">
-                                    </div>
-                                    <div class="media-body">
-                                        <div class="blogThumbnailShowTitle mainLink">
-                                            ${show.title} ${show.in_account ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                    let $links = $article.find('a');
+                    if (Base.debug) console.log('links(%d) before filter', $links.length);
+                    $links = $links.filter(function() {
+                        // console.log('filter', this);
+                        return /^\/(serie|film)\//.test(this.pathname);
+                    });
+                    if (Base.debug) console.log('links(%d) after filter', $links.length);
+                    let popups = {};
+                    $('head').append(`
+                        <style type="text/css">
+                            .popover { min-width: 350px !important; }
+                            .popover .popover-header { margin-top: 0; display: block; }
+                            .popover .popover-body { padding-top: 0; }
+                            .popover .popover-body .media .mainTime { color: #212529; }
+                            .popover .popover-body .media p { font-size: 13px; }
+                        </style>
+                    `);
+                    const createMedia = function(link) {
+                        const url = link.href.substring(link.href.lastIndexOf('/') + 1)
+                        if (/^\/serie\//.test(link.pathname)) {
+                            return Show.fetchByUrl(url).then(show => {
+                                return {
+                                    title: '<i class="fa fa-film" aria-hidden="true"></i> Détails de la série',
+                                    html: `
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img src="${show.images.poster}" alt="${show.title}" width="119" height="174">
                                         </div>
-                                        <div class="display">
-                                            <div>${show.seasons.length} saisons - ${show.nbEpisodes} épisodes</div>
-                                            <div>Statut: ${show.isEnded() ? 'Terminé' : 'En cours'}</div>
-                                            <time class="mainTime" datetime="${show.creation}">${show.creation}</time>
-                                            <div class="stars" title="${show.objNote.total} votes: ${show.objNote.mean.toFixed(2)} / 5">${Note.renderStars(show.objNote.mean)}</div>
+                                        <div class="media-body">
+                                            <div class="blogThumbnailShowTitle mainLink">
+                                                ${show.title} ${show.in_account ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                            </div>
+                                            <div class="display">
+                                                <div>${show.seasons.length} saisons - ${show.nbEpisodes} épisodes</div>
+                                                <div>Statut: ${show.isEnded() ? 'Terminé' : 'En cours'}</div>
+                                                <time class="mainTime" datetime="${show.creation}">${show.creation}</time>
+                                                <div class="stars" title="${show.objNote.total} votes: ${show.objNote.mean.toFixed(2)} / 5">${Note.renderStars(show.objNote.mean)}</div>
+                                            </div>
+                                            <div>${show.description.substring(0, 150)}...</div>
                                         </div>
-                                        <div>${show.description.substring(0, 150)}...</div>
-                                    </div>
-                                </div>`
-};
-                        });
-                    } else {
-                        // Récupérer l'ID du film
-                        const movieId = url.match(/^(\d+)/)[1];
-                        return Movie.fetch(movieId, true).then(movie => {
-                            return {
-                                title: '<i class="fa fa-film" aria-hidden="true"></i> Détails du film',
-                                html: `
-                                <div class="media">
-                                    <div class="media-left">
-                                        <img src="${movie.poster}" alt="${movie.title}" width="119" height="174">
-                                    </div>
-                                    <div class="media-body">
-                                        <div class="blogThumbnailShowTitle mainLink">
-                                            ${movie.title} ${movie.user.status === 1 ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                    </div>`
+                                };
+                            });
+                        } else {
+                            // Récupérer l'ID du film
+                            const movieId = url.match(/^(\d+)/)[1];
+                            return Movie.fetch(movieId, true).then(movie => {
+                                return {
+                                    title: '<i class="fa fa-film" aria-hidden="true"></i> Détails du film',
+                                    html: `
+                                    <div class="media">
+                                        <div class="media-left">
+                                            <img src="${movie.poster}" alt="${movie.title}" width="119" height="174">
                                         </div>
-                                        <div class="display">
-                                            <time class="mainTime" datetime="${moment(movie.release_date).format('YYYY-MM-DD')}">${moment(movie.release_date).format('DD MMMM YYYY')}</time>
-                                            <div class="stars" title="${movie.objNote.total} votes: ${movie.objNote.mean.toFixed(2)} / 5">${Note.renderStars(movie.objNote.mean)}</div>
+                                        <div class="media-body">
+                                            <div class="blogThumbnailShowTitle mainLink">
+                                                ${movie.title} ${movie.user.status === 1 ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                            </div>
+                                            <div class="display">
+                                                <time class="mainTime" datetime="${moment(movie.release_date).format('YYYY-MM-DD')}">${moment(movie.release_date).format('DD MMMM YYYY')}</time>
+                                                <div class="stars" title="${movie.objNote.total} votes: ${movie.objNote.mean.toFixed(2)} / 5">${Note.renderStars(movie.objNote.mean)}</div>
+                                            </div>
+                                            <div>${movie.description.substring(0, 150)}...</div>
                                         </div>
-                                        <div>${movie.description.substring(0, 150)}...</div>
-                                    </div>
-                                </div>`
-                            };
-                        });
+                                    </div>`
+                                };
+                            });
+                        }
                     }
-                }
-                const addPopup = (anchor) => {
-                    if (Base.debug) console.log('Popup created', anchor.text());
-                    let key = anchor.text().toLowerCase().trim().replace(/[^0-9a-z]/g, '');
-                    if (popups[key] == undefined) {
-                        popups[key] = createMedia(anchor.get(0));
-                    }
-                    if (popups[key] instanceof Promise) {
-                        popups[key].then(data => {
+                    const addPopup = (anchor) => {
+                        if (Base.debug) console.log('Popup created', anchor.text());
+                        let key = anchor.text().toLowerCase().trim().replace(/[^0-9a-z]/g, '');
+                        if (popups[key] == undefined) {
+                            popups[key] = createMedia(anchor.get(0));
+                        }
+                        if (popups[key] instanceof Promise) {
+                            popups[key].then(data => {
+                                anchor.popover({
+                                    container: anchor,
+                                    delay: { "show": 500, "hide": 100 },
+                                    html: true,
+                                    content: data.html,
+                                    placement: 'bottom',
+                                    template: templatePopover,
+                                    title: data.title,
+                                    trigger: 'hover'
+                                });
+                                popups[key] = data;
+                            });
+                        } else {
                             anchor.popover({
                                 container: anchor,
                                 delay: { "show": 500, "hide": 100 },
                                 html: true,
-                                content: data.html,
+                                content: popups[key].html,
                                 placement: 'bottom',
-                                    template: templatePopover,
-                                title: data.title,
+                                template: templatePopover,
+                                title: popups[key].title,
                                 trigger: 'hover'
                             });
-                            popups[key] = data;
-                        });
-                    } else {
-                        anchor.popover({
-                            container: anchor,
-                            delay: { "show": 500, "hide": 100 },
-                            html: true,
-                            content: popups[key].html,
-                            placement: 'bottom',
-                                template: templatePopover,
-                            title: popups[key].title,
-                            trigger: 'hover'
+                        }
+                        anchor.on('inserted.bs.popover', function () {
+                            const positions = anchor.position();
+                            $('.popover')
+                                .css('top', positions.top + 30)
+                                .css('left', positions.left)
+                                .css('cursor', 'initial')
+                                .click((e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                });
                         });
                     }
-                    anchor.on('inserted.bs.popover', function () {
-                        const positions = anchor.position();
-                        $('.popover')
-                            .css('top', positions.top + 30)
-                            .css('left', positions.left)
-                            .css('cursor', 'initial')
-                            .click((e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                            });
-                    });
-                }
-                let $link;
-                for (let l = 0; l < $links.length; l++) {
-                    $link = $($links.get(l));
-                    addPopup($link);
-                }
-            }, 10, 500);
-        });
-    }
-};
+                    let $link;
+                    for (let l = 0; l < $links.length; l++) {
+                        $link = $($links.get(l));
+                        addPopup($link);
+                    }
+                }, 10, 500);
+            });
+        }
+    };
 
     /* Initialize the cache */
     cache = new CacheUS();
@@ -3309,10 +3349,11 @@ const launchScript = function($) {
     /**
      * Initialization du script
      */
-     system.init();
+    system.init();
 
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
+        system.addScriptAndLink('renderjson');
         // On récupère d'abord la ressource courante pour instancier un objet Media
         medias.getResource(true).then((objRes) => {
             if (Base.debug) {
@@ -3326,11 +3367,14 @@ const launchScript = function($) {
             objRes.objNote.updateStars(); // On met à jour l'affichage de la note
             medias.upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
             medias.comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
-            medias.replaceVoteFn(objRes);
             medias.addBtnToSee();
             members.lastSeen();
+            medias.replaceVoteFn(objRes);
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
+                // .blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)
+                $('.blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)')
+                    .first().attr('target', '_blank');
                 // On ajoute la gestion des épisodes
                 medias.waitSeasonsAndEpisodesLoaded(() => medias.upgradeEpisodes(objRes));
             }
@@ -3343,29 +3387,32 @@ const launchScript = function($) {
     else if (/^\/membre\/.*\/series$/.test(url)) {
         members.addStatusToGestionSeries().then((shows) => {
             Base.shows = shows;
-        members.sortGestionSeries();
+            members.sortGestionSeries();
         });
         medias.addBtnToSee();
         members.lastSeen();
     }
     // Fonctions appeler sur la page des membres
     else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && system.userIdentified()) {
-        if (debug) console.log('regexUser OK');
-        if (regexUser.test(url)) {
-            // On récupère les infos du membre connecté
-            members.getMember()
-                .then(function (member) {
-                currentUser = member;
-                let login = url.split('/')[2];
-                // On ajoute la fonction de comparaison des membres
-                if (currentUser && login != currentUser.login) {
-                    members.compareMembers();
-                }
-            });
-        }
-        else {
-            members.searchFriends();
-        }
+        system.waitPresent(() => { return typeof user !== 'undefined'; }, () => {
+            if (debug) console.log('regexUser OK');
+
+            if (regexUser.test(url)) {
+                // On récupère les infos du membre connecté
+                members.getMember()
+                    .then(function (member) {
+                    currentUser = member;
+                    let login = url.split('/')[2];
+                    // On ajoute la fonction de comparaison des membres
+                    if (currentUser && login != currentUser.login) {
+                        members.compareMembers();
+                    }
+                });
+            }
+            else if (!url.includes(user.login)) {
+                members.searchFriends();
+            }
+        });
         medias.addBtnToSee();
         members.lastSeen();
     }
@@ -3388,7 +3435,7 @@ const launchScript = function($) {
         }
         medias.addBtnToSee();
         members.lastSeen();
-                }
+    }
     // Fonctions appeler sur les pages des films
     else if (/^\/films\//.test(url)) {
         if (debug) console.log('Pages des films');
