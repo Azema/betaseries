@@ -212,14 +212,14 @@ export class Similar extends Media implements implShow, implMovie {
             let html = '';
             if (self.creation || self.country || self.production_year) {
                 html += '<p>';
-                if (self.creation) {
-                    html += `<u>Création:</u> <strong>${self.creation}</strong>`;
-                }
                 if (self.production_year) {
                     html += `<u>Production:</u> <strong>${self.production_year}</strong>`;
                 }
                 if (self.country) {
-                    html += `, <u>Pays:</u> <strong>${self.country}</strong>`;
+                    html += `<u>Pays:</u> <strong>${self.country}</strong>`;
+                }
+                if (self.creation) {
+                    html += `<strong style="margin-left:5px;">${self.creation}</strong>`;
                 }
                 html += '</p>';
             }
@@ -233,23 +233,27 @@ export class Similar extends Media implements implShow, implMovie {
         }
         template = '<div>';
         if (this.mediaType.singular === MediaType.show) {
-            const status = this.status.toLowerCase() == 'ended' ? 'Terminée' : 'En cours';
+            const status = `<i class="fa fa-${this.status.toLowerCase() == 'ended' ? 'ban' : 'spinner'}" title="Statut ${this.status.toLowerCase() == 'ended' ? 'terminé' : 'en cours'}" aria-hidden="true"></i>`;
             const seen = (this.user.status > 0) ? 'Vu à <strong>' + this.user.status + '%</strong>' : 'Pas vu';
-            template += `<p><strong>${this.nbSeasons}</strong> saison${(this.nbSeasons > 1 ? 's':'')}, <strong>${this.nbEpisodes}</strong> épisodes, `;
+            template += `<p>
+                <strong>${this.nbSeasons}</strong> saison${(this.nbSeasons > 1 ? 's':'')},
+                <strong>${this.nbEpisodes}</strong> <i class="fa fa-film" title="épisodes" aria-hidden="true"></i>, `;
             if (this.objNote.total > 0) {
                 template += `<strong>${this.objNote.total}</strong> votes`;
                 if (this.objNote.user > 0) {
                     template += `, votre note: ${this.objNote.user}`;
                 }
-                template += '</p>';
             } else {
-                template += 'Aucun vote</p>';
+                template += 'Aucun vote';
             }
+            template += `<span style="margin-left:5px;"><strong>${self.nbComments}</strong> <i class="fa fa-comment" title="commentaires" aria-hidden="true"></i></span>`;
             if (! this.in_account) {
-                template += `<p>
-                    <a href="javascript:;" class="addShow">Ajouter</a> - <a href="javascript:;" class="toSeeShow" data-show-id="${self.id}"><i class="fa fa-clock-o" aria-hidden="true"></i> <span>A voir</span></a>
-                </p>`;
+                template += `<span style="margin-left:5px;">
+                    <a href="javascript:;" class="addShow"><i class="fa fa-plus" title="Ajouter" aria-hidden="true"></i></a> -
+                    <a href="javascript:;" class="toSeeShow" data-show-id="${self.id}"><i class="fa fa-clock-o" title="A voir" aria-hidden="true"></i></a>
+                </span>`;
             }
+            template += '</p>';
             template += _renderGenres();
             template += _renderCreation();
             let archived = '';
@@ -261,7 +265,7 @@ export class Similar extends Media implements implShow, implMovie {
             if (this.showrunner && this.showrunner.name.length > 0) {
                 template += `<p><u>Show Runner:</u> <strong>${this.showrunner.name}</strong></p>`;
             }
-            template += `<p><u>Statut:</u> <strong>${status}</strong>, ${seen}${archived}</p>`;
+            template += `<p><u>Statut:</u> ${status}, ${seen}${archived}</p>`;
         }
         // movie
         else {
@@ -274,6 +278,7 @@ export class Similar extends Media implements implShow, implMovie {
             } else {
                 template += 'Aucun vote';
             }
+            template += `<span style="margin-left:5px;"><strong>${self.nbComments}</strong> <i class="fa fa-comment" title="commentaires" aria-hidden="true"></i></span>`;
             template += '</p>';
             // Ajouter une case à cocher pour l'état "Vu"
             template += `<p><label for="seen">Vu</label>
@@ -304,6 +309,9 @@ export class Similar extends Media implements implShow, implMovie {
             title += ' <span style="font-size: 0.8em;color:var(--link_color);">' +
                     this.objNote.mean.toFixed(2) + ' / 5</span>';
         }
+        if (this.mediaType.singular === MediaType.show)
+            title += ` <span style="float:right;"><a href="http://www.thetvdb.com/?tab=series&id=${this.thetvdb_id}" target="_blank" title="Lien vers la page de TheTVDB"><img src="https://thetvdb.com/images/logo.svg" width="40px" /></a>
+            <a href="javascript:;" onclick="showUpdate('${this.title}', ${this.id}, '0')" style="margin-left:5px; color:var(--default_color);" title="Mettre à jour les données venant de TheTVDB"><i class="fa fa-refresh" aria-hidden="true"></i></a></span>`;
         return title;
     }
     /**
@@ -346,15 +354,24 @@ export class Similar extends Media implements implShow, implMovie {
         const $img = this.elt.find('img.js-lazy-image'),
               self = this;
         if ($img.length <= 0) {
-            if (this.mediaType.singular === MediaType.show && this.images.show != null) {
-                // On tente de remplacer le block div 404 par une image
-                this.elt.find('div.block404').replaceWith(`
-                    <img class="u-opacityBackground fade-in"
-                            width="125"
-                            height="188"
-                            alt="Poster de ${this.title}"
-                            src="${this.images.show}"/>`
-                );
+            if (this.mediaType.singular === MediaType.show) {
+                let src: string;
+                if (this.images.poster !== null)
+                    src = this.images.poster;
+                else if (this.images.show !== null)
+                    src = this.images.show;
+                else if (this.images.box !== null)
+                    src = this.images.box;
+                if (src.length > 0) {
+                    // On tente de remplacer le block div 404 par une image
+                    this.elt.find('div.block404').replaceWith(`
+                        <img class="u-opacityBackground fade-in"
+                                width="125"
+                                height="188"
+                                alt="Poster de ${this.title}"
+                                src="${src}"/>`
+                    );
+                }
             }
             else if (this.mediaType.singular === MediaType.movie && this.tmdb_id && this.tmdb_id > 0) {
                 if (Base.themoviedb_api_user_key.length <= 0) return;
