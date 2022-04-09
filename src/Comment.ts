@@ -191,6 +191,9 @@ export class CommentBS {
         if (this._listeners[name] === undefined) {
             this._listeners[name] = new Array();
         }
+        for (let func in this._listeners[name]) {
+            if (func.toString() == fn.toString()) return;
+        }
         this._listeners[name].push(fn);
         return this;
     }
@@ -1070,6 +1073,7 @@ export class CommentBS {
             method.call(self.replies, comment);
             self.nbReplies++;
             self.getCollectionComments().nbComments++;
+            self.getCollectionComments().is_subscribed = true;
             return comment;
         })
         .catch(err => {
