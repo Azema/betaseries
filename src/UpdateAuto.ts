@@ -24,6 +24,8 @@ export class UpdateAuto {
     private _auto: boolean;
     private _interval: number;
     private _timer: NodeJS.Timer;
+    private _remaining: number;
+    private _timerR: NodeJS.Timer;
 
     private constructor(show: Show) {
         if (UpdateAuto.instance) {
@@ -186,6 +188,9 @@ export class UpdateAuto {
             this._auto = false;
         }
         this.status = false;
+        clearInterval(this._timerR);
+        this._remaining = 0;
+        this._timerR = null;
         clearInterval(this._timer);
         this._timer = null;
         return this;
@@ -234,13 +239,13 @@ export class UpdateAuto {
                 if (Base.debug) console.log('close old interval timer');
                 clearInterval(this._timer);
             }
-            const _this = this;
+            const self = this;
             this.status = true;
             const run = function() {
-                // if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, _this._objShow));
-                if (! _this._auto || _this._show.user.remaining <= 0) {
+                // if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, self._objShow));
+                if (! self._auto || self._show.user.remaining <= 0) {
                     if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
-                    _this.stop();
+                    self.stop();
                     return;
                 }
                 if (Base.debug) {
@@ -255,14 +260,32 @@ export class UpdateAuto {
                 const btnUpEpisodeList = $('.updateEpisodes');
                 if (btnUpEpisodeList.length > 0) {
                     btnUpEpisodeList.trigger('click');
-                    if ( ! _this._status) {
-                        _this.status = true;
+                    if ( ! self._status) {
+                        self.status = true;
                     }
                 }
+                self._remaining = self._interval * 60;
+                if (self._timerR == null)
+                    self._timerR = setInterval(() => { --self._remaining }, 1000);
             };
             run();
             this._timer = setInterval(run, (this._interval * 60) * 1000);
         }
         return this;
+    }
+
+    /**
+     * Retourne le temps restant avant le prochain update
+     * sous forme mm:ss
+     * @returns string
+     */
+    public remaining(): string {
+        const minutes = Math.floor(this._remaining / 60);
+        const seconds = this._remaining - minutes * 60;
+        let result = minutes.toString() + ':';
+        if (seconds < 10) {
+            result += '0';
+        }
+        return result + seconds.toString();
     }
 }
