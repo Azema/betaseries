@@ -1071,9 +1071,9 @@ declare module 'Show' {
 	     */
 	    country: string;
 	    /**
-	     * @type {Season} Pointeur vers la saison courante
+	     * @type {number} Pointeur vers la saison courante
 	     */
-	    currentSeason: Season;
+	    _currentSeason: number;
 	    /**
 	     * @type {Images} Contient les URLs d'accès aux images de la série
 	     */
@@ -1270,6 +1270,11 @@ declare module 'Show' {
 	     * @throws  {Error} if seasonNumber is out of range of seasons
 	     */
 	    setCurrentSeason(seasonNumber: number): Show;
+	    /**
+	     * Retourne la saison courante
+	     * @return {Season}
+	     */
+	    get currentSeason(): Season;
 	    /**
 	     * Retourne l'objet Season correspondant au numéro de saison fournit en paramètre
 	     * @param   {number} seasonNumber - Numéro de saison (base: 1)
@@ -1692,6 +1697,7 @@ declare module 'Base' {
 	    UPDATE = "update",
 	    SAVE = "save",
 	    ADD = "add",
+	    ADDED = "added",
 	    REMOVE = "remove",
 	    NOTE = "note",
 	    ARCHIVE = "archive",
@@ -1860,7 +1866,7 @@ declare module 'Base' {
 	     * @return {Base} L'instance du média
 	     * @sealed
 	     */
-	    addListener(name: EventTypes, fn: Function): this;
+	    addListener(name: EventTypes, fn: Function, ...args: any[]): this;
 	    /**
 	     * Permet de supprimer un listener sur un type d'évenement
 	     * @param  {string}   name - Le type d'évenement
@@ -1875,7 +1881,7 @@ declare module 'Base' {
 	     * @return {Base} L'instance du média
 	     * @sealed
 	     */
-	    protected _callListeners(name: EventTypes): this;
+	    _callListeners(name: EventTypes): this;
 	    init(): this;
 	    /**
 	     * Sauvegarde l'objet en cache
@@ -2073,6 +2079,8 @@ declare module 'UpdateAuto' {
 	    private _auto;
 	    private _interval;
 	    private _timer;
+	    private _remaining;
+	    private _timerR;
 	    private constructor();
 	    /**
 	     * Retourne l'instance de l'objet de mise à jour auto des épisodes
@@ -2163,6 +2171,12 @@ declare module 'UpdateAuto' {
 	     * @return {UpdateAuto} L'instance unique UpdateAuto
 	     */
 	    launch(): UpdateAuto;
+	    /**
+	     * Retourne le temps restant avant le prochain update
+	     * sous forme mm:ss
+	     * @returns string
+	     */
+	    remaining(): string;
 	}
 
 }
