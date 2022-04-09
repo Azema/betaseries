@@ -101,6 +101,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 
 !["Display séries à voir plus tard"](./screenshots/displayShowsToSee.jpg "Display séries à voir plus tard")
 * Un lien a été ajouté dans le menu "_Séries_" (10 last seen) pour afficher les 10 dernières séries vues par le membre, dans le même style que les séries à voir plus tard.
+* Ouverture de la fiche TheTVDB dans un nouvel onglet
 
 #### Gestion des épisodes
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
@@ -183,6 +184,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Utilisation de classes Javascript (Cache, Note, Media, Show, Movie, Episode et Similar) pour stocker et manipuler les données en fonction du type de ressource. Plus simple aussi pour passer les données d'une fonction à une autre.
 * Les classes sont développées en TypeScript et sont stockées dans ce repository.
 * Utilisation de Grunt pour l'automatisation des tâches de build.
+* Utilisation de `grunt connect` comme serveur local pour le développement.
 
 ## Ressources
 
