@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.0
+// @version      1.2.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -40,7 +40,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-Ox9VWotrqoGdEO/1NjNyEjFzjLtU8qsuf207mNCq9TeTpk/FANs3dpXLn/E/uH+t';
+const sriBundle = 'sha384-MsDAnzAAGoHnFm3W//6BDax59OQyMszhSj4PsowVGsRKKCPJsAdqos5hm9fg7Tfi';
 /************************************************************************************************/
 // @ts-check
 
@@ -366,7 +366,8 @@ const launchScript = function($) {
         </div>`;
     // let indexCallLoad = 0;
     let timer, currentUser, cache, fnLazy, state = {},
-        mainLogoMargins = {top: 0, bottom: 0}, mainlogoModified = false;
+        mainLogoMargins = {top: 0, bottom: 0},
+        mainlogoModified = false;
     /**
      * @type {Member}
      */
@@ -453,20 +454,58 @@ const launchScript = function($) {
                 // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
                 // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
                 const observer = new MutationObserver(mutationsList => {
-                    let updateTitle = (i, e) => { if (system.isTruncated(e)) {
-                        $(e).parents('a').attr('title', $(e).text());
-                    } };
+                    const updateTitle = (i, e) => {
+                        if (system.isTruncated(e)) {
+                            $(e).parents('a').attr('title', $(e).text());
+                        }
+                    };
+                    const updateImg = (i, elt) => {
+                        if (debug) console.log('headerSearch updateImg[%d]', i);
+                        const $elt = $(elt);
+                        const $col = $elt.parents('.col-md-4').first();
+                        // if (debug) console.log('col', $col);
+                        if ($col.hasClass('show_searchResult')) {
+                            // Show
+                            const slug = elt.attr('href').split('/').pop();
+                            Show.fetchByUrl(slug).then((show) => {
+                                /**
+                                 * @typedef {Show} show
+                                 */
+                                if (show.in_account && show.user.status > 0) {
+                                    if (debug) console.log('show[%s]: found and viewed', slug);
+                                    $('.mainLink', $elt)
+                                        .css('textDecoration', 'line-throught')
+                                        .css('color', 'red');
+                                }
+                            })
+                        } else if ($col.hasClass('movie_searchResult')) {
+                            // Movie
+                            const title = $('.mainLink', $elt).text().trim();
+                            Movie.search(title).then(movie => {
+                                /**
+                                 * @typedef {Movie} movie
+                                 */
+                                if (movie.in_account && movie.user.status > 0) {
+                                    $('.mainLink', $elt)
+                                        .css('textDecoration', 'line-throught')
+                                        .css('color', 'red');
+                                }
+                            })
+                        }
+                    };
                     for (let mutation of mutationsList) {
                         if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
-                            let node = mutation.addedNodes[0], $node = $(node);
+                            const $node = $(mutation.addedNodes[0]);
                             if ($node.hasClass('col-md-4')) {
                                 $('.mainLink', $node).each(updateTitle);
+                                $('a.js-searchResult', $node).each(updateImg);
                             }
                             else if ($node.hasClass('js-searchResult')) {
-                                let title = $('.mainLink', $node).get(0);
+                                const title = $('.mainLink', $node).get(0);
                                 if (system.isTruncated(title)) {
                                     $node.attr('title', $(title).text());
                                 }
+                                updateImg(0, $node);
                             }
                         }
                     }
@@ -798,14 +837,21 @@ const launchScript = function($) {
          * @return {void}
          */
         waitPagination: function() {
-            let loaded = false;
-            let selectors = {result: '#results', pagination: '#pagination'};
+            let loaded = false,
+                isShows = false,
+                selectors = {result: '#results', pagination: '#pagination'};
             if (/^\/series\//.test(url)) {
                 selectors.result += '-shows';
                 selectors.pagination += '-shows';
+                isShows = true;
             } else if (/^\/films\//.test(url)) {
                 selectors.pagination += '-movies';
             }
+            system.waitDomPresent('#annuaire-list', () => {
+                if (isShows) {
+                    series.displayNotes();
+                }
+            }, 10);
             // On attend la présence du paginateur
             system.waitDomPresent(selectors.pagination, () => {
                 // On copie colle le paginateur en haut de la liste des séries
@@ -1836,7 +1882,9 @@ const launchScript = function($) {
                 system.notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
             });
             medias.replaceSuggestSimilarHandler($('#similars button.blockTitle-subtitle'), objSimilars);
-            res.addListener(EventTypes.ADDED, medias.replaceSuggestSimilarHandler, '#similars button.blockTitle-subtitle', objSimilars);
+            if (res.mediaType.singular === MediaType.show) {
+                res.addListener(EventTypes.ADDED, medias.replaceSuggestSimilarHandler, '#similars button.blockTitle-subtitle', objSimilars);
+            }
         },
         /**
          * Gère l'affichage des commentaires
@@ -1933,9 +1981,9 @@ const launchScript = function($) {
                 });
             }
             // const $btnCmt = $('#comments div.slide__image > button');
-            res.comments.addListener(EventTypes.ADD, eventComments);
+            res.comments.addListener(EventTypes.ADDED, eventComments);
             res.comments.addListener(EventTypes.ADD, evaluations);
-            res.comments.addListener('show', () => {
+            res.comments.addListener(EventTypes.SHOW, () => {
                 if (debug) console.log('Listener show of comments');
                 const $textarea = $('.writing textarea');
                 const users = res.comments.getLogins();
@@ -2621,6 +2669,31 @@ const launchScript = function($) {
                     }
                     current.css('display', display);
                     hideButtonReset();
+                }
+            }
+        },
+        displayNotes: function() {
+            if (url.split('/').pop() == 'agenda') return;
+            if (debug) console.log('series displayNotes');
+            let $actionsShows = $('#annuaire-list .bottomActionMovie');
+            if ($actionsShows.length > 0) {
+                let ids = [];
+                for (let elt of $actionsShows) {
+                    ids.push(elt.dataset.sid);
+                }
+                if (ids.length > 0) {
+                    Show.fetchMulti(ids)
+                    .then((shows) => {
+                        for (let show of shows) {
+                            $('#add-' + show.id).parents('.media-body')
+                                .find('.displayFlex .stars')
+                                .attr('title', show.objNote.toString())
+                                .css('zIndex', 5);
+                        }
+                    })
+                    .catch(err => {
+                        console.warn('displayNotes error fetchMulti', err);
+                    });
                 }
             }
         },

@@ -292,7 +292,7 @@ declare module 'Comment' {
 	     * @param  {Function}   fn   - La fonction à appeler
 	     * @return {Base} L'instance du média
 	     */
-	    addListener(name: EventTypes, fn: Function): this;
+	    addListener(name: EventTypes, fn: Function, ...args: any[]): this;
 	    /**
 	     * Permet de supprimer un listener sur un type d'évenement
 	     * @param  {string}   name - Le type d'évenement
@@ -488,7 +488,7 @@ declare module 'Comments' {
 	     * @param  {Function}   fn   - La fonction à appeler
 	     * @return {Base} L'instance du média
 	     */
-	    addListener(name: EventTypes, fn: Function): this;
+	    addListener(name: EventTypes, fn: Function, ...args: any[]): this;
 	    /**
 	     * Permet de supprimer un listener sur un type d'évenement
 	     * @param  {string}   name - Le type d'évenement
@@ -686,6 +686,7 @@ declare module 'Movie' {
 	     * @return {Promise<Movie>}
 	     */
 	    static fetch(id: number, force?: boolean): Promise<Movie>;
+	    static search(title: string, force?: boolean): Promise<Movie>;
 	    /***************************************************/
 	    /***************************************************/
 	    backdrop: string;
@@ -708,7 +709,7 @@ declare module 'Movie' {
 	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
 	     * @returns {Media}
 	     */
-	    constructor(data: any, element: JQuery<HTMLElement>);
+	    constructor(data: any, element?: JQuery<HTMLElement>);
 	    /**
 	     * Remplit l'objet avec les données fournit en paramètre
 	     * @param  {any} data Les données provenant de l'API
