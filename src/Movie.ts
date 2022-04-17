@@ -48,6 +48,14 @@ export class Movie extends Media implements implAddNote {
         });
     }
 
+    public static search(title: string, force: boolean = false): Promise<Movie> {
+        return new Promise((resolve: Function, reject: Function) => {
+            Base.callApi(HTTP_VERBS.GET, 'movies', 'search', {title}, force)
+            .then(data => {resolve(new Movie(data.movies[0]))})
+            .catch(err => reject(err));
+        });
+    }
+
     /***************************************************/
     /*                  PROPERTIES                     */
     /***************************************************/
@@ -75,7 +83,7 @@ export class Movie extends Media implements implAddNote {
      * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
      * @returns {Media}
      */
-    constructor(data: any, element: JQuery<HTMLElement>) {
+    constructor(data: any, element?: JQuery<HTMLElement>) {
         super(data, element);
         return this.fill(data);
     }
