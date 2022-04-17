@@ -536,8 +536,11 @@ export abstract class Base implements implAddNote {
     public removeListener(name: EventTypes, fn: Function): this {
         if (this._listeners[name] !== undefined) {
             for (let l = 0; l < this._listeners[name].length; l++) {
-                if (this._listeners[name][l] === fn)
+                if ((typeof this._listeners[name][l] === 'function' && this._listeners[name][l].toString() === fn.toString()) ||
+                    this._listeners[name][l].fn.toString() == fn.toString())
+                {
                     this._listeners[name].splice(l, 1);
+                }
             }
         }
         return this;

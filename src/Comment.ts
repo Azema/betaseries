@@ -183,7 +183,7 @@ export class CommentBS {
      * @param  {Function}   fn   - La fonction à appeler
      * @return {Base} L'instance du média
      */
-    public addListener(name: EventTypes, fn: Function): this {
+    public addListener(name: EventTypes, fn: Function, ...args): this {
         // On vérifie que le type d'event est pris en charge
         if (!CommentBS.EventTypes.includes(name)) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
@@ -192,9 +192,17 @@ export class CommentBS {
             this._listeners[name] = new Array();
         }
         for (let func in this._listeners[name]) {
-            if (func.toString() == fn.toString()) return;
+            if (func.toString() == fn.toString()) {
+                if (Base.debug) console.warn('Cette fonction est déjà présente pour event[%s]', name);
+                return;
+            }
         }
-        this._listeners[name].push(fn);
+        if (args.length > 0) {
+            this._listeners[name].push({fn: fn, args: args});
+        } else {
+            this._listeners[name].push(fn);
+        }
+        if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name, this._listeners[name]);
         return this;
     }
     /**
@@ -206,8 +214,11 @@ export class CommentBS {
     public removeListener(name: EventTypes, fn: Function): this {
         if (this._listeners[name] !== undefined) {
             for (let l = 0; l < this._listeners[name].length; l++) {
-                if (this._listeners[name][l] === fn)
+                if ((typeof this._listeners[name][l] === 'function' && this._listeners[name][l].toString() === fn.toString()) ||
+                    this._listeners[name][l].fn.toString() == fn.toString())
+                {
                     this._listeners[name].splice(l, 1);
+                }
             }
         }
         return this;
@@ -218,15 +229,16 @@ export class CommentBS {
      * @return {Base} L'instance du média
      */
     protected _callListeners(name: EventTypes): this {
-        // On vérifie que le type d'event est pris en charge
-        if (!CommentBS.EventTypes.includes(name)) {
-            throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
-        }
-        const event = new CustomEvent('betaseries', {detail: {name: name}});
-        if (this._listeners[name].length > 0)
+        if (this._listeners[name] !== undefined && this._listeners[name].length > 0) {
+            const event = new CustomEvent('betaseries', {detail: {name: name}});
             if (Base.debug) console.log('Comment call %d Listeners on event %s', this._listeners[name].length, name);
-        for (let l = 0; l < this._listeners[name].length; l++) {
-            this._listeners[name][l].call(this, event, this);
+            for (let l = 0; l < this._listeners[name].length; l++) {
+                if (typeof this._listeners[name][l] === 'function') {
+                    this._listeners[name][l].call(this, event, this);
+                } else {
+                    this._listeners[name][l].fn.apply(this, this._listeners[name][l].args);
+                }
+            }
         }
         return this;
     }
