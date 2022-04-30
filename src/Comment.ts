@@ -1055,7 +1055,14 @@ export class CommentBS {
             // avec des boutons pour naviguer
             $contentReact.empty().append(`<div class="title" id="dialog-title" tabindex="0"></div>`);
             $title = $contentReact.find('.title');
-            $title.append(Base.trans("blog.title.comments") + ' <i class="fa fa-chevron-circle-left prev-comment" aria-hidden="true"></i> <i class="fa fa-chevron-circle-right next-comment" aria-hidden="true"></i>');
+            let nav = '';
+            if (! self._parent.isFirst(self.id)) {
+                nav += ' <i class="fa fa-chevron-circle-left prev-comment" aria-hidden="true" title="Commentaire précédent"></i>';
+            }
+            if (! self._parent.isLast(self.id)) {
+                nav += '  <i class="fa fa-chevron-circle-right next-comment" aria-hidden="true" title="Commentaire suivant"></i>';
+            }
+            $title.append(Base.trans("blog.title.comments") + nav);
             // On ajoute les templates HTML du commentaire,
             // des réponses et du formulaire de d'écriture
             $contentReact.append(template);
