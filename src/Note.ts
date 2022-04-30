@@ -10,9 +10,25 @@ enum StarTypes {
     DISABLE = 'disable'
 }
 export class Note {
+    /**
+     * Nombre de votes
+     * @type {number}
+     */
     total: number;
+    /**
+     * Note moyenne du média
+     * @type {number}
+     */
     mean: number;
+    /**
+     * Note du membre connecté
+     * @type {number}
+     */
     user: number;
+    /**
+     * Media de référence
+     * @type {Base}
+     */
     _parent: Base;
 
     constructor(data: any, parent: Base) {
@@ -158,15 +174,43 @@ export class Note {
         showPopup();
     }
     /**
+     * Retourne le type d'étoile en fonction de la note et de l'indice
+     * de comparaison
+     * @param  {number} note   La note du media
+     * @param  {number} indice L'indice de comparaison
+     * @return {string}        Le type d'étoile
+     */
+    public static getTypeSvg(note: number, indice: number): string {
+        let typeSvg = '';
+        if (note <= indice) {
+            typeSvg = StarTypes.EMPTY;
+        } else if (note < indice + 1) {
+            if (note >= indice + 0.25) {
+                typeSvg = StarTypes.HALF;
+            } else if (note >= indice + 0.75) {
+                typeSvg = StarTypes.FULL;
+            }
+        } else {
+            typeSvg = StarTypes.FULL;
+        }
+        return typeSvg;
+    }
+    /**
      * Met à jour l'affichage de la note
      */
     public updateStars(elt: JQuery<HTMLElement> = null): void {
         elt = elt || jQuery('.blockInformations__metadatas .js-render-stars');
+        let color = '';
         const $stars: JQuery<HTMLElement> = elt.find('.star-svg use');
+        const result = $($stars.get(0)).attr('xlink:href').match(/(grey|blue)/);
+        if (result) {
+            color = result[0];
+        }
         let className: string;
         for (let s = 0; s < 5; s++) {
-            className = (this.mean <= s) ? StarTypes.EMPTY : (this.mean < s + 1) ? (this.mean >= s + 0.5) ? StarTypes.HALF : StarTypes.EMPTY : StarTypes.FULL;
-            $($stars.get(s)).attr('xlink:href', `#icon-star-${className}`);
+            className = Note.getTypeSvg(this.mean, s);
+            // className = (this.mean <= s) ? StarTypes.EMPTY : (this.mean < s + 1) ? (this.mean >= s + 0.5) ? StarTypes.HALF : StarTypes.EMPTY : StarTypes.FULL;
+            $($stars.get(s)).attr('xlink:href', `#icon-star${color}-${className}`);
         }
     }
     /**
@@ -181,10 +225,8 @@ export class Note {
         if (note == 0) {
             color = 'grey';
         }
-        Array.from({
-            length: 5
-        }, (_index: number, number: number) => {
-            typeSvg = note <= number ? 'empty' : (note < number + 1) ? (note >= number + 0.5) ? 'half' : 'empty' : 'full';
+        for (let s = 0; s < 5; s++) {
+            typeSvg = Note.getTypeSvg(note, s);
             template += `
                 <svg viewBox="0 0 100 100" class="star-svg">
                     <use xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -192,7 +234,7 @@ export class Note {
                     </use>
                 </svg>
             `;
-        });
+        }
         return template;
     }
 }
