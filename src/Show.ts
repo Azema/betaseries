@@ -3,6 +3,7 @@ import { implAddNote } from "./Note";
 import {Media} from "./Media";
 import {Season} from "./Season";
 import { Character } from "./Character";
+import {Next} from "./User";
 
 declare var PopupAlert: any;
 
@@ -634,14 +635,25 @@ export class Show extends Media implements implShow, implAddNote {
         const $nextEpisode = jQuery('a.blockNextEpisode');
 
         if ($nextEpisode.length > 0 && this.user.next && !isNaN(this.user.next.id)) {
-            if (Base.debug) console.log('nextEpisode et show.user.next OK', this.user);
+            const seasonNext = parseInt(this.user.next.code.match(/S\d+/)[0].replace('S',''), 10);
+            let next = this.user.next;
+            if (seasonNext < this.currentSeason.number && this.currentSeason.getNbEpisodesUnwatched() > 0) {
+                const ep = this.currentSeason.getNextEpisodeUnwatched();
+                next = new Next({
+                    id: ep.id,
+                    code: ep.code,
+                    date: ep.date,
+                    title: ep.title,
+                    image: ''
+                });
+            }
+            if (Base.debug) console.log('nextEpisode et show.user.next OK', this.user, next);
             // Modifier l'image
             const $img = $nextEpisode.find('img'),
                   $remaining = $nextEpisode.find('.remaining div'),
                   $parent = $img.parent('div'),
                   height = $img.attr('height'),
                   width = $img.attr('width'),
-                  next = this.user.next,
                   src = `${Base.api.url}/pictures/episodes?key=${Base.userKey}&id=${next.id}&width=${width}&height=${height}`;
             $img.remove();
             $parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
@@ -721,7 +733,7 @@ export class Show extends Media implements implShow, implAddNote {
             this.addBtnToSee();
             let title = this.title.replace(/"/g, '\\"').replace(/'/g, "\\'");
             const templateOpts = `<a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${this.id}, '0')">Demander une mise à jour</a>`;
-            jQuery('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
+            jQuery('.blockInformations__action .dropdown-menu.header-navigation')
                     .append(templateOpts);
             // On ajoute un event click pour masquer les vignettes
             jQuery('#reactjs-show-actions > div > button').off('click').one('click', (e: JQuery.ClickEvent) => {
@@ -757,7 +769,7 @@ export class Show extends Media implements implShow, implAddNote {
          * @return {void}
          */
         function changeBtnAdd(show: Show): void {
-            let $optionsLinks = jQuery('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
+            let $optionsLinks = jQuery('.blockInformations__action .dropdown-menu a.header-navigation-item');
             if ($optionsLinks.length <= 3) {
                 let react_id = jQuery('script[id^="/reactjs/"]').get(0).id.split('.')[1],
                     urlShow = show.resource_url.substring(location.origin.length),
@@ -791,7 +803,7 @@ export class Show extends Media implements implShow, implAddNote {
                 if ($optionsLinks.length === 2) {
                     templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
                 }
-                jQuery('#dropdownOptions').siblings('.dropdown-menu.header-navigation')
+                jQuery('.blockInformations__action .dropdown-menu.header-navigation')
                     .append(templateOpts);
             }
 
@@ -1146,6 +1158,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Season}
      */
     public get currentSeason() : Season {
+
         return this.seasons[this._currentSeason];
     }
 
