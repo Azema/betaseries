@@ -231,6 +231,12 @@ export abstract class Base implements implAddNote {
         EventTypes.SAVE,
         EventTypes.NOTE
     );
+    static showLoader() {
+        jQuery('#loader-bg').show();
+    }
+    static hideLoader() {
+        jQuery('#loader-bg').hide();
+    }
     /**
      * Fonction d'authentification sur l'API BetaSeries
      *
@@ -303,6 +309,7 @@ export abstract class Base implements implAddNote {
             // Identification required
             throw new ExceptionIdentification("Identification required");
         }
+        Base.showLoader();
         let check = false,
             // Les en-têtes pour l'API
             myHeaders = {
@@ -330,6 +337,7 @@ export abstract class Base implements implAddNote {
             //if (debug) console.log('Base.callApi retourne la ressource du cache (%s: %d)', resource, args.id);
             return new Promise((resolve) => {
                 resolve(Base.cache.get((resource as DataTypesCache), args.id));
+                Base.hideLoader();
             });
         }
 
@@ -387,20 +395,24 @@ export abstract class Base implements implAddNote {
                         } else {
                             reject(data.errors[0]);
                         }
+                        Base.hideLoader();
                         return;
                     }
                     // On gère les erreurs réseau
                     if (!response.ok) {
                         console.error('Fetch erreur network', response);
                         reject(response);
+                        Base.hideLoader();
                         return;
                     }
                     resolve(data);
+                    Base.hideLoader();
                 });
             }).catch(error => {
                 if (Base.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
                 console.error(error);
                 reject(error.message);
+                Base.hideLoader();
             });
         }
         return new Promise((resolve: Function, reject: Function) => {
