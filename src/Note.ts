@@ -181,13 +181,13 @@ export class Note {
      * @return {string}        Le type d'étoile
      */
     public static getTypeSvg(note: number, indice: number): string {
-        let typeSvg = '';
+        let typeSvg = StarTypes.EMPTY;
         if (note <= indice) {
             typeSvg = StarTypes.EMPTY;
         } else if (note < indice + 1) {
-            if (note >= indice + 0.25) {
+            if (note > indice + 0.25) {
                 typeSvg = StarTypes.HALF;
-            } else if (note >= indice + 0.75) {
+            } else if (note > indice + 0.75) {
                 typeSvg = StarTypes.FULL;
             }
         } else {
