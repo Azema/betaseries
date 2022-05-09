@@ -184,7 +184,7 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 * Utilisation de classes Javascript (Cache, Note, Media, Show, Movie, Episode et Similar) pour stocker et manipuler les données en fonction du type de ressource. Plus simple aussi pour passer les données d'une fonction à une autre.
 * Les classes sont développées en TypeScript et sont stockées dans ce repository.
 * Utilisation de Grunt pour l'automatisation des tâches de build.
-* Utilisation de `grunt connect` comme serveur local pour le développement.
+* Utilisation de `grunt connect` comme serveur local pour le développement, n'oubliez pas de modifier la variable `serverBaseUrl`, en début de script, pour pointer sur le serveur local `http://localhost:9001`.
 
 ## Ressources
 
