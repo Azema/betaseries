@@ -1,0 +1,4 @@
+{
+	"shell_cmd": "grunt dev --force",
+	"shell": true
+}

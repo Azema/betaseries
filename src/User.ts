@@ -1,6 +1,6 @@
 import { WatchedBy } from "./Episode";
 
-class Next {
+export class Next {
     id: number;
     code: string;
     date: Date;
