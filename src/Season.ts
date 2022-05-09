@@ -144,6 +144,17 @@ export class Season {
         }
         return nbEpisodesSeen;
     }
+    /**
+     * Retourne le nombre d'épisodes non vus
+     * @returns {number} Le nombre d'épisodes non vus dans la saison
+     */
+    getNbEpisodesUnwatched(): number {
+        let nbEpisodes = 0;
+        for (let e = 0; e < this.episodes.length; e++) {
+            if (! this.episodes[e].user.seen) nbEpisodes++;
+        }
+        return nbEpisodes;
+    }
 
     /**
      * Retourne le nombre d'épisodes spéciaux
@@ -254,5 +265,12 @@ export class Season {
     addShowToAccount(): Season {
         this._show.in_account = true;
         return this;
+    }
+
+    getNextEpisodeUnwatched(): Episode {
+        for (let e = 0; e < this.episodes.length; e++) {
+            if (!this.episodes[e].user.seen) return this.episodes[e];
+        }
+        return null;
     }
 }
