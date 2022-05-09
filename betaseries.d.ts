@@ -122,9 +122,25 @@ declare module 'Note' {
 	    addVote(note: number): Promise<boolean>;
 	}
 	export class Note {
+	    /**
+	     * Nombre de votes
+	     * @type {number}
+	     */
 	    total: number;
+	    /**
+	     * Note moyenne du média
+	     * @type {number}
+	     */
 	    mean: number;
+	    /**
+	     * Note du membre connecté
+	     * @type {number}
+	     */
 	    user: number;
+	    /**
+	     * Media de référence
+	     * @type {Base}
+	     */
 	    _parent: Base;
 	    constructor(data: any, parent: Base);
 	    /**
@@ -141,6 +157,14 @@ declare module 'Note' {
 	     * Crée une popup avec 5 étoiles pour noter le média
 	     */
 	    createPopupForVote(cb?: Function): void;
+	    /**
+	     * Retourne le type d'étoile en fonction de la note et de l'indice
+	     * de comparaison
+	     * @param  {number} note   La note du media
+	     * @param  {number} indice L'indice de comparaison
+	     * @return {string}        Le type d'étoile
+	     */
+	    static getTypeSvg(note: number, indice: number): string;
 	    /**
 	     * Met à jour l'affichage de la note
 	     */
@@ -1349,6 +1373,11 @@ declare module 'Season' {
 	     */
 	    getNbEpisodesSeen(): number;
 	    /**
+	     * Retourne le nombre d'épisodes non vus
+	     * @returns {number} Le nombre d'épisodes non vus dans la saison
+	     */
+	    getNbEpisodesUnwatched(): number;
+	    /**
 	     * Retourne le nombre d'épisodes spéciaux
 	     * @returns {number} Le nombre d'épisodes spéciaux
 	     */
@@ -1380,6 +1409,7 @@ declare module 'Season' {
 	     * @returns {Season}
 	     */
 	    addShowToAccount(): Season;
+	    getNextEpisodeUnwatched(): Episode;
 	}
 
 }
@@ -1647,7 +1677,8 @@ declare module 'Episode' {
 
 }
 declare module 'User' {
-	import { WatchedBy } from 'Episode'; class Next {
+	import { WatchedBy } from 'Episode';
+	export class Next {
 	    id: number;
 	    code: string;
 	    date: Date;
@@ -1673,7 +1704,6 @@ declare module 'User' {
 	    twitter: boolean;
 	    constructor(data: any);
 	}
-	export {};
 
 }
 declare module 'Base' {
@@ -1816,6 +1846,8 @@ declare module 'Base' {
 	     * @type {Array}
 	     */
 	    static EventTypes: Array<EventTypes>;
+	    static showLoader(): void;
+	    static hideLoader(): void;
 	    /**
 	     * Fonction d'authentification sur l'API BetaSeries
 	     *
