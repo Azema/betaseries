@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.2.1
+// @version      1.2.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -40,7 +40,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-MsDAnzAAGoHnFm3W//6BDax59OQyMszhSj4PsowVGsRKKCPJsAdqos5hm9fg7Tfi';
+const sriBundle = 'sha384-GZ5brEvssAR6vOYngyb2q286UybABbcbanNchf5zhNJmAR50zVhw57laR6+mHzh2';
 /************************************************************************************************/
 // @ts-check
 
@@ -220,8 +220,8 @@ const launchScript = function($) {
         "renderjson": {
             type: 'script',
             id: 'renderjson',
-            src: 'https://azema.github.io/betaseries-oauth/js/renderjson.min.js',
-            integrity: 'sha384-ISyV9OQhfEYzpNqudVhD/IgzIRu75gnAc0wA/AbxJn+vP28z4ym6R7hKZXyqcm6D',
+            src: `${serverBaseUrl}/js/renderjson.min.js`,
+            integrity: 'sha384-f2Ps2OiwFSb967dVx/omVK8FWvrhCphtG32/jQNesV5FWtfVFbo1xj+GXCRnJJ33',
             called: false,
             loaded: false
         },
@@ -378,6 +378,7 @@ const launchScript = function($) {
          * Initialisation du script
          */
         init: function() {
+            $('#popup-bg').after('<div id="loader-bg" style="z-index: 2050;position: fixed;top: 50%;left: 50%;display: none;"><i class="fa fa-spinner fa-pulse fa-4x fa-fw"></i><span class="sr-only">Loading...</span></div>');
             // Ajout des feuilles de styles pour le userscript
             system.addScriptAndLink(['awesome', 'stylehome']);
             if (system.userIdentified()) {
@@ -1953,12 +1954,21 @@ const launchScript = function($) {
                         objComment.render();
                     });
                 });
-                $('#js-open-comments-modal').removeAttr('onclick').off('click').click(e => {
+                const $btnModal = $('#js-open-comments-modal');
+                $btnModal.removeAttr('onclick').off('click').click(e => {
                     if (debug) console.log('Event click on comments');
                     e.stopPropagation();
                     e.preventDefault();
                     res.comments.render();
                 });
+                if ($comments.length <= 0 && $btnModal.length <= 0) {
+                    $('#comments .slide_flex button.actorEmpty').removeAttr('onclick').off('click').click(e => {
+                        if (debug) console.log('Event zero comments');
+                        e.stopPropagation();
+                        e.preventDefault();
+                        res.comments.render();
+                    });
+                }
             };
             $('#comments .slide__comment').off('click');
             system.addScriptAndLink(['moment', 'localefr', 'textcomplete'], eventComments);
@@ -3446,10 +3456,11 @@ const launchScript = function($) {
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 // .blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)
-                $('.blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)')
+                $('.blockInformations .blockInformations__action .dropdown-menu a.header-navigation-item')
                     .first().attr('target', '_blank');
                 // On ajoute la gestion des épisodes
                 medias.waitSeasonsAndEpisodesLoaded(() => medias.upgradeEpisodes(objRes));
+                medias.upgradeSeasonsActions(objRes);
             }
             else if (/^\/film\//.test(url)) {
                 medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
