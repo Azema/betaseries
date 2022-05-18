@@ -706,3 +706,129 @@ export abstract class Base implements implAddNote {
         });
     }
 }
+
+/*
+ * Date Format 1.2.3
+ * (c) 2007-2009 Steven Levithan <stevenlevithan.com>
+ * MIT license
+ *
+ * Includes enhancements by Scott Trenda <scott.trenda.net>
+ * and Kris Kowal <cixar.com/~kris.kowal/>
+ *
+ * Accepts a date, a mask, or a date and a mask.
+ * Returns a formatted version of the given date.
+ * The date defaults to the current date/time.
+ * The mask defaults to dateFormat.masks.default.
+ */
+const dateFormat = function () {
+    const token = /d{1,4}|m{1,4}|yy(?:yy)?|([HhMsTt])\1?|[LloSZ]|"[^"]*"|'[^']*'/g,
+          timezone = /\b(?:[PMCEA][SDP]T|(?:Pacific|Mountain|Central|Eastern|Atlantic) (?:Standard|Daylight|Prevailing) Time|(?:GMT|UTC)(?:[-+]\d{4})?)\b/g,
+          timezoneClip = /[^-+\dA-Z]/g,
+          pad = (val, len = 2) => String(val).padStart(len, '0');
+    // Some common format strings
+    const masks = {
+        "default":      "ddd dd mmm yyyy HH:MM:ss",
+        datetime:       "dd/mm/yyyy HH:MM",
+        shortDate:      "d/m/yy",
+        mediumDate:     "d mmm yyyy",
+        longDate:       "d mmmm yyyy",
+        fullDate:       "dddd, d mmmm yyyy",
+        shortTime:      "h:MM TT",
+        mediumTime:     "h:MM:ss TT",
+        longTime:       "h:MM:ss TT Z",
+        isoDate:        "yyyy-mm-dd",
+        isoTime:        "HH:MM:ss",
+        isoDateTime:    "yyyy-mm-dd'T'HH:MM:ss",
+        isoUtcDateTime: "UTC:yyyy-mm-dd'T'HH:MM:ss'Z'"
+    };
+
+    // Internationalization strings
+    const i18n = {
+        dayNames: {
+            abr: [ "Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam." ],
+            full: [ "Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+        },
+        monthNames: {
+            abr: [ "Jan.", "Fev.", "Mar.", "Avr.", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Dec." ],
+            full: [
+                "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet",
+                "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+            ]
+        }
+    };
+    // Regexes and supporting functions are cached through closure
+    return function (date: any, mask: string, utc: boolean) {
+        const dF = dateFormat;
+
+        // You can't provide utc if you skip other args (use the "UTC:" mask prefix)
+        if (arguments.length == 1 && Object.prototype.toString.call(date) == "[object String]" && !/\d/.test(date)) {
+            mask = date;
+            date = undefined;
+        }
+
+        // Passing date through Date applies Date.parse, if necessary
+        date = date ? new Date(date) : new Date;
+        if (isNaN(date)) throw TypeError("invalid date");
+
+        mask = String(masks[mask] || mask || masks["default"]);
+
+        // Allow setting the utc argument via the mask
+        if (mask.slice(0, 4) == "UTC:") {
+            mask = mask.slice(4);
+            utc = true;
+        }
+
+        const    _ = utc ? "getUTC" : "get",
+            d:number = date[_ + "Date"](),
+            D:number = date[_ + "Day"](),
+            m:number = date[_ + "Month"](),
+            y:number = date[_ + "FullYear"](),
+            H:number = date[_ + "Hours"](),
+            M:number = date[_ + "Minutes"](),
+            s:number = date[_ + "Seconds"](),
+            L:number = date[_ + "Milliseconds"](),
+            o:number = utc ? 0 : date.getTimezoneOffset(),
+            flags = {
+                d:    d,
+                dd:   pad(d),
+                ddd:  i18n.dayNames.abr[D],
+                dddd: i18n.dayNames.full[D],
+                m:    m + 1,
+                mm:   pad(m + 1),
+                mmm:  i18n.monthNames.abr[m],
+                mmmm: i18n.monthNames.full[m],
+                yy:   String(y).slice(2),
+                yyyy: y,
+                h:    H % 12 || 12,
+                hh:   pad(H % 12 || 12),
+                H:    H,
+                HH:   pad(H),
+                M:    M,
+                MM:   pad(M),
+                s:    s,
+                ss:   pad(s),
+                l:    pad(L, 3),
+                L:    pad(L > 99 ? Math.round(L / 10) : L),
+                t:    H < 12 ? "a"  : "p",
+                tt:   H < 12 ? "am" : "pm",
+                T:    H < 12 ? "A"  : "P",
+                TT:   H < 12 ? "AM" : "PM",
+                Z:    utc ? "UTC" : (String(date).match(timezone) || [""]).pop().replace(timezoneClip, ""),
+                o:    (o > 0 ? "-" : "+") + pad(Math.floor(Math.abs(o) / 60) * 100 + Math.abs(o) % 60, 4)
+            };
+
+        return mask.replace(token, function ($0) {
+            return $0 in flags ? flags[$0] : $0.slice(1, $0.length - 1);
+        });
+    };
+}();
+
+declare global {
+    interface Date {
+        format: (mask: string, utc?: boolean) => string;
+    }
+}
+// For convenience...
+Date.prototype.format = function (mask: string, utc: boolean = false) {
+    return dateFormat(this, mask, utc);
+};
