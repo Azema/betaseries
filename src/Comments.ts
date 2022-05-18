@@ -2,7 +2,7 @@ import { Base, Obj, HTTP_VERBS, EventTypes } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
 import { Note } from "./Note";
 
-declare var getScrollbarWidth, faceboxDisplay: Function, moment;
+declare var getScrollbarWidth, faceboxDisplay: Function;
 
 /* interface JQuery<TElement = HTMLElement> extends Iterable<TElement> {
     popover?(params: any): this;
@@ -1099,7 +1099,7 @@ export class CommentsBS implements implRepliesComment {
                             </div>
                             <div>
                                 <time class="u-colorWhiteOpacity05" style="font-size: 14px;">
-                                    ${moment(comment.date).format('DD MMMM YYYY')}
+                                    ${comment.date.format('dd mmmm yyyy')}
                                 </time>
                             </div>
                         </div>

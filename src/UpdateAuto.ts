@@ -1,7 +1,6 @@
 import { Base, Obj } from "./Base";
 import { DataTypesCache } from "./Cache";
 import { Show } from "./Show";
-declare var moment;
 // eslint-disable-next-line no-unused-vars
 export class UpdateAuto {
     private static instance: UpdateAuto;
@@ -249,13 +248,7 @@ export class UpdateAuto {
                     return;
                 }
                 if (Base.debug) {
-                    let prefix = '';
-                    if (typeof moment !== 'undefined') {
-                        const now = new Date();
-                        // eslint-disable-next-line no-undef
-                        prefix = '[' + moment(now).format('DD/MM/YY HH:mm') + ']: ';
-                    }
-                    console.log('%supdate episode list', prefix);
+                    console.log('%supdate episode list', `[${new Date().format('datetime')}]`);
                 }
                 const btnUpEpisodeList = $('.updateEpisodes');
                 if (btnUpEpisodeList.length > 0) {

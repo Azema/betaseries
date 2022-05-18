@@ -2,7 +2,7 @@ import { Base, HTTP_VERBS, Obj, EventTypes } from './Base';
 import { CommentsBS, CustomEvent, OrderComments } from './Comments';
 import { Note } from './Note';
 
-declare var moment, currentLogin: string, getScrollbarWidth, faceboxDisplay: Function;
+declare var currentLogin: string, getScrollbarWidth, faceboxDisplay: Function;
 export interface implRepliesComment {
     fetchReplies(commentId: number): Promise<Array<CommentBS>>;
     changeThumbs(commentId: number, thumbs: number, thumbed: number): boolean;
@@ -387,7 +387,7 @@ export class CommentBS {
                                 <strong class="mainLink thumbs${comment.thumbs < 0 ? ' negative' : comment.thumbs > 0 ? ' positive' : ''}">${comment.thumbs > 0 ? '+' + comment.thumbs : comment.thumbs}</strong>
                                 ${btnResponse}
                                 <span class="mainLink">∙</span>
-                                <span class="mainTime">Le ${/* eslint-disable-line no-undef */typeof moment !== 'undefined' ? moment(comment.date).format('DD/MM/YYYY HH:mm') : comment.date.toString()}</span>
+                                <span class="mainTime">Le ${comment.date.format('dd/mm/yyyy HH:MM')}</span>
                                 <span class="stars" title="${comment.user_note} / 5">
                                     ${Note.renderStars(comment.user_note, comment.user_id === Base.userId ? 'blue' : '')}
                                 </span>
@@ -458,6 +458,28 @@ export class CommentBS {
                 </div>
             </div>
         `;
+    }
+    /**
+     * Renvoie la template HTML pour l'écriture d'un signalement de commentaire
+     * @param   {CommentBS} [comment] - L'objet commentaire à signaler
+     * @returns {string}
+     */
+    public static getTemplateReport(comment: CommentBS): string {
+        return `
+            <form class="form-middle" method="POST" action="/apps/report.php">
+                <fieldset>
+                    <div class="title" id="dialog-title" tabindex="0">Signaler un commentaire</div>
+                    <p>Vous êtes sur le point de signaler un commentaire, veuillez indiquer ci-dessous la raison de ce signalement.</p>
+                    <div>
+                        <textarea class="form-control" name="texte"></textarea>
+                    </div>
+                    <div class="button-set">
+                        <button class="js-close-popupalert btn-reset btn-btn btn-blue2" type="submit" id="popupalertyes">Signaler le contenu</button>
+                    </div>
+                </fieldset>
+                <input type="hidden" name="id" value="${comment.id}">
+                <input type="hidden" name="type" value="comment">
+            </form>`;
     }
     public getLogins(): Array<string> {
         let users = new Array();
@@ -579,6 +601,38 @@ export class CommentBS {
             $popup.removeAttr('data-popin-type');
         });
         this._events.push({elt: $btnClose, event: 'click'});
+
+        const $btnReport = $container.find('.btnSignal');
+        $btnReport.click(async (e: JQuery.ClickEvent) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const $comment: JQuery<HTMLElement> = $(e.currentTarget).parents('.comment');
+            const comment: CommentBS = await getObjComment($comment);
+            const $contentHtml = $container.parents('.popin-content').find('.popin-content-html');
+            $contentHtml.empty().append(CommentBS.getTemplateReport(comment));
+            $contentHtml.find('button.js-close-popupalert.btn-blue2').click((e: JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const $form = $contentHtml.find('form');
+                let paramsFetch: RequestInit = {
+                    method: 'POST',
+                    cache: 'no-cache',
+                    body: new URLSearchParams($form.serialize())
+                };
+                fetch('/apps/report.php', paramsFetch)
+                .then(() => {
+                    $contentHtml.hide();
+                    $container.show();
+                })
+                .catch(error => {
+                    $contentHtml.hide();
+                    $container.show();
+                });
+            });
+            $container.hide();
+            $contentHtml.show();
+        });
+        this._events.push({elt: $btnReport, event: 'click'});
 
         const $btnSubscribe = $container.find('.btnSubscribe');
         /**
