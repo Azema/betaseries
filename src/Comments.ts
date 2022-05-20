@@ -1089,7 +1089,7 @@ export class CommentsBS implements implRepliesComment {
                     <div class="media">
                         <span class="media-left avatar">
                             <a href="https://www.betaseries.com/membre/${comment.login}">
-                                <img class="js-lazy-image u-opacityBackground js-lazy-image--handled fade-in" src="${avatar}" width="42" height="42" alt="avatar de ${comment.login}" />
+                                <img class="u-opacityBackground" src="${avatar}" width="42" height="42" alt="avatar de ${comment.login}" />
                             </a>
                         </span>
                         <div class="media-body">
