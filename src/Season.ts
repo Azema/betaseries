@@ -267,6 +267,10 @@ export class Season {
         return this;
     }
 
+    /**
+     * Retourne le prochain épisode non vu
+     * @return {Episode} Le prochain épisode non vu
+     */
     getNextEpisodeUnwatched(): Episode {
         for (let e = 0; e < this.episodes.length; e++) {
             if (!this.episodes[e].user.seen) return this.episodes[e];
