@@ -310,8 +310,14 @@ export class Similar extends Media implements implShow, implMovie {
                     this.objNote.mean.toFixed(2) + ' / 5</span>';
         }
         if (this.mediaType.singular === MediaType.show)
-            title += ` <span style="float:right;"><a href="http://www.thetvdb.com/?tab=series&id=${this.thetvdb_id}" target="_blank" title="Lien vers la page de TheTVDB"><img src="https://thetvdb.com/images/logo.svg" width="40px" /></a>
-            <a href="javascript:;" onclick="showUpdate('${this.title}', ${this.id}, '0')" style="margin-left:5px; color:var(--default_color);" title="Mettre à jour les données venant de TheTVDB"><i class="fa fa-refresh" aria-hidden="true"></i></a></span>`;
+            title += ` <span style="float:right;">
+                <a href="http://www.thetvdb.com/?tab=series&id=${this.thetvdb_id}" target="_blank" title="Lien vers la page de TheTVDB">
+                    <img src="https://thetvdb.com/images/logo.svg" width="40px" />
+                </a>
+                <a href="javascript:;" onclick="showUpdate('${this.title}', ${this.id}, '0')" style="margin-left:5px; color:var(--default_color);" title="Mettre à jour les données venant de TheTVDB">
+                    <i class="fa fa-refresh" aria-hidden="true"></i>
+                </a>
+            </span>`;
         return title;
     }
     /**
@@ -353,44 +359,72 @@ export class Similar extends Media implements implShow, implMovie {
     checkImg(): Similar {
         const $img = this.elt.find('img.js-lazy-image'),
               self = this;
-        if ($img.length <= 0) {
-            if (this.mediaType.singular === MediaType.show) {
-                let src: string;
-                if (this.images.poster !== null)
-                    src = this.images.poster;
-                else if (this.images.show !== null)
-                    src = this.images.show;
-                else if (this.images.box !== null)
-                    src = this.images.box;
-                if (src.length > 0) {
-                    // On tente de remplacer le block div 404 par une image
-                    this.elt.find('div.block404').replaceWith(`
-                        <img class="u-opacityBackground fade-in"
-                                width="125"
-                                height="188"
-                                alt="Poster de ${this.title}"
-                                src="${src}"/>`
-                    );
-                }
+
+        if ($img.length > 0) {
+            return this;
+        }
+        if (this.mediaType.singular === MediaType.show) {
+            if (this.images.poster !== null) {
+                // On tente de remplacer le block div 404 par une image
+                this.elt.find('div.block404').replaceWith(`
+                    <img class="u-opacityBackground fade-in"
+                            width="125"
+                            height="188"
+                            alt="Affiche de la série ${this.title}"
+                            src="${this.images.poster}"/>`
+                );
             }
-            else if (this.mediaType.singular === MediaType.movie && this.tmdb_id && this.tmdb_id > 0) {
-                if (Base.themoviedb_api_user_key.length <= 0) return;
-                const uriApiTmdb = `https://api.themoviedb.org/3/movie/${this.tmdb_id}?api_key=${Base.themoviedb_api_user_key}&language=fr-FR`;
-                fetch(uriApiTmdb).then(response => {
-                    if (!response.ok) return null;
-                    return response.json();
-                }).then(data => {
-                    if (data !== null && data.poster_path !== undefined && data.poster_path !== null) {
-                        self.elt.find('div.block404').replaceWith(`
+            else {
+                const proxy = Base.serverBaseUrl + '/proxy/';
+                const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
+                    method: 'GET',
+                    headers: {
+                        'origin': 'https://www.betaseries.com',
+                        'x-requested-with': 'userscript-bs'
+                    },
+                    mode: 'cors',
+                    cache: 'no-cache'
+                };
+                fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
+                .then((resp: Response) => {
+                    if (resp.ok) {
+                        return resp.text();
+                    }
+                    return null;
+                }).then(html => {
+                    if (html == null) return;
+                    const parser = new DOMParser();
+                    const doc: Document = parser.parseFromString(html, 'text/html');
+                    const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_posters"]');
+                    if (link) {
+                        this.elt.find('div.block404').replaceWith(`
                             <img class="u-opacityBackground fade-in"
                                     width="125"
                                     height="188"
-                                    alt="Poster de ${self.title}"
-                                    src="https://image.tmdb.org/t/p/original${data.poster_path}"/>`
+                                    alt="Affiche de la série ${self.title}"
+                                    src="${link.href}"/>`
                         );
                     }
                 });
             }
+        }
+        else if (this.mediaType.singular === MediaType.movie && this.tmdb_id && this.tmdb_id > 0) {
+            if (Base.themoviedb_api_user_key.length <= 0) return;
+            const uriApiTmdb = `https://api.themoviedb.org/3/movie/${this.tmdb_id}?api_key=${Base.themoviedb_api_user_key}&language=fr-FR`;
+            fetch(uriApiTmdb).then(response => {
+                if (!response.ok) return null;
+                return response.json();
+            }).then(data => {
+                if (data !== null && data.poster_path !== undefined && data.poster_path !== null) {
+                    self.elt.find('div.block404').replaceWith(`
+                        <img class="u-opacityBackground fade-in"
+                                width="125"
+                                height="188"
+                                alt="Poster de ${self.title}"
+                                src="https://image.tmdb.org/t/p/original${data.poster_path}"/>`
+                    );
+                }
+            });
         }
         return this;
     }
