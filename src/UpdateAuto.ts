@@ -1,5 +1,4 @@
 import { Base, Obj } from "./Base";
-import { DataTypesCache } from "./Cache";
 import { Show } from "./Show";
 // eslint-disable-next-line no-unused-vars
 export class UpdateAuto {
@@ -16,15 +15,47 @@ export class UpdateAuto {
         {val: 60, label: '60 min.'}
     ];
 
+    /**
+     * Objet Show contenant les infos de la série
+     * @type {Show}
+     */
     private _show: Show;
+    /**
+     * Identifiant de la série
+     * @type {number}
+     */
     private _showId: number;
+    /**
+     * Flag indiquant si une config updateAuto existe déjà
+     * en mémoire
+     * @type {boolean}
+     */
     private _exist: boolean;
+    /**
+     * Etat de la tâche de mise à jour
+     * @type {boolean}
+     */
     private _status: boolean;
+    /**
+     * Flag indiquant si la mise à jour doit être lancée automatiquement
+     * @type {boolean}
+     */
     private _auto: boolean;
+    /**
+     * Intervalle des mises à jour
+     * @type {number}
+     */
     private _interval: number;
+    /**
+     * Timer des mises à jour
+     * @type {NodeJS.Timer}
+     */
     private _timer: NodeJS.Timer;
-    private _remaining: number;
-    private _timerR: NodeJS.Timer;
+    /**
+     * DateTime de la dernière mise à jour
+     * @type {Date}
+     */
+    private _lastUpdate: Date;
 
     private constructor(show: Show) {
         if (UpdateAuto.instance) {
@@ -32,8 +63,9 @@ export class UpdateAuto {
         }
         this._show = show;
         this._showId = show.id;
-        let objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
+        const objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
         this._exist = false;
+        this._lastUpdate = null;
         if (objUpAuto[this._showId] !== undefined) {
             this._exist = true;
             this._status = objUpAuto[this._showId].status;
@@ -64,11 +96,12 @@ export class UpdateAuto {
      * _save - Sauvegarde les options de la tâche d'update
      * auto dans l'espace de stockage de Tampermonkey
      *
+     * @private
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     _save() {
-        let objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
-        let obj = {
+        const objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
+        const obj = {
             status: this._status,
             auto: this._auto,
             interval: this._interval
@@ -152,6 +185,14 @@ export class UpdateAuto {
     }
 
     /**
+     * Retourne la date de la dernière mise à jour éffectuée
+     * @return {Date} La date de la dernière mise à jour
+     */
+    get lastUpdate(): Date {
+        return this._lastUpdate;
+    }
+
+    /**
      * changeColorBtn - Modifie la couleur du bouton d'update
      * des épisodes sur la page Web
      *
@@ -187,11 +228,9 @@ export class UpdateAuto {
             this._auto = false;
         }
         this.status = false;
-        clearInterval(this._timerR);
-        this._remaining = 0;
-        this._timerR = null;
         clearInterval(this._timer);
         this._timer = null;
+        this._lastUpdate = null;
         return this;
     }
 
@@ -203,7 +242,7 @@ export class UpdateAuto {
      */
     delete(): UpdateAuto {
         this.stop();
-        let objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
+        const objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
         if (objUpAuto[this._showId] !== undefined) {
             delete objUpAuto[this._showId];
             Base.gm_funcs.setValue('objUpAuto', objUpAuto);
@@ -224,12 +263,12 @@ export class UpdateAuto {
     launch(): UpdateAuto {
         // Si les options sont modifiées pour arrêter la tâche
         // et que le statut est en cours
-        if (this._status && (!this._auto || this._interval <= 0)) {
+        if (this.status && (!this.auto || this.interval <= 0)) {
             if (Base.debug) console.log('close interval updateEpisodeListAuto');
             return this.stop();
         }
         // Si les options modifiées pour lancer
-        else if (this._auto && this._interval > 0) {
+        else if (this.auto && this.interval > 0) {
             if (this._show.user.remaining <= 0) {
                 this.stop();
                 return this;
@@ -238,47 +277,48 @@ export class UpdateAuto {
                 if (Base.debug) console.log('close old interval timer');
                 clearInterval(this._timer);
             }
-            const self = this;
             this.status = true;
-            const run = function() {
-                // if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, self._objShow));
-                if (! self._auto || self._show.user.remaining <= 0) {
-                    if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
-                    self.stop();
-                    return;
-                }
-                if (Base.debug) {
-                    console.log('%supdate episode list', `[${new Date().format('datetime')}]`);
-                }
-                const btnUpEpisodeList = $('.updateEpisodes');
-                if (btnUpEpisodeList.length > 0) {
-                    btnUpEpisodeList.trigger('click');
-                    if ( ! self._status) {
-                        self.status = true;
-                    }
-                }
-                self._remaining = self._interval * 60;
-                if (self._timerR == null)
-                    self._timerR = setInterval(() => { --self._remaining }, 1000);
-            };
-            run();
-            this._timer = setInterval(run, (this._interval * 60) * 1000);
+            this._tick();
+            this._timer = setInterval(this._tick, (this.interval * 60) * 1000);
         }
         return this;
+    }
+    /**
+     * _tick: Fonction Tick pour la mise à jour des épisodes à intervalle régulère
+     * @private
+     * @returns {void}
+     */
+    private _tick(): void {
+        this._lastUpdate = new Date();
+        // if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this._objShow));
+        if (! this.auto || this.show.user.remaining <= 0) {
+            if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
+            this.stop();
+            return;
+        }
+        if (Base.debug) {
+            console.log('%s update episode list', `[${this.lastUpdate.format('datetime')}]`);
+        }
+        const btnUpEpisodeList = $('.updateEpisodes');
+        if (btnUpEpisodeList.length > 0) {
+            btnUpEpisodeList.trigger('click');
+            if ( ! this.status) {
+                this.status = true;
+            }
+        }
     }
 
     /**
      * Retourne le temps restant avant le prochain update
      * sous forme mm:ss
-     * @returns string
+     * @returns {string}
      */
     public remaining(): string {
-        const minutes = Math.floor(this._remaining / 60);
-        const seconds = this._remaining - minutes * 60;
-        let result = minutes.toString() + ':';
-        if (seconds < 10) {
-            result += '0';
-        }
-        return result + seconds.toString();
+        if (this._lastUpdate == null) return 'not running';
+        const elapsedTime = Date.now() - this._lastUpdate.getTime();
+        const remainingTime = Math.floor((((this._interval * 60) * 1000) - elapsedTime) / 1000);
+        const minutes = Math.floor(remainingTime / 60);
+        const seconds = remainingTime - minutes * 60;
+        return minutes.toString() + ':' + ((seconds < 10) ? '0' + seconds.toString() : seconds.toString());
     }
 }
