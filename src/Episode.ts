@@ -281,7 +281,9 @@ export class Episode extends Base implements implAddNote {
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: 'Episodes vus',
-                        text: 'Doit-on cocher les épisodes précédents comme vu ?',
+                        contentHtml: '<p>Doit-on cocher les épisodes précédents comme vu ?</p>',
+                        yes: Base.trans('popup.yes'),
+                        no: Base.trans('popup.no'),
                         callback_yes: () => {
                             resolve(true);
                         },
@@ -292,7 +294,7 @@ export class Episode extends Base implements implAddNote {
                     let btnNo = jQuery('#popin-dialog #popupalertno'),
                         btnYes = jQuery('#popin-dialog #popupalertyes');
                     btnNo.attr('tabIndex', 0).focus();
-                    btnYes.attr('tabIndex', 0);
+                    btnYes.attr('tabIndex', 0).show();
                 });
             };
             const $vignettes = jQuery('#episodes .checkSeen');
