@@ -1,14 +1,19 @@
-import {Base, Obj, EventTypes, Rating, HTTP_VERBS, MediaType} from "./Base";
+import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback} from "./Base";
 import { implAddNote } from "./Note";
 import {Media} from "./Media";
 import {Season} from "./Season";
 import { Character } from "./Character";
 import {Next} from "./User";
 
-declare var PopupAlert: any;
+declare const PopupAlert;
 
 export class Images {
-    constructor(data: any) {
+    static formats = {
+        poster: 'poster',
+        wide: 'wide'
+    }
+
+    constructor(data: Obj) {
         this.show = data.show;
         this.banner = data.banner;
         this.box = data.box;
@@ -25,9 +30,8 @@ export enum Picked {
     banner,
     show
 }
-// eslint-disable-next-line no-unused-vars
 export class Picture {
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.id = parseInt(data.id, 10);
         this.show_id = parseInt(data.show_id, 10);
         this.login_id = parseInt(data.login_id, 10);
@@ -47,13 +51,14 @@ export class Picture {
     picked: Picked;
 }
 export class Platform {
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.id = parseInt(data.id, 10);
         this.name = data.name;
         this.tag = data.tag;
         this.link_url = data.link_url;
         this.available = data.available;
         this.logo = data.logo;
+        this.partner = !data.partner || false;
     }
 
     id: number;
@@ -62,25 +67,109 @@ export class Platform {
     link_url: string;
     available: object;
     logo: string;
+    partner: boolean;
+}
+export class PlatformList {
+    svod: Array<Platform>;
+    vod: Array<Platform>;
+    country: string;
+
+    static types: Obj = {
+        svod: 'svod',
+        vod: 'vod'
+    };
+
+    /**
+     * fetchPlatforms - Récupère la liste des plateformes sur l'API
+     * @param  {string}                [country = 'us'] Le pays concerné par les plateformes
+     * @return {Promise<PlatformList>}                  L'objet contenant les différentes plateformes
+     */
+    static fetchPlatforms(country = 'us'): Promise<PlatformList> {
+        return new Promise((resolve, reject) => {
+            Base.callApi(HTTP_VERBS.GET, 'platforms', 'list', {country})
+            .then((data: Obj) => {
+                resolve(new PlatformList(data.platforms, country));
+            })
+            .catch(err => reject(err));
+        });
+    }
+
+    constructor(data: Obj, country = 'fr') {
+        if (data.svod) {
+            this.svod = [];
+            for (let s = 0; s < data.svod.length; s++) {
+                this.svod.push(new Platform(data.svod[s]));
+            }
+            this.svod.sort(function(a, b) {
+                if (a.name < b.name) return -1;
+                else if (a.name > b.name) return 1;
+                else return 0;
+            });
+        }
+        if (data.vod) {
+            this.vod = [];
+            for (let v = 0; v < data.vod.length; v++) {
+                this.vod.push(new Platform(data.vod[v]));
+            }
+            this.vod.sort(function(a, b) {
+                if (a.name < b.name) return -1;
+                else if (a.name > b.name) return 1;
+                else return 0;
+            });
+        }
+        this.country = country;
+    }
+    /**
+     * Retourne les plateformes sous forme d'éléments HTML Option
+     * @param  {string}           [type = 'svod']  Le type de plateformes souhaité
+     * @param  {Array<number>}    [exclude = null] Les identifiants des plateformes à exclure
+     * @return {string}                            Les options sous forme de chaîne
+     */
+    renderHtmlOptions(type = 'svod', exclude: Array<number> = null): string {
+        let options = '';
+        if (type === PlatformList.types.svod) {
+            const svod = this.svod.filter(elt => {
+                return exclude.indexOf(elt.id) === -1;
+            });
+            for (let s = 0; s < svod.length; s++) {
+                options += `<option value="${svod[s].id}" data-src="${svod[s].logo}">${svod[s].name}</option>`;
+            }
+        } else if (type === PlatformList.types.vod) {
+            const vod = this.vod.filter(elt => {
+                return exclude.indexOf(elt.id) === -1;
+            });
+            for (let v = 0; v < vod.length; v++) {
+                options += `<option value="${vod[v].id}" data-src="${vod[v].logo}">${vod[v].name}</option>`;
+            }
+        }
+        return options;
+    }
 }
 export class Platforms {
-    constructor(data: any) {
-        if (data.svods && data.svods instanceof Array) {
-            this.svods = new Array();
+    constructor(data: Obj) {
+        this.svods = [];
+        if (data?.svods && data?.svods instanceof Array) {
             for (let s = 0; s < data.svods.length; s++) {
                 this.svods.push(new Platform(data.svods[s]));
             }
         }
-        if (data.svod) {
+        if (data?.svod) {
             this.svod = new Platform(data.svod);
+        }
+        this.vod = [];
+        if (data?.vod && data?.vod instanceof Array) {
+            for (let v = 0; v < data.vod.length; v++) {
+                this.vod.push(new Platform(data.vod[v]));
+            }
         }
     }
 
     svods: Array<Platform>;
     svod: Platform;
+    vod: Array<Platform>;
 }
 export class Showrunner {
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.id = data.id ? parseInt(data.id, 10) : null;
         this.name = data.name;
         this.picture = data.picture;
@@ -116,7 +205,7 @@ export class Show extends Media implements implShow, implAddNote {
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-     static EventTypes: Array<EventTypes> = new Array(
+    static EventTypes: Array<EventTypes> = [
         EventTypes.UPDATE,
         EventTypes.SAVE,
         EventTypes.ADD,
@@ -125,7 +214,7 @@ export class Show extends Media implements implShow, implAddNote {
         EventTypes.NOTE,
         EventTypes.ARCHIVE,
         EventTypes.UNARCHIVE
-    );
+    ];
 
     /**
      * Méthode static servant à récupérer une série sur l'API BS
@@ -134,19 +223,24 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}
      * @private
      */
-    private static _fetch(params: Obj, force: boolean = false): Promise<Show> {
-        return new Promise((resolve: Function, reject: Function) => {
+    private static _fetch(params: Obj, force = false): Promise<Show> {
+        return new Promise((resolve, reject) => {
             Base.callApi('GET', 'shows', 'display', params, force)
             .then(data => resolve(new Show(data.show, jQuery('.blockInformations'))) )
             .catch(err => reject(err) );
         });
     }
 
-    static fetchLastSeen(limit: number = 10): Promise<Array<Show>> {
-        return new Promise((resolve: Function, reject: Function) => {
+    /**
+     * fetchLastSeen - Méthode static retournant les 10 dernières séries vues par le membre
+     * @param  {number}  [limit = 10]  Le nombre limite de séries retournées
+     * @return {Promise<Show>}         Une promesse avec les séries
+     */
+    static fetchLastSeen(limit = 10): Promise<Array<Show>> {
+        return new Promise((resolve, reject) => {
             Base.callApi(HTTP_VERBS.GET, 'shows', 'member', {order: 'last_seen', limit})
             .then((data: Obj) => {
-                const shows: Array<Show> = new Array();
+                const shows: Array<Show> = [];
                 for (let s = 0; s < data.shows.length; s++) {
                     shows.push(new Show(data.shows[s], jQuery('body')));
                 }
@@ -162,10 +256,10 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Array<Show>>}
      */
     static fetchMulti(ids: Array<number>): Promise<Array<Show>> {
-        return new Promise((resolve: Function, reject: Function) => {
+        return new Promise((resolve, reject) => {
             Base.callApi(HTTP_VERBS.GET, 'shows', 'display', {id: ids.join(',')})
             .then((data: Obj) => {
-                const shows: Array<Show> = Array();
+                const shows: Array<Show> = [];
                 if (ids.length > 1) {
                     for (let s = 0; s < data.shows.length; s++) {
                         shows.push(new Show(data.shows[s], jQuery('.blockInformations')));
@@ -185,7 +279,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
      * @return {Promise<Show>}
      */
-    static fetch(id: number, force: boolean = false): Promise<Show> {
+    static fetch(id: number, force = false): Promise<Show> {
         return this._fetch({id: id}, force);
     }
 
@@ -195,7 +289,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
      * @return {Promise<Show>}
      */
-    static fetchByTvdb(id: number, force: boolean = false): Promise<Show> {
+    static fetchByTvdb(id: number, force = false): Promise<Show> {
         return this._fetch({thetvdb_id: id}, force);
     }
 
@@ -205,7 +299,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @param   {boolean} force - Indique si on doit ignorer les données dans le cache
      * @returns {Promise<Show>}
      */
-    static fetchByUrl(url: string, force: boolean = true): Promise<Show> {
+    static fetchByUrl(url: string, force = true): Promise<Show> {
         return this._fetch({url: url}, force);
     }
 
@@ -302,24 +396,25 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Initialise l'objet lors de sa construction et après son remplissage
-     * @returns {Show}
+     * @returns {Promise<Show>}
      */
-    public init(): this {
-        this.fetchSeasons();
-        // On gère l'ajout et la suppression de la série dans le compte utilisateur
-        if (this.in_account) {
-            this.deleteShowClick();
-        } else {
-            this.addShowClick();
-        }
-        return this;
+    public init(): Promise<this> {
+        return this.fetchSeasons().then(() => {
+            // On gère l'ajout et la suppression de la série dans le compte utilisateur
+            if (this.in_account) {
+                this.deleteShowClick();
+            } else {
+                this.addShowClick();
+            }
+            return this;
+        });
     }
     /**
      * Récupère les données de la série sur l'API
      * @param  {boolean} [force=true]   Indique si on utilise les données en cache
      * @return {Promise<*>}             Les données de la série
      */
-    fetch(force: boolean = true): Promise<any> {
+    fetch(force = true): Promise<Obj> {
         return Base.callApi('GET', 'shows', 'display', {id: this.id}, force);
     }
     /**
@@ -328,8 +423,8 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetchSeasons(): Promise<Show> {
         const self = this;
-        let params: Obj = {thetvdb_id: this.thetvdb_id};
-        let force: boolean = false;
+        const params: Obj = {thetvdb_id: this.thetvdb_id};
+        let force = false;
         if (this.thetvdb_id <= 0) {
             delete params.thetvdb_id;
             params.id = this.id;
@@ -337,7 +432,7 @@ export class Show extends Media implements implShow, implAddNote {
         }
         return Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
         .then((data: Obj) => {
-            self.seasons = new Array();
+            self.seasons = [];
             if (data?.seasons?.length <= 0) {
                 return self;
             }
@@ -357,7 +452,7 @@ export class Show extends Media implements implShow, implAddNote {
         const self = this;
         return Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
         .then((data: Obj) => {
-            self.characters = new Array();
+            self.characters = [];
             if (data?.characters?.length <= 0) {
                 return self;
             }
@@ -433,7 +528,7 @@ export class Show extends Media implements implShow, implAddNote {
         const self = this;
         if (! this.in_account) return new Promise(resolve => resolve(self));
 
-        return new Promise((resolve: Function, reject: Function) => {
+        return new Promise((resolve, reject) => {
             Base.callApi('DELETE', 'shows', 'show', {id: self.id})
             .then(data => {
                 self.fill(data.show);
@@ -456,14 +551,14 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>} Promise of show
      */
     archive(): Promise<Show> {
-        const _this = this;
+        const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('POST', 'shows', 'archive', {id: _this.id})
+            Media.callApi('POST', 'shows', 'archive', {id: self.id})
             .then(data => {
-                _this.fill(data.show);
-                _this.save();
-                _this._callListeners(EventTypes.ARCHIVE);
-                resolve(_this);
+                self.fill(data.show);
+                self.save();
+                self._callListeners(EventTypes.ARCHIVE);
+                resolve(self);
             }, err => {
                 reject(err);
             });
@@ -474,14 +569,14 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>} Promise of show
      */
     unarchive(): Promise<Show> {
-        const _this = this;
+        const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('DELETE', 'shows', 'archive', {id: _this.id})
+            Media.callApi('DELETE', 'shows', 'archive', {id: self.id})
             .then(data => {
-                _this.fill(data.show);
-                _this.save();
-                _this._callListeners(EventTypes.UNARCHIVE);
-                resolve(_this);
+                self.fill(data.show);
+                self.save();
+                self._callListeners(EventTypes.UNARCHIVE);
+                resolve(self);
             }, err => {
                 reject(err);
             });
@@ -492,13 +587,13 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>} Promise of show
      */
     favorite(): Promise<Show> {
-        const _this = this;
+        const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('POST', 'shows', 'favorite', {id: _this.id})
+            Media.callApi('POST', 'shows', 'favorite', {id: self.id})
             .then(data => {
-                _this.fill(data.show);
-                _this.save();
-                resolve(_this);
+                self.fill(data.show);
+                self.save();
+                resolve(self);
             }, err => {
                 reject(err);
             });
@@ -509,13 +604,13 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>} Promise of show
      */
     unfavorite(): Promise<Show> {
-        const _this = this;
+        const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('DELETE', 'shows', 'favorite', {id: _this.id})
+            Media.callApi('DELETE', 'shows', 'favorite', {id: self.id})
             .then(data => {
-                _this.fill(data.show);
-                _this.save();
-                resolve(_this);
+                self.fill(data.show);
+                self.save();
+                resolve(self);
             }, err => {
                 reject(err);
             });
@@ -523,19 +618,19 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Met à jour les données de la série
-     * @param  {Boolean}  [force=false] Forcer la récupération des données sur l'API
-     * @param  {Function} [cb=noop]     Fonction de callback
-     * @return {Promise<Show>}          Promesse (Show)
+     * @param  {Boolean}  [force=false]     Forcer la récupération des données sur l'API
+     * @param  {Callback} [cb = Base.noop]  Fonction de callback
+     * @return {Promise<Show>}              Promesse (Show)
      */
-    update(force: boolean = false, cb: Function = Base.noop): Promise<Show> {
-        const _this = this;
-        return new Promise((resolve: Function, reject: Function) => {
-            _this.fetch(force).then(data => {
-                _this.fill(data.show);
-                _this.updateRender(() => {
-                    resolve(_this);
+    update(force = false, cb: Callback = Base.noop): Promise<Show> {
+        const self = this;
+        return new Promise((resolve, reject) => {
+            self.fetch(force).then(data => {
+                self.fill(data.show);
+                self.updateRender(() => {
+                    resolve(self);
                     cb();
-                    _this._callListeners(EventTypes.UPDATE);
+                    self._callListeners(EventTypes.UPDATE);
                 });
             })
             .catch(err => {
@@ -548,14 +643,14 @@ export class Show extends Media implements implShow, implAddNote {
     /**
      * Met à jour le rendu de la barre de progression
      * et du prochain épisode
-     * @param  {Function} cb Fonction de callback
+     * @param  {Callback} [cb=Base.noop] Fonction de callback
      * @return {void}
      */
-    updateRender(cb: Function = Base.noop): void {
+    updateRender(cb: Callback = Base.noop): void {
         const self = this;
         this.updateProgressBar();
         this.updateNextEpisode();
-        let note = this.objNote;
+        const note = this.objNote;
         if (Base.debug) {
             console.log('Next ID et status', {
                 next: this.user.next.id,
@@ -565,10 +660,10 @@ export class Show extends Media implements implShow, implAddNote {
             });
         }
         // Si il n'y a plus d'épisodes à regarder
-        if (this.user.remaining === 0 && this.in_account) {
+        if (this.user.remaining === 0 && this.in_account && this.currentSeason.getNbEpisodesUnwatched() == 0) {
             let promise = new Promise(resolve => { return resolve(void 0); });
             // On propose d'archiver si la série n'est plus en production
-            if (this.in_account && this.isEnded() && !this.isArchived())
+            if (this.isEnded() && ! this.isArchived())
             {
                 if (Base.debug) console.log('Série terminée, popup confirmation archivage');
                 promise = new Promise(resolve => {
@@ -611,7 +706,9 @@ export class Show extends Media implements implShow, implAddNote {
                     });
                 });
             }
-            promise.then(() => { cb(); });
+            promise.then(() => {
+                cb();
+            });
         } else {
             cb();
         }
@@ -627,23 +724,35 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Met à jour le bloc du prochain épisode à voir
-     * @param   {Function} [cb=noop] Fonction de callback
+     * @param   {Callback} [cb=noop] Fonction de callback
      * @returns {void}
      */
-    updateNextEpisode(cb: Function = Base.noop): void {
+    updateNextEpisode(cb: Callback = Base.noop): void {
         if (Base.debug) console.log('updateNextEpisode');
+        const self = this;
         const $nextEpisode = jQuery('a.blockNextEpisode');
+        /**
+         * Retourne le nombre total d'épisodes non vus dans la série
+         * @return {string} le nombre total d'épisodes non vus
+         */
+        const getNbEpisodesUnwatchedTotal = function(): string {
+            let nbEpisodes = 0;
+            for (let s = 0; s < self.seasons.length; s++) {
+                nbEpisodes += self.seasons[s].getNbEpisodesUnwatched();
+            }
+            return nbEpisodes.toString();
+        };
 
         if ($nextEpisode.length > 0 && this.user.next && !isNaN(this.user.next.id)) {
             const seasonNext = parseInt(this.user.next.code.match(/S\d+/)[0].replace('S',''), 10);
             let next = this.user.next;
-            if (seasonNext < this.currentSeason.number && this.currentSeason.getNbEpisodesUnwatched() > 0) {
-                const ep = this.currentSeason.getNextEpisodeUnwatched();
+            const episode = this.currentSeason?.getNextEpisodeUnwatched();
+            if (seasonNext < this.currentSeason?.number && episode) {
                 next = new Next({
-                    id: ep.id,
-                    code: ep.code,
-                    date: ep.date,
-                    title: ep.title,
+                    id: episode.id,
+                    code: episode.code,
+                    date: episode.date,
+                    title: episode.title,
                     image: ''
                 });
             }
@@ -656,13 +765,13 @@ export class Show extends Media implements implShow, implAddNote {
                   width = $img.attr('width'),
                   src = `${Base.api.url}/pictures/episodes?key=${Base.userKey}&id=${next.id}&width=${width}&height=${height}`;
             $img.remove();
-            $parent.append(`<img src="${src}" height="${height}" width="${width}" />`);
+            $parent.append(`<img data-src="${src}" class="js-lazy-image" height="${height}" width="${width}" />`);
             // Modifier le titre
             $nextEpisode.find('.titleEpisode').text(`${next.code.toUpperCase()} - ${next.title}`);
             // Modifier le lien
             $nextEpisode.attr('href', $nextEpisode.attr('href').replace(/s\d{2}e\d{2}/, next.code.toLowerCase()));
             // Modifier le nombre d'épisodes restants
-            $remaining.text($remaining.text().trim().replace(/^\d+/, this.user.remaining.toString()));
+            $remaining.text($remaining.text().trim().replace(/^\d+/, getNbEpisodesUnwatchedTotal()));
         }
         else if ($nextEpisode.length <= 0 && this.user.next && !isNaN(this.user.next.id)) {
             if (Base.debug) console.log('No nextEpisode et show.user.next OK', this.user);
@@ -699,7 +808,7 @@ export class Show extends Media implements implShow, implAddNote {
                         ${res.user.next.code.toUpperCase()} - ${res.user.next.title}
                     </div>
                     <div class="remaining">
-                        <div class="u-colorWhiteOpacity05">${res.user.remaining} épisode${(res.user.remaining > 1) ? 's' : ''} à regarder</div>
+                        <div class="u-colorWhiteOpacity05">${getNbEpisodesUnwatchedTotal()} épisode${(res.user.remaining > 1) ? 's' : ''} à regarder</div>
                     </div>
                     </div>
                 </a>`
@@ -712,7 +821,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @param   {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
      * @returns {void}
      */
-    addShowClick(trigEpisode: boolean = false): void {
+    addShowClick(trigEpisode = false): void {
         const self = this;
         const vignettes = $('#episodes .slide__image');
         // Vérifier si le membre a ajouter la série à son compte
@@ -731,9 +840,9 @@ export class Show extends Media implements implShow, implAddNote {
                 </div>`
             );
             this.addBtnToSee();
-            let title = this.title.replace(/"/g, '\\"').replace(/'/g, "\\'");
+            const title = this.title.replace(/"/g, '\\"').replace(/'/g, "\\'");
             const templateOpts = `<a class="header-navigation-item" href="javascript:;" onclick="showUpdate('${title}', ${this.id}, '0')">Demander une mise à jour</a>`;
-            jQuery('.blockInformations__action .dropdown-menu.header-navigation')
+            jQuery('.blockInformations__action .dropdown-menu.header-navigation[aria-labelledby="dropdownOptions"]')
                     .append(templateOpts);
             // On ajoute un event click pour masquer les vignettes
             jQuery('#reactjs-show-actions > div > button').off('click').one('click', (e: JQuery.ClickEvent) => {
@@ -769,12 +878,12 @@ export class Show extends Media implements implShow, implAddNote {
          * @return {void}
          */
         function changeBtnAdd(show: Show): void {
-            let $optionsLinks = jQuery('.blockInformations__action .dropdown-menu a.header-navigation-item');
+            const $optionsLinks = jQuery('.blockInformations__action .dropdown-menu a.header-navigation-item');
             if ($optionsLinks.length <= 3) {
-                let react_id = jQuery('script[id^="/reactjs/"]').get(0).id.split('.')[1],
-                    urlShow = show.resource_url.substring(location.origin.length),
-                    title = show.title.replace(/"/g, '\\"').replace(/'/g, "\\'"),
-                    templateOpts = `
+                const react_id = jQuery('script[id^="/reactjs/"]').get(0).id.split('.')[1],
+                      urlShow = show.resource_url.substring(location.origin.length),
+                      title = show.title.replace(/"/g, '\\"').replace(/'/g, "\\'");
+                let templateOpts = `
                         <button type="button" class="btn-reset header-navigation-item" onclick="new PopupAlert({
                         showClose: true,
                         type: "popin-subtitles",
@@ -803,7 +912,7 @@ export class Show extends Media implements implShow, implAddNote {
                 if ($optionsLinks.length === 2) {
                     templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
                 }
-                jQuery('.blockInformations__action .dropdown-menu.header-navigation')
+                jQuery('.blockInformations__action .dropdown-menu.header-navigation[aria-labelledby="dropdownOptions"]')
                     .append(templateOpts);
             }
 
@@ -870,7 +979,7 @@ export class Show extends Media implements implShow, implAddNote {
                 // On supprime le btn ToSeeLater
                 self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
                 self.elt.find('.blockInformations__title .fa-clock-o').remove();
-                let toSee = Base.gm_funcs.getValue('toSee', {});
+                const toSee = Base.gm_funcs.getValue('toSee', {});
                 if (toSee[self.id] !== undefined) {
                     delete toSee[self.id];
                     Base.gm_funcs.setValue('toSee', toSee);
@@ -891,7 +1000,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     deleteShowClick(): void {
         const self = this;
-        let $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
+        const $optionsLinks = $('#dropdownOptions').siblings('.dropdown-menu').children('a.header-navigation-item');
         // Le menu Options est au complet
         if (this.in_account && $optionsLinks.length > 2) {
             this.addEventBtnsArchiveAndFavoris();
@@ -929,7 +1038,7 @@ export class Show extends Media implements implShow, implAddNote {
                         // Nettoyage de l'affichage des épisodes
                         const checks: JQuery<HTMLElement> = jQuery('#episodes .slide_flex');
                         let promise: Promise<any>,
-                            update: boolean = false; // Flag pour l'update de l'affichage
+                            update = false; // Flag pour l'update de l'affichage
                         if (self.currentSeason.episodes && self.currentSeason.episodes.length > 0) {
                             promise = new Promise(resolve => resolve(self.currentSeason));
                         } else {
@@ -985,7 +1094,7 @@ export class Show extends Media implements implShow, implAddNote {
                             if (Base.debug) console.groupEnd();
                         });
                     },
-                    callback_no: function() {}
+                    callback_no: Base.noop
                 });
             });
         }
@@ -1004,7 +1113,7 @@ export class Show extends Media implements implShow, implAddNote {
                 <div class="label">A voir</div>
             </div>`;
         const toggleToSeeShow = (showId: number): boolean => {
-            let storeToSee = Base.gm_funcs.getValue('toSee', {});
+            const storeToSee = Base.gm_funcs.getValue('toSee', {});
             let toSee: boolean;
             if (storeToSee[showId] === undefined) {
                 storeToSee[showId] = true;
@@ -1034,7 +1143,7 @@ export class Show extends Media implements implShow, implAddNote {
             }
             $btn.blur();
         });
-        let toSee: Obj = Base.gm_funcs.getValue('toSee', {});
+        const toSee: Obj = Base.gm_funcs.getValue('toSee', {});
         if (toSee[this.id] !== undefined) {
             $btn.find('i.fa').css('color', 'var(--body_background)');
             $btn.attr('title', 'Retirer la série des séries à voir');
@@ -1046,7 +1155,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {void}
      */
     addEventBtnsArchiveAndFavoris(): void {
-        const _this = this;
+        const self = this;
         let $btnArchive = jQuery('#reactjs-show-actions button.btn-archive'),
             $btnFavoris = jQuery('#reactjs-show-actions button.btn-favoris');
         if ($btnArchive.length === 0 || $btnFavoris.length === 0) {
@@ -1072,14 +1181,14 @@ export class Show extends Media implements implShow, implAddNote {
                     if (Base.debug) console.groupEnd();
                 });
             }
-            if (! _this.isArchived()) {
+            if (! self.isArchived()) {
                 updateBtnArchive(
-                    _this.archive(), 'rotate(180deg)',
+                    self.archive(), 'rotate(180deg)',
                     'show.button.unarchive.label', 'Erreur d\'archivage de la série'
                 );
             } else {
                 updateBtnArchive(
-                    _this.unarchive(), 'rotate(0deg)',
+                    self.unarchive(), 'rotate(0deg)',
                     'show.button.archive.label', 'Erreur désarchivage de la série'
                 );
             }
@@ -1089,8 +1198,8 @@ export class Show extends Media implements implShow, implAddNote {
             e.stopPropagation();
             e.preventDefault();
             if (Base.debug) console.groupCollapsed('show-favoris');
-            if (! _this.isFavorite()) {
-                _this.favorite()
+            if (! self.isFavorite()) {
+                self.favorite()
                 .then(() => {
                     jQuery(e.currentTarget).children('span').replaceWith(`
                             <span class="svgContainer">
@@ -1104,7 +1213,7 @@ export class Show extends Media implements implShow, implAddNote {
                     if (Base.debug) console.groupEnd();
                 });
             } else {
-                _this.unfavorite()
+                self.unfavorite()
                 .then(() => {
                     $(e.currentTarget).children('span').replaceWith(`
                             <span class="svgContainer">
@@ -1127,7 +1236,7 @@ export class Show extends Media implements implShow, implAddNote {
         if (Base.debug) console.log('addRating');
 
         if (this.rating) {
-            let rating: Rating = Base.ratings[this.rating] !== undefined ? Base.ratings[this.rating] : null;
+            const rating: Rating = Base.ratings[this.rating] !== undefined ? Base.ratings[this.rating] : null;
             if (rating !== null) {
                 // On ajoute la classification
                 jQuery('.blockInformations__details')
@@ -1152,16 +1261,13 @@ export class Show extends Media implements implShow, implAddNote {
         this._currentSeason = seasonNumber - 1;
         return this;
     }
-
     /**
      * Retourne la saison courante
      * @return {Season}
      */
     public get currentSeason() : Season {
-
         return this.seasons[this._currentSeason];
     }
-
     /**
      * Retourne l'objet Season correspondant au numéro de saison fournit en paramètre
      * @param   {number} seasonNumber - Numéro de saison (base: 1)
@@ -1175,5 +1281,65 @@ export class Show extends Media implements implShow, implAddNote {
             }
         }
         return null;
+    }
+    /**
+     * Retourne une image, si disponible, en fonction du format désiré
+     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+     * @return {Promise<string>}                         L'URL de l'image
+     */
+    getDefaultImage(format: string = Images.formats.poster): Promise<string> {
+        const proxy = Base.serverBaseUrl + '/proxy/';
+        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
+            method: 'GET',
+            headers: {
+                'origin': 'https://www.betaseries.com',
+                'x-requested-with': ''
+            },
+            mode: 'cors',
+            cache: 'no-cache'
+        };
+        return new Promise((res, rej) => {
+            if (format === Images.formats.poster) {
+                if (this.images.poster) res(this.images.poster);
+                else {
+                    fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
+                    .then((resp: Response) => {
+                        if (resp.ok) {
+                            return resp.text();
+                        }
+                        return null;
+                    }).then(html => {
+                        if (html == null) {
+                            return rej('HTML error');
+                        }
+                        const parser = new DOMParser();
+                        const doc: Document = parser.parseFromString(html, 'text/html');
+                        const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_posters"]');
+                        res(link.href.replace('original', 'w500'));
+                    }).catch(err => rej(err));
+                }
+            }
+            else if (format === Images.formats.wide) {
+                if (this.images.show !== null) res(this.images.show);
+                else if(this.images.box !== null) res(this.images.box);
+                else {
+                    fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
+                    .then((resp: Response) => {
+                        if (resp.ok) {
+                            return resp.text();
+                        }
+                        return null;
+                    }).then(html => {
+                        if (html == null) {
+                            return rej('HTML error');
+                        }
+                        const parser = new DOMParser();
+                        const doc: Document = parser.parseFromString(html, 'text/html');
+                        const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_backgrounds"]');
+                        res(link.href.replace('original', 'w500'));
+                    }).catch(err => rej(err));
+                }
+            }
+        });
     }
 }
