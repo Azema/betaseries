@@ -40,7 +40,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-GZ5brEvssAR6vOYngyb2q286UybABbcbanNchf5zhNJmAR50zVhw57laR6+mHzh2';
+const sriBundle = 'sha384-H7XAVunTGGI9OWW5srUb9FAUwfcd6lPnPU30tOsQUBhZkReRgtjhsIV+Be6S7fHV';
 /************************************************************************************************/
 // @ts-check
 
@@ -209,27 +209,11 @@ const launchScript = function($) {
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
     // Objet contenant les scripts et feuilles de style utilisées par le userscript
     scriptsAndStyles = {
-        "moment": {
-            type: 'script',
-            id: 'jsmomment',
-            src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js',
-            integrity: 'sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==',
-            called: false,
-            loaded: false
-        },
         "renderjson": {
             type: 'script',
             id: 'renderjson',
             src: `${serverBaseUrl}/js/renderjson.min.js`,
-            integrity: 'sha384-f2Ps2OiwFSb967dVx/omVK8FWvrhCphtG32/jQNesV5FWtfVFbo1xj+GXCRnJJ33',
-            called: false,
-            loaded: false
-        },
-        "localefr": {
-            type: 'script',
-            id: 'jslocalefr',
-            src: 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/fr.min.js',
-            integrity: 'sha512-RAt2+PIRwJiyjWpzvvhKAG2LEdPpQhTgWfbEkFDCo8wC4rFYh5GQzJBVIFDswwaEDEYX16GEE/4fpeDNr7OIZw==',
+            integrity: 'sha384-/mHGJ/3gaDqVJCEeed/Uh1fJVO01E+CLBZrFqjv1REaFAZxEBvGMHQyBmwln/uhx',
             called: false,
             loaded: false
         },
@@ -263,7 +247,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-By4NZ4nj2k+cq44qVxxoWfIkmjYI9evsuTfjUgSszMjAw5uHo8E2Y1Kr2uM/s6iD',
+            integrity: 'sha384-f/XmsODx4ju+LHwh7kUC/lEHbSFVSCi9Nlm0csVZt1MzQpE8cQhu/O3htHzlS0zv',
             media: 'all',
             called: false,
             loaded: false
@@ -291,6 +275,30 @@ const launchScript = function($) {
             id: 'jstextcomplete',
             src: `${serverBaseUrl}/js/jquery.textcomplete.min.js`,
             integrity: 'sha384-kf6mqav/ZhBkPgNGorOiE7+/0GmfN9NDz0ov5G3fy6PuV/wqAggrTaWkTVfPM79L',
+            called: false,
+            loaded: false
+        },
+        "lazyload": {
+            type: 'script',
+            id: 'lazyload',
+            src: `${serverBaseUrl}/js/lazyload.min.js`,
+            integrity: 'sha384-DNnjTTTKGQNWXgozKOQHF7gtNJFW4tLuNwwlwLP+MBGaNBe2yRalc1v0ujwXNYKK',
+            called: false,
+            loaded: false
+        },
+        "jqueryuijs": {
+            type: 'script',
+            id: 'jqueryui-js',
+            src: 'https://code.jquery.com/ui/1.13.1/jquery-ui.js',
+            integrity: 'sha384-KUSBBRKMO05pX3xNidXAX5N1p4iNwntmhHY4iugl7mINOyOXFL4KZWceJtMj7M0A',
+            called: false,
+            loaded: false
+        },
+        "jqueryuicss": {
+            type: 'style',
+            id: 'jqueryui-css',
+            href: 'https://code.jquery.com/ui/1.13.1/themes/base/jquery-ui.css',
+            integrity: 'sha384-Wh/opNnCPQdVc7YXIh18hoqN6NYg40GBaO/GwQSwrIbAIo8uCeYri2DX2IisvVP6',
             called: false,
             loaded: false
         }
@@ -363,7 +371,13 @@ const launchScript = function($) {
             <div class="arrow"></div>
             <h3 class="popover-header"></h3>
             <div class="popover-body"></div>
-        </div>`;
+        </div>`,
+    optionsLazyload = {
+        root: null,
+        rootMargin: "50px 0px",
+        threshold: 0.01,
+        selector: '.js-lazy-image'
+    };
     // let indexCallLoad = 0;
     let timer, currentUser, cache, fnLazy, state = {},
         mainLogoMargins = {top: 0, bottom: 0},
@@ -378,6 +392,18 @@ const launchScript = function($) {
          * Initialisation du script
          */
         init: function() {
+            const $head = $('head');
+            $head.append(`<link rel="dns-prefetch" href="${new URL(serverOauthUrl).origin}">`);
+            $head.append(`<link rel="dns-prefetch" href="${new URL(serverBaseUrl).origin}">`);
+            $head.append(`<link rel="preconnect" href="${new URL(serverBaseUrl).origin}" crossorigin>`);
+            $head.append(`<link rel="dns-prefetch" href="${new URL(Base.api.url).origin}">`);
+            $head.append(`<link rel="preconnect" href="${new URL(Base.api.url).origin}" crossorigin>`);
+            /*let elt, link;
+            for (let key of Object.keys(scriptsAndStyles)) {
+                elt = scriptsAndStyles[key];
+                link = elt.type === 'script' ? elt.src : elt.href;
+                $head.append(`<link rel="preload" as="${elt.type}" crossorigin="anonymous" href="${link}" integrity="${elt.integrity}">`);
+            }*/
             $('#popup-bg').after('<div id="loader-bg" style="z-index: 2050;position: fixed;top: 50%;left: 50%;display: none;"><i class="fa fa-spinner fa-pulse fa-4x fa-fw"></i><span class="sr-only">Loading...</span></div>');
             // Ajout des feuilles de styles pour le userscript
             system.addScriptAndLink(['awesome', 'stylehome']);
@@ -428,26 +454,11 @@ const launchScript = function($) {
                     $('#reactjs-header-search .menu-item form .c4_c8').click(boundHandleScroll);
                 });
             });
-            if (typeof lazyLoad === 'undefined') {
-                let notLoop = 0;
-                let timerLazy = setInterval(function () {
-                    // Pour eviter une boucle infinie
-                    if (++notLoop >= 20) {
-                        clearInterval(timerLazy);
-                        // Ca ne fera pas le job, mais ça ne déclenchera pas d'erreur
-                        fnLazy = { init: function () { console.warn('fake lazyLoad'); } };
-                        return;
-                    }
-                    if (typeof lazyLoad !== 'undefined') {
-                        fnLazy = new lazyLoad({});
-                        clearInterval(timerLazy);
-                        timerLazy = null;
-                    }
-                }, 500);
-            }
-            else {
-                fnLazy = new lazyLoad({});
-            }
+            system.addScriptAndLink('lazyload', () => {
+                fnLazy = function() {
+                    $(optionsLazyload.selector).lazyload(optionsLazyload);
+                };
+            });
             /**
              * Permet d'ajouter des améliorations au menu de recherche du site
              */
@@ -788,6 +799,7 @@ const launchScript = function($) {
                         .find('button.close').click(this.close.bind(this));
                     this._dialog.find('.dialog-overlay').click(this.close.bind(this));
                     document.addEventListener("keydown", this._bindKeypress);
+                    $('#dialog-resource .js-lazy-image').lazyload(optionsLazyload);
                 },
                 _bindKeypress: function(e) {
                     e.stopPropagation();
@@ -806,6 +818,7 @@ const launchScript = function($) {
                     this._dialog.find('.dialog-overlay').off('click');
                     this._dialog.off('keypress');
                     document.removeEventListener("keydown", this._bindKeypress);
+                    this._dialog.find('style#temp').remove();
                 },
                 init: function() {
                     this._bindKeypress = this._bindKeypress.bind(this);
@@ -829,7 +842,7 @@ const launchScript = function($) {
                     this._dialog.find('.blockTitle').text(title);
                 },
                 addStyle: function(style) {
-                    this._dialog.find('style').append(style);
+                    this._dialog.find('style').after(`<style id="temp">${style}</style>`);
                 }
             }.init();
         },
@@ -933,31 +946,64 @@ const launchScript = function($) {
          * @return {void}
          */
         upgradeSynopsis: function() {
-            let $span = $('.blockInformations__synopsis span'), $btnMore = $('a.js-show-fulltext');
+            let $span = $('.blockInformations__synopsis span'),
+                $btnMore = $('a.js-show-fulltext');
             if ($btnMore.length <= 0) {
                 return;
+            } else {
+                const $btn = $btnMore.clone(false);
+                $btn.removeClass('js-show-fulltext').addClass('js-show-full');
+                $btnMore.remove();
+                $span.before($btn);
+                $btnMore = $('a.js-show-full');
             }
             // On ajoute le bouton Moins et son event click
-            $span.append('<button role="button" class="u-colorWhiteOpacity05 js-show-truncatetext textTransformUpperCase cursorPointer"></button>');
-            const $btnLess = $('button.js-show-truncatetext');
-            $btnLess.click((e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                if ($span.hasClass('sr-only')) return;
-                // Toggle display synopsis
-                $btnMore.show();
-                $span.addClass('sr-only');
-            });
-            // On remplace le lien Plus par un bouton
-            $btnMore.replaceWith('<button role="button" class="u-colorWhiteOpacity05 js-show-fulltext textTransformUpperCase cursorPointer"></button>');
-            $btnMore = $('button.js-show-fulltext');
-            $btnMore.on('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                if (!$span.hasClass('sr-only')) return;
-                $btnMore.hide();
-                $span.removeClass('sr-only');
-            });
+            //$span.append('<button role="button" class="u-colorWhiteOpacity05 js-show-truncatetext textTransformUpperCase cursorPointer"></button>');
+            let $paraSynopsis = $('.blockInformations__synopsis');
+            if ($paraSynopsis.length > 1) {
+                if ($paraSynopsis.first().text().trim().length <= 0) {
+                    $paraSynopsis.first().hide();
+                }
+                $paraSynopsis = $paraSynopsis.last();
+            }
+            $paraSynopsis
+                .before('<style>a[role="button"].js-show-full:before {content: " …"}</style>')
+                .prop('title', 'Afficher la totalité de la description')
+                .click((e) => {
+                    e.stopPropagation();
+                    if ($span.hasClass('sr-only')) {
+                        $span.removeClass('sr-only');
+                        $btnMore.hide();
+                        $paraSynopsis.prop('title', 'Tronquer la description');
+                    } else {
+                        $span.addClass('sr-only');
+                        $btnMore.show();
+                        $paraSynopsis.prop('title', 'Afficher la totalité de la description');
+                    }
+                })
+                .css('cursor', 'pointer');
+        },
+        /**
+         * Vérifie la présence de l'affiche du média
+         * @param  {Media} res L'objet Media principal
+         * @return {void}
+         */
+        checkPoster: function(res) {
+            const $poster = $('.blockInformations__poster img');
+            if ($poster.length <= 0) {
+                res.getDefaultImage('poster').then(img => {
+                    /*
+                    <img class="displayBlock objectFitCover" src="" width="300" height="450" alt="">
+                     */
+                    res.elt.find('div.block404').replaceWith(`
+                        <img class="displayBlock objectFitCover"
+                                width="300"
+                                height="450"
+                                alt="Affiche de la série ${res.title}"
+                                src="${img}" />`
+                    );
+                });
+            }
         },
         /**
          * Patiente le temps du chargment des saisons et des épisodes
@@ -1251,6 +1297,17 @@ const launchScript = function($) {
                 } else if (event.detail.name === EventTypes.UNARCHIVE) {
                     objUpAuto.launch();
                 }
+                res.getDefaultImage('wide').then(defImgShow => {
+                    let onerror = null;
+                    if (defImgShow != null) {
+                        onerror = (err, elt, url, attr) => {
+                            elt.classList.add("js-lazy-image-handled");
+                            elt[attr] = defImgShow;
+                            elt.classList.add("fade-in");
+                        };
+                    }
+                    $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
+                });
             };
             res.addListener(EventTypes.UPDATE, updateAuto);
             res.addListener(EventTypes.ARCHIVE, updateAuto);
@@ -1354,6 +1411,19 @@ const launchScript = function($) {
                                     .popover('show');
                             }
                         );
+                        res.getDefaultImage('wide').then(defImgShow => {
+                            let onerror = null;
+                            if (defImgShow != null) {
+                                onerror = (err, elt, url, attr) => {
+                                    console.log('lazyLoad error URL: ', defImgShow);
+                                    elt.classList.add("js-lazy-image-handled");
+                                    elt[attr] = defImgShow;
+                                    elt.classList.add("fade-in");
+                                    // console.log('lazyload onerror show', elt, res.images.show, attr);
+                                };
+                            }
+                            $('#episodes .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
+                        });
                     });
                 });
                 // Ajouter un bouton de mise à jour des épisodes de la saison courante
@@ -1405,7 +1475,7 @@ const launchScript = function($) {
                                 res.currentSeason.updateRender();
                                 res.update(true).then(() => {
                                     self.addClass('finish');
-                                    fnLazy.init(); // On affiche les images lazyload
+                                    fnLazy(); // On affiche les images lazyload
                                     if (Base.debug) console.groupEnd(); // On clos le groupe de console
                                 }, err => {
                                     system.notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
@@ -1462,6 +1532,7 @@ const launchScript = function($) {
                 if ($btn.hasClass('btn--grey')) {
                     typeBtn = 'hide';
                 }
+                if (debug) console.log('upgradeSeasonsActions typeBtn: %s', typeBtn);
                 const seasonNum = parseInt($btn.parents('.dropdown-menu').siblings('.slide__title').text().match(/\d+/).shift(), 10);
                 res.seasons[seasonNum-1].fetchEpisodes().then(season => {
                     season[typeBtn]();
@@ -1971,7 +2042,7 @@ const launchScript = function($) {
                 }
             };
             $('#comments .slide__comment').off('click');
-            system.addScriptAndLink(['moment', 'localefr', 'textcomplete'], eventComments);
+            system.addScriptAndLink(['textcomplete'], eventComments);
             const evaluations = function() {
                 if (debug) console.log('evaluations');
                 res.comments.showEvaluations().then((template) => {
@@ -2123,6 +2194,8 @@ const launchScript = function($) {
                     }
                 });
             });
+            // On active les menus dropdown
+            $('.blockInformations .dropdown-toggle').dropdown();
         },
         /**
          * Ajoute un bouton pour le dev pour afficher les données de la ressource
@@ -2181,18 +2254,21 @@ const launchScript = function($) {
                 Show.fetchMulti(Object.keys(toSee)).then(shows => {
                     let template = '<div id="annuaire-list" class="gridSeries">';
                     for (let s = 0; s < shows.length; s++) {
+                        let img = (shows[s].images.poster != null) ? shows[s].images.poster : (shows[s].images.show != null) ? shows[s].images.show : shows[s].images.box;
                         template += `
                         <a class="show-link" href="${shows[s].resource_url}">
                             <div class="blockSearch greyBorder blogThumbnailShowContainer mainBlock position-relative">
                                 <div class="media" data-show-id="${shows[s].id}">
                                     <div class="media-left">
-                                        <img src="${shows[s].images.poster}" alt="${shows[s].title}" width="119" height="174">
+                                        <img class="js-lazy-image" data-src="${img}" alt="Affiche de la série ${shows[s].title}" width="119" height="174">
                                     </div>
                                     <div class="media-body" style="height:174px;position:relative;">
                                         <div class="remove" style="">
                                             <span aria-hidden="true">&times;</span>
                                         </div>
-                                        <div class="thumbnailSearchTitle mainLink">${shows[s].title}</div>
+                                        <div class="thumbnailSearchTitle mainLink"><span class="showTitle">${shows[s].title}</span>
+                                            <i class="fa fa-clipboard" aria-hidden="true" title="Copier le titre"></i>
+                                        </div>
                                         <p class="genre-result-search">${shows[s].genres.join(', ')}</p>
                                         <div class="info-result-search">
                                             <p style="min-width: fit-content;">${shows[s].nbEpisodes} Épisodes</p>
@@ -2235,6 +2311,10 @@ const launchScript = function($) {
                         #annuaire-list .blockSearch .media .remove:hover {
                             color: var(--default_color);
                         }
+                        #annuaire-list .fa-clipboard,
+                        #annuaire-list .fa-check-square-o {
+                            margin-left: 5px;
+                        }
                     `);
                     $('#annuaire-list .blockSearch .media .remove').click(e => {
                         e.stopPropagation();
@@ -2245,9 +2325,204 @@ const launchScript = function($) {
                         $btn.off('click');
                         $btn.parents('.show-link').remove();
                     });
+                    $('#annuaire-list .fa-clipboard').click(e => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const $clip = $(e.currentTarget);
+                        const $title = $clip.siblings('.showTitle');
+                        navigator.clipboard.writeText($title.text()).then(() => {
+                            $clip.fadeOut().removeClass('fa-clipboard').addClass('fa-check-square-o').fadeIn();
+                            setTimeout(() => {
+                                if ($clip.is(':visible'))
+                                    $clip.fadeOut().removeClass('fa-check-square-o').addClass('fa-clipboard').fadeIn();
+                            }, 2000);
+                        }).catch(() => {
+                            console.warn('Erreur de copy dans le clipboard');
+                        })
+                    });
                     dialog.show();
                 });
             });
+        },
+        proposePlatform: function(res) {
+            system.addScriptAndLink(['jqueryuijs', 'jqueryuicss'], () => {
+                let template = `
+                    <style>
+                        /* select with custom icons */
+                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item-wrapper {
+                          padding: 0.5em 0 0.5em 3em;
+                        }
+                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .ui-icon,
+                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .fa {
+                            height: 24px;
+                            width: 24px;
+                            position: absolute;
+                            top: 0;
+                            bottom: 0;
+                            margin: auto 0;
+                        }
+                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .ui-icon {
+                            top: 0.1em;
+                            left: 0.4em;
+                        }
+                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .fa {
+                            left: 0.2em;
+                        }
+                        .ui-selectmenu-menu.ui-front.ui-selectmenu-open {
+                            z-index: 2050;
+                        }
+                        #platform-menu {
+                            height: 350px;
+                            overflow-y: scroll;
+                        }
+                        #platform-button {
+                            display: block;
+                            width: 100%;
+                        }
+                        .ui-menu-item .ui-icon-play {
+                            background-position: 3px -156px;
+                        }
+                    </style>
+                    <form class="form-middle" method="POST" action="">
+                        <fieldset>
+                            <p>Veuillez sélectionner la plateforme ci-dessous et indiquer le lien d'accès la série sur cette plateforme.</p>
+                            <div>
+                                <label for="platform_type">Type plateforme</label>
+                                <select class="form-control" name="platformType" id="platform_type" required>
+                                    <option value=""></option>
+                                    <option value="svod">SVOD</option>
+                                    <option value="vod">VOD</option>
+                                </select>
+                                <label for="platform">Plateforme</label>
+                                <select class="form-control" name="platformId" id="platform" required></select>
+                                <label for="link">Lien vers la page de la série</label>
+                                <input class="form-control" type="url" name="mediaLink" id="link" placeholer="URL de la page de la série" required/>
+                            </div>
+                            <div class="button-set">
+                                <button class="js-close-popupalert btn-reset btn-btn btn-blue2" type="submit" id="popupalertyes">Proposer</button>
+                                <button class="js-close-popupalert btn-reset btn-btn btn-grey" type="button" id="popupalertno">Annuler</button>
+                            </div>
+                        </fieldset>
+                        <input type="hidden" name="mediaId" value="${res.id}">
+                        <input type="hidden" name="mediaType" value="show">
+                    </form>`;
+                $('.blockInformations__action .dropdown-menu.header-navigation[aria-labelledby="dropdownOptions"]')
+                    .append('<a class="header-navigation-item" href="javascript:;" id="proposePlatform">Proposer une plateforme</a>');
+                let pList = null;
+                $.widget( "custom.iconselectmenu", $.ui.selectmenu, {
+                    _renderItem: function( ul, item ) {
+                        const li = $( "<li>" ),
+                              wrapper = $( "<div>", { text: item.label } );
+
+                        if ( item.disabled ) {
+                            li.addClass( "ui-state-disabled" );
+                        }
+
+                        $(`<img data-src="${item.element.attr('data-src')}" class="js-lazy-image ui-icon">`)
+                            .appendTo( wrapper );
+
+                        return li.append( wrapper ).appendTo( ul );
+                    },
+                    _resizeMenu: function() {
+                        const clientRect = document.getElementById('platform-button').getBoundingClientRect();
+                        const size = window.innerHeight - (clientRect.y + clientRect.height);
+                        console.log('_resizeMenu', size);
+                        this.menu.height(size);
+                        this.menu.width(clientRect.width);
+                    }
+                });
+                const renderOptions = function(platformList, type, $platforms, res) {
+                    let exclude = new Array();
+                    const types = {svod: 'svods', vod: 'vod'};
+                    if (Object.keys(types).indexOf(type) >= 0) {
+                        exclude = res.platforms[types[type]].map(elt => elt.id);
+                    }
+                    $platforms.append(platformList.renderHtmlOptions(type, exclude));
+                    if ($('#platform-button').length <= 0) {
+                        $platforms
+                            .iconselectmenu({
+                                open: function(e, ui) {
+                                    console.log('iconselectmenuopen');
+                                    const onerror = (err, elt, url, attr) => {
+                                        //console.log('lazyLoad error URL: ', defImgShow);
+                                        $(elt).replaceWith('<i class="fa fa-youtube-play fa-2x" aria-hidden="true"></i>');
+                                        // console.log('lazyload onerror show', elt, res.images.show, attr);
+                                    };
+                                    $('#platform-menu .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
+                                    //calculHeightList();
+                                }
+                            })
+                            .iconselectmenu( "menuWidget" )
+                            .addClass( "ui-menu-icons customicons" );
+                    } else {
+                        $platforms.iconselectmenu( 'refresh' );
+                    }
+                    // Calcul de la taille de la liste
+                    const calculHeightList = function() {
+                        const clientRect = document.getElementById('platform-button').getBoundingClientRect();
+                        const size = window.innerHeight - (clientRect.y + clientRect.height);
+                        document.getElementById('platform-menu').style.height = size.toString() + 'px';
+                    };
+                    /*window.addEventListener('resize', function(event) {
+                        calculHeightList();
+                    }, true);*/
+                };
+                $('#proposePlatform').click((e) => {
+                    e.stopPropagation();
+                    const popup = new PopupAlert({
+                        title: `Proposer une plateforme pour la série`,
+                        contentHtml: template,
+                        yes: false,
+                        no: false,
+                        showClose: true,
+                        callback: function() {
+                            // console.log('callback PopupAlert');
+                            $('#platform_type').change((e) => {
+                                // console.log('platform_type change', e);
+                                let type = $('#platform_type option:selected').val();
+                                const $platforms = $('#platform');
+                                $platforms.empty();
+                                if (pList == null) {
+                                    PlatformList.fetchPlatforms().then((platformList) => {
+                                        pList = platformList;
+                                        renderOptions(pList, type, $platforms, res);
+                                    });
+                                } else {
+                                    renderOptions(pList, type, $platforms, res);
+                                }
+                            });
+                            $( "form.form-middle" ).on( "submit", function( event ) {
+                                event.preventDefault();
+                                console.log( $( this ).serializeArray() );
+                                popup.closePopin();
+                            });
+                            $('button.js-close-popupalert[type="button"]').click(popup.closePopin);
+                        }
+                    });
+                    popup.yes.style.display = 'none';
+                    popup.launchCallback();
+                });
+            });
+        },
+        checkNextEpisode: function(res) {
+            const $nextEpisode = $('.blockInformations .blockNextEpisode');
+            if ($nextEpisode.find('.media-left .block404')) {
+                res.updateNextEpisode(() => {
+                    res.getDefaultImage('wide').then(defImgShow => {
+                        let onerror = null;
+                        if (defImgShow != null) {
+                            onerror = (err, elt, url, attr) => {
+                                // console.log('lazyLoad error URL: ', defImgShow);
+                                elt.classList.add("js-lazy-image-handled");
+                                elt[attr] = defImgShow;
+                                elt.classList.add("fade-in");
+                                // console.log('lazyload onerror show', elt, res.images.show, attr);
+                            };
+                        }
+                        $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
+                    });
+                });
+            }
         }
     };
     const members = {
@@ -2568,18 +2843,21 @@ const launchScript = function($) {
                 dialog.setCounter(Base.counter.toString());
                 dialog.setTitle('10 dernières séries vues');
                 dialog.show();
-                Show.fetchLastSeen().then(shows => {
+                Show.fetchLastSeen().then(async (shows) => {
                     let template = '<div id="annuaire-list" class="gridSeries">';
                     for (let s = 0; s < shows.length; s++) {
+                        let img = await shows[s].getDefaultImage('poster');
                         template += `
                         <a class="show-link" href="${shows[s].resource_url}">
                             <div class="blockSearch greyBorder blogThumbnailShowContainer mainBlock position-relative">
                                 <div class="media" data-show-id="${shows[s].id}">
                                     <div class="media-left">
-                                        <img src="${shows[s].images.poster}" alt="${shows[s].title}" width="119" height="174">
+                                        <img class="js-lazy-image" data-src="${img}" alt="Affiche de la série ${shows[s].title}" />
                                     </div>
                                     <div class="media-body" style="height:174px;position:relative;">
-                                        <div class="thumbnailSearchTitle mainLink">${shows[s].title}</div>
+                                        <div class="thumbnailSearchTitle mainLink"><span class="showTitle">${shows[s].title}</span>
+                                            <i class="fa fa-clipboard" aria-hidden="true" title="Copier le titre"></i>
+                                        </div>
                                         <p class="genre-result-search">${shows[s].genres.join(', ')}</p>
                                         <div class="info-result-search">
                                             <p style="min-width: fit-content;">${shows[s].nbEpisodes} Épisodes</p>
@@ -2619,7 +2897,34 @@ const launchScript = function($) {
                         #annuaire-list .blockSearch .media .remove:hover {
                             color: var(--default_color);
                         }
+                        #annuaire-list .fa-clipboard,
+                        #annuaire-list .fa-check-square-o {
+                            margin-left: 5px;
+                        }
+                        #annuaire-list .media-left {
+                            max-width: 119px;
+                        }
+                        #annuaire-list .media-left img {
+                            width: 119px;
+                            height = 174px;
+                            aspect-ratio: auto 119 / 174;
+                        }
                     `);
+                    $('#annuaire-list .fa-clipboard').click(e => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const $clip = $(e.currentTarget);
+                        const $title = $clip.siblings('.showTitle');
+                        navigator.clipboard.writeText($title.text()).then(() => {
+                            $clip.fadeOut().removeClass('fa-clipboard').addClass('fa-check-square-o').fadeIn();
+                            setTimeout(() => {
+                                if ($clip.is(':visible'))
+                                    $clip.fadeOut().removeClass('fa-check-square-o').addClass('fa-clipboard').fadeIn();
+                            }, 2000);
+                        }).catch(() => {
+                            console.warn('Erreur de copy dans le clipboard');
+                        })
+                    });
                     //dialog.show();
                 });
              })
@@ -2748,7 +3053,6 @@ const launchScript = function($) {
                       <img src="${serverBaseUrl}/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
                     </div>
                 `);
-                system.addScriptAndLink(['moment', 'localefr']);
                 $('.updateEpisodes').click((e) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -2766,70 +3070,67 @@ const launchScript = function($) {
                     };
                     Media.callApi('GET', 'episodes', 'list', params)
                     .then((data) => {
-                        system.waitPresent(() => { return typeof moment === 'function'}, () => {
-                            // moment.locale('fr');
-                            let newShowIds = {}, show;
-                            if (Base.debug) console.log('updateAgenda updateEpisodes', data);
-                            for (let s = 0; s < data.shows.length; s++) {
-                                show = data.shows[s];
-                                newShowIds[show.id] = { code: show.unseen[0].code.toLowerCase() };
-                                if (currentShowIds[show.id] === undefined) {
-                                    if (Base.debug) console.log('Une nouvelle série est arrivée', show);
-                                    // Il s'agit d'une nouvelle série
-                                    // TODO Ajouter un nouveau container
-                                    let newContainer = $(buildContainer(show.unseen[0]));
-                                    renderNote(show.unseen[0].note.mean, newContainer);
-                                    $($containersEpisode.get(s)).parent().after(newContainer);
-                                }
+                        let newShowIds = {}, show;
+                        if (Base.debug) console.log('updateAgenda updateEpisodes', data);
+                        for (let s = 0; s < data.shows.length; s++) {
+                            show = data.shows[s];
+                            newShowIds[show.id] = { code: show.unseen[0].code.toLowerCase() };
+                            if (currentShowIds[show.id] === undefined) {
+                                if (Base.debug) console.log('Une nouvelle série est arrivée', show);
+                                // Il s'agit d'une nouvelle série
+                                // TODO Ajouter un nouveau container
+                                let newContainer = $(buildContainer(show.unseen[0]));
+                                renderNote(show.unseen[0].note.mean, newContainer);
+                                $($containersEpisode.get(s)).parent().after(newContainer);
                             }
-                            if (Base.debug) console.log('Iteration principale');
-                            let container, unseen;
-                            // Itération principale sur les containers
-                            for (let e = 0; e < len; e++) {
-                                container = $($containersEpisode.get(e));
-                                unseen = null;
-                                // Si la serie n'est plus dans la liste
-                                if (newShowIds[container.data('showId')] === undefined) {
-                                    if (Base.debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
-                                    container.parent().remove();
-                                    continue;
-                                }
-                                if (container.data('showId') == data.shows[e].id) {
-                                    unseen = data.shows[e].unseen[0];
-                                }
-                                else {
-                                    for (let u = 0; u < len; u++) {
-                                        if (container.data('showId') == data.shows[u].id) {
-                                            unseen = data.shows[u].unseen[0];
-                                            break;
-                                        }
+                        }
+                        if (Base.debug) console.log('Iteration principale');
+                        let container, unseen;
+                        // Itération principale sur les containers
+                        for (let e = 0; e < len; e++) {
+                            container = $($containersEpisode.get(e));
+                            unseen = null;
+                            // Si la serie n'est plus dans la liste
+                            if (newShowIds[container.data('showId')] === undefined) {
+                                if (Base.debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
+                                container.parent().remove();
+                                continue;
+                            }
+                            if (container.data('showId') == data.shows[e].id) {
+                                unseen = data.shows[e].unseen[0];
+                            }
+                            else {
+                                for (let u = 0; u < len; u++) {
+                                    if (container.data('showId') == data.shows[u].id) {
+                                        unseen = data.shows[u].unseen[0];
+                                        break;
                                     }
                                 }
-                                if (unseen && container.data('code') !== unseen.code.toLowerCase()) {
-                                    if (Base.debug) console.log('Episode à mettre à jour', unseen);
-                                    // Mettre à jour l'épisode
-                                    let mainLink = $('a.mainLink', container), text = unseen.code + ' - ' + unseen.title;
-                                    // On met à jour le titre et le lien de l'épisode
-                                    mainLink.attr('href', mainLink.attr('href').replace(/s\d{2}e\d{2}/, unseen.code.toLowerCase()));
-                                    mainLink.attr('title', `Accéder à la fiche de l'épisode ${text}`);
-                                    mainLink.text(text);
-                                    // On met à jour la date de sortie
-                                    $('.date .mainTime', container).text(moment(unseen.date).format('D MMMM YYYY'));
-                                    // On met à jour la synopsis
-                                    $('.m_s p.m_ay', container).html(unseen.description);
-                                    // On met à jour la barre de progression
-                                    $('.media-left > .m_ab > .m_ag', container).css('width', String(unseen.show.progress) + '%');
-                                    // On met à jour la note
-                                    renderNote(unseen.note.mean, container);
-                                }
-                                else {
-                                    console.log('Episode Show unchanged', unseen);
-                                }
                             }
-                            fnLazy.init();
-                            self.addClass('finish');
-                            if (Base.debug) console.groupEnd();
-                        }, 30, 500);
+                            if (unseen && container.data('code') !== unseen.code.toLowerCase()) {
+                                if (Base.debug) console.log('Episode à mettre à jour', unseen);
+                                // Mettre à jour l'épisode
+                                let mainLink = $('a.mainLink', container), text = unseen.code + ' - ' + unseen.title;
+                                // On met à jour le titre et le lien de l'épisode
+                                mainLink.attr('href', mainLink.attr('href').replace(/s\d{2}e\d{2}/, unseen.code.toLowerCase()));
+                                mainLink.attr('title', `Accéder à la fiche de l'épisode ${text}`);
+                                mainLink.text(text);
+                                // On met à jour la date de sortie
+                                $('.date .mainTime', container).text(unseen.date.format('dd mmmm yyyy'));
+                                // On met à jour la synopsis
+                                $('.m_s p.m_ay', container).html(unseen.description);
+                                // On met à jour la barre de progression
+                                $('.media-left > .m_ab > .m_ag', container).css('width', String(unseen.show.progress) + '%');
+                                // On met à jour la note
+                                renderNote(unseen.note.mean, container);
+                            }
+                            else {
+                                console.log('Episode Show unchanged', unseen);
+                            }
+                        }
+                        fnLazy();
+                        self.addClass('finish');
+                        if (Base.debug) console.groupEnd();
                     }, (err) => {
                         system.notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
                         if (Base.debug) console.groupEnd();
@@ -2880,7 +3181,7 @@ const launchScript = function($) {
                           </a>
                           <a class="a6_bp a6_ak mainLink displayBlock nd" href="${unseen.resource_url}" title="${trans("agenda.episodes_watch.episode_link_title", { code: unseen.code.toUpperCase(), title: unseen.title })}">${unseen.code.toUpperCase()} - ${unseen.title}</a>
                           <div class="date displayFlex a6_bv">
-                            <time class="mainTime">${moment(unseen.date).format('D MMMM YYYY')}</time>
+                            <time class="mainTime">${unseen.date.format('dd mmmm yyyy')}</time>
                             <span class="stars" title=""></span>
                           </div>
                         </div>
@@ -2998,7 +3299,7 @@ const launchScript = function($) {
                               </div>
                               <div class="ComponentLang" style="border: 1px solid currentcolor; border-radius: 4px; color: rgb(51, 51, 51); flex-shrink: 0; font-size: 10px; font-weight: 700; height: 18px; line-height: 17px; margin: 0px 10px 0px 5px; min-width: 22px; padding: 0px 3px; text-align: center;">${subtitle.language}</div>
                               <div class="minWidth0" style="flex-grow: 1;">
-                                <a href="${subtitle.url}" class="displayBlock mainLink nd" title="Provenance : ${subtitle.source} / ${subtitle.file} / Ajouté le ${moment(subtitle.date).format('DD/MM/YYYY')}" style="max-width: 365px; margin: 0px; font-size: 12px;">
+                                <a href="${subtitle.url}" class="displayBlock mainLink nd" title="Provenance : ${subtitle.source} / ${subtitle.file} / Ajouté le ${subtitle.date.format('dd/mm/yyyy')}" style="max-width: 365px; margin: 0px; font-size: 12px;">
                                   ${ellipsisSubtitles(subtitle)}
                                 </a>
                               </div>
@@ -3081,6 +3382,8 @@ const launchScript = function($) {
             });
             // Listener sur la liste des méthodes
             $('#method').on('change', () => {
+                $('#result').hide();
+                $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
                 // On supprime tous les paramètres existants
                 $('#api-params .remove').remove();
                 $('#doc').empty();
@@ -3281,7 +3584,7 @@ const launchScript = function($) {
          * et des films lors du survol des liens dans les articles
          */
         addPopupOnLinks: function() {
-            system.addScriptAndLink(['popover', 'bootstrap', 'moment', 'localefr'], () => {
+            system.addScriptAndLink(['popover', 'bootstrap'], () => {
                 system.waitDomPresent('.blogArticleMain .blogArticleContent a', () => {
                     const $article = $('.blogArticleMain .blogArticleContent');
                     let $links = $article.find('a');
@@ -3343,7 +3646,7 @@ const launchScript = function($) {
                                                 ${movie.title} ${movie.user.status === 1 ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
                                             </div>
                                             <div class="display">
-                                                <time class="mainTime" datetime="${moment(movie.release_date).format('YYYY-MM-DD')}">${moment(movie.release_date).format('DD MMMM YYYY')}</time>
+                                                <time class="mainTime" datetime="${movie.release_date.format('yyyy-mm-dd')}">${movie.release_date.format('dd mmmm yyyy')}</time>
                                                 <div class="stars" title="${movie.objNote.total} votes: ${movie.objNote.mean.toFixed(2)} / 5">${Note.renderStars(movie.objNote.mean)}</div>
                                             </div>
                                             <div>${movie.description.substring(0, 150)}...</div>
@@ -3454,6 +3757,7 @@ const launchScript = function($) {
             members.lastSeen();
             medias.replaceVoteFn(objRes);
             if (/^\/serie\//.test(url)) {
+                medias.checkPoster(objRes);
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 // .blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)
                 $('.blockInformations .blockInformations__action .dropdown-menu a.header-navigation-item')
@@ -3461,13 +3765,15 @@ const launchScript = function($) {
                 // On ajoute la gestion des épisodes
                 medias.waitSeasonsAndEpisodesLoaded(() => medias.upgradeEpisodes(objRes));
                 medias.upgradeSeasonsActions(objRes);
+                medias.proposePlatform(objRes);
+                medias.checkNextEpisode(objRes);
             }
             else if (/^\/film\//.test(url)) {
                 medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
             }
         });
     }
-    // Fonctions appeler pour la page de gestion des series
+    // Fonctions appeler pour la page de gestion des series du membre
     else if (/^\/membre\/.*\/series$/.test(url)) {
         members.addStatusToGestionSeries().then((shows) => {
             Base.shows = shows;
@@ -3476,7 +3782,7 @@ const launchScript = function($) {
         medias.addBtnToSee();
         members.lastSeen();
     }
-    // Fonctions appeler sur la page des membres
+    // Fonctions appeler sur les pages des membres
     else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && system.userIdentified()) {
         system.waitPresent(() => { return typeof user !== 'undefined'; }, () => {
             if (debug) console.log('regexUser OK');
@@ -3500,7 +3806,7 @@ const launchScript = function($) {
         medias.addBtnToSee();
         members.lastSeen();
     }
-    // Fonctions appeler sur les pages des méthodes de l'API
+    // Fonctions appeler sur les pages de documentation de l'API
     else if (/^\/api/.test(url)) {
         if (/\/methodes/.test(url)) {
             api.sommaireDevApi();
@@ -3509,7 +3815,7 @@ const launchScript = function($) {
             api.updateApiConsole();
         }
     }
-    // Fonctions appeler sur les pages des séries
+    // Fonctions appeler sur la page de recherche des séries
     else if (/^\/series\//.test(url)) {
         if (Base.debug) console.log('Page des séries');
         system.waitPagination();
@@ -3520,7 +3826,7 @@ const launchScript = function($) {
         medias.addBtnToSee();
         members.lastSeen();
     }
-    // Fonctions appeler sur les pages des films
+    // Fonctions appeler sur la page de recherche des films
     else if (/^\/films\//.test(url)) {
         if (debug) console.log('Pages des films');
         system.waitPagination();
