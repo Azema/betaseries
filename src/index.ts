@@ -12,7 +12,7 @@ import { Similar } from "./Similar";
  * @returns {Show}
  * @override
  */
- Show.prototype.fill = function(data: Obj): Show {
+Show.prototype.fill = function(data: Obj): Show {
     this.aliases = data.aliases;
     this.creation = data.creation;
     this.country = data.country;
@@ -26,9 +26,9 @@ import { Similar } from "./Similar";
     this.next_trailer_host = data.next_trailer_host;
     this.rating = data.rating;
     this.platforms = null;
-    if (data.platforms !== undefined && data.platforms != null) {
+    // if (data.platforms !== undefined && data.platforms != null) {
         this.platforms = new Platforms(data.platforms);
-    }
+    // }
     if (this.id == null && this.seasons == null) {
         this.seasons = new Array(parseInt(data.seasons, 10));
         for (let s = 0; s < data.seasons_details.length; s++) {
