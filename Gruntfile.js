@@ -188,30 +188,62 @@ module.exports = function(grunt) {
         connect: {
             server: {
                 options: {
-                    protocol: 'http',
+                    protocol: 'https',
+                    key: grunt.file.read('./ssl/RootCA.key').toString(),
+                    cert: grunt.file.read('./ssl/RootCA.crt').toString(),
+                    ca: grunt.file.read('./ssl/RootCA.pem').toString(),
                     port: 9001,
                     hostname: 'localhost',
-                    base: '<%= paths.oauth %>',
+                    base: {
+                        path: '<%= paths.oauth %>',
+                        options: {
+                            cacheControl: true,
+                            dotfiles: 'deny',
+                            etag: true,
+                            lastModified: true,
+                            maxAge: '1d'
+                        }
+                    },
                     debug: true,
                     keepalive: true,
                     // remove next from params
                     middleware: function(connect, options, middlewares) {
                         // inject a custom middleware into the array of default middlewares
+                        // Middleware PROXY
                         middlewares.unshift(function(req, res, next) {
-                            const url = /\?.*/.test(req.url) ? req.url.replace(/\?.*/, '') : req.url;
-                            if (!/.(css|js|png|jpg|jpeg|gif|webp)$/.test(url)) {
-                                console.log('URL is not static: %s', req.url);
+                            if (!/^\/proxy\//.test(req.url)) {
+                                // console.log('URL is not proxy');
                                 return next();
                             }
-                            res.setHeader('Access-Control-Allow-Origin', '*');
-                            res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-                            res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-                            // don't just call next() return it
-                            return next();
+                            console.log('Middleware proxy', req.url);
+                            const { createProxyMiddleware } = require('http-proxy-middleware');
+                            const options = {
+                                target: 'http://51.254.211.202:8081/',
+                                changeOrigin: false,
+                                pathRewrite: {'^/proxy' : ''},
+                                logLevel: 'debug'
+                            };
+                            const apiProxy = createProxyMiddleware('/proxy', options);
+                            apiProxy(req, res, next);
                         });
+                        // Middleware CORS
+                        middlewares.unshift(function(req, res, next) {
+                            // console.log('allowingCrossDomain');
+                            res.setHeader('Access-Control-Allow-Origin', 'https://www.betaseries.com');
+                            res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+                            res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, Authorization, X-Mindflash-SessionID');
+                            res.setHeader('Access-Control-Allow-Private-Network', 'true');
+                            res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-                        // add other middlewares here
-                        // connect.static(require('path').resolve('<%= paths.oauth %>'));
+                            // intercept OPTIONS method
+                            if ('OPTIONS' == req.method) {
+                                res.statusCode = 200;
+                                res.end();
+                            }
+                            else {
+                                next();
+                            }
+                        });
                         return middlewares;
                     }
                 }
