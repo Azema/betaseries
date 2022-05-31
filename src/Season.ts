@@ -13,6 +13,7 @@ export class Season {
      * @type {Array<Episode>} Tableau des épisodes de la saison
      */
     episodes: Array<Episode>;
+    nbEpisodes: number;
     /**
      * @type {boolean} Possède des sous-titres
      */
@@ -56,6 +57,8 @@ export class Season {
         this._elt = jQuery(`#seasons .slides_flex .slide_flex:nth-child(${this.number.toString()})`);
         if (data.episodes && data.episodes instanceof Array && data.episodes[0] instanceof Episode) {
             this.episodes = data.episodes;
+        } else if (data.episodes && typeof data.episodes === 'number') {
+            this.nbEpisodes = data.episodes;
         }
         return this;
     }
@@ -150,6 +153,8 @@ export class Season {
      */
     getNbEpisodesUnwatched(): number {
         let nbEpisodes = 0;
+        if (this.episodes.length <= 0 && ! this.seen) return this.nbEpisodes;
+        else if (this.episodes.length <= 0 || this.hidden) return 0;
         for (let e = 0; e < this.episodes.length; e++) {
             if (! this.episodes[e].user.seen) nbEpisodes++;
         }
