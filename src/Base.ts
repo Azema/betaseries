@@ -53,6 +53,8 @@ export type GM_funcs = {
 export type Obj = {
     [key: string]: any;
 };
+export type Callback = () => void;
+
 export abstract class Base implements implAddNote {
     /*
                     STATIC
@@ -81,10 +83,10 @@ export abstract class Base implements implAddNote {
                 'timeline'
             ],
             "check": { // Les endpoints qui nécessite de vérifier la volidité du token
-                "episodes": ['display', 'list', 'search'],
+                "episodes": ['display', 'list', 'search', 'watched'],
                 "movies"  : ['list', 'movie', 'search', 'similars'],
                 "search"  : ['all', 'movies', 'shows'],
-                "shows"   : ['display', 'episodes', 'list', 'search', 'similars']
+                "shows"   : ['display', 'episodes', 'list', 'member', 'search', 'similars']
             },
             "tokenRequired": {
                 "comments": {
@@ -203,7 +205,7 @@ export abstract class Base implements implAddNote {
      * Fonction vide
      * @type {Function}
      */
-    static noop: Function = function() {};
+    static noop: Callback = function() {};
     /**
      * Fonction de traduction de chaînes de caractères
      * @param   {String}  msg  - Identifiant de la chaîne à traduire
@@ -577,8 +579,8 @@ export abstract class Base implements implAddNote {
         }
         return this;
     }
-    public init(): this {
-        return this;
+    public init(): Promise<this> {
+        return new Promise(resolve => this);
     }
     /**
      * Sauvegarde l'objet en cache
