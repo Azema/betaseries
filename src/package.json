@@ -1,0 +1,36 @@
+{
+  "name": "betaseries_Models",
+  "description": "Models des ressources de l'API BetaSeries",
+  "version": "1.0.0",
+  "author": {
+    "email": "manuel.hervo@gmail.com",
+    "name": "Azema"
+  },
+  "bugs": {
+    "url": "https://github.com/Azema/betaseries/issues"
+  },
+  "homepage": "https://github.com/Azema/betaseries",
+  "license": "Apache-2.0",
+  "repository": {
+    "url": "https://github.com/Azema/betaseries",
+    "type": "git"
+  },
+  "keywords": [
+    "typescript",
+    "models",
+    "betaseries"
+  ],
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "types": "../betaseries.d.ts",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.26.0",
+    "@typescript-eslint/parser": "^5.26.0",
+    "eslint": "^8.16.0",
+    "typescript": "^4.7.2"
+  },
+  "dependencies": {
+    "dts-generator": "^3.0.0"
+  }
+}
