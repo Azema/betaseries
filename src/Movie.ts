@@ -40,16 +40,16 @@ export class Movie extends Media implements implAddNote {
      * @param  {boolean} [force=false] Indique si on utilise le cache ou non
      * @return {Promise<Movie>}
      */
-    public static fetch(id: number, force: boolean = false): Promise<Movie> {
-        return new Promise((resolve: Function, reject: Function) => {
+    public static fetch(id: number, force = false): Promise<Movie> {
+        return new Promise((resolve, reject) => {
             Base.callApi('GET', 'movies', 'movie', {id: id}, force)
             .then(data => resolve(new Movie(data.movie, jQuery('.blockInformations'))) )
             .catch(err => reject(err) );
         });
     }
 
-    public static search(title: string, force: boolean = false): Promise<Movie> {
-        return new Promise((resolve: Function, reject: Function) => {
+    public static search(title: string, force = false): Promise<Movie> {
+        return new Promise((resolve, reject) => {
             Base.callApi(HTTP_VERBS.GET, 'movies', 'search', {title}, force)
             .then(data => {resolve(new Movie(data.movies[0]))})
             .catch(err => reject(err));
@@ -83,7 +83,7 @@ export class Movie extends Media implements implAddNote {
      * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
      * @returns {Media}
      */
-    constructor(data: any, element?: JQuery<HTMLElement>) {
+    constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data, element);
         return this.fill(data);
     }
@@ -93,7 +93,7 @@ export class Movie extends Media implements implAddNote {
      * @returns {Movie}
      * @override
      */
-    fill(data: any): this {
+    fill(data: Obj): this {
         if (data.user.in_account !== undefined) {
             data.in_account = data.user.in_account;
             delete data.user.in_account;
@@ -146,20 +146,57 @@ export class Movie extends Media implements implAddNote {
      * @returns {Promise<Movie>}    L'instance du film
      */
     public changeStatus(state: MovieStatus): Promise<this> {
-        const _this = this;
+        const self = this;
         if (!Base.userIdentified() || this.user.status === state) {
             if (Base.debug) console.info('User not identified or state is equal with user status');
             return Promise.resolve(this);
         }
         return Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'movie', {id: this.id, state: state})
         .then((data: Obj) => {
-            _this.fill(data.movie);
+            self.fill(data.movie);
             return this;
         })
         .catch(err => {
             console.warn("Erreur ajout film sur compte", err);
             Base.notification('Ajout du film', "Erreur lors de l'ajout du film sur votre compte");
             return this;
+        });
+    }
+    /**
+     * Retourne une image, si disponible, en fonction du format désiré
+     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+     * @return {Promise<string>}                         L'URL de l'image
+     */
+    getDefaultImage(format = 'poster'): Promise<string> {
+        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        };
+        return new Promise((res, rej) => {
+            if (format === 'poster') {
+                if (this.poster) res(this.poster);
+                else {
+                    const baseImgTmdb = 'https://image.tmdb.org/t/p/w500';
+                    const api_key = 'e506df46268747316e82bbd38c1a1439';
+                    const uri = `https://api.themoviedb.org/3/movie/${this.tmdb_id}?api_key=${api_key}&language=fr`;
+                    // https://api.themoviedb.org/3/movie/961330?api_key=e506df46268747316e82bbd38c1a1439&language=fr
+                    fetch(uri, initFetch)
+                    .then((resp: Response) => {
+                        if (resp.ok) {
+                            return resp.json();
+                        }
+                        return null;
+                    }).then(data => {
+                        if (data == null) {
+                            return rej('Response JSON error');
+                        } else if (data.poster)
+                            res(baseImgTmdb + data.poster);
+                        else
+                            rej('no data poster');
+                    }).catch(err => rej(err));
+                }
+            }
         });
     }
 }
