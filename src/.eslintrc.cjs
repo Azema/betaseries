@@ -1,6 +1,12 @@
 module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
+  env: {
+    browser: true,
+    es6: true,
+    jest: true,
+    node: true
+  },
   plugins: [
     '@typescript-eslint',
   ],
@@ -15,6 +21,8 @@ module.exports = {
         "allowDestructuring": false, // Disallow `const { props, state } = this`; true by default
         "allowedNames": ["self"] // Allow `const self = this`; `[]` by default
       }
-    ]
+    ],
+    "no-empty-function": "off",
+    "@typescript-eslint/no-empty-function": ["error", { "allow": ["arrowFunctions"] }]
   }
 };
