@@ -22,8 +22,15 @@
 // @grant        GM_notification
 // ==/UserScript==
 
-/* global A11yDialog humanizeDuration renderjson betaseries_api_user_token betaseries_user_id newApiParameter viewMoreFriends generate_route trans lazyLoad
-   bootstrap deleteFilterOthersCountries CONSTANTE_FILTER CONSTANTE_SORT hideButtonReset moment PopupAlert */
+/* globals Base:false, CacheUS: false, Episode: false, Media: false, Movie: false, Show: false,
+   UpdateAuto: false, EventTypes: false, HTTP_VERBS: false, MediaType: false, CommentBS: false,
+   MovieStatus: false, Member: false, DataTypesCache: false, Note: false, PlatformList: false,
+
+   betaseries_api_user_token:  true, betaseries_user_id: false, trans: false,
+   deleteFilterOthersCountries: false, generate_route: false,
+   CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
+   viewMoreFriends: false, PopupAlert: false, faceboxDisplay: false
+ */
 /* jslint unparam: true, eqnull:true, unused:true */
 
 'use strict';
@@ -40,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-H7XAVunTGGI9OWW5srUb9FAUwfcd6lPnPU30tOsQUBhZkReRgtjhsIV+Be6S7fHV';
+const sriBundle = 'sha384-OrLqoPUd7MTS3a687McfRGl14RoQ0XMxiTNOlGCwnmBVTmV7kx1tf1KnqFsK+7aA';
 /************************************************************************************************/
 // @ts-check
 
@@ -454,6 +461,9 @@ const launchScript = function($) {
                     $('#reactjs-header-search .menu-item form .c4_c8').click(boundHandleScroll);
                 });
             });
+            /*
+                            LAZYLOAD
+             */
             system.addScriptAndLink('lazyload', () => {
                 fnLazy = function() {
                     $(optionsLazyload.selector).lazyload(optionsLazyload);
@@ -961,9 +971,11 @@ const launchScript = function($) {
             //$span.append('<button role="button" class="u-colorWhiteOpacity05 js-show-truncatetext textTransformUpperCase cursorPointer"></button>');
             let $paraSynopsis = $('.blockInformations__synopsis');
             if ($paraSynopsis.length > 1) {
-                if ($paraSynopsis.first().text().trim().length <= 0) {
-                    $paraSynopsis.first().hide();
-                }
+                $paraSynopsis.each((_, elt) => {
+                    if ($(elt).text().trim().length <= 0) {
+                        $(elt).hide();
+                    }
+                });
                 $paraSynopsis = $paraSynopsis.last();
             }
             $paraSynopsis
@@ -991,6 +1003,7 @@ const launchScript = function($) {
         checkPoster: function(res) {
             const $poster = $('.blockInformations__poster img');
             if ($poster.length <= 0) {
+                if (debug) console.log('checkPoster poster not found');
                 res.getDefaultImage('poster').then(img => {
                     /*
                     <img class="displayBlock objectFitCover" src="" width="300" height="450" alt="">
@@ -2090,7 +2103,7 @@ const launchScript = function($) {
             res.comments.init();
         },
         /**
-         *
+         * Remplacement du système de notation
          * @param {Base} res Le média principal
          */
         replaceVoteFn: function(res) {
@@ -2344,6 +2357,11 @@ const launchScript = function($) {
                 });
             });
         },
+        /**
+         * Réalisation d'une popup pour proposer une plateforme de diffusion
+         * @param {Media} res Le média principal
+         * @return {void}
+         */
         proposePlatform: function(res) {
             system.addScriptAndLink(['jqueryuijs', 'jqueryuicss'], () => {
                 let template = `
@@ -2441,15 +2459,14 @@ const launchScript = function($) {
                     if ($('#platform-button').length <= 0) {
                         $platforms
                             .iconselectmenu({
-                                open: function(e, ui) {
+                                open: function() {
                                     console.log('iconselectmenuopen');
-                                    const onerror = (err, elt, url, attr) => {
+                                    const onerror = (err, elt) => {
                                         //console.log('lazyLoad error URL: ', defImgShow);
                                         $(elt).replaceWith('<i class="fa fa-youtube-play fa-2x" aria-hidden="true"></i>');
                                         // console.log('lazyload onerror show', elt, res.images.show, attr);
                                     };
                                     $('#platform-menu .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
-                                    //calculHeightList();
                                 }
                             })
                             .iconselectmenu( "menuWidget" )
@@ -2457,15 +2474,6 @@ const launchScript = function($) {
                     } else {
                         $platforms.iconselectmenu( 'refresh' );
                     }
-                    // Calcul de la taille de la liste
-                    const calculHeightList = function() {
-                        const clientRect = document.getElementById('platform-button').getBoundingClientRect();
-                        const size = window.innerHeight - (clientRect.y + clientRect.height);
-                        document.getElementById('platform-menu').style.height = size.toString() + 'px';
-                    };
-                    /*window.addEventListener('resize', function(event) {
-                        calculHeightList();
-                    }, true);*/
                 };
                 $('#proposePlatform').click((e) => {
                     e.stopPropagation();
@@ -2477,7 +2485,7 @@ const launchScript = function($) {
                         showClose: true,
                         callback: function() {
                             // console.log('callback PopupAlert');
-                            $('#platform_type').change((e) => {
+                            $('#platform_type').change(() => {
                                 // console.log('platform_type change', e);
                                 let type = $('#platform_type option:selected').val();
                                 const $platforms = $('#platform');
@@ -2504,23 +2512,28 @@ const launchScript = function($) {
                 });
             });
         },
+        /**
+         * Vérifie si l'image du prochain épisode est bien chargée
+         * @param {Show} res Le média principal
+         * @return {void}
+         */
         checkNextEpisode: function(res) {
-            const $nextEpisode = $('.blockInformations .blockNextEpisode');
-            if ($nextEpisode.find('.media-left .block404')) {
-                res.updateNextEpisode(() => {
-                    res.getDefaultImage('wide').then(defImgShow => {
-                        let onerror = null;
-                        if (defImgShow != null) {
-                            onerror = (err, elt, url, attr) => {
-                                // console.log('lazyLoad error URL: ', defImgShow);
-                                elt.classList.add("js-lazy-image-handled");
-                                elt[attr] = defImgShow;
-                                elt.classList.add("fade-in");
-                                // console.log('lazyload onerror show', elt, res.images.show, attr);
-                            };
-                        }
-                        $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
-                    });
+            const $block404 = $('.blockInformations .blockNextEpisode .media-left .block404');
+            if ($block404.length > 0) {
+                if (debug) console.log('checkNextEpisode block404 found');
+                res.getDefaultImage('wide').then(defImgShow => {
+                    let onerror = null;
+                    if (defImgShow != null) {
+                        onerror = (err, elt, url, attr) => {
+                            // console.log('lazyLoad error URL: ', defImgShow);
+                            elt.classList.add("js-lazy-image-handled");
+                            elt[attr] = defImgShow;
+                            elt.classList.add("fade-in");
+                            // console.log('lazyload onerror show', elt, res.images.show, attr);
+                        };
+                    $block404.replaceWith(`<img class="js-lazy-image" data-src="${defImgShow}" width="124" height="70">`);
+                    }
+                    $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
                 });
             }
         }
@@ -3742,7 +3755,7 @@ const launchScript = function($) {
         system.addScriptAndLink('renderjson');
         // On récupère d'abord la ressource courante pour instancier un objet Media
         medias.getResource(true).then((objRes) => {
-            if (Base.debug) {
+            if (debug) {
                 console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
                 medias.addBtnDev(); // On ajoute le bouton de Dev
             }
@@ -3756,8 +3769,8 @@ const launchScript = function($) {
             medias.addBtnToSee();
             members.lastSeen();
             medias.replaceVoteFn(objRes);
+            medias.checkPoster(objRes);
             if (/^\/serie\//.test(url)) {
-                medias.checkPoster(objRes);
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 // .blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)
                 $('.blockInformations .blockInformations__action .dropdown-menu a.header-navigation-item')
