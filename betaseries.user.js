@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.2.2
+// @version      1.2.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
