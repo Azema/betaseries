@@ -53,18 +53,18 @@ Show.prototype.fill = function(data: Obj): Show {
  * @return {Promise<Media>}
  */
 Media.prototype.fetchSimilars = function(): Promise<Media> {
-    const _this = this;
+    const self = this;
     this.similars = [];
     return new Promise((resolve, reject) => {
         Base.callApi('GET', this.mediaType.plural, 'similars', {id: this.id, details: true}, true)
         .then(data => {
             if (data.similars) {
                 for (let s = 0; s < data.similars.length; s++) {
-                    _this.similars.push(new Similar(data.similars[s][_this.mediaType.singular], _this.mediaType));
+                    self.similars.push(new Similar(data.similars[s][self.mediaType.singular], self.mediaType));
                 }
             }
-            _this.save();
-            resolve(_this);
+            self.save();
+            resolve(self);
         }, err => {
             reject(err);
         });

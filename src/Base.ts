@@ -1,4 +1,4 @@
-declare var getScrollbarWidth, subscribeToggle;
+// declare const getScrollbarWidth, subscribeToggle;
 
 import { DataTypesCache, CacheUS } from "./Cache";
 import { Character } from "./Character";
@@ -10,12 +10,13 @@ export function ExceptionIdentification(message: string) {
     this.message = message;
     this.name = "ExceptionIdentification";
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Class<T> = new (...args: any[]) => T;
 export enum MediaType {
     show = 'show',
     movie = 'movie',
     episode = 'episode'
-};
+}
 export type MediaTypes = {
     singular: MediaType;
     plural: string;
@@ -32,14 +33,14 @@ export enum EventTypes {
     UNARCHIVE = 'unarchive',
     SHOW = 'show',
     HIDE = 'hide'
-};
+}
 export enum HTTP_VERBS {
     GET = 'GET',
     POST = 'POST',
     PUT = 'PUT',
     DELETE = 'DELETE',
     OPTIONS = 'OPTIONS'
-};
+}
 export type Rating = {
     img: string;
     title: string;
@@ -47,10 +48,8 @@ export type Rating = {
 export type Ratings = {
     [key: string]: Rating;
 };
-export type GM_funcs = {
-    [key: string]: Function;
-};
 export type Obj = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 };
 export type Callback = () => void;
@@ -63,7 +62,7 @@ export abstract class Base implements implAddNote {
      * Flag de debug pour le dev
      * @type {boolean}
      */
-    static debug: boolean = false;
+    static debug = false;
     /**
      * L'objet cache du script pour stocker les données
      * @type {CacheUS}
@@ -73,7 +72,7 @@ export abstract class Base implements implAddNote {
      * Objet contenant les informations de l'API
      * @type {Obj}
      */
-    static api: any = {
+    static api: Obj = {
             "url": 'https://api.betaseries.com',
             "versions": {"current": '3.0', "last": '3.0'},
             "resources": [ // Les ressources disponibles dans l'API
@@ -175,64 +174,67 @@ export abstract class Base implements implAddNote {
      * Le nombre d'appels à l'API
      * @type {Number}
      */
-    static counter: number = 0;
+    static counter = 0;
     /**
      * L'URL de base du serveur contenant les ressources statiques
      * @type {String}
      */
-    static serverBaseUrl: string = '';
+    static serverBaseUrl = '';
     /**
      * L'URL de base du serveur servant pour l'authentification
      * @type {String}
      */
-    static serverOauthUrl: string = '';
+    static serverOauthUrl = '';
     /**
      * Indique le theme d'affichage du site Web (light or dark)
      * @type {string}
      */
-    static theme: string = 'light';
+    static theme = 'light';
     /**
      * Fonction de notification sur la page Web
      * @type {Function}
      */
-    static notification: Function = function() {};
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    static notification = (title: string, text: string): void => {};
     /**
      * Fonction pour vérifier que le membre est connecté
      * @type {Function}
      */
-    static userIdentified: Function = function() {};
+    static userIdentified: () => boolean = () => { return false; };
     /**
      * Fonction vide
      * @type {Function}
      */
-    static noop: Callback = function() {};
+    static noop: Callback = () => {};
     /**
      * Fonction de traduction de chaînes de caractères
      * @param   {String}  msg  - Identifiant de la chaîne à traduire
-     * @param   {Obj}     [params={}] - Variables utilisées dans la traduction {"%key%"": value}
+     * @param   {Obj}     [params] - Variables utilisées dans la traduction {"%key%"": value}
      * @param   {number}  [count=1] - Nombre d'éléments pour la version plural
      * @returns {string}
      */
-    // eslint-disable-next-line no-unused-vars
-    static trans: Function = function(msg: string, params: Obj = {}, count: number = 1) {};
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    static trans = (msg: string, params?: Obj, count = 1): string => { return msg; };
     /**
      * Contient les infos sur les différentes classification TV et cinéma
      * @type {Ratings}
      */
     static ratings: Ratings = null;
-    static gm_funcs: GM_funcs = {
-        getValue: this.noop,
-        setValue: this.noop
+    static gm_funcs = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        getValue: (key: string, defaultValue: Obj | Array<Obj> | Array<string> | Array<number>): any => { return defaultValue; },
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        setValue: (key: string, val: Obj | Array<Obj> | Array<string> | Array<number>): void => {}
     };
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-    static EventTypes: Array<EventTypes> = new Array(
+    static EventTypes: Array<EventTypes> = [
         EventTypes.UPDATE,
         EventTypes.SAVE,
         EventTypes.NOTE
-    );
+    ];
     static showLoader() {
         jQuery('#loader-bg').show();
     }
@@ -244,7 +246,7 @@ export abstract class Base implements implAddNote {
      *
      * @return {Promise}
      */
-    static authenticate(): Promise<any> {
+    static authenticate(): Promise<string> {
         if (Base.debug) console.log('authenticate');
         if (jQuery('#containerIframe').length <= 0) {
             jQuery('body').append(`
@@ -295,7 +297,7 @@ export abstract class Base implements implAddNote {
      * @return {Promise<Obj>} Les données provenant de l'API
      * @throws Error
      */
-    static callApi(type: string, resource: string, action: string, args: any, force: boolean = false): Promise<Obj> {
+    static callApi(type: string, resource: string, action: string, args: Obj, force = false): Promise<Obj> {
         if (Base.api && Base.api.resources.indexOf(resource) === -1) {
             throw new Error(`Ressource (${resource}) inconnue dans l'API.`);
         }
@@ -312,9 +314,9 @@ export abstract class Base implements implAddNote {
             throw new ExceptionIdentification("Identification required");
         }
         Base.showLoader();
-        let check = false,
-            // Les en-têtes pour l'API
-            myHeaders = {
+        let check = false;
+        // Les en-têtes pour l'API
+        const myHeaders = {
                 'Accept'                : 'application/json',
                 'X-BetaSeries-Version'  : Base.api.versions.current,
                 'X-BetaSeries-Token'    : Base.token,
@@ -351,8 +353,8 @@ export abstract class Base implements implAddNote {
             check = true;
         }
 
-        function fetchUri(resolve: Function, reject: Function) {
-            let initFetch: RequestInit = { // objet qui contient les paramètres de la requête
+        function fetchUri(resolve, reject) {
+            const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
                 method: type,
                 headers: myHeaders,
                 mode: 'cors',
@@ -362,8 +364,8 @@ export abstract class Base implements implAddNote {
             const keys = Object.keys(args);
             // On crée l'URL de la requête de type GET avec les paramètres
             if (type === 'GET' && keys.length > 0) {
-                let params = [];
-                for (let key of keys) {
+                const params = [];
+                for (const key of keys) {
                     params.push(key + '=' + encodeURIComponent(args[key]));
                 }
                 uri += '?' + params.join('&');
@@ -417,9 +419,9 @@ export abstract class Base implements implAddNote {
                 Base.hideLoader();
             });
         }
-        return new Promise((resolve: Function, reject: Function) => {
+        return new Promise((resolve, reject) => {
             if (check) {
-                let paramsFetch: RequestInit = {
+                const paramsFetch: RequestInit = {
                     method: 'GET',
                     headers: myHeaders,
                     mode: 'cors',
@@ -509,7 +511,7 @@ export abstract class Base implements implAddNote {
         this._listeners = {};
         const EvtTypes = (this.constructor as typeof Base).EventTypes;
         for (let e = 0; e < EvtTypes.length; e++) {
-            this._listeners[EvtTypes[e]] = new Array();
+            this._listeners[EvtTypes[e]] = [];
         }
         return this;
     }
@@ -520,16 +522,16 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      * @sealed
      */
-    public addListener(name: EventTypes, fn: Function, ...args): this {
+    public addListener(name: EventTypes, fn: Callback, ...args): this {
         //if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name);
         // On vérifie que le type d'event est pris en charge
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
         }
         if (this._listeners[name] === undefined) {
-            this._listeners[name] = new Array();
+            this._listeners[name] = [];
         }
-        for (let func in this._listeners[name]) {
+        for (const func in this._listeners[name]) {
             if (func.toString() == fn.toString()) return;
         }
         if (args.length > 0) {
@@ -547,7 +549,7 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      * @sealed
      */
-    public removeListener(name: EventTypes, fn: Function): this {
+    public removeListener(name: EventTypes, fn: Callback): this {
         if (this._listeners[name] !== undefined) {
             for (let l = 0; l < this._listeners[name].length; l++) {
                 if ((typeof this._listeners[name][l] === 'function' && this._listeners[name][l].toString() === fn.toString()) ||
@@ -580,7 +582,7 @@ export abstract class Base implements implAddNote {
         return this;
     }
     public init(): Promise<this> {
-        return new Promise(resolve => this);
+        return new Promise(resolve => resolve(this));
     }
     /**
      * Sauvegarde l'objet en cache
@@ -621,8 +623,8 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      */
     decodeTitle(): Base {
-        let $elt = this.elt.find('.blockInformations__title'),
-            title = $elt.text();
+        const $elt = this.elt.find('.blockInformations__title'),
+              title = $elt.text();
 
         if (/&#/.test(title)) {
             $elt.text($('<textarea />').html(title).text());
@@ -636,14 +638,14 @@ export abstract class Base implements implAddNote {
      * @param  {Boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
      * @return {String} Le titre modifié de la note
      */
-    changeTitleNote(change: boolean = true): string {
+    changeTitleNote(change = true): string {
         const $elt = this.elt.find('.js-render-stars');
         if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
             if (change) $elt.attr('title', 'Aucun vote');
             return;
         }
 
-        let title = this.objNote.toString();
+        const title = this.objNote.toString();
         if (change) {
             $elt.attr('title', title);
         }
@@ -654,7 +656,7 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      */
     addNumberVoters(): Base {
-        const _this = this;
+        const self = this;
         const votes = $('.stars.js-render-stars'); // ElementHTML ayant pour attribut le titre avec la note de la série
 
         let title = this.changeTitleNote(true);
@@ -663,7 +665,7 @@ export abstract class Base implements implAddNote {
         new MutationObserver((mutationsList) => {
             const changeTitleMutation = () => {
                 // On met à jour le nombre de votants, ainsi que la note du membre connecté
-                const upTitle = _this.changeTitleNote(false);
+                const upTitle = self.changeTitleNote(false);
                 // if (Base.debug) console.log('Observer upTitle: %s', upTitle);
                 // On évite une boucle infinie
                 if (upTitle !== title) {
@@ -694,11 +696,11 @@ export abstract class Base implements implAddNote {
      * @returns {Promise<boolean>}
      */
     addVote(note: number): Promise<boolean> {
-        const _this = this;
-        return new Promise((resolve: Function, reject:Function) => {
+        const self = this;
+        return new Promise((resolve, reject) => {
             Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
             .then((data: Obj) => {
-                _this.fill(data[this.mediaType.singular])._callListeners(EventTypes.NOTE);
+                self.fill(data[this.mediaType.singular])._callListeners(EventTypes.NOTE);
                 resolve(true);
             })
             .catch(err => {
@@ -759,8 +761,9 @@ const dateFormat = function () {
         }
     };
     // Regexes and supporting functions are cached through closure
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return function (date: any, mask: string, utc: boolean) {
-        const dF = dateFormat;
+        // const dF = dateFormat;
 
         // You can't provide utc if you skip other args (use the "UTC:" mask prefix)
         if (arguments.length == 1 && Object.prototype.toString.call(date) == "[object String]" && !/\d/.test(date)) {
@@ -831,6 +834,6 @@ declare global {
     }
 }
 // For convenience...
-Date.prototype.format = function (mask: string, utc: boolean = false) {
+Date.prototype.format = function (mask: string, utc = false) {
     return dateFormat(this, mask, utc);
 };

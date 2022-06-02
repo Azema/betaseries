@@ -1,3 +1,5 @@
+import { Obj } from "./Base";
+
 export class Character {
     /**
      * @type {string} Nom de l'acteur/actrice
@@ -36,7 +38,7 @@ export class Character {
      */
     movie_id: number;
 
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.actor = data.actor || '';
         this.picture = data.picture || '';
         this.name = data.name || '';

@@ -69,7 +69,7 @@ export abstract class Media extends Base {
         this.length = parseInt(data.length, 10);
         this.original_title = data.original_title;
         if (!this.similars || this.similars.length <= 0) {
-            this.similars = new Array();
+            this.similars = [];
         }
         this.nbSimilars = 0;
         if (data.similars && data.similars instanceof Array) {
@@ -78,11 +78,11 @@ export abstract class Media extends Base {
         } else if (data.similars) {
             this.nbSimilars = parseInt(data.similars);
         }
-        this.genres = new Array();
+        this.genres = [];
         if (data.genres && data.genres instanceof Array) {
             this.genres = data.genres;
         } else if (data.genres instanceof Object) {
-            for (let g in data.genres) {
+            for (const g in data.genres) {
                 this.genres.push(data.genres[g]);
             }
         }

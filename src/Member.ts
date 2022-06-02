@@ -39,8 +39,8 @@ class Stats {
     time_on_movies: number
     time_to_spend_movies: number
 
-    constructor(data: any) {
-        for (let key in Object.keys(data)) {
+    constructor(data: Obj) {
+        for (const key in Object.keys(data)) {
             this[key] = data[key];
         }
     }
@@ -60,8 +60,8 @@ class Options {
     notification_news: boolean
     twitter_auto: boolean
 
-    constructor(data: any) {
-        for (let key in Object.keys(data)) {
+    constructor(data: Obj) {
+        for (const key in Object.keys(data)) {
             this[key] = data[key];
         }
     }
@@ -138,7 +138,7 @@ export class Member {
      * @param data Les données provenant de l'API
      * @returns {Member}
      */
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.id = parseInt(data.id, 10);
         this.fb_id = parseInt(data.fb_id, 10);
         this.login = data.login;
@@ -162,7 +162,7 @@ export class Member {
      * @returns {Promise<Member>} Une instance du membre connecté
      */
     public static fetch(): Promise<Member> {
-        let params: Obj = {};
+        const params: Obj = {};
         if (Base.userId !== null) {
             params.id = Base.userId;
         }

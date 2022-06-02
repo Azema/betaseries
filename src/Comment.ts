@@ -1,8 +1,8 @@
-import { Base, HTTP_VERBS, Obj, EventTypes } from './Base';
+import { Base, HTTP_VERBS, Obj, EventTypes, Callback } from './Base';
 import { CommentsBS, CustomEvent, OrderComments } from './Comments';
 import { Note } from './Note';
 
-declare var currentLogin: string, getScrollbarWidth, faceboxDisplay: Function;
+declare const currentLogin: string, getScrollbarWidth, faceboxDisplay;
 export interface implRepliesComment {
     fetchReplies(commentId: number): Promise<Array<CommentBS>>;
     changeThumbs(commentId: number, thumbs: number, thumbed: number): boolean;
@@ -20,14 +20,14 @@ export class CommentBS {
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-     static EventTypes: Array<string> = new Array(
+     static EventTypes: Array<string> = [
         'update',
         'save',
         'add',
         'delete',
         'show',
         'hide'
-    );
+     ];
 
     /**
      * Contient le nom des classes CSS utilisées pour le rendu du commentaire
@@ -131,7 +131,7 @@ export class CommentBS {
      */
     private _listeners: object;
 
-    constructor(data: any, parent: CommentsBS | CommentBS) {
+    constructor(data: Obj, parent: CommentsBS | CommentBS) {
         this._parent = parent;
         return this.fill(data)._initListeners();
     }
@@ -159,7 +159,7 @@ export class CommentBS {
         this.thumbs = parseInt(data.thumbs, 10);
         this.thumbed = data.thumbed ? parseInt(data.thumbed, 10) : 0;
         this.nbReplies = parseInt(data.replies, 10);
-        this.replies = new Array();
+        this.replies = [];
         this.from_admin = data.from_admin;
         this.user_rank = data.user_rank;
         return this;
@@ -173,7 +173,7 @@ export class CommentBS {
         this._listeners = {};
         const EvtTypes = CommentBS.EventTypes;
         for (let e = 0; e < EvtTypes.length; e++) {
-            this._listeners[EvtTypes[e]] = new Array();
+            this._listeners[EvtTypes[e]] = [];
         }
         return this;
     }
@@ -183,15 +183,15 @@ export class CommentBS {
      * @param  {Function}   fn   - La fonction à appeler
      * @return {Base} L'instance du média
      */
-    public addListener(name: EventTypes, fn: Function, ...args): this {
+    public addListener(name: EventTypes, fn: Callback, ...args): this {
         // On vérifie que le type d'event est pris en charge
         if (!CommentBS.EventTypes.includes(name)) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
         }
         if (this._listeners[name] === undefined) {
-            this._listeners[name] = new Array();
+            this._listeners[name] = [];
         }
-        for (let func in this._listeners[name]) {
+        for (const func in this._listeners[name]) {
             if (func.toString() == fn.toString()) {
                 if (Base.debug) console.warn('Cette fonction est déjà présente pour event[%s]', name);
                 return;
@@ -211,7 +211,7 @@ export class CommentBS {
      * @param  {Function} fn   - La fonction qui était appelée
      * @return {Base} L'instance du média
      */
-    public removeListener(name: EventTypes, fn: Function): this {
+    public removeListener(name: EventTypes, fn: Callback): this {
         if (this._listeners[name] !== undefined) {
             for (let l = 0; l < this._listeners[name].length; l++) {
                 if ((typeof this._listeners[name][l] === 'function' && this._listeners[name][l].toString() === fn.toString()) ||
@@ -250,7 +250,7 @@ export class CommentBS {
     public async fetchReplies(order: OrderComments = OrderComments.ASC): Promise<CommentBS> {
         if (this.nbReplies <= 0) return this;
         const data = await Base.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: this.id, order });
-        this.replies = new Array();
+        this.replies = [];
         if (data.comments) {
             for (let c = 0; c < data.comments.length; c++) {
                 this.replies.push(new CommentBS(data.comments[c], this));
@@ -281,7 +281,7 @@ export class CommentBS {
      */
     public delete() {
         const self = this;
-        const promises = new Array();
+        const promises = [];
         if (this.nbReplies > 0) {
             for (let r = 0; r < this.replies.length; r++) {
                 promises.push(Base.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.replies[r].id}));
@@ -289,7 +289,7 @@ export class CommentBS {
         }
         Promise.all(promises).then(() => {
             Base.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.id})
-            .then((data: Obj) => {
+            .then(() => {
                 if (self._parent instanceof CommentsBS) {
                     self._parent.removeComment(self.id);
                 } else if (self._parent instanceof CommentBS) {
@@ -324,13 +324,13 @@ export class CommentBS {
             text = text.replace(/@(\w+)/g, '<a href="/membre/$1" class="mainLink mainLink--regular">@$1</a>');
         }
         const spoiler = /\[spoiler\]/.test(text);
-        let btnSpoiler = spoiler ? `<button type="button" class="btn-reset mainLink view-spoiler">${Base.trans("comment.button.display_spoiler")}</button>` : '';
+        const btnSpoiler = spoiler ? `<button type="button" class="btn-reset mainLink view-spoiler">${Base.trans("comment.button.display_spoiler")}</button>` : '';
         text = text.replace(/\[spoiler\](.*)\[\/spoiler\]/g, '<span class="spoiler" style="display:none">$1</span>');
         // let classNames = {reply: 'iv_i5', actions: 'iv_i3', comment: 'iv_iz'};
-        let classNames = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
+        // const classNames = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
         const isReply = comment.in_reply_to > 0 ? true : false;
-        let className = isReply ? CommentBS.classNamesCSS.reply + ' reply ' : '';
-        let btnToggleReplies = comment.nbReplies > 0 ? `
+        const className = isReply ? CommentBS.classNamesCSS.reply + ' reply ' : '';
+        const btnToggleReplies = comment.nbReplies > 0 ? `
             <button type="button" class="btn-reset mainLink mainLink--regular toggleReplies" data-toggle="1">
                 <span class="svgContainer">
                     <svg width="8" height="6" xmlns="http://www.w3.org/2000/svg" style="transition: transform 200ms ease 0s; transform: rotate(180deg);">
@@ -482,7 +482,7 @@ export class CommentBS {
             </form>`;
     }
     public getLogins(): Array<string> {
-        let users = new Array();
+        const users = [];
         users.push(this.login);
         for (let r = 0; r < this.replies.length; r++) {
             if (!users.includes(this.replies[r].login)) {
@@ -496,7 +496,7 @@ export class CommentBS {
      * @param   {number} vote Le vote
      * @returns {void}
      */
-    public updateRenderThumbs(vote: number = 0): void {
+    public updateRenderThumbs(vote = 0): void {
         const $thumbs = jQuery(`.comments .comment[data-comment-id="${this.id}"] .thumbs`);
         const val = parseInt($thumbs.text(), 10);
         const result = (vote == this.thumbed) ? val + vote : val - vote;
@@ -579,7 +579,7 @@ export class CommentBS {
      * @returns {void}
      */
     protected loadEvents($container: JQuery<HTMLElement>, funcPopup: Obj): void {
-        this._events = new Array();
+        this._events = [];
         const self = this;
         const $popup = jQuery('#popin-dialog');
         const $btnClose = jQuery("#popin-showClose");
@@ -614,7 +614,7 @@ export class CommentBS {
                 e.stopPropagation();
                 e.preventDefault();
                 const $form = $contentHtml.find('form');
-                let paramsFetch: RequestInit = {
+                const paramsFetch: RequestInit = {
                     method: 'POST',
                     cache: 'no-cache',
                     body: new URLSearchParams($form.serialize())
@@ -624,7 +624,7 @@ export class CommentBS {
                     $contentHtml.hide();
                     $container.show();
                 })
-                .catch(error => {
+                .catch(() => {
                     $contentHtml.hide();
                     $container.show();
                 });
@@ -668,20 +668,20 @@ export class CommentBS {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn = $(e.currentTarget);
-            let params: Obj = {type: self.getCollectionComments().media.mediaType.singular, id: self.getCollectionComments().media.id};
+            const params: Obj = {type: self.getCollectionComments().media.mediaType.singular, id: self.getCollectionComments().media.id};
             if ($btn.hasClass('active')) {
                 Base.callApi(HTTP_VERBS.DELETE, 'comments', 'subscription', params)
-                .then((data: Obj) => {
+                .then(() => {
                     self.getCollectionComments().is_subscribed = false;
                     displaySubscription($btn);
                 });
             } else {
                 Base.callApi(HTTP_VERBS.POST, 'comments', 'subscription', params)
-                .then((data: Obj) => {
+                .then(() => {
                     self.getCollectionComments().is_subscribed = true;
                     displaySubscription($btn);
                 });
@@ -754,7 +754,7 @@ export class CommentBS {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn = jQuery(e.currentTarget);
@@ -827,7 +827,7 @@ export class CommentBS {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $textarea = $(e.currentTarget).siblings('textarea');
@@ -838,7 +838,7 @@ export class CommentBS {
                 if (replyId && replyId == self.id) {
                     self.sendReply(msg).then(comment => {
                         if (comment) {
-                            let template = CommentBS.getTemplateComment(comment);
+                            const template = CommentBS.getTemplateComment(comment);
                             $container.find('.comments').append(template);
                             $textarea.removeAttr('data-reply-to');
                             self.cleanEvents(() => {
@@ -851,7 +851,7 @@ export class CommentBS {
                     if (reply) {
                         reply.sendReply(msg).then(comment => {
                             if (comment) {
-                                let template = CommentBS.getTemplateComment(comment);
+                                const template = CommentBS.getTemplateComment(comment);
                                 $container.find(`.comments .comment[data-comment-id="${reply.id}"]`)
                                     .after(template);
                                     $textarea.removeAttr('data-reply-to');
@@ -868,7 +868,6 @@ export class CommentBS {
                         const cmtId = parseInt($textarea.data('commentId'), 10);
                         let $comment = $(e.currentTarget).parents('.writing').siblings('.comments').children(`.comment[data-comment-id="${cmtId.toString()}"]`);
                         $comment.find('.comment-text').text(self.text);
-                        // TODO: modifier le texte de la vignette du commentaire
                         $comment = jQuery(`#comments .slide_flex .slide__comment[data-comment-id="${cmtId}"]`);
                         $comment.find('p').text(msg);
                         $textarea.removeAttr('data-action').removeAttr('data-comment-id');
@@ -906,7 +905,7 @@ export class CommentBS {
          * On ajoute les balises SPOILER au message dans le textarea
          */
         const $baliseSpoiler = $container.find('.baliseSpoiler');
-        $baliseSpoiler.click((e: JQuery.ClickEvent) => {
+        $baliseSpoiler.click(() => {
             const $textarea = $popup.find('textarea');
             if (/\[spoiler\]/.test($textarea.val() as string)) {
                 return;
@@ -948,7 +947,7 @@ export class CommentBS {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn: JQuery<HTMLElement> = $(e.currentTarget);
@@ -978,7 +977,7 @@ export class CommentBS {
             e.preventDefault();
             const $parent = $(e.currentTarget).parents('.comment');
             const $options = $(e.currentTarget).parents('.options-options');
-            let template = `
+            const template = `
                 <div class="options-delete">
                     <span class="mainTime">Supprimer mon commentaire :</span>
                     <button type="button" class="btn-reset fontWeight700 btnYes" style="vertical-align: 0px; padding-left: 10px; padding-right: 10px; color: rgb(208, 2, 27);">Oui</button>
@@ -1010,7 +1009,7 @@ export class CommentBS {
      * @param   {Function} onComplete - Fonction de callback
      * @returns {void}
      */
-    protected cleanEvents(onComplete: Function = Base.noop): void {
+    protected cleanEvents(onComplete: Callback = Base.noop): void {
         if (this._events && this._events.length > 0) {
             let data: CustomEvent;
             for (let e = 0; e < this._events.length; e++) {
@@ -1142,7 +1141,7 @@ export class CommentBS {
         return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
         .then((data: Obj) => {
             const comment = new CommentBS(data.comment, self);
-            const method: Function = self.getCollectionComments().order === OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
+            const method = self.getCollectionComments().order === OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
             method.call(self.replies, comment);
             self.nbReplies++;
             self.getCollectionComments().nbComments++;

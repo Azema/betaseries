@@ -1,8 +1,8 @@
-import { Base, HTTP_VERBS, Obj } from "./Base";
+import { Base, Callback, HTTP_VERBS, Obj } from "./Base";
 import { Episode } from "./Episode";
 import { Show } from "./Show";
 
-declare var PopupAlert;
+declare const PopupAlert;
 
 export class Season {
     /**
@@ -13,6 +13,10 @@ export class Season {
      * @type {Array<Episode>} Tableau des épisodes de la saison
      */
     episodes: Array<Episode>;
+    /**
+     * Nombre d'épisodes dans la saison
+     * @type {number}
+     */
     nbEpisodes: number;
     /**
      * @type {boolean} Possède des sous-titres
@@ -48,7 +52,7 @@ export class Season {
     constructor(data: Obj, show: Show) {
         this.number = parseInt(data.number, 10);
         this._show = show;
-        this.episodes = new Array();
+        this.episodes = [];
         this.has_subtitles = !!data.has_subtitles || false;
         this.hidden = !!data.hidden || false;
         this.seen = !!data.seen || false;
@@ -75,15 +79,15 @@ export class Season {
         if (!this.number || this.number <= 0) {
             throw new Error('season number incorrect');
         }
-        const _this = this;
-        return new Promise((resolve: Function, reject: Function) => {
-            Base.callApi('GET', 'shows', 'episodes', {id: _this._show.id, season: _this.number}, true)
+        const self = this;
+        return new Promise((resolve, reject) => {
+            Base.callApi('GET', 'shows', 'episodes', {id: self._show.id, season: self.number}, true)
             .then(data => {
-                _this.episodes = [];
+                self.episodes = [];
                 for (let e = 0; e < data.episodes.length; e++) {
-                    _this.episodes.push(new Episode(data.episodes[e], _this));
+                    self.episodes.push(new Episode(data.episodes[e], self));
                 }
-                resolve(_this);
+                resolve(self);
             }, err => {
                 reject(err);
             });
@@ -94,7 +98,7 @@ export class Season {
         const self = this;
         const params = {id: this.episodes[this.length - 1].id, bulk: true};
         return Base.callApi(HTTP_VERBS.POST, 'episodes', 'watched', params)
-        .then((data: Obj) => {
+        .then(() => {
             let update = false;
             for (let e = 0; e < self.episodes.length; e++) {
                 if (e == self.episodes.length - 1) update = true;
@@ -109,7 +113,7 @@ export class Season {
         const self = this;
         const params = {id: this._show.id, season: this.number};
         return Base.callApi(HTTP_VERBS.POST, 'seasons', 'hide', params)
-        .then((data: Obj) => {
+        .then(() => {
             self.hidden = true;
             jQuery(`#seasons .slide_flex:nth-child(${self.number}) .slide__image`).prepend('<div class="checkSeen"></div><div class="hideIcon"></div>');
             let update = false;
@@ -178,8 +182,8 @@ export class Season {
      * @param {Function} cb Function de callback
      * @returns {Season}
      */
-    updateShow(cb: Function = Base.noop): Season {
-        this._show.update(true).then(cb as (value: Show) => Show);
+    updateShow(cb: Callback = Base.noop): Season {
+        this._show.update(true).then(cb as unknown as (value: Show) => Show);
         return this;
     }
 

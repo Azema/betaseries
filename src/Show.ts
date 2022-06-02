@@ -700,8 +700,10 @@ export class Show extends Media implements implShow, implAddNote {
                             return true;
                         },
                         onClose: function() {
-                            if (retourCallback)
+                            if (retourCallback) {
+                                self.objNote.updateStars();
                                 self.objNote.createPopupForVote();
+                            }
                         }
                     });
                 });
@@ -1037,7 +1039,7 @@ export class Show extends Media implements implShow, implAddNote {
                         $optionsLinks.first().siblings().each((i, e) => { $(e).remove(); });
                         // Nettoyage de l'affichage des épisodes
                         const checks: JQuery<HTMLElement> = jQuery('#episodes .slide_flex');
-                        let promise: Promise<any>,
+                        let promise: Promise<Season>,
                             update = false; // Flag pour l'update de l'affichage
                         if (self.currentSeason.episodes && self.currentSeason.episodes.length > 0) {
                             promise = new Promise(resolve => resolve(self.currentSeason));

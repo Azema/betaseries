@@ -1,19 +1,19 @@
 import {Base, Obj, MediaType, MediaTypes, HTTP_VERBS} from "./Base";
 import {Media} from "./Media";
 import { Season } from "./Season";
-import {implShow, Showrunner, Platforms, Platform, Images, Picked, Picture} from "./Show";
+import {implShow, Showrunner, Platforms, Images, Picture} from "./Show";
 import {implMovie, OtherTitle} from "./Movie";
 import {Platform_link} from "./Episode";
 
-declare var renderjson;
+declare const renderjson;
 
 interface implDialog {
-    show: Function,
-    close: Function,
-    setContent: Function,
-    setCounter: Function,
-    setTitle: Function,
-    init: Function
+    show: () => void,
+    close: () => void,
+    setContent: (text: string) => void,
+    setCounter: (text: string) => void,
+    setTitle: (title: string) => void,
+    init: () => void
 }
 export class Similar extends Media implements implShow, implMovie {
     /* Interface implMovie */
@@ -85,7 +85,7 @@ export class Similar extends Media implements implShow, implMovie {
             if (data.platforms !== undefined && data.platforms !== null) {
                 this.platforms = new Platforms(data.platforms);
             }
-            this.seasons = new Array();
+            this.seasons = [];
             this.nbSeasons = parseInt(data.seasons, 10);
             this.showrunner = null;
             if (data.showrunner !== undefined && data.showrunner !== null) {
@@ -94,7 +94,7 @@ export class Similar extends Media implements implShow, implMovie {
             this.social_links = data.social_links;
             this.status = data.status;
             this.thetvdb_id = parseInt(data.thetvdb_id, 10);
-            this.pictures = new Array();
+            this.pictures = [];
         } else if (this.mediaType.singular === MediaType.movie) {
             if (data.user.in_account !== undefined) {
                 data.in_account = data.user.in_account;
@@ -130,8 +130,8 @@ export class Similar extends Media implements implShow, implMovie {
      * @param  {boolean} [force=true]   Indique si on utilise les données en cache
      * @return {Promise<*>}             Les données de la série
      */
-    fetch(force: boolean = true): Promise<Obj> {
-        let action: string = 'display';
+    fetch(force = true): Promise<Obj> {
+        let action = 'display';
         if (this.mediaType.singular === MediaType.movie) {
             action = 'movie';
         }
@@ -170,13 +170,13 @@ export class Similar extends Media implements implShow, implMovie {
      */
     wrench(dialog: implDialog): Similar {
         const $title: JQuery<HTMLElement> = this.elt.find('.slide__title'),
-              _this: Similar = this;
+              self: Similar = this;
         $title.html($title.html() +
             `<i class="fa fa-wrench popover-wrench"
                 aria-hidden="true"
                 style="margin-left:5px;cursor:pointer;"
-                data-id="${_this.id}"
-                data-type="${_this.mediaType.singular}">
+                data-id="${self.id}"
+                data-type="${self.mediaType.singular}">
             </i>`
         );
 
@@ -187,7 +187,7 @@ export class Similar extends Media implements implShow, implMovie {
             //if (debug) console.log('Popover Wrench', eltId, self);
             this.fetch().then(function(data) {
                 // eslint-disable-next-line no-undef
-                dialog.setContent(renderjson.set_show_to_level(2)(data[_this.mediaType.singular]));
+                dialog.setContent(renderjson.set_show_to_level(2)(data[self.mediaType.singular]));
                 dialog.setCounter(Base.counter.toString());
                 dialog.setTitle('Données du similar');
                 dialog.show();
@@ -325,7 +325,7 @@ export class Similar extends Media implements implShow, implMovie {
      * @param  {Boolean} change Indique si il faut modifier l'attribut
      * @return {string}         La valeur modifiée de l'attribut title
      */
-    updateTitleNote(change: boolean = true): string {
+    updateTitleNote(change = true): string {
         const $elt = this.elt.find('.stars-outer');
         if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
             if (change) $elt.attr('title', 'Aucun vote');
@@ -432,7 +432,7 @@ export class Similar extends Media implements implShow, implMovie {
      * Add Show to account member
      * @return {Promise<Similar>} Promise of show
      */
-    addToAccount(state: number = 0): Promise<Similar> {
+    addToAccount(state = 0): Promise<Similar> {
         if (this.in_account) return Promise.resolve(this);
         return this.changeState(state);
     }
@@ -445,8 +445,8 @@ export class Similar extends Media implements implShow, implMovie {
         if (state < -1 || state > 2) {
             throw new Error("Parameter state is incorrect: " + state.toString());
         }
-        const _this = this;
-        let params: Obj = {id: this.id};
+        const self = this;
+        const params: Obj = {id: this.id};
         let verb = HTTP_VERBS.POST;
         if (state === -1 && this.mediaType.singular === MediaType.movie) {
             verb = HTTP_VERBS.DELETE;
@@ -457,19 +457,19 @@ export class Similar extends Media implements implShow, implMovie {
 
         return Base.callApi(verb, this.mediaType.plural, this.mediaType.singular, params)
         .then((data: Obj) => {
-            _this.fill(data[_this.mediaType.singular]);
+            self.fill(data[self.mediaType.singular]);
             // En attente de la résolution du bug https://www.betaseries.com/bugs/api/462
             if (verb === HTTP_VERBS.DELETE) {
-                _this.in_account = false;
-                _this.user.status = -1;
-                _this.save();
+                self.in_account = false;
+                self.user.status = -1;
+                self.save();
             }
-            return _this;
+            return self;
         })
         .catch(err => {
             console.warn('Erreur changeState similar', err);
             Base.notification('Change State Similar', 'Erreur lors du changement de statut: ' + err.toString());
-            return _this;
+            return self;
         });
     }
     /**
@@ -477,7 +477,7 @@ export class Similar extends Media implements implShow, implMovie {
      * @param   {number} note Note du membre connecté pour le média
      * @returns {Promise<boolean>}
      */
-    // eslint-disable-next-line no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     addVote(note: number): Promise<boolean> {
         throw new Error('On ne vote pas pour un similar');
     }

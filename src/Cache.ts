@@ -17,7 +17,7 @@ export class CacheUS {
     constructor() {
         return this._init();
     }
-    
+
     /**
      * Initialize le cache pour chaque type
      * @returns this
@@ -58,7 +58,7 @@ export class CacheUS {
     clear(type: DataTypesCache = null): this {
         // On nettoie juste un type de ressource
         if (type && this._data[type] !== undefined) {
-            for (let key in this._data[type]) {
+            for (const key in this._data[type]) {
                 delete this._data[type][key];
             }
         }

@@ -1,8 +1,8 @@
-import { Base, Obj, HTTP_VERBS, EventTypes } from "./Base";
+import { Base, Obj, HTTP_VERBS, EventTypes, Callback } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
 import { Note } from "./Note";
 
-declare var getScrollbarWidth, faceboxDisplay: Function;
+declare const getScrollbarWidth, faceboxDisplay;
 
 /* interface JQuery<TElement = HTMLElement> extends Iterable<TElement> {
     popover?(params: any): this;
@@ -10,11 +10,11 @@ declare var getScrollbarWidth, faceboxDisplay: Function;
 export enum OrderComments {
     DESC = 'desc',
     ASC = 'asc'
-};
+}
 export enum MediaStatusComments {
     OPEN = 'open',
     CLOSED = 'close'
-};
+}
 export type CustomEvent = {
     elt: JQuery<HTMLElement>;
     event: string;
@@ -28,14 +28,14 @@ export class CommentsBS implements implRepliesComment {
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-    static EventTypes: Array<string> = new Array(
+    static EventTypes: Array<string> = [
         'update',
         'save',
         'add',
         'added',
         'delete',
         'show'
-    );
+    ];
 
     /**
      * Envoie une réponse de ce commentaire à l'API
@@ -105,7 +105,7 @@ export class CommentsBS implements implRepliesComment {
     /*                  METHODS                      */
     /*************************************************/
     constructor(nbComments: number, media: Base) {
-        this.comments = new Array();
+        this.comments = [];
         this._parent = media;
         this.is_subscribed = false;
         this.status = MediaStatusComments.OPEN;
@@ -143,7 +143,7 @@ export class CommentsBS implements implRepliesComment {
         this._listeners = {};
         const EvtTypes = CommentsBS.EventTypes;
         for (let e = 0; e < EvtTypes.length; e++) {
-            this._listeners[EvtTypes[e]] = new Array();
+            this._listeners[EvtTypes[e]] = [];
         }
         return this;
     }
@@ -153,15 +153,15 @@ export class CommentsBS implements implRepliesComment {
      * @param  {Function}   fn   - La fonction à appeler
      * @return {Base} L'instance du média
      */
-    public addListener(name: EventTypes, fn: Function, ...args): this {
+    public addListener(name: EventTypes, fn: Callback, ...args): this {
         // On vérifie que le type d'event est pris en charge
         if (CommentsBS.EventTypes.indexOf(name) < 0) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
         }
         if (this._listeners[name] === undefined) {
-            this._listeners[name] = new Array();
+            this._listeners[name] = [];
         }
-        for (let func in this._listeners[name]) {
+        for (const func in this._listeners[name]) {
             if (func.toString() == fn.toString()) {
                 if (Base.debug) console.warn('Cette fonction est déjà présente pour event[%s]', name);
                 return;
@@ -181,7 +181,7 @@ export class CommentsBS implements implRepliesComment {
      * @param  {Function} fn   - La fonction qui était appelée
      * @return {Base} L'instance du média
      */
-    public removeListener(name: EventTypes, fn: Function): this {
+    public removeListener(name: EventTypes, fn: Callback): this {
         if (this._listeners[name] !== undefined) {
             for (let l = 0; l < this._listeners[name].length; l++) {
                 if ((typeof this._listeners[name][l] === 'function' && this._listeners[name][l].toString() === fn.toString()) ||
@@ -247,11 +247,11 @@ export class CommentsBS implements implRepliesComment {
      * @param   {OrderComments} [order='desc'] - Ordre de tri des commentaires
      * @returns {Promise<CommentsBS>}
      */
-    public fetchComments(nbpp: number = 50, since: number = 0, order: OrderComments = OrderComments.DESC): Promise<CommentsBS> {
+    public fetchComments(nbpp = 50, since = 0, order: OrderComments = OrderComments.DESC): Promise<CommentsBS> {
         if (order !== this._order) { this.order = order; }
         const self = this;
-        return new Promise((resolve: Function, reject: Function) => {
-            let params: Obj = {
+        return new Promise((resolve, reject) => {
+            const params: Obj = {
                 type: self._parent.mediaType.singular,
                 id: self._parent.id,
                 nbpp: nbpp,
@@ -265,7 +265,7 @@ export class CommentsBS implements implRepliesComment {
             .then((data: Obj) => {
                 if (data.comments !== undefined) {
                     if (since <= 0) {
-                        self.comments = new Array();
+                        self.comments = [];
                     }
                     for (let c = 0; c < data.comments.length; c++) {
                         self.comments.push(new CommentBS(data.comments[c], self));
@@ -287,11 +287,11 @@ export class CommentsBS implements implRepliesComment {
     /**
      * Ajoute un commentaire à la collection
      * /!\ (Ne l'ajoute pas sur l'API) /!\
-     * @param   {any} data - Les données du commentaire provenant de l'API
+     * @param   {Obj} data - Les données du commentaire provenant de l'API
      * @returns {CommentsBS}
      */
-    public addComment(data: any | CommentBS): this {
-        const method: Function = this.order == OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
+    public addComment(data: Obj | CommentBS): this {
+        const method = this.order == OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
         if (Base.debug) console.log('addComment order: %s - method: %s', this.order, method.name);
         if (data instanceof CommentBS) {
             method.call(this.comments, data);
@@ -378,7 +378,7 @@ export class CommentsBS implements implRepliesComment {
      * @param   {number} cId - L'identifiant du commentaire
      * @returns {CommentBS|null}
      */
-    public getNextComment(cId: number): CommentBS {
+    public getNextComment(cId: number): CommentBS|null {
         const len = this.comments.length;
         for (let c = 0; c < this.comments.length; c++) {
             // TODO: Vérifier que tous les commentaires ont été récupérer
@@ -396,7 +396,7 @@ export class CommentsBS implements implRepliesComment {
      */
     public async fetchReplies(commentId: number, order: OrderComments = OrderComments.ASC): Promise<Array<CommentBS>> {
         const data = await Base.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: commentId, order });
-        const replies = new Array();
+        const replies = [];
         if (data.comments) {
             for (let c = 0; c < data.comments.length; c++) {
                 replies.push(new CommentBS(data.comments[c], this));
@@ -428,7 +428,7 @@ export class CommentsBS implements implRepliesComment {
      */
     public async getTemplate(nbpp: number): Promise<string> {
         const self = this;
-        return new Promise((resolve: Function, reject: Function) => {
+        return new Promise((resolve, reject) => {
             let promise = Promise.resolve(self);
 
             if (Base.debug) console.log('Base ', {length: self.comments.length, nbComments: self.nbComments});
@@ -438,7 +438,7 @@ export class CommentsBS implements implRepliesComment {
             }
             promise.then(async () => {
                 let comment: CommentBS,
-                    template: string = `
+                    template = `
                         <div data-media-type="${self._parent.mediaType.singular}"
                             data-media-id="${self._parent.id}"
                             class="displayFlex flexDirectionColumn"
@@ -491,7 +491,7 @@ export class CommentsBS implements implRepliesComment {
      * @returns {Array<string>}
      */
     protected getLogins(): Array<string> {
-        let users = new Array();
+        const users = [];
         for (let c = 0; c < this.comments.length; c++) {
             if (!users.includes(this.comments[c].login)) {
                 users.push(this.comments[c].login);
@@ -515,7 +515,7 @@ export class CommentsBS implements implRepliesComment {
      */
     protected loadEvents($container: JQuery<HTMLElement>, nbpp: number, funcPopup: Obj): void {
         // Tableau servant à contenir les events créer pour pouvoir les supprimer plus tard
-        this._events = new Array();
+        this._events = [];
         const self = this;
         const $popup = jQuery('#popin-dialog');
         const $btnClose = jQuery("#popin-showClose");
@@ -604,20 +604,20 @@ export class CommentsBS implements implRepliesComment {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn = $(e.currentTarget);
-            let params: Obj = {type: self._parent.mediaType.singular, id: self._parent.id};
+            const params: Obj = {type: self._parent.mediaType.singular, id: self._parent.id};
             if ($btn.hasClass('active')) {
                 Base.callApi(HTTP_VERBS.DELETE, 'comments', 'subscription', params)
-                .then((data: Obj) => {
+                .then(() => {
                     self.is_subscribed = false;
                     displaySubscription($btn);
                 });
             } else {
                 Base.callApi(HTTP_VERBS.POST, 'comments', 'subscription', params)
-                .then((data: Obj) => {
+                .then(() => {
                     self.is_subscribed = true;
                     displaySubscription($btn);
                 });
@@ -654,7 +654,7 @@ export class CommentsBS implements implRepliesComment {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn = jQuery(e.currentTarget);
@@ -728,7 +728,7 @@ export class CommentsBS implements implRepliesComment {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const getNodeCmt = function(cmtId: number): JQuery<HTMLElement> {
@@ -743,7 +743,7 @@ export class CommentsBS implements implRepliesComment {
                 if ($textarea.data('replyTo')) {
                     const cmtId = parseInt($textarea.data('replyTo'), 10);
                     comment = self.getComment(cmtId);
-                    let $comment = getNodeCmt(cmtId);
+                    const $comment = getNodeCmt(cmtId);
                     promise = comment.sendReply($textarea.val() as string).then((reply) => {
                         if (reply instanceof CommentBS) {
                             $textarea.val('');
@@ -823,11 +823,12 @@ export class CommentsBS implements implRepliesComment {
          * Permet d'englober le texte du commentaire en écriture
          * avec les balises [spoiler]...[/spoiler]
          */
-        $baliseSpoiler.click((e: JQuery.ClickEvent) => {
+        $baliseSpoiler.click(() => {
             const $textarea = $popup.find('textarea');
             if (/\[spoiler\]/.test($textarea.val() as string)) {
                 return;
             }
+            // TODO: Gérer la balise spoiler sur une zone de texte sélectionnée
             const text = '[spoiler]' + $textarea.val() + '[/spoiler]';
             $textarea.val(text);
         });
@@ -869,7 +870,7 @@ export class CommentsBS implements implRepliesComment {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
-                faceboxDisplay('inscription', {}, function() {});
+                faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn: JQuery<HTMLElement> = $(e.currentTarget);
@@ -898,8 +899,8 @@ export class CommentsBS implements implRepliesComment {
             const lastCmtId = self.comments[self.comments.length - 1].id;
             const oldLastCmtIndex = self.comments.length - 1;
             self.fetchComments(nbpp, lastCmtId).then(async () => {
-                let template = '', comment: CommentBS,
-                    firstCmtId: number = self.comments[oldLastCmtIndex + 1].id;
+                let template = '', comment: CommentBS;
+                const firstCmtId: number = self.comments[oldLastCmtIndex + 1].id;
                 for (let c = oldLastCmtIndex + 1; c < self.comments.length; c++) {
                     comment = self.comments[c];
                     template += CommentBS.getTemplateComment(comment);
@@ -947,7 +948,7 @@ export class CommentsBS implements implRepliesComment {
             e.preventDefault();
             const $comment = jQuery(e.currentTarget).parents('.comment');
             const $options = jQuery(e.currentTarget).parents('.options-options');
-            let template = `
+            const template = `
                 <div class="options-delete">
                     <span class="mainTime">Supprimer mon commentaire :</span>
                     <button type="button" class="btn-reset fontWeight700 btnYes" style="vertical-align: 0px; padding-left: 10px; padding-right: 10px; color: rgb(208, 2, 27);">Oui</button>
@@ -989,7 +990,7 @@ export class CommentsBS implements implRepliesComment {
      * @param   {Function} onComplete - Fonction de callback
      * @returns {void}
      */
-    protected cleanEvents(onComplete: Function = Base.noop): void {
+    protected cleanEvents(onComplete: Callback = Base.noop): void {
         if (this._events && this._events.length > 0) {
             let data: CustomEvent;
             for (let e = 0; e < this._events.length; e++) {
@@ -998,7 +999,7 @@ export class CommentsBS implements implRepliesComment {
                     data.elt.off(data.event);
             }
         }
-        this._events = new Array();
+        this._events = [];
         onComplete();
     }
     /**
@@ -1135,8 +1136,8 @@ export class CommentsBS implements implRepliesComment {
         .then((data: Obj) => {
             let comments = data.comments || [];
             comments = comments.filter((comment: Obj) => { return comment.user_note > 0; });
-            let notes = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-            const userIds = new Array();
+            const notes = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+            const userIds = [];
             let nbEvaluations = 0;
             for (let c = 0; c < comments.length; c++) {
                 // Pour éviter les doublons
@@ -1147,7 +1148,7 @@ export class CommentsBS implements implRepliesComment {
                 }
             }
             const buildline = function(index: number, notes: object): string {
-                let percent:number = nbEvaluations > 0 ? (notes[index] * 100) / nbEvaluations : 0;
+                const percent:number = nbEvaluations > 0 ? (notes[index] * 100) / nbEvaluations : 0;
                 return `<tr class="histogram-row">
                     <td class="nowrap">${index} étoile${index > 1 ? 's':''}</td>
                     <td class="span10">

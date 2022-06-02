@@ -33,7 +33,7 @@ export class Subtitle {
     show: number;
     season: number;
 
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.id = parseInt(data.id, 10);
         this.language = data.language;
         this.source = data.source;
@@ -52,20 +52,20 @@ export enum SortTypeSubtitles {
     SOURCE = 'source',
     QUALITY = 'quality',
     DATE = 'date'
-};
+}
 
 export enum SubtitleTypes {
     EPISODE = 'episode',
     SEASON = 'season',
     SHOW = 'show'
-};
+}
 
 export enum SubtitleLanguages {
     ALL = 'all',
     VOVF = 'vovf',
     VO = 'vo',
     VF = 'vf'
-};
+}
 export type ParamsFetchSubtitles = {
     id: number;
     season?: number;
@@ -96,7 +96,7 @@ export class Subtitles {
     }
 
     constructor(data: Array<Obj>) {
-        this.subtitles = new Array();
+        this.subtitles = [];
         if (data && data.length > 0) {
             for (let s = 0; s < data.length; s++) {
                 this.subtitles.push(new Subtitle(data[s]));

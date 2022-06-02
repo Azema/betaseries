@@ -1,4 +1,4 @@
-import { Base, EventTypes, MediaType } from "./Base";
+import { Base, EventTypes, MediaType, Obj, Callback } from "./Base";
 
 export interface implAddNote {
     addVote(note: number): Promise<boolean>;
@@ -31,7 +31,7 @@ export class Note {
      */
     _parent: Base;
 
-    constructor(data: any, parent: Base) {
+    constructor(data: Obj, parent: Base) {
         this.total = parseInt(data.total, 10);
         this.mean = parseFloat(data.mean);
         this.user = parseInt(data.user, 10);
@@ -64,10 +64,10 @@ export class Note {
     /**
      * Crée une popup avec 5 étoiles pour noter le média
      */
-    public createPopupForVote(cb: Function = Base.noop): void {
+    public createPopupForVote(cb: Callback = Base.noop): void {
         if (Base.debug) console.log('objNote createPopupForVote');
         // La popup et ses éléments
-        const _this = this,
+        const self = this,
               $popup = jQuery('#popin-dialog'),
               $contentHtmlElement = $popup.find(".popin-content-html"),
               $contentReact = $popup.find('.popin-content-reactmodule'),
@@ -149,21 +149,21 @@ export class Note {
             updateStars(e, note);
         });
         $stars.mouseleave((e: JQuery.MouseLeaveEvent) => {
-            updateStars(e, _this.user);
+            updateStars(e, self.user);
         });
         $stars.click((e: JQuery.ClickEvent) => {
             const note:number = parseInt(jQuery(e.currentTarget).data('number'), 10),
                   $stars = jQuery(e.currentTarget).parent().find('.star-svg');
             // On supprime les events
             $stars.off('mouseenter').off('mouseleave');
-            _this._parent.addVote(note)
+            self._parent.addVote(note)
                 .then((result: boolean) => {
                     hidePopup();
                     if (result) {
                         // TODO: Mettre à jour la note du média
-                        _this._parent.changeTitleNote(true);
-                        _this._parent._callListeners(EventTypes.NOTE);
-                        if (cb) cb.call(_this);
+                        self._parent.changeTitleNote(true);
+                        self._parent._callListeners(EventTypes.NOTE);
+                        if (cb) cb.call(self);
                     } else {
                         Base.notification('Erreur Vote', "Une erreur s'est produite durant le vote");
                     }
@@ -219,9 +219,9 @@ export class Note {
      * @param   {string} [color] - La couleur des étoiles
      * @returns {string}
      */
-    public static renderStars(note: number = 0, color: string = ''): string {
+    public static renderStars(note = 0, color = ''): string {
         let typeSvg: string,
-            template: string = '';
+            template = '';
         if (note == 0) {
             color = 'grey';
         }

@@ -3,7 +3,7 @@ import { implAddNote } from "./Note";
 import { Season } from "./Season";
 import { Subtitles } from "./Subtitle";
 
-declare var PopupAlert: any;
+declare const PopupAlert;
 
 export type Platform_link = {
     /**
@@ -116,18 +116,18 @@ export class Episode extends Base implements implAddNote {
      * @param   {Season}    season  L'objet Season contenant l'épisode
      * @returns {Episode}
      */
-    constructor(data: any, season?: Season) {
+    constructor(data: Obj, season?: Season) {
         super(data);
         this._season = season;
         return this.fill(data);
     }
     /**
      * Remplit l'objet avec les données fournit en paramètre
-     * @param  {any} data Les données provenant de l'API
+     * @param  {Obj} data Les données provenant de l'API
      * @returns {Episode}
      * @override
      */
-    fill(data: any): this {
+    fill(data: Obj): this {
         this.code = data.code;
         this.date = new Date(data.date);
         this.director = data.director;
@@ -271,12 +271,12 @@ export class Episode extends Base implements implAddNote {
     updateStatus(status: string, method: HTTP_VERBS): void {
         const self = this;
         const pos = this.elt.find('.checkSeen').data('pos');
+        const args = {id: this.id, bulk: true};
         let promise = new Promise(resolve => { resolve(false); });
-        let args = {id: this.id, bulk: true};
         this.toggleSpinner(true);
 
         if (method === HTTP_VERBS.POST) {
-            let createPromise = () => {
+            const createPromise = () => {
                 return new Promise(resolve => {
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
@@ -291,8 +291,8 @@ export class Episode extends Base implements implAddNote {
                             resolve(false);
                         }
                     });
-                    let btnNo = jQuery('#popin-dialog #popupalertno'),
-                        btnYes = jQuery('#popin-dialog #popupalertyes');
+                    const btnNo = jQuery('#popin-dialog #popupalertno'),
+                          btnYes = jQuery('#popin-dialog #popupalertyes');
                     btnNo.attr('tabIndex', 0).focus();
                     btnYes.attr('tabIndex', 0).show();
                 });
@@ -376,7 +376,7 @@ export class Episode extends Base implements implAddNote {
      * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
      * @return {Episode}
      */
-    updateRender(newStatus: string, update: boolean = true): Episode {
+    updateRender(newStatus: string, update = true): Episode {
         const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
         if (Base.debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
         if (newStatus === 'seen') {

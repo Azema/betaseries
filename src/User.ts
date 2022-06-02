@@ -1,3 +1,4 @@
+import { Obj } from "./Base";
 import { WatchedBy } from "./Episode";
 
 export class Next {
@@ -7,7 +8,7 @@ export class Next {
     title: string;
     image: string;
 
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.id = (data.id !== undefined) ? parseInt(data.id, 10) : NaN;
         this.code = data.code;
         this.date = new Date(data.date) || null;
@@ -32,7 +33,7 @@ export class User {
     tags: string;
     twitter: boolean;
 
-    constructor(data: any) {
+    constructor(data: Obj) {
         this.archived = !!data.archived || false;
         this.downloaded = !!data.downloaded || false;
         this.favorited = !!data.favorited || false;
