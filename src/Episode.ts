@@ -432,4 +432,40 @@ export class Episode extends Base implements implAddNote {
         }
         return this;
     }
+    /**
+     * Retourne une image, si disponible, en fonction du format désiré
+     * @return {Promise<string>}                         L'URL de l'image
+     */
+     getDefaultImage(): Promise<string> {
+        /*const proxy = Base.serverBaseUrl + '/proxy/';
+        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
+            method: 'GET',
+            headers: {
+                'origin': 'https://www.betaseries.com',
+                'x-requested-with': ''
+            },
+            mode: 'cors',
+            cache: 'no-cache'
+        };*/
+        return new Promise((res) => {
+            return res(`${Base.api.url}/pictures/episodes?id=${this.id}`);
+            /*else {
+                fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
+                .then((resp: Response) => {
+                    if (resp.ok) {
+                        return resp.text();
+                    }
+                    return null;
+                }).then(html => {
+                    if (html == null) {
+                        return rej('HTML error');
+                    }
+                    const parser = new DOMParser();
+                    const doc: Document = parser.parseFromString(html, 'text/html');
+                    const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_backgrounds"]');
+                    res(link.href.replace('original', 'w500'));
+                }).catch(err => rej(err));
+            }*/
+        });
+    }
 }
