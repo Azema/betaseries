@@ -279,10 +279,11 @@ export class UpdateAuto {
             }
             this.status = true;
             this._tick();
-            this._timer = setInterval(this._tick, (this.interval * 60) * 1000);
+            this._timer = setInterval(this._tick.bind(this), (this.interval * 60) * 1000);
         }
         return this;
     }
+
     /**
      * _tick: Fonction Tick pour la mise à jour des épisodes à intervalle régulère
      * @private
@@ -290,7 +291,7 @@ export class UpdateAuto {
      */
     private _tick(): void {
         this._lastUpdate = new Date();
-        // if (debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this._objShow));
+        if (Base.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
         if (! this.auto || this.show.user.remaining <= 0) {
             if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
             this.stop();
