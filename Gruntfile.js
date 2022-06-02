@@ -229,11 +229,11 @@ module.exports = function(grunt) {
                         // Middleware CORS
                         middlewares.unshift(function(req, res, next) {
                             // console.log('allowingCrossDomain');
-                            res.setHeader('Access-Control-Allow-Origin', 'https://www.betaseries.com');
+                            res.setHeader('Access-Control-Allow-Origin', '*');
                             res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
                             res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, Authorization, X-Mindflash-SessionID');
-                            res.setHeader('Access-Control-Allow-Private-Network', 'true');
-                            res.setHeader('Access-Control-Allow-Credentials', 'true');
+                            // res.setHeader('Access-Control-Allow-Private-Network', 'true');
+                            // res.setHeader('Access-Control-Allow-Credentials', 'true');
 
                             // intercept OPTIONS method
                             if ('OPTIONS' == req.method) {
