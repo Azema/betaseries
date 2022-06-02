@@ -74,6 +74,7 @@ declare module 'Cache' {
 
 }
 declare module 'Character' {
+	import { Obj } from 'Base';
 	export class Character {
 	    /**
 	     * @type {string} Nom de l'acteur/actrice
@@ -111,13 +112,13 @@ declare module 'Character' {
 	     * @type {number} Identifiant du film
 	     */
 	    movie_id: number;
-	    constructor(data: any);
+	    constructor(data: Obj);
 	}
 
 }
 declare module 'Note' {
 	/// <reference types="jquery" />
-	import { Base } from 'Base';
+	import { Base, Obj, Callback } from 'Base';
 	export interface implAddNote {
 	    addVote(note: number): Promise<boolean>;
 	}
@@ -142,7 +143,7 @@ declare module 'Note' {
 	     * @type {Base}
 	     */
 	    _parent: Base;
-	    constructor(data: any, parent: Base);
+	    constructor(data: Obj, parent: Base);
 	    /**
 	     * Retourne la note moyenne sous forme de pourcentage
 	     * @returns {number} La note sous forme de pourcentage
@@ -156,7 +157,7 @@ declare module 'Note' {
 	    /**
 	     * Crée une popup avec 5 étoiles pour noter le média
 	     */
-	    createPopupForVote(cb?: Function): void;
+	    createPopupForVote(cb?: Callback): void;
 	    /**
 	     * Retourne le type d'étoile en fonction de la note et de l'indice
 	     * de comparaison
@@ -369,6 +370,12 @@ declare module 'Comment' {
 	     * @returns {string}
 	     */
 	    static getTemplateWriting(comment?: CommentBS): string;
+	    /**
+	     * Renvoie la template HTML pour l'écriture d'un signalement de commentaire
+	     * @param   {CommentBS} [comment] - L'objet commentaire à signaler
+	     * @returns {string}
+	     */
+	    static getTemplateReport(comment: CommentBS): string;
 	    getLogins(): Array<string>;
 	    /**
 	     * Met à jour le rendu des votes de ce commentaire
@@ -427,7 +434,7 @@ declare module 'Comment' {
 }
 declare module 'Comments' {
 	/// <reference types="jquery" />
-	import { Base, Obj, EventTypes } from 'Base';
+	import { Base, Obj, EventTypes, Callback } from 'Base';
 	import { CommentBS, implRepliesComment } from 'Comment';
 	export enum OrderComments {
 	    DESC = "desc",
@@ -512,14 +519,14 @@ declare module 'Comments' {
 	     * @param  {Function}   fn   - La fonction à appeler
 	     * @return {Base} L'instance du média
 	     */
-	    addListener(name: EventTypes, fn: Function, ...args: any[]): this;
+	    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
 	    /**
 	     * Permet de supprimer un listener sur un type d'évenement
 	     * @param  {string}   name - Le type d'évenement
 	     * @param  {Function} fn   - La fonction qui était appelée
 	     * @return {Base} L'instance du média
 	     */
-	    removeListener(name: EventTypes, fn: Function): this;
+	    removeListener(name: EventTypes, fn: Callback): this;
 	    /**
 	     * Appel les listeners pour un type d'évenement
 	     * @param  {EventTypes} name - Le type d'évenement
@@ -557,10 +564,10 @@ declare module 'Comments' {
 	    /**
 	     * Ajoute un commentaire à la collection
 	     * /!\ (Ne l'ajoute pas sur l'API) /!\
-	     * @param   {any} data - Les données du commentaire provenant de l'API
+	     * @param   {Obj} data - Les données du commentaire provenant de l'API
 	     * @returns {CommentsBS}
 	     */
-	    addComment(data: any | CommentBS): this;
+	    addComment(data: Obj | CommentBS): this;
 	    /**
 	     * Retire un commentaire de la collection
 	     * /!\ (Ne le supprime pas sur l'API) /!\
@@ -602,7 +609,7 @@ declare module 'Comments' {
 	     * @param   {number} cId - L'identifiant du commentaire
 	     * @returns {CommentBS|null}
 	     */
-	    getNextComment(cId: number): CommentBS;
+	    getNextComment(cId: number): CommentBS | null;
 	    /**
 	     * Retourne les réponses d'un commentaire
 	     * @param   {number} commentId - Identifiant du commentaire original
@@ -646,7 +653,7 @@ declare module 'Comments' {
 	     * @param   {Function} onComplete - Fonction de callback
 	     * @returns {void}
 	     */
-	    protected cleanEvents(onComplete?: Function): void;
+	    protected cleanEvents(onComplete?: Callback): void;
 	    /**
 	     * Gère l'affichage de l'ensemble des commentaires
 	     * @returns {void}
@@ -672,6 +679,7 @@ declare module 'Comments' {
 }
 declare module 'Movie' {
 	/// <reference types="jquery" />
+	import { Obj } from 'Base';
 	import { implAddNote } from 'Note';
 	import { Platform_link } from 'Episode';
 	import { Media } from 'Media';
@@ -733,14 +741,14 @@ declare module 'Movie' {
 	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
 	     * @returns {Media}
 	     */
-	    constructor(data: any, element?: JQuery<HTMLElement>);
+	    constructor(data: Obj, element?: JQuery<HTMLElement>);
 	    /**
 	     * Remplit l'objet avec les données fournit en paramètre
 	     * @param  {any} data Les données provenant de l'API
 	     * @returns {Movie}
 	     * @override
 	     */
-	    fill(data: any): this;
+	    fill(data: Obj): this;
 	    /**
 	     * Définit le film, sur le compte du membre connecté, comme "vu"
 	     * @returns {Promise<Movie>}
@@ -762,6 +770,12 @@ declare module 'Movie' {
 	     * @returns {Promise<Movie>}    L'instance du film
 	     */
 	    changeStatus(state: MovieStatus): Promise<this>;
+	    /**
+	     * Retourne une image, si disponible, en fonction du format désiré
+	     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+	     * @return {Promise<string>}                         L'URL de l'image
+	     */
+	    getDefaultImage(format?: string): Promise<string>;
 	}
 
 }
@@ -773,12 +787,12 @@ declare module 'Similar' {
 	import { implMovie, OtherTitle } from 'Movie';
 	import { Platform_link } from 'Episode';
 	interface implDialog {
-	    show: Function;
-	    close: Function;
-	    setContent: Function;
-	    setCounter: Function;
-	    setTitle: Function;
-	    init: Function;
+	    show: () => void;
+	    close: () => void;
+	    setContent: (text: string) => void;
+	    setCounter: (text: string) => void;
+	    setTitle: (title: string) => void;
+	    init: () => void;
 	}
 	export class Similar extends Media implements implShow, implMovie {
 	    backdrop: string;
@@ -972,12 +986,16 @@ declare module 'Media' {
 }
 declare module 'Show' {
 	/// <reference types="jquery" />
-	import { Obj, EventTypes } from 'Base';
+	import { Obj, EventTypes, Callback } from 'Base';
 	import { implAddNote } from 'Note';
 	import { Media } from 'Media';
 	import { Season } from 'Season';
 	export class Images {
-	    constructor(data: any);
+	    static formats: {
+	        poster: string;
+	        wide: string;
+	    };
+	    constructor(data: Obj);
 	    show: string;
 	    banner: string;
 	    box: string;
@@ -989,7 +1007,7 @@ declare module 'Show' {
 	    show = 2
 	}
 	export class Picture {
-	    constructor(data: any);
+	    constructor(data: Obj);
 	    id: number;
 	    show_id: number;
 	    login_id: number;
@@ -1000,21 +1018,43 @@ declare module 'Show' {
 	    picked: Picked;
 	}
 	export class Platform {
-	    constructor(data: any);
+	    constructor(data: Obj);
 	    id: number;
 	    name: string;
 	    tag: string;
 	    link_url: string;
 	    available: object;
 	    logo: string;
+	    partner: boolean;
+	}
+	export class PlatformList {
+	    svod: Array<Platform>;
+	    vod: Array<Platform>;
+	    country: string;
+	    static types: Obj;
+	    /**
+	     * fetchPlatforms - Récupère la liste des plateformes sur l'API
+	     * @param  {string}                [country = 'us'] Le pays concerné par les plateformes
+	     * @return {Promise<PlatformList>}                  L'objet contenant les différentes plateformes
+	     */
+	    static fetchPlatforms(country?: string): Promise<PlatformList>;
+	    constructor(data: Obj, country?: string);
+	    /**
+	     * Retourne les plateformes sous forme d'éléments HTML Option
+	     * @param  {string}           [type = 'svod']  Le type de plateformes souhaité
+	     * @param  {Array<number>}    [exclude = null] Les identifiants des plateformes à exclure
+	     * @return {string}                            Les options sous forme de chaîne
+	     */
+	    renderHtmlOptions(type?: string, exclude?: Array<number>): string;
 	}
 	export class Platforms {
-	    constructor(data: any);
+	    constructor(data: Obj);
 	    svods: Array<Platform>;
 	    svod: Platform;
+	    vod: Array<Platform>;
 	}
 	export class Showrunner {
-	    constructor(data: any);
+	    constructor(data: Obj);
 	    id: number;
 	    name: string;
 	    picture: string;
@@ -1053,6 +1093,11 @@ declare module 'Show' {
 	     * @private
 	     */
 	    private static _fetch;
+	    /**
+	     * fetchLastSeen - Méthode static retournant les 10 dernières séries vues par le membre
+	     * @param  {number}  [limit = 10]  Le nombre limite de séries retournées
+	     * @return {Promise<Show>}         Une promesse avec les séries
+	     */
 	    static fetchLastSeen(limit?: number): Promise<Array<Show>>;
 	    /**
 	     * Méthode static servant à récupérer plusieurs séries sur l'API BS
@@ -1166,15 +1211,15 @@ declare module 'Show' {
 	    constructor(data: Obj, element: JQuery<HTMLElement>);
 	    /**
 	     * Initialise l'objet lors de sa construction et après son remplissage
-	     * @returns {Show}
+	     * @returns {Promise<Show>}
 	     */
-	    init(): this;
+	    init(): Promise<this>;
 	    /**
 	     * Récupère les données de la série sur l'API
 	     * @param  {boolean} [force=true]   Indique si on utilise les données en cache
 	     * @return {Promise<*>}             Les données de la série
 	     */
-	    fetch(force?: boolean): Promise<any>;
+	    fetch(force?: boolean): Promise<Obj>;
 	    /**
 	     * Récupère les saisons de la série
 	     * @returns {Promise<Show>}
@@ -1240,18 +1285,18 @@ declare module 'Show' {
 	    unfavorite(): Promise<Show>;
 	    /**
 	     * Met à jour les données de la série
-	     * @param  {Boolean}  [force=false] Forcer la récupération des données sur l'API
-	     * @param  {Function} [cb=noop]     Fonction de callback
-	     * @return {Promise<Show>}          Promesse (Show)
+	     * @param  {Boolean}  [force=false]     Forcer la récupération des données sur l'API
+	     * @param  {Callback} [cb = Base.noop]  Fonction de callback
+	     * @return {Promise<Show>}              Promesse (Show)
 	     */
-	    update(force?: boolean, cb?: Function): Promise<Show>;
+	    update(force?: boolean, cb?: Callback): Promise<Show>;
 	    /**
 	     * Met à jour le rendu de la barre de progression
 	     * et du prochain épisode
-	     * @param  {Function} cb Fonction de callback
+	     * @param  {Callback} [cb=Base.noop] Fonction de callback
 	     * @return {void}
 	     */
-	    updateRender(cb?: Function): void;
+	    updateRender(cb?: Callback): void;
 	    /**
 	     * Met à jour la barre de progression de visionnage de la série
 	     * @return {void}
@@ -1259,10 +1304,10 @@ declare module 'Show' {
 	    updateProgressBar(): void;
 	    /**
 	     * Met à jour le bloc du prochain épisode à voir
-	     * @param   {Function} [cb=noop] Fonction de callback
+	     * @param   {Callback} [cb=noop] Fonction de callback
 	     * @returns {void}
 	     */
-	    updateNextEpisode(cb?: Function): void;
+	    updateNextEpisode(cb?: Callback): void;
 	    /**
 	     * On gère l'ajout de la série dans le compte utilisateur
 	     *
@@ -1306,11 +1351,17 @@ declare module 'Show' {
 	     * @returns {Season}
 	     */
 	    getSeason(seasonNumber: number): Season;
+	    /**
+	     * Retourne une image, si disponible, en fonction du format désiré
+	     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+	     * @return {Promise<string>}                         L'URL de l'image
+	     */
+	    getDefaultImage(format?: string): Promise<string>;
 	}
 
 }
 declare module 'Season' {
-	import { Obj } from 'Base';
+	import { Callback, Obj } from 'Base';
 	import { Episode } from 'Episode';
 	import { Show } from 'Show';
 	export class Season {
@@ -1322,6 +1373,11 @@ declare module 'Season' {
 	     * @type {Array<Episode>} Tableau des épisodes de la saison
 	     */
 	    episodes: Array<Episode>;
+	    /**
+	     * Nombre d'épisodes dans la saison
+	     * @type {number}
+	     */
+	    nbEpisodes: number;
 	    /**
 	     * @type {boolean} Possède des sous-titres
 	     */
@@ -1387,7 +1443,7 @@ declare module 'Season' {
 	     * @param {Function} cb Function de callback
 	     * @returns {Season}
 	     */
-	    updateShow(cb?: Function): Season;
+	    updateShow(cb?: Callback): Season;
 	    /**
 	     * Change le statut visuel de la saison sur le site
 	     * @return {Season}
@@ -1409,6 +1465,10 @@ declare module 'Season' {
 	     * @returns {Season}
 	     */
 	    addShowToAccount(): Season;
+	    /**
+	     * Retourne le prochain épisode non vu
+	     * @return {Episode} Le prochain épisode non vu
+	     */
 	    getNextEpisodeUnwatched(): Episode;
 	}
 
@@ -1447,7 +1507,7 @@ declare module 'Subtitle' {
 	    episode: number;
 	    show: number;
 	    season: number;
-	    constructor(data: any);
+	    constructor(data: Obj);
 	}
 	export enum SortTypeSubtitles {
 	    LANGUAGE = "language",
@@ -1494,7 +1554,7 @@ declare module 'Subtitle' {
 
 }
 declare module 'Episode' {
-	import { Base, HTTP_VERBS } from 'Base';
+	import { Base, Obj, HTTP_VERBS } from 'Base';
 	import { implAddNote } from 'Note';
 	import { Season } from 'Season';
 	import { Subtitles } from 'Subtitle';
@@ -1602,14 +1662,14 @@ declare module 'Episode' {
 	     * @param   {Season}    season  L'objet Season contenant l'épisode
 	     * @returns {Episode}
 	     */
-	    constructor(data: any, season?: Season);
+	    constructor(data: Obj, season?: Season);
 	    /**
 	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {any} data Les données provenant de l'API
+	     * @param  {Obj} data Les données provenant de l'API
 	     * @returns {Episode}
 	     * @override
 	     */
-	    fill(data: any): this;
+	    fill(data: Obj): this;
 	    /**
 	     * Ajoute le titre de l'épisode à l'attribut Title
 	     * du DOMElement correspondant au titre de l'épisode
@@ -1677,6 +1737,7 @@ declare module 'Episode' {
 
 }
 declare module 'User' {
+	import { Obj } from 'Base';
 	import { WatchedBy } from 'Episode';
 	export class Next {
 	    id: number;
@@ -1684,7 +1745,7 @@ declare module 'User' {
 	    date: Date;
 	    title: string;
 	    image: string;
-	    constructor(data: any);
+	    constructor(data: Obj);
 	}
 	export class User {
 	    archived: boolean;
@@ -1702,7 +1763,7 @@ declare module 'User' {
 	    status: number;
 	    tags: string;
 	    twitter: boolean;
-	    constructor(data: any);
+	    constructor(data: Obj);
 	}
 
 }
@@ -1750,12 +1811,10 @@ declare module 'Base' {
 	export type Ratings = {
 	    [key: string]: Rating;
 	};
-	export type GM_funcs = {
-	    [key: string]: Function;
-	};
 	export type Obj = {
 	    [key: string]: any;
 	};
+	export type Callback = () => void;
 	export abstract class Base implements implAddNote {
 	    /**
 	     * Flag de debug pour le dev
@@ -1771,7 +1830,7 @@ declare module 'Base' {
 	     * Objet contenant les informations de l'API
 	     * @type {Obj}
 	     */
-	    static api: any;
+	    static api: Obj;
 	    /**
 	     * Le token d'authentification de l'API
 	     * @type {String}
@@ -1816,31 +1875,34 @@ declare module 'Base' {
 	     * Fonction de notification sur la page Web
 	     * @type {Function}
 	     */
-	    static notification: Function;
+	    static notification: (title: string, text: string) => void;
 	    /**
 	     * Fonction pour vérifier que le membre est connecté
 	     * @type {Function}
 	     */
-	    static userIdentified: Function;
+	    static userIdentified: () => boolean;
 	    /**
 	     * Fonction vide
 	     * @type {Function}
 	     */
-	    static noop: Function;
+	    static noop: Callback;
 	    /**
 	     * Fonction de traduction de chaînes de caractères
 	     * @param   {String}  msg  - Identifiant de la chaîne à traduire
-	     * @param   {Obj}     [params={}] - Variables utilisées dans la traduction {"%key%"": value}
+	     * @param   {Obj}     [params] - Variables utilisées dans la traduction {"%key%"": value}
 	     * @param   {number}  [count=1] - Nombre d'éléments pour la version plural
 	     * @returns {string}
 	     */
-	    static trans: Function;
+	    static trans: (msg: string, params?: Obj, count?: number) => string;
 	    /**
 	     * Contient les infos sur les différentes classification TV et cinéma
 	     * @type {Ratings}
 	     */
 	    static ratings: Ratings;
-	    static gm_funcs: GM_funcs;
+	    static gm_funcs: {
+	        getValue: (key: string, defaultValue: Obj | Array<Obj> | Array<string> | Array<number>) => any;
+	        setValue: (key: string, val: Obj | Array<Obj> | Array<string> | Array<number>) => void;
+	    };
 	    /**
 	     * Types d'évenements gérés par cette classe
 	     * @type {Array}
@@ -1853,7 +1915,7 @@ declare module 'Base' {
 	     *
 	     * @return {Promise}
 	     */
-	    static authenticate(): Promise<any>;
+	    static authenticate(): Promise<string>;
 	    /**
 	     * Fonction servant à appeler l'API de BetaSeries
 	     *
@@ -1865,7 +1927,7 @@ declare module 'Base' {
 	     * @return {Promise<Obj>} Les données provenant de l'API
 	     * @throws Error
 	     */
-	    static callApi(type: string, resource: string, action: string, args: any, force?: boolean): Promise<Obj>;
+	    static callApi(type: string, resource: string, action: string, args: Obj, force?: boolean): Promise<Obj>;
 	    description: string;
 	    characters: Array<Character>;
 	    comments: CommentsBS;
@@ -1899,7 +1961,7 @@ declare module 'Base' {
 	     * @return {Base} L'instance du média
 	     * @sealed
 	     */
-	    addListener(name: EventTypes, fn: Function, ...args: any[]): this;
+	    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
 	    /**
 	     * Permet de supprimer un listener sur un type d'évenement
 	     * @param  {string}   name - Le type d'évenement
@@ -1907,7 +1969,7 @@ declare module 'Base' {
 	     * @return {Base} L'instance du média
 	     * @sealed
 	     */
-	    removeListener(name: EventTypes, fn: Function): this;
+	    removeListener(name: EventTypes, fn: Callback): this;
 	    /**
 	     * Appel les listeners pour un type d'évenement
 	     * @param  {EventTypes} name - Le type d'évenement
@@ -1915,7 +1977,7 @@ declare module 'Base' {
 	     * @sealed
 	     */
 	    _callListeners(name: EventTypes): this;
-	    init(): this;
+	    init(): Promise<this>;
 	    /**
 	     * Sauvegarde l'objet en cache
 	     * @return {Base} L'instance du média
@@ -1960,12 +2022,16 @@ declare module 'Base' {
 	     * @returns {Promise<boolean>}
 	     */
 	    addVote(note: number): Promise<boolean>;
+	} global {
+	    interface Date {
+	        format: (mask: string, utc?: boolean) => string;
+	    }
 	}
 	export {};
 
 }
 declare module 'Member' {
-	 enum DaysOfWeek {
+	import { Obj } from 'Base'; enum DaysOfWeek {
 	    monday = "lundi",
 	    tuesday = "mardi",
 	    wednesday = "mercredi",
@@ -2002,7 +2068,7 @@ declare module 'Member' {
 	    movies_to_watch: number;
 	    time_on_movies: number;
 	    time_to_spend_movies: number;
-	    constructor(data: any);
+	    constructor(data: Obj);
 	} class Options {
 	    downloaded: boolean;
 	    notation: boolean;
@@ -2017,7 +2083,7 @@ declare module 'Member' {
 	    mail_hebdo: boolean;
 	    notification_news: boolean;
 	    twitter_auto: boolean;
-	    constructor(data: any);
+	    constructor(data: Obj);
 	}
 	export class Member {
 	    /**
@@ -2089,7 +2155,7 @@ declare module 'Member' {
 	     * @param data Les données provenant de l'API
 	     * @returns {Member}
 	     */
-	    constructor(data: any);
+	    constructor(data: Obj);
 	    /**
 	     * Retourne les infos du membre connecté
 	     * @returns {Promise<Member>} Une instance du membre connecté
@@ -2105,15 +2171,47 @@ declare module 'UpdateAuto' {
 	export class UpdateAuto {
 	    private static instance;
 	    static intervals: Array<Obj>;
+	    /**
+	     * Objet Show contenant les infos de la série
+	     * @type {Show}
+	     */
 	    private _show;
+	    /**
+	     * Identifiant de la série
+	     * @type {number}
+	     */
 	    private _showId;
+	    /**
+	     * Flag indiquant si une config updateAuto existe déjà
+	     * en mémoire
+	     * @type {boolean}
+	     */
 	    private _exist;
+	    /**
+	     * Etat de la tâche de mise à jour
+	     * @type {boolean}
+	     */
 	    private _status;
+	    /**
+	     * Flag indiquant si la mise à jour doit être lancée automatiquement
+	     * @type {boolean}
+	     */
 	    private _auto;
+	    /**
+	     * Intervalle des mises à jour
+	     * @type {number}
+	     */
 	    private _interval;
+	    /**
+	     * Timer des mises à jour
+	     * @type {NodeJS.Timer}
+	     */
 	    private _timer;
-	    private _remaining;
-	    private _timerR;
+	    /**
+	     * DateTime de la dernière mise à jour
+	     * @type {Date}
+	     */
+	    private _lastUpdate;
 	    private constructor();
 	    /**
 	     * Retourne l'instance de l'objet de mise à jour auto des épisodes
@@ -2125,6 +2223,7 @@ declare module 'UpdateAuto' {
 	     * _save - Sauvegarde les options de la tâche d'update
 	     * auto dans l'espace de stockage de Tampermonkey
 	     *
+	     * @private
 	     * @return {UpdateAuto} L'instance unique UpdateAuto
 	     */
 	    _save(): this;
@@ -2176,6 +2275,11 @@ declare module 'UpdateAuto' {
 	     */
 	    set interval(val: number);
 	    /**
+	     * Retourne la date de la dernière mise à jour éffectuée
+	     * @return {Date} La date de la dernière mise à jour
+	     */
+	    get lastUpdate(): Date;
+	    /**
 	     * changeColorBtn - Modifie la couleur du bouton d'update
 	     * des épisodes sur la page Web
 	     *
@@ -2205,9 +2309,15 @@ declare module 'UpdateAuto' {
 	     */
 	    launch(): UpdateAuto;
 	    /**
+	     * _tick: Fonction Tick pour la mise à jour des épisodes à intervalle régulère
+	     * @private
+	     * @returns {void}
+	     */
+	    private _tick;
+	    /**
 	     * Retourne le temps restant avant le prochain update
 	     * sous forme mm:ss
-	     * @returns string
+	     * @returns {string}
 	     */
 	    remaining(): string;
 	}
