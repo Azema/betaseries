@@ -83,10 +83,12 @@ export abstract class Base implements implAddNote {
             ],
             "check": { // Les endpoints qui nécessite de vérifier la volidité du token
                 "episodes": ['display', 'list', 'search', 'watched'],
+                "members" : ['notifications'],
                 "movies"  : ['list', 'movie', 'search', 'similars'],
                 "search"  : ['all', 'movies', 'shows'],
                 "shows"   : ['display', 'episodes', 'list', 'member', 'search', 'similars']
             },
+            "notDisplay": ['membersnotifications'],
             "tokenRequired": {
                 "comments": {
                     "close": ['POST'],
@@ -315,6 +317,13 @@ export abstract class Base implements implAddNote {
         }
         Base.showLoader();
         let check = false;
+        let display = true;
+
+        // On vérifie si on doit afficher les infos de requêtes dans la console
+        if (Base.api.notDisplay.indexOf(resource + action) >= 0) {
+            display = false;
+        }
+
         // Les en-têtes pour l'API
         const myHeaders = {
                 'Accept'                : 'application/json',
@@ -324,7 +333,7 @@ export abstract class Base implements implAddNote {
             },
             checkKeys = Object.keys(Base.api.check);
 
-        if (Base.debug) {
+        if (Base.debug && display) {
             console.log('Base.callApi', {
                 type: type,
                 resource: resource,
@@ -375,10 +384,10 @@ export abstract class Base implements implAddNote {
 
             fetch(uri, initFetch).then(response => {
                 Base.counter++; // Incrément du compteur de requêtes à l'API
-                if (Base.debug) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
+                if (Base.debug && (display || response.status !== 200)) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
                 // On récupère les données et les transforme en objet
                 response.json().then((data) => {
-                    if (Base.debug) console.log('fetch (%s %s) data', type, uri, data);
+                    if (Base.debug && (display || response.status !== 200)) console.log('fetch (%s %s) data', type, uri, data);
                     // On gère le retour d'erreurs de l'API
                     if (data.errors !== undefined && data.errors.length > 0) {
                         const code = data.errors[0].code,
@@ -427,7 +436,7 @@ export abstract class Base implements implAddNote {
                     mode: 'cors',
                     cache: 'no-cache'
                 };
-                if (Base.debug) console.info('%ccall /members/is_active', 'color:blue');
+                if (Base.debug && display) console.info('%ccall /members/is_active', 'color:3b8dd0');
                 fetch(`${Base.api.url}/members/is_active`, paramsFetch).then(resp => {
                     Base.counter++; // Incrément du compteur de requêtes à l'API
                     if ( ! resp.ok) {
@@ -827,13 +836,79 @@ const dateFormat = function () {
         });
     };
 }();
-
+const calculDuration = function() {
+    const dayOfYear = (date: Date): number => {
+        const ref = new Date(date.getFullYear(), 0, 0);
+        return Math.floor((date.getTime() - ref.getTime()) / 86400000);
+    };
+    const i18n = {
+        yesterday: 'Hier',
+        dayBeforeYesterday: 'Avant-hier',
+        longTime: 'Il y a longtemps',
+        days: 'Il y a %days% jours',
+        hours: 'Il y a %hours% heures',
+        minutes: 'Il y a %minutes% minutes'
+    };
+    return function(date: Date): string {
+        const now = new Date();
+        const days = Math.round(dayOfYear(now) - dayOfYear(date));
+        if (days > 0) {
+            if (days === 1) {
+                return i18n.yesterday;
+            } else if (days === 2) {
+                return i18n.dayBeforeYesterday;
+            } else if (days > 30) {
+                return i18n.longTime;
+            }
+            return i18n.days.replace('%days%', days.toString());
+        } else {
+            const minutes = Math.round((now.getTime() - date.getTime()) / 60000);
+            const hours = Math.round((now.getTime() - date.getTime()) / 3600000);
+            if (hours === 0 && minutes > 0) {
+                return i18n.minutes.replace('%minutes%', minutes.toString());
+            } else if (hours > 0) {
+                return i18n.hours.replace('%hours%', hours.toString());
+            }
+        }
+    };
+}();
+const upperFirst = function() {
+    return function(word: string): string {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }
+}();
+const camelCase = function() {
+    return function(words: string): string {
+        return words
+            // eslint-disable-next-line no-useless-escape
+            .replace(/[.,\/#!$%\^&\*;:][{}=\-_`~()]/g, '_')
+            .replace(/[^a-zA-Z_]/g, '')
+            .split('_')
+            .reduce((result, word, index) => {
+                return result + (index ? word.upperFirst() : word.toLowerCase());
+            }, '');
+    }
+}();
 declare global {
     interface Date {
         format: (mask: string, utc?: boolean) => string;
+        duration: () => string;
+    }
+    interface String {
+        upperFirst: () => string;
+        camelCase: () => string;
     }
 }
 // For convenience...
 Date.prototype.format = function (mask: string, utc = false) {
     return dateFormat(this, mask, utc);
+};
+Date.prototype.duration = function() {
+    return calculDuration(this);
+};
+String.prototype.upperFirst = function() {
+    return upperFirst(this);
+};
+String.prototype.camelCase = function() {
+    return camelCase(this);
 };
