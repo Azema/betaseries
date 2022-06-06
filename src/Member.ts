@@ -1,4 +1,5 @@
 import { Base, HTTP_VERBS, Obj } from "./Base";
+import { NotificationList } from "./Notification";
 
 enum DaysOfWeek {
     monday = 'lundi',
@@ -68,6 +69,32 @@ class Options {
 }
 /* eslint-disable-next-line no-unused-vars */
 export class Member {
+    /*
+                    STATIC
+     */
+    /**
+     * Retourne les infos du membre connecté
+     * @returns {Promise<Member>} Une instance du membre connecté
+     */
+    public static fetch(): Promise<Member> {
+        const params: Obj = {};
+        if (Base.userId !== null) {
+            params.id = Base.userId;
+        }
+        return Base.callApi(HTTP_VERBS.GET, 'members', 'infos', params)
+        .then((data: Obj) => {
+            return new Member(data.member);
+        })
+        .catch(err => {
+            console.warn('Erreur lors de la récupération des infos du membre', err);
+            throw new Error("Erreur de récupération du membre");
+        });
+    }
+
+    /*
+                    PROPERTIES
+     */
+
     /**
      * @type {number} Identifiant du membre
      */
@@ -132,6 +159,14 @@ export class Member {
      * @type {Options} Les options de paramétrage du membre
      */
     options: Options
+    /**
+     * @type {NotificationList} Tableau des notifications du membre
+     */
+    notifications: NotificationList;
+
+    /*
+                    METHODS
+     */
 
     /**
      * Constructeur de la classe Membre
@@ -155,24 +190,75 @@ export class Member {
         this.twitterLogin = data.twitterLogin;
         this.stats = new Stats(data.stats);
         this.options = new Options(data.options);
+        this.checkNotifs();
+    }
+    public checkNotifs(): void {
+        /**
+         * Fonction de traitement de récupération des notifications du membre
+         * Alerte le membre de nouvelles notifications à l'aide d'un badge sur l'icone Bell dans le header
+         */
+         const fetchNotifs = () => {
+            NotificationList.fetch(50).then(notifs => {
+                this.notifications = notifs;
+                if (notifs.new.length > 0) {
+                    const $badge = jQuery('#menuUnseenNotifications');
+                    if ($badge.length <= 0) {
+                        // Alerter le membre de nouvelles notifications
+                        jQuery('.menu-wrapper .js-iconNotifications').append(`<i class="unread-count unread-notifications" id="menuUnseenNotifications">${notifs.new.length}</i>`);
+                    } else {
+                        $badge.text(notifs.new.length);
+                    }
+                    jQuery('.menu-icon--bell').removeClass('has-notifications');
+                }
+            });
+        };
+        // On met à jour les notifications toutes les 5 minutes
+        setInterval(fetchNotifs, 300000);
+        fetchNotifs();
     }
 
     /**
-     * Retourne les infos du membre connecté
-     * @returns {Promise<Member>} Une instance du membre connecté
+     * renderNotifications - Affiche les notifications du membre
      */
-    public static fetch(): Promise<Member> {
-        const params: Obj = {};
-        if (Base.userId !== null) {
-            params.id = Base.userId;
+    public renderNotifications(): void {
+        const $growl = jQuery('#growl'),
+              $loader = jQuery('#growl .notifications__loader'),
+              $deleteAll = jQuery('#growl .notification.notification--delete-all'),
+              $notifNew = jQuery('#growl .js-notificationsNew-list'),
+              $notifOld = jQuery('#growl .js-notificationsOld-list'),
+              $lists = jQuery('#growl .notificationsList'),
+              $notifs = {
+                  'old': $notifOld,
+                  'new': $notifNew
+              };
+        // On vide les listes de notifications pour commencer
+        $notifNew.empty();
+        $notifOld.empty();
+        $deleteAll.hide(); // On masque la partie actions de suppression
+        $lists.hide(); // On masque les listes de notifications
+        // On affiche le conteneur de listes de notifications et le loader
+        $growl.addClass('visible');
+        $loader.show();
+        // On ajoute les notifications aux conteneurs
+        for (const key of this.notifications) {
+            for (let n = 0; n < this.notifications[key].length; n++) {
+                $notifs[key].append(this.notifications[key][n].render());
+            }
+            // On affiche la liste, si il y a du contenu
+            if (this.notifications[key].length > 0) {
+                $notifs[key].parents('.notificationsList').show();
+            }
         }
-        return Base.callApi(HTTP_VERBS.GET, 'members', 'infos', params)
-        .then((data: Obj) => {
-            return new Member(data.member);
-        })
-        .catch(err => {
-            console.warn('Erreur lors de la récupération des infos du membre', err);
-            throw new Error("Erreur de récupération du membre");
-        });
+        // On masque le loader
+        $loader.hide();
+        if (this.notifications.length > 0) {
+            // On affiche la partie actions de suppression
+            $deleteAll.show();
+            // On passe toutes les nouvelles notifications en anciennes (déjà vues)
+            if (this.notifications.new.length > 0) {
+                this.notifications.seen = true;
+            }
+            jQuery('#menuUnseenNotifications').remove();
+        }
     }
 }

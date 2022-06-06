@@ -53,6 +53,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/tsc/Similar.js',
                 '<%= distdir %>/tsc/UpdateAuto.js',
                 '<%= distdir %>/tsc/Member.js',
+                '<%= distdir %>/tsc/Notification.js',
                 '<%= distdir %>/tsc/index.js'
             ],
             js: [
@@ -72,6 +73,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/js/Similar.js',
                 '<%= distdir %>/js/UpdateAuto.js',
                 '<%= distdir %>/js/Member.js',
+                '<%= distdir %>/js/Notification.js',
                 '<%= distdir %>/js/index.js'
             ]
         },
