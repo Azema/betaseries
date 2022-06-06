@@ -182,7 +182,7 @@ declare module 'Note' {
 }
 declare module 'Comment' {
 	/// <reference types="jquery" />
-	import { Obj, EventTypes } from 'Base';
+	import { Obj, EventTypes, Callback } from 'Base';
 	import { CommentsBS, OrderComments } from 'Comments';
 	export interface implRepliesComment {
 	    fetchReplies(commentId: number): Promise<Array<CommentBS>>;
@@ -298,7 +298,7 @@ declare module 'Comment' {
 	     * @private
 	     */
 	    private _listeners;
-	    constructor(data: any, parent: CommentsBS | CommentBS);
+	    constructor(data: Obj, parent: CommentsBS | CommentBS);
 	    /**
 	     * Remplit l'objet CommentBS avec les données provenant de l'API
 	     * @param   {Obj} data - Les données provenant de l'API
@@ -317,14 +317,14 @@ declare module 'Comment' {
 	     * @param  {Function}   fn   - La fonction à appeler
 	     * @return {Base} L'instance du média
 	     */
-	    addListener(name: EventTypes, fn: Function, ...args: any[]): this;
+	    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
 	    /**
 	     * Permet de supprimer un listener sur un type d'évenement
 	     * @param  {string}   name - Le type d'évenement
 	     * @param  {Function} fn   - La fonction qui était appelée
 	     * @return {Base} L'instance du média
 	     */
-	    removeListener(name: EventTypes, fn: Function): this;
+	    removeListener(name: EventTypes, fn: Callback): this;
 	    /**
 	     * Appel les listeners pour un type d'évenement
 	     * @param  {EventTypes} name - Le type d'évenement
@@ -418,7 +418,7 @@ declare module 'Comment' {
 	     * @param   {Function} onComplete - Fonction de callback
 	     * @returns {void}
 	     */
-	    protected cleanEvents(onComplete?: Function): void;
+	    protected cleanEvents(onComplete?: Callback): void;
 	    /**
 	     * Affiche le commentaire dans une dialogbox
 	     */
@@ -1733,6 +1733,11 @@ declare module 'Episode' {
 	     * @return {Episode}
 	     */
 	    toggleSpinner(display: boolean): Episode;
+	    /**
+	     * Retourne une image, si disponible, en fonction du format désiré
+	     * @return {Promise<string>}                         L'URL de l'image
+	     */
+	    getDefaultImage(): Promise<string>;
 	}
 
 }
@@ -2025,13 +2030,100 @@ declare module 'Base' {
 	} global {
 	    interface Date {
 	        format: (mask: string, utc?: boolean) => string;
+	        duration: () => string;
+	    }
+	    interface String {
+	        upperFirst: () => string;
+	        camelCase: () => string;
 	    }
 	}
 	export {};
 
 }
+declare module 'Notification' {
+	import { Obj } from 'Base';
+	export enum NotifTypes {
+	    episode = "episode",
+	    reportNew = "report_new",
+	    reportTreated = "report_treated",
+	    xpMany = "xp_many",
+	    bugResolved = "bug_resolved",
+	    bugCommented = "bug_commented",
+	    poll = "poll",
+	    season = "season",
+	    comment = "comment",
+	    badge = "badge",
+	    banner = "banner",
+	    character = "character",
+	    movie = "movie",
+	    forum = "forum",
+	    friend = "friend",
+	    message = "message",
+	    quizz = "quizz",
+	    recommend = "recommend",
+	    site = "site",
+	    subtitles = "subtitles",
+	    video = "video"
+	}
+	export class NotifPayload {
+	    static props: ({
+	        key: string;
+	        type: string;
+	        fn: any;
+	        default: string;
+	    } | {
+	        key: string;
+	        type: string;
+	        fn: typeof parseInt;
+	        default: number;
+	    })[];
+	    url: string;
+	    title?: string;
+	    code?: string;
+	    show_title?: string;
+	    picture?: string;
+	    season?: number;
+	    name?: string;
+	    xp?: number;
+	    user?: string;
+	    user_id?: number;
+	    user_picture?: string;
+	    type?: string;
+	    type_id?: number;
+	    constructor(data: Obj);
+	}
+	export class NotificationList {
+	    /**
+	     * Retourne les notifications du membre
+	     * @param {number} [nb = 10] Nombre de notifications à récupérer
+	     */
+	    static fetch(nb?: number): Promise<NotificationList>;
+	    old: Array<NotificationBS>;
+	    new: Array<NotificationBS>;
+	    seen: boolean;
+	    constructor();
+	    [Symbol.iterator](): Generator<"new" | "old", void, unknown>;
+	    get length(): number;
+	    add(notif: NotificationBS): void;
+	    markAllAsSeen(): void;
+	}
+	export class NotificationBS {
+	    id: number;
+	    type: NotifTypes;
+	    ref_id: number;
+	    text: string;
+	    html: string;
+	    date: Date;
+	    seen: Date;
+	    payload: NotifPayload;
+	    constructor(data: Obj);
+	    render(): string;
+	}
+
+}
 declare module 'Member' {
-	import { Obj } from 'Base'; enum DaysOfWeek {
+	import { Obj } from 'Base';
+	import { NotificationList } from 'Notification'; enum DaysOfWeek {
 	    monday = "lundi",
 	    tuesday = "mardi",
 	    wednesday = "mercredi",
@@ -2086,6 +2178,11 @@ declare module 'Member' {
 	    constructor(data: Obj);
 	}
 	export class Member {
+	    /**
+	     * Retourne les infos du membre connecté
+	     * @returns {Promise<Member>} Une instance du membre connecté
+	     */
+	    static fetch(): Promise<Member>;
 	    /**
 	     * @type {number} Identifiant du membre
 	     */
@@ -2151,16 +2248,20 @@ declare module 'Member' {
 	     */
 	    options: Options;
 	    /**
+	     * @type {NotificationList} Tableau des notifications du membre
+	     */
+	    notifications: NotificationList;
+	    /**
 	     * Constructeur de la classe Membre
 	     * @param data Les données provenant de l'API
 	     * @returns {Member}
 	     */
 	    constructor(data: Obj);
+	    checkNotifs(): void;
 	    /**
-	     * Retourne les infos du membre connecté
-	     * @returns {Promise<Member>} Une instance du membre connecté
+	     * renderNotifications - Affiche les notifications du membre
 	     */
-	    static fetch(): Promise<Member>;
+	    renderNotifications(): void;
 	}
 	export {};
 

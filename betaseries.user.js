@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.2.3
+// @version      1.3.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -28,7 +28,7 @@
 
    betaseries_api_user_token:  true, betaseries_user_id: false, trans: false,
    deleteFilterOthersCountries: false, generate_route: false,
-   CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false,
+   CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false, markAllNotificationsAsSeen: false,
    viewMoreFriends: false, PopupAlert: false, faceboxDisplay: false
  */
 /* jslint unparam: true, eqnull:true, unused:true */
@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-OrLqoPUd7MTS3a687McfRGl14RoQ0XMxiTNOlGCwnmBVTmV7kx1tf1KnqFsK+7aA';
+const sriBundle = 'sha384-yewYfELcaSNjllIpaSfyWkFUzfdg0Xq3tlWsVdVwPdeYM09Hpuh8Sa984TWiIt0Q';
 /************************************************************************************************/
 // @ts-check
 
@@ -254,7 +254,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-f/XmsODx4ju+LHwh7kUC/lEHbSFVSCi9Nlm0csVZt1MzQpE8cQhu/O3htHzlS0zv',
+            integrity: 'sha384-I90ird4BN8rL5N/TGo8Xvd/QT/Ysa4Uzh8MDnbhBjOYNt1wbGX27NHSYdK2nVkGQ',
             media: 'all',
             called: false,
             loaded: false
@@ -272,7 +272,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'commentstyle',
             href: `${serverBaseUrl}/css/comments.min.css`,
-            integrity: 'sha384-kKsnxtsYz2cZTV2MOdDUJh3mOMOKqfuGMut+qVlM5k2NoRgDhpuGqR9ZVtfWoxsz',
+            integrity: 'sha384-37/ghsJZTBvNPxUAy6GMPGxa3BKjrZ2ykMb7gUpkkVvoZwAsm4WhigKhMyYCN+Ft',
             media: 'all',
             called: false,
             loaded: false
@@ -411,14 +411,46 @@ const launchScript = function($) {
                 link = elt.type === 'script' ? elt.src : elt.href;
                 $head.append(`<link rel="preload" as="${elt.type}" crossorigin="anonymous" href="${link}" integrity="${elt.integrity}">`);
             }*/
-            $('#popup-bg').after('<div id="loader-bg" style="z-index: 2050;position: fixed;top: 50%;left: 50%;display: none;"><i class="fa fa-spinner fa-pulse fa-4x fa-fw"></i><span class="sr-only">Loading...</span></div>');
+            $('#popup-bg').after('<div id="loader-bg"><i class="fa fa-spinner fa-pulse fa-4x fa-fw"></i><span class="sr-only">Loading...</span></div>');
             // Ajout des feuilles de styles pour le userscript
             system.addScriptAndLink(['awesome', 'stylehome']);
             if (system.userIdentified()) {
                 Member.fetch().then(member => {
-                    user = member;
+                    /**
+                     * Membre
+                     * @type {Member}
+                     */
+                    user = unsafeWindow.user = member;
                     // On affiche la version du script
                     if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
+                    // On désactive les fonctions de notifications originales
+                    unsafeWindow.notificationChecker = () => {};
+                    unsafeWindow.growlNotificationChecker = () => {};
+                    $('.js-iconNotifications').off('click').click((e) => {
+                        e.stopPropagation();
+                        $("body").toggleClass("menu-open").toggleClass("menu-open--notifications");
+                        const $growl = $("#growl");
+                        if ($growl.hasClass("visible")) {
+                            $growl.removeClass("visible");
+                            localStorage.removeItem("seen-growl-notifications");
+                            if (member.notifications.seen) {
+                                markAllNotificationsAsSeen();
+                                member.notifications.markAllAsSeen();
+                            }
+                        } else {
+                            member.renderNotifications();
+                        }
+                        $(".notification--standalone").remove();
+                });
+                    $(".js-close-elements").off('click').on("click", () => {
+                        // close notifications
+                        $('#growl').removeClass('visible');
+                        $("body").toggleClass("menu-open").toggleClass("menu-open--notifications");
+                        if (user.notifications.seen) {
+                            markAllNotificationsAsSeen();
+                            user.notifications.markAllAsSeen();
+                        }
+                    });
                 });
             } else {
                 // On affiche la version du script
@@ -956,29 +988,26 @@ const launchScript = function($) {
          * @return {void}
          */
         upgradeSynopsis: function() {
-            let $span = $('.blockInformations__synopsis span'),
-                $btnMore = $('a.js-show-fulltext');
-            if ($btnMore.length <= 0) {
-                return;
-            } else {
-                const $btn = $btnMore.clone(false);
-                $btn.removeClass('js-show-fulltext').addClass('js-show-full');
-                $btnMore.remove();
-                $span.before($btn);
-                $btnMore = $('a.js-show-full');
-            }
-            // On ajoute le bouton Moins et son event click
-            //$span.append('<button role="button" class="u-colorWhiteOpacity05 js-show-truncatetext textTransformUpperCase cursorPointer"></button>');
-            let $paraSynopsis = $('.blockInformations__synopsis');
+            let $btnMore = $('a.js-show-fulltext');
+            const $paraSynopsis = $('.blockInformations__synopsis');
             if ($paraSynopsis.length > 1) {
                 $paraSynopsis.each((_, elt) => {
                     if ($(elt).text().trim().length <= 0) {
                         $(elt).hide();
                     }
                 });
-                $paraSynopsis = $paraSynopsis.last();
             }
-            $paraSynopsis
+            if ($btnMore.length <= 0) {
+                return;
+            }
+            const $span = $('.blockInformations__synopsis span');
+            const $btn = $btnMore.clone(false);
+            $btn.removeClass('js-show-fulltext').addClass('js-show-full');
+            $btnMore.remove();
+            $span.before($btn);
+            $btnMore = $('a.js-show-full');
+
+            $paraSynopsis.last()
                 .before('<style>a[role="button"].js-show-full:before {content: " …"}</style>')
                 .prop('title', 'Afficher la totalité de la description')
                 .click((e) => {
@@ -2235,6 +2264,24 @@ const launchScript = function($) {
                     system.notification('Erreur de récupération de la ressource', 'addBtnDev: ' + err);
                 });
             });
+            /*
+             *             Bouton ID clipboard
+             */
+            const btnId = '<span id="btnCopyId" class="unread-count copy-id" title="Copy ID" style="margin-left:10px;cursor:pointer;font-size:0.3em;font-weight:bold;vertical-align:top;background: var(--yellow);">ID</span>';
+            $('.blockInformations__title').append(btnId);
+            $('.blockInformations__title .copy-id').click((e) => {
+                e.stopPropagation();
+                const type = medias.getApiResource(location.pathname.split('/')[1]);
+                const id = $(`#reactjs-${type.singular}-actions`).attr(`data-${type.singular}-id`);
+                navigator.clipboard.writeText(id).then(function() {
+                    /* Animation de copie réussie */
+                    $(e.target).animate({opacity: 'hide'}, {duration: 'slow', complete: () => {
+                        $(e.target).animate({opacity: 'show'}, {duration: 'slow'});
+                    }});
+                  }, function() {
+                    /* échec de l’écriture dans le presse-papiers */
+                  });
+            });
         },
         /**
          * Ajoute la série aux séries à voir
@@ -2525,7 +2572,7 @@ const launchScript = function($) {
                     let onerror = null;
                     if (defImgShow != null) {
                         onerror = (err, elt, url, attr) => {
-                            // console.log('lazyLoad error URL: ', defImgShow);
+                            // console.log('checkNextEpisode lazyLoad error URL: ', defImgShow, url);
                             elt.classList.add("js-lazy-image-handled");
                             elt[attr] = defImgShow;
                             elt.classList.add("fade-in");
@@ -3604,6 +3651,7 @@ const launchScript = function($) {
                     if (Base.debug) console.log('links(%d) before filter', $links.length);
                     $links = $links.filter(function() {
                         // console.log('filter', this);
+                        if (this.onclick !== null) return false;
                         return /^\/(serie|film)\//.test(this.pathname);
                     });
                     if (Base.debug) console.log('links(%d) after filter', $links.length);
@@ -3618,65 +3666,68 @@ const launchScript = function($) {
                         </style>
                     `);
                     const createMedia = function(link) {
-                        const url = link.href.substring(link.href.lastIndexOf('/') + 1)
-                        if (/^\/serie\//.test(link.pathname)) {
-                            return Show.fetchByUrl(url).then(show => {
-                                return {
-                                    title: '<i class="fa fa-film" aria-hidden="true"></i> Détails de la série',
-                                    html: `
-                                    <div class="media">
-                                        <div class="media-left">
-                                            <img src="${show.images.poster}" alt="${show.title}" width="119" height="174">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="blogThumbnailShowTitle mainLink">
-                                                ${show.title} ${show.in_account ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                        const url = link.href.substring(link.href.lastIndexOf('/') + 1);
+                        return new Promise((resolve) => {
+                            if (/^\/serie\//.test(link.pathname)) {
+                                Show.fetchByUrl(url).then(show => {
+                                    resolve({
+                                        title: '<i class="fa fa-film" aria-hidden="true"></i> Détails de la série',
+                                        html: `
+                                        <div class="media">
+                                            <div class="media-left">
+                                                <img src="${show.images.poster}" alt="${show.title}" width="119" height="174">
                                             </div>
-                                            <div class="display">
-                                                <div>${show.seasons.length} saisons - ${show.nbEpisodes} épisodes</div>
-                                                <div>Statut: ${show.isEnded() ? 'Terminé' : 'En cours'}</div>
-                                                <time class="mainTime" datetime="${show.creation}">${show.creation}</time>
-                                                <div class="stars" title="${show.objNote.total} votes: ${show.objNote.mean.toFixed(2)} / 5">${Note.renderStars(show.objNote.mean)}</div>
+                                            <div class="media-body">
+                                                <div class="blogThumbnailShowTitle mainLink">
+                                                    ${show.title} ${show.in_account ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                                </div>
+                                                <div class="display">
+                                                    <div>${show.seasons.length} saisons - ${show.nbEpisodes} épisodes</div>
+                                                    <div>Statut: ${show.isEnded() ? 'Terminé' : 'En cours'}</div>
+                                                    <time class="mainTime" datetime="${show.creation}">${show.creation}</time>
+                                                    <div class="stars" title="${show.objNote.total} votes: ${show.objNote.mean.toFixed(2)} / 5">${Note.renderStars(show.objNote.mean)}</div>
+                                                </div>
+                                                <div>${show.description.substring(0, 150)}...</div>
                                             </div>
-                                            <div>${show.description.substring(0, 150)}...</div>
-                                        </div>
-                                    </div>`
-                                };
-                            });
-                        } else {
-                            // Récupérer l'ID du film
-                            const movieId = url.match(/^(\d+)/)[1];
-                            return Movie.fetch(movieId, true).then(movie => {
-                                return {
-                                    title: '<i class="fa fa-film" aria-hidden="true"></i> Détails du film',
-                                    html: `
-                                    <div class="media">
-                                        <div class="media-left">
-                                            <img src="${movie.poster}" alt="${movie.title}" width="119" height="174">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="blogThumbnailShowTitle mainLink">
-                                                ${movie.title} ${movie.user.status === 1 ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                        </div>`
+                                    });
+                                });
+                            } else {
+                                // Récupérer l'ID du film
+                                const movieId = url.match(/^(\d+)/)[1];
+                                Movie.fetch(movieId, true).then(movie => {
+                                    resolve({
+                                        title: '<i class="fa fa-film" aria-hidden="true"></i> Détails du film',
+                                        html: `
+                                        <div class="media">
+                                            <div class="media-left">
+                                                <img src="${movie.poster}" alt="${movie.title}" width="119" height="174">
                                             </div>
-                                            <div class="display">
-                                                <time class="mainTime" datetime="${movie.release_date.format('yyyy-mm-dd')}">${movie.release_date.format('dd mmmm yyyy')}</time>
-                                                <div class="stars" title="${movie.objNote.total} votes: ${movie.objNote.mean.toFixed(2)} / 5">${Note.renderStars(movie.objNote.mean)}</div>
+                                            <div class="media-body">
+                                                <div class="blogThumbnailShowTitle mainLink">
+                                                    ${movie.title} ${movie.user.status === 1 ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                                </div>
+                                                <div class="display">
+                                                    <time class="mainTime" datetime="${movie.release_date.format('yyyy-mm-dd')}">${movie.release_date.format('dd mmmm yyyy')}</time>
+                                                    <div class="stars" title="${movie.objNote.total} votes: ${movie.objNote.mean.toFixed(2)} / 5">${Note.renderStars(movie.objNote.mean)}</div>
+                                                </div>
+                                                <div>${movie.description.substring(0, 150)}...</div>
                                             </div>
-                                            <div>${movie.description.substring(0, 150)}...</div>
-                                        </div>
-                                    </div>`
-                                };
-                            });
-                        }
+                                        </div>`
+                                    });
+                                });
+                            }
+                        });
                     }
                     const addPopup = (anchor) => {
-                        if (Base.debug) console.log('Popup created', anchor.text());
                         let key = anchor.text().toLowerCase().trim().replace(/[^0-9a-z]/g, '');
                         if (popups[key] == undefined) {
                             popups[key] = createMedia(anchor.get(0));
                         }
+                        if (Base.debug) console.log('Popup created', anchor.text(), typeof popups[key]);
                         if (popups[key] instanceof Promise) {
                             popups[key].then(data => {
+                                // console.log('Promise popus[%s]', key, data);
                                 anchor.popover({
                                     container: anchor,
                                     delay: { "show": 500, "hide": 100 },
@@ -3690,6 +3741,7 @@ const launchScript = function($) {
                                 popups[key] = data;
                             });
                         } else {
+                            // console.log('Object popup[%s]', key, popups[key]);
                             anchor.popover({
                                 container: anchor,
                                 delay: { "show": 500, "hide": 100 },
@@ -3713,10 +3765,8 @@ const launchScript = function($) {
                                 });
                         });
                     }
-                    let $link;
                     for (let l = 0; l < $links.length; l++) {
-                        $link = $($links.get(l));
-                        addPopup($link);
+                        addPopup($($links.get(l)));
                     }
                 }, 10, 500);
             });
@@ -3796,7 +3846,7 @@ const launchScript = function($) {
         members.lastSeen();
     }
     // Fonctions appeler sur les pages des membres
-    else if ((regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url)) && system.userIdentified()) {
+    else if (system.userIdentified() && (regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url))) {
         system.waitPresent(() => { return typeof user !== 'undefined'; }, () => {
             if (debug) console.log('regexUser OK');
 
