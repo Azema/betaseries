@@ -436,7 +436,7 @@ export abstract class Base implements implAddNote {
                     mode: 'cors',
                     cache: 'no-cache'
                 };
-                if (Base.debug && display) console.info('%ccall /members/is_active', 'color:3b8dd0');
+                if (Base.debug && display) console.info('%ccall /members/is_active', 'color:#1d6fb2');
                 fetch(`${Base.api.url}/members/is_active`, paramsFetch).then(resp => {
                     Base.counter++; // Incrément du compteur de requêtes à l'API
                     if ( ! resp.ok) {
