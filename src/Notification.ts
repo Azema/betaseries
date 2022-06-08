@@ -18,7 +18,9 @@ import { Base, Obj, HTTP_VERBS } from "./Base";
     }
 },
 */
-
+/**
+ * Les différents types de notifications
+ */
 export enum NotifTypes {
     episode = 'episode',
     reportNew = 'report_new',
@@ -43,7 +45,16 @@ export enum NotifTypes {
     subtitles = 'subtitles',
     video = 'video'
 }
+/**
+ * Classe NotifPayload
+ * Contient les data de l'objet Payload dans les notifications
+ * @class NotifPayload
+ */
 export class NotifPayload {
+    /**
+     * Tableau des différentes propriétés de la classe NotifPayload
+     * avec leur type, leur valeur par défaut et leur fonction de traitement
+     */
     static props = [
         {key: 'url', type: 'string', fn: null, default: ''},
         {key: 'title', type: 'string', fn: null, default: ''},
@@ -89,6 +100,11 @@ export class NotifPayload {
         }
     }
 }
+/**
+ * Classe NotificationList
+ * Contient les notifications anciennes et nouvelles
+ * @class NotificationList
+ */
 export class NotificationList {
     /**
      * Retourne les notifications du membre
@@ -122,17 +138,33 @@ export class NotificationList {
         this.new = [];
         this.seen = false;
     }
+    /**
+     * Symbol Iterator pour pouvoir itérer sur l'objet dans les boucles for
+     */
     *[Symbol.iterator] () {
         yield "new";
         yield "old";
     }
+    /**
+     * length - Retourne le nombre total de notifications
+     * @returns {number}
+     */
     get length(): number {
         return this.old.length + this.new.length;
     }
+    /**
+     * add - Ajoute une notification
+     * @param {NotificationBS} notif La notification à ajouter
+     */
     public add(notif: NotificationBS): void {
         const category = (notif.seen === null) ? 'new' : 'old';
         this[category].push(notif);
     }
+    /**
+     * markAllAsSeen - Met à jour les nouvelles notifications en ajoutant
+     * la date à la propriété seen et en déplacant les notifs dans le
+     * tableau old
+     */
     public markAllAsSeen(): void {
         if (this.seen && this.new.length > 0) {
             for (let n = this.new.length - 1; n >= 0; n--) {
@@ -144,14 +176,50 @@ export class NotificationList {
         }
     }
 }
+/**
+ * Classe NotificationBS
+ * Définit l'objet Notification reçu de l'API BetaSeries
+ * @class NotificationBS
+ */
 export class NotificationBS {
+    /**
+     * Identifiant de la notification
+     * @type {number}
+     */
     id: number;
+    /**
+     * Type de notification
+     * @type {NotifTypes}
+     */
     type: NotifTypes;
+    /**
+     * Identifiant correspondant à l'objet définit par le type de notification
+     * @type {number}
+     */
     ref_id: number;
+    /**
+     * Texte brut de la notification
+     * @type {string}
+     */
     text: string;
+    /**
+     * Version HTML du texte de la notification
+     * @type {string}
+     */
     html: string;
+    /**
+     * Date de création de la notification
+     * @type {Date}
+     */
     date: Date;
+    /**
+     * Date à laquelle le membre à vu la notification
+     * @type {Date}
+     */
     seen: Date;
+    /**
+     * Payload - contient les données de référence liées à la notification
+     */
     payload: NotifPayload; // sauf report_new
 
     constructor(data: Obj) {
