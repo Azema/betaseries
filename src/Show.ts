@@ -910,6 +910,9 @@ export class Show extends Media implements implShow, implAddNote {
                                 <div class="autocomplete__response js-display-response"></div>
                             </div>
                         </form>
+                        <script>
+                            new SearchFriend({url: document.querySelector("[data-show-url]").dataset.showUrl});
+                        </script>
                         <a class="header-navigation-item" href="javascript:;">Supprimer de mes séries</a>`;
                 if ($optionsLinks.length === 2) {
                     templateOpts = `<a class="header-navigation-item" href="${urlShow}/actions">Vos actions sur la série</a>` + templateOpts;
