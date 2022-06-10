@@ -1140,11 +1140,11 @@ export class Show extends Media implements implShow, implAddNote {
             if (toSee) {
                 $btn.find('i.fa').css('color', 'var(--body_background)');
                 $btn.attr('title', 'Retirer la série des séries à voir');
-                self.elt.find('.blockInformations__title').append('<i class="fa fa-clock-o" aria-hidden="true" style="font-size:0.6em;" title="Série à voir plus tard"></i>');
+                self.elt.find('.blockInformations__title').append('<i class="fa fa-clock-o" aria-hidden="true" style="font-size:0.6em;margin-left:5px;vertical-align:middle;" title="Série à voir plus tard"></i>');
             } else {
                 $btn.find('i.fa').css('color', 'var(--default-color)');
                 $btn.attr('title', 'Ajouter la série aux séries à voir');
-                self.elt.find('.blockInforations__title .fa').remove();
+                self.elt.find('.blockInformations__title .fa').remove();
             }
             $btn.blur();
         });
