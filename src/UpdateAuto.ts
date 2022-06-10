@@ -55,7 +55,7 @@ export class UpdateAuto {
      * DateTime de la dernière mise à jour
      * @type {Date}
      */
-    private _lastUpdate: Date;
+    private _lastUpdate: number;
 
     private constructor(show: Show) {
         if (UpdateAuto.instance) {
@@ -188,7 +188,7 @@ export class UpdateAuto {
      * Retourne la date de la dernière mise à jour éffectuée
      * @return {Date} La date de la dernière mise à jour
      */
-    get lastUpdate(): Date {
+    get lastUpdate(): number {
         return this._lastUpdate;
     }
 
@@ -290,15 +290,16 @@ export class UpdateAuto {
      * @returns {void}
      */
     private _tick(): void {
-        this._lastUpdate = new Date();
-        if (Base.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
+        const now = new Date();
+        this._lastUpdate = Date.now();
+        // if (Base.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
         if (! this.auto || this.show.user.remaining <= 0) {
             if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
             this.stop();
             return;
         }
         if (Base.debug) {
-            console.log('%s update episode list', `[${this.lastUpdate.format('datetime')}]`);
+            console.log('%s update episode list', `[${now.format('datetime')}]`);
         }
         const btnUpEpisodeList = $('.updateEpisodes');
         if (btnUpEpisodeList.length > 0) {
@@ -316,7 +317,7 @@ export class UpdateAuto {
      */
     public remaining(): string {
         if (this._lastUpdate == null) return 'not running';
-        const elapsedTime = Date.now() - this._lastUpdate.getTime();
+        const elapsedTime = Date.now() - this._lastUpdate;
         const remainingTime = Math.floor((((this._interval * 60) * 1000) - elapsedTime) / 1000);
         const minutes = Math.floor(remainingTime / 60);
         const seconds = remainingTime - minutes * 60;
