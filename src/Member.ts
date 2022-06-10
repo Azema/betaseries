@@ -200,8 +200,8 @@ export class Member {
          const fetchNotifs = () => {
             NotificationList.fetch(50).then(notifs => {
                 this.notifications = notifs;
+                const $badge = jQuery('#menuUnseenNotifications');
                 if (notifs.new.length > 0) {
-                    const $badge = jQuery('#menuUnseenNotifications');
                     if ($badge.length <= 0) {
                         // Alerter le membre de nouvelles notifications
                         jQuery('.menu-wrapper .js-iconNotifications').append(`<i class="unread-count unread-notifications" id="menuUnseenNotifications">${notifs.new.length}</i>`);
@@ -209,6 +209,8 @@ export class Member {
                         $badge.text(notifs.new.length);
                     }
                     jQuery('.menu-icon--bell').removeClass('has-notifications');
+                } else if ($badge.length > 0) {
+                    $badge.remove();
                 }
             });
         };
