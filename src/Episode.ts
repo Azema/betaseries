@@ -42,7 +42,7 @@ export class Episode extends Base implements implAddNote {
     public static fetch(epId: number): Promise<Episode> {
         return Base.callApi(HTTP_VERBS.GET, 'episodes', 'display', {id: epId})
         .then((data: Obj) => {
-            return new Episode(data.episode);
+            return new Episode(data.episode, null, jQuery('.blockInformations'));
         });
     }
     /**
@@ -116,9 +116,12 @@ export class Episode extends Base implements implAddNote {
      * @param   {Season}    season  L'objet Season contenant l'épisode
      * @returns {Episode}
      */
-    constructor(data: Obj, season?: Season) {
+    constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>) {
         super(data);
         this._season = season;
+        if (elt) {
+            this.elt = elt;
+        }
         return this.fill(data);
     }
     /**
