@@ -108,7 +108,9 @@ export class NotifPayload {
 export class NotificationList {
     /**
      * Retourne les notifications du membre
-     * @param {number} [nb = 10] Nombre de notifications à récupérer
+     * @param   {number} [nb = 10] Nombre de notifications à récupérer
+     * @returns {Promise<NotificationList>}
+     * @throws  {Error}
      */
     public static fetch(nb = 20): Promise<NotificationList> {
         const params: Obj = {
