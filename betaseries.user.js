@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.0
+// @version      1.3.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-yewYfELcaSNjllIpaSfyWkFUzfdg0Xq3tlWsVdVwPdeYM09Hpuh8Sa984TWiIt0Q';
+const sriBundle = 'sha384-QfEgp+533wjnNSE7M6/D2/5TtBL0OH0SNR52gs4Q+1CfjORaraXtJhFvas2vEFfW';
 /************************************************************************************************/
 // @ts-check
 
@@ -228,7 +228,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'csspopover',
             href: `${serverBaseUrl}/css/popover.min.css`,
-            integrity: 'sha384-dW+xJiephiM3R3jt202cRVz+0+cgaFT1/QnM0APkhWjgHGWTzEBuT3rp13LITQe0',
+            integrity: 'sha384-yebLb3hn+3mwaxg0KwLhE2YYLEKsMRsxRvUPyBOF6gzkzLEOWEeD9ELZeDACSwO7',
             media: 'all',
             called: false,
             loaded: false
@@ -1407,7 +1407,7 @@ const launchScript = function($) {
                                 content: `<p>${description}</p>`,
                                 placement: funcPlacement,
                                 template: templatePopover,
-                                title: `<span style="color: var(--link_color);">Synopsis épisode ${objEpisode.code}</span>`,
+                                title: `<div><span style="color: var(--link_color);">Episode ${objEpisode.code}</span><div class="stars-outer note"><div class="stars-inner" style="width:${objEpisode.objNote.getPercentage()}%;" title="${objEpisode.objNote.toString()}"></div></div></div>`,
                                 trigger: 'hover',
                                 boundary: 'window'
                             });
