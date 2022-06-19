@@ -57,6 +57,12 @@ export class UpdateAuto {
      */
     private _lastUpdate: number;
 
+    /**
+     * Constructeur privé, modèle Singleton
+     * @private
+     * @param {Show} show - L'objet Show sur lequel faire les mises à jour
+     * @returns {UpdateAuto} L'instance de mise à jour
+     */
     private constructor(show: Show) {
         if (UpdateAuto.instance) {
             return UpdateAuto.instance;
@@ -82,6 +88,7 @@ export class UpdateAuto {
 
     /**
      * Retourne l'instance de l'objet de mise à jour auto des épisodes
+     * @static
      * @param   {Show} s - L'objet de la série
      * @returns {UpdateAuto}
      */
@@ -270,6 +277,12 @@ export class UpdateAuto {
         // Si les options modifiées pour lancer
         else if (this.auto && this.interval > 0) {
             if (this._show.user.remaining <= 0) {
+                // Si il reste des épisodes non vus dans la saison courante
+                if (this._show.currentSeason.getNbEpisodesUnwatched() > 0) {
+                    // On check une dernière fois
+                    this._tick();
+                }
+                // On arrête la mise à jour automatique
                 this.stop();
                 return this;
             }
@@ -292,21 +305,20 @@ export class UpdateAuto {
     private _tick(): void {
         const now = new Date();
         this._lastUpdate = Date.now();
-        // if (Base.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
-        if (! this.auto || this.show.user.remaining <= 0) {
-            if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
-            this.stop();
-            return;
-        }
         if (Base.debug) {
             console.log('%s update episode list', `[${now.format('datetime')}]`);
         }
-        const btnUpEpisodeList = $('.updateEpisodes');
+        const btnUpEpisodeList = jQuery('.updateEpisodes');
         if (btnUpEpisodeList.length > 0) {
             btnUpEpisodeList.trigger('click');
             if ( ! this.status) {
                 this.status = true;
             }
+        }
+        // if (Base.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
+        if (! this.auto || this.show.user.remaining <= 0) {
+            if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
+            this.stop();
         }
     }
 
