@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.3
+// @version      1.3.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -308,6 +308,13 @@ const launchScript = function($) {
             integrity: 'sha384-Wh/opNnCPQdVc7YXIh18hoqN6NYg40GBaO/GwQSwrIbAIo8uCeYri2DX2IisvVP6',
             called: false,
             loaded: false
+        },
+        "searchFriend": {
+            type: 'script',
+            id: 'searchFriendJs',
+            src: '/js/search-friends.js',
+            called: false,
+            loaded: false
         }
     },
     // URI des images et description des classifications TV et films
@@ -405,6 +412,12 @@ const launchScript = function($) {
             $head.append(`<link rel="preconnect" href="${new URL(serverBaseUrl).origin}" crossorigin>`);
             $head.append(`<link rel="dns-prefetch" href="${new URL(Base.api.url).origin}">`);
             $head.append(`<link rel="preconnect" href="${new URL(Base.api.url).origin}" crossorigin>`);
+            /*
+                    CHARGEMENT LIBRARY SearchFriend pour la recommandation à un ami
+             */
+            if (typeof SearchFriend === 'undefined') {
+                system.addScriptAndLink(['searchFriend']);
+            }
             /*let elt, link;
             for (let key of Object.keys(scriptsAndStyles)) {
                 elt = scriptsAndStyles[key];
@@ -454,9 +467,12 @@ const launchScript = function($) {
                 });
             } else {
                 // On affiche la version du script
-                    if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version);
+                if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b',   'color:inherit', GM_info.script.version);
             }
             system.checkApiVersion();
+            /*
+                        BANDEAU EN-TETES DU SITE WEB
+             */
             const $mainlogo = $('nav .mainlogo');
             const boundHandleScroll = function() {
                 // console.log('scrollEvent', window.visualViewport.pageTop, mainlogoModified);
@@ -520,7 +536,7 @@ const launchScript = function($) {
                         // if (debug) console.log('col', $col);
                         if ($col.hasClass('show_searchResult')) {
                             // Show
-                            const slug = elt.attr('href').split('/').pop();
+                            const slug = $elt.attr('href').split('/').pop();
                             Show.fetchByUrl(slug).then((show) => {
                                 /**
                                  * @typedef {Show} show
@@ -1221,7 +1237,7 @@ const launchScript = function($) {
                 const propNumber = getIntervalProp(objUpAuto.show.length);
                 const propText = objUpAuto.show.in_account && objUpAuto.interval <= 0 ? `
                 <div class="form-group"><p class="alert alert-info">Pour cette série, nous vous conseillons une intervalle de <span id="propNumber" data-value="${propNumber}">${propNumber.toString()}</span> minutes.</p></div>` : '';
-                const timerText = objUpAuto.status ? `<div class="form-group"><p class="alert alert-success">Prochain update: <span id="timer_remaining" value="${objUpAuto._remaining}">${objUpAuto.remaining()}</span></p></div>` : '';
+                const timerText = objUpAuto.status ? `<div class="form-group"><p class="alert alert-success">Prochain update: <span id="timer_remaining">${objUpAuto.remaining()}</span></p></div>` : '';
                 let contentUpdate = `
                         <form id="optionsUpdateEpisodeList">
                         <div class="form-group form-check">
@@ -1329,7 +1345,6 @@ const launchScript = function($) {
                     $updateElement.popover('disable');
                     timerRemaining = setInterval(() => {
                         $('#timer_remaining').text(objUpAuto.remaining());
-                        $('#timer_remaining').attr('value', objUpAuto._remaining);
                     }, 1000);
                 });
                 // On réactive les autres popus lorsque celle des options se ferme
@@ -1574,7 +1589,6 @@ const launchScript = function($) {
                             let onerror = null;
                             if (defImgShow != null) {
                                 onerror = (err, elt, url, attr) => {
-                                    console.log('lazyLoad error URL: ', defImgShow);
                                     elt.classList.add("js-lazy-image-handled");
                                     elt[attr] = defImgShow;
                                     elt.classList.add("fade-in");
@@ -2395,19 +2409,26 @@ const launchScript = function($) {
             /*
              *             Bouton ID clipboard
              */
-            const btnId = '<span id="btnCopyId" class="unread-count copy-id" title="Copy ID" style="margin-left:10px;cursor:pointer;font-size:0.3em;font-weight:bold;vertical-align:top;background: var(--yellow);">ID</span>';
+            const btnId = '<div id="btnCopyId" class="unread-count copy-id" title="Copy ID">ID</div>';
             $('.blockInformations__title').append(btnId);
             $('.blockInformations__title .copy-id').click((e) => {
                 e.stopPropagation();
+                const $btn = $(e.target);
                 const type = medias.getApiResource(location.pathname.split('/')[1]);
                 const id = $(`#reactjs-${type.singular}-actions`).attr(`data-${type.singular}-id`);
                 navigator.clipboard.writeText(id).then(function() {
                     /* Animation de copie réussie */
-                    $(e.target).animate({opacity: 'hide'}, {duration: 'slow', complete: () => {
-                        $(e.target).animate({opacity: 'show'}, {duration: 'slow'});
-                    }});
-                  }, function() {
+                    $btn.on('animationend', () => {
+                        $btn.removeClass('copied');
+                    });
+                    $btn.addClass('copied');
+                }).catch(function() {
                     /* échec de l’écriture dans le presse-papiers */
+                    const origColor = $btn.css('backgroundColor');
+                    const redColor = getComputedStyle(document.documentElement).getPropertyValue('--red');
+                    $btn.animate({'background-color': redColor}, {duration: 'slow', complete: () => {
+                        $btn.animate({'background-color': origColor}, {duration: 'slow'});
+                    }});
                   });
             });
         },
