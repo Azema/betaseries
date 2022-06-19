@@ -1,0 +1,8 @@
+tmp/*
+ssl/*
+screenshots/*
+PagesWebTest/*
+dist/*
+node_modules/*
+.vscode/*
+.tscache/*
