@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.2
+// @version      1.3.3
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -914,106 +914,10 @@ const launchScript = function($) {
          * @returns {Dialog}
          */
         getDialog: function() {
-            const dialogHTML = `
-                <div
-                    class="dialog dialog-container table-dark"
-                    id="dialog-resource"
-                    aria-labelledby="dialog-resource-title"
-                    style="display:none;"
-                >
-                    <style>
-                        .dialog-container .close {
-                            float: right;
-                            font-size: 1.5rem;
-                            font-weight: 700;
-                            line-height: 1;
-                            color: #fff;
-                            text-shadow: 0 1px 0 #fff;
-                            opacity: .5;
-                            margin-right: 20px;
-                        }
-                        .dialog-container .close:hover {color: #000;text-decoration: none;}
-                        .dialog-container .close:not(:disabled):hover, .close:not(:disabled):focus {opacity: .75;}
-                        .dialog-container button.close {padding: 0;background-color: transparent;border: 0;}
-                        .dialog-container .counter {margin-left: 15px;}
-                        .dialog-container .counter, .dialog-container .suffixCounter {font-size:0.8em;}
-                    </style>
-                    <div class="dialog-overlay"></div>
-                    <div class="dialog-content" role="document" style="width: 80%;">
-                    <h1 id="dialog-resource-title"><span class="blockTitle">Données de la ressource</span>
-                        <span class="counter"></span> <span class="suffixCounter">appels à l'API</span>
-                        <button type = "button"
-                                class = "close"
-                                aria-label = "Close"
-                                title = "Fermer la boîte de dialogue">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </h1>
-                    <div class="data-resource content"></div>
-                    </div>
-                </div>
-            `;
-            if ($('#dialog-resource').length <= 0) {
-                $('body').append(dialogHTML);
-            }
-
-            return {
-                _dialog: $('#dialog-resource'),
-                _html: document.documentElement,
-                _onShow: function () {
-                    this._html.style.overflowY = 'hidden';
-                    this._dialog
-                        .css('z-index', '1005')
-                        .css('overflow', 'scroll')
-                        .find('button.close').click(this.close.bind(this));
-                    this._dialog.find('.dialog-overlay').click(this.close.bind(this));
-                    document.addEventListener("keydown", this._bindKeypress);
-                    $('#dialog-resource .js-lazy-image').lazyload(optionsLazyload);
-                },
-                _bindKeypress: function(e) {
-                    e.stopPropagation();
-                    // console.log('_bindKeypress', this, e);
-                    if (27 === e.which) {
-                        e.preventDefault();
-                        this.close();
-                    }
-                },
-                _onHide: function () {
-                    this._html.style.overflowY = '';
-                    this._dialog
-                        .css('z-index', '0')
-                        .css('overflow', 'none')
-                        .find('button.close').off('click');
-                    this._dialog.find('.dialog-overlay').off('click');
-                    this._dialog.off('keypress');
-                    document.removeEventListener("keydown", this._bindKeypress);
-                    this._dialog.find('style#temp').remove();
-                },
-                init: function() {
-                    this._bindKeypress = this._bindKeypress.bind(this);
-                    this._onHide = this._onHide.bind(this);
-                    this._onShow = this._onShow.bind(this);
-                    return this;
-                },
-                close: function () {
-                    this._dialog.hide('fast', this._onHide);
-                },
-                show: function() {
-                    this._dialog.show('slow', this._onShow);
-                },
-                setCounter: function(counter) {
-                    this._dialog.find('.counter').text(counter);
-                },
-                setContent: function(content) {
-                    this._dialog.find('.data-resource').html(content);
-                },
-                setTitle: function(title) {
-                    this._dialog.find('.blockTitle').text(title);
-                },
-                addStyle: function(style) {
-                    this._dialog.find('style').after(`<style id="temp">${style}</style>`);
-                }
-            }.init();
+            const options = {
+                counter: Base.counter.toString.bind(Base.counter)
+            };
+            return new Dialog(options)._init();
         },
         /**
          * Fonction d'ajout d'un paginateur en haut de liste des séries
@@ -1151,9 +1055,83 @@ const launchScript = function($) {
                 })
                 .css('cursor', 'pointer');
         },
+        choiceImage: function(res, cb) {
+            Base.showLoader();
+            const dialog = system.getDialog();
+            // Créer une popup affichant les différents posters
+            res.getAllPosters().then(posters => {
+                const keys = Object.keys(posters);
+                console.log('posters', posters, keys);
+                let template = '<div class="posters">';
+                for (const title of keys) {
+                    template += `<div class="row title">${title.charAt(0).toUpperCase() + title.slice(1)}</div><div class="row">`;
+                    for (let p = 0; p < posters[title].length; p++) {
+                        if (p > 0 && p % 5 === 0) {
+                            template += '</div><div class="row">';
+                        }
+                        let check = '';
+                        if ((res.mediaType.singular === 'show' && res.images.poster === posters[title][p]) ||
+                            (res.mediaType.singular === 'movie' && res.poster === posters[title][p]))
+                        {
+                            check = '<i class="fa fa-check-circle fa-3x" aria-hidden="true"></i>';
+                        }
+                        template += `<div class="poster" title="Sélectionnez ce poster">
+                                        <img class="js-lazy-image img-thumbnail" data-src="${posters[title][p]}" alt="Affiche" width="150">${check}</div>`;
+                    }
+                    template += '</div>';
+                }
+                // On ajoute les boutons de navigation
+                template += `</div>`;
+                dialog
+                    .setContent(template)
+                    .setTitle('Choix du poster')
+                    .addStyle(`
+                    .posters .row {
+                        margin-top: 30px;
+                    }
+                    .posters .row.title {
+                        margin-top: 20px;
+                        margin-bottom: 0;
+                        font-weight: bold;
+                        font-size: 1.4em;
+                        border-bottom: 1px #fff solid;
+                        padding-bottom: 2px;
+                        padding-left: 5px
+                    }
+                    .posters .row div.poster {
+                        position: relative;
+                    }
+                    .posters .row .poster {
+                        margin-left: 30px;
+                    }
+                    .posters .row .poster > img {
+                        display: block;
+                    }
+                    .posters .row .poster img.js-lazy-image {
+                        cursor: pointer;
+                    }
+                    .posters .row .poster .fa {
+                        position: absolute;
+                        top: 5px;
+                        left: 5px;
+                        color: var(--green);
+                    }
+                    `)
+
+                    .show(() => {
+                        Base.hideLoader();
+                        $('.posters img').click((e) => {
+                            e.stopPropagation();
+                            cb(e.target.src);
+                            dialog.close();
+                        });
+                    });
+                // console.log('Dialog', dialog);
+            });
+        },
         /**
          * Vérifie la présence de l'affiche du média
-         * @param  {Media} res L'objet Media principal
+         * @param  {Media} res - L'objet Media principal
          * @return {void}
          */
         checkPoster: function(res) {
@@ -1172,7 +1150,19 @@ const launchScript = function($) {
                                 src="${img}" />`
                     );
                 });
+            } else if (res.mediaType.singular === 'show' && res.images.poster && res.images.poster !== $poster.attr('src')) {
+                $poster.attr('src', res.images.poster);
+            } else if (res.mediaType.singular === 'movie' && res.poster && res.poster !== $poster.attr('src')) {
+                $poster.attr('src', res.poster);
             }
+            $('.blockInformations__poster').append('<i class="fa fa-camera fa-2x selectPoster" aria-hidden="true" style="position:absolute;top:5px;right:5px;padding:5px;cursor:pointer;z-index:5;"></i>');
+            $('.blockInformations__poster .selectPoster').click((e) => {
+                e.stopPropagation();
+                medias.choiceImage(res, (src) => {
+                    res.override('poster', src);
+                    $('.blockInformations__poster img').attr('src', src);
+                });
+            });
         },
         /**
          * Patiente le temps du chargment des saisons et des épisodes
@@ -1486,7 +1476,7 @@ const launchScript = function($) {
             // Ajoute les cases à cocher sur les vignettes des épisodes
             function addCheckSeen() {
                 vignettes = getVignettes();
-                const seasonNum = parseInt($('#seasons div[role="button"].slide--current .slide__title').text().match(/\d+/).shift(), 10);
+                const seasonNum = parseInt($('#seasons .slide--current').attr('href').split('/').pop(), 10);
                 if (Base.debug) console.log('season number: ', seasonNum);
                 if (res.currentSeason === undefined || res.currentSeason.number !== seasonNum) {
                     res.setCurrentSeason(seasonNum);
@@ -1592,7 +1582,7 @@ const launchScript = function($) {
                                 };
                             }
                             $('#episodes .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
-                        });
+                        }).catch(() => {});
                     });
                 });
                 // Ajouter un bouton de mise à jour des épisodes de la saison courante
@@ -1616,8 +1606,6 @@ const launchScript = function($) {
                         $('#updateEpisodeList .updateElement').popover('hide');
                         const self = $(e.currentTarget);
                         self.removeClass('finish');
-                        // Le numéro de la saison courante
-                        // const seasonNum = $('#seasons .slide_flex.slide--current .slide__title').text().match(/\d+/).shift();
                         res.currentSeason.fetchEpisodes().then(() => {
                             // if (Base.debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
                             vignettes = getVignettes();
@@ -2383,10 +2371,12 @@ const launchScript = function($) {
                 let type = medias.getApiResource(location.pathname.split('/')[1]); // Indique de quel type de ressource il s'agit
                 medias.getResourceData().then(function (data) {
                     // if (Base.debug) console.log('addBtnDev promise return', data);
-                    dialog.setContent(renderjson.set_show_to_level(2)(data[type.singular]));
-                    dialog.setCounter(Base.counter.toString());
-                    dialog.setTitle('Données du média');
-                    dialog.show();
+                    dialog
+                        .setContent(renderjson.set_show_to_level(2)(data[type.singular]))
+                    // dialog.setCounter(Base.counter.toString());
+                        .setTitle('Données du média')
+                        .show();
+                    console.log('Dialog', dialog);
                 }, (err) => {
                     system.notification('Erreur de récupération de la ressource', 'addBtnDev: ' + err);
                 });
@@ -3026,10 +3016,9 @@ const launchScript = function($) {
             $('#js-menu-aim a.lastSeen').click(e => {
                 e.stopPropagation();
                 e.preventDefault();
-                dialog.setContent('<div style="text-align:center;"><i class="fa fa-spinner fa-3x" aria-hidden="true"></i></div>');
-                dialog.setCounter(Base.counter.toString());
-                dialog.setTitle('10 dernières séries vues');
-                dialog.show();
+                dialog
+                    .setContent('<div style="text-align:center;"><i class="fa fa-spinner fa-3x" aria-hidden="true"></i></div>')
+                    .setTitle('10 dernières séries vues');
                 Show.fetchLastSeen().then(async (shows) => {
                     let template = '<div id="annuaire-list" class="gridSeries">';
                     for (let s = 0; s < shows.length; s++) {
@@ -3112,9 +3101,9 @@ const launchScript = function($) {
                             console.warn('Erreur de copy dans le clipboard');
                         })
                     });
-                    //dialog.show();
+                    dialog.show();
                 });
-             })
+             });
         }
     };
     const series = {
@@ -4033,6 +4022,212 @@ const launchScript = function($) {
         articles.addPopupOnLinks();
         medias.addBtnToSee();
         members.lastSeen();
+    }
+
+    /**
+     * Dialog - Classe servant à manipuler une boîte de dialogue
+     * pour y afficher des informations
+     * @class
+     */
+    class Dialog {
+        /** @type {HTMLElement} */
+        _dialog;
+        /** @type {HTMLElement} */
+        _html;
+        /** @type {JQuery<HTMLElement>} */
+        _$content;
+        /** @type {JQuery<HTMLElement>} */
+        _$title;
+        /** @type {JQuery<HTMLElement>} */
+        _$counter;
+        /** @type {JQuery<HTMLElement>} */
+        _$style;
+        /** @type {JQuery<HTMLElement>} */
+        _$overlay;
+        /** @type {JQuery<HTMLElement>} */
+        _$btnClose;
+        /**
+         * @type {object}
+         * @property {function} onShow - Fonction de callback perso à l'affichage de la popup
+         * @property {function} onHide - Fonction de callback perso au masquage de la popup
+         */
+        _callbacks = {onShow: null, onHide: null};
+
+        /**
+         * Constructeur de la classe Dialog
+         * @param {object} options - Options à fournir à la popup
+         */
+        constructor(options) {
+            this.settings = Object.assign({}, options);
+            this._html = document.documentElement;
+        }
+        /**
+         * Fonction de callback après ouverture de la popup
+         * @callback
+         * @private
+         */
+        _onShow() {
+            if (this.settings.counter && typeof this.settings.counter === 'function') {
+                this.setCounter(this.settings.counter());
+            }
+            this._html.style.overflowY = 'hidden';
+            this._dialog
+                .css('z-index', '1005')
+                .css('overflow', 'scroll');
+            this._$btnClose.click(this.close.bind(this));
+            this._$overlay.click(this.close.bind(this));
+            document.addEventListener("keydown", this._bindKeypress);
+            $('.js-lazy-image', this._dialog).lazyload(optionsLazyload);
+            if (typeof this._callbacks.onShow === 'function') this._callbacks.onShow();
+        }
+        /**
+         * Fonction liée à l'event keypress
+         * @param {Event} e - Event keypress
+         * @private
+         */
+        _bindKeypress(e) {
+            e.stopPropagation();
+            // console.log('_bindKeypress', this, e);
+            if (27 === e.which) {
+                e.preventDefault();
+                this.close();
+            }
+        }
+        /**
+         * Fonction de callback après fermeture de la popup
+         * @callback
+         * @private
+         */
+        _onHide() {
+            if (typeof this._callbacks.onHide === 'function') this._callbacks.onHide();
+            this._html.style.overflowY = '';
+            this._dialog
+                .css('z-index', '0')
+                .css('overflow', 'none');
+            this._$btnClose.off('click');
+            this._$overlay.off('click');
+            this._dialog.off('keypress');
+            document.removeEventListener("keydown", this._bindKeypress);
+            $('style.temp', this._dialog).remove();
+        }
+        /**
+         * Fonction d'initialisation de la popup
+         * @returns {Dialog}
+         * @private
+         */
+        _init() {
+            this._dialog = this.settings.dialog !== undefined ? $(this.settings.dialog) : $('#dialog-resource');
+            if (this._dialog.length <= 0) {
+                $('body').prepend(this.template);
+                this._dialog = this.settings.dialog !== undefined ? $(this.settings.dialog) : $('#dialog-resource');
+            }
+            this._$content = $('.dialog-content > .content', this._dialog);
+            this._$title = $('.dialog-content > h1 .blockTitle', this._dialog);
+            this._$counter = $('.dialog-content > h1 .counter', this._dialog);
+            this._$style = $('style', this._dialog);
+            this._$overlay = $('.dialog-overlay', this._dialog);
+            this._$btnClose = $('button.close', this._dialog);
+            this._bindKeypress = this._bindKeypress.bind(this);
+            this._onHide = this._onHide.bind(this);
+            this._onShow = this._onShow.bind(this);
+            return this;
+        }
+        /**
+         * Fonction servant à masquer la popup
+         * @param   {function} [cb] - Fonction de callback
+         * @returns {Dialog}
+         */
+        close(cb) {
+            if (cb) this._callbacks.onHide = cb;
+            this._dialog.hide('fast', this._onHide);
+            return this;
+        }
+        /**
+         * Fonction servant à afficher la popup
+         * @param   {function} [cb] - Fonction de callback
+         * @returns {Dialog}
+         */
+        show(cb) {
+            if (cb) this._callbacks.onShow = cb;
+            this._dialog.show('slow', this._onShow);
+            return this;
+        }
+        /**
+         * Définit le nombre d'appels à l'API BetaSeries
+         * Le compteur est affiché dans le titre de la popup
+         * @param   {number} counter - Nombre d'appels à l'API
+         * @returns {Dialog}
+         */
+        setCounter(counter) {
+            this._$counter.text(counter);
+            return this;
+        }
+        /**
+         * Définit le contenu HTML de la popup
+         * @param   {string} content - Le contenu HTML de la popup
+         * @returns {Dialog}
+         */
+        setContent(content) {
+            this._$content.html(content);
+            return this;
+        }
+        /**
+         * Définit le titre de la popup
+         * @param   {string} title - Le titre de la popup
+         * @returns {Dialog}
+         */
+        setTitle(title) {
+            this._$title.text(title);
+            return this;
+        }
+        /**
+         * Permet d'ajouter du code CSS à la popup
+         * @param   {string} style - Le code CSS à ajouter dans une balise style
+         * @returns {Dialog}
+         */
+        addStyle(style) {
+            this._$style.after(`<style class="temp">${style}</style>`);
+            return this;
+        }
+        template = `
+            <div
+                class="dialog dialog-container table-dark"
+                id="dialog-resource"
+                aria-labelledby="dialog-resource-title"
+                style="display:none;"
+            >
+                <style>
+                    .dialog-container .close {
+                        float: right;
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        line-height: 1;
+                        color: #fff;
+                        text-shadow: 0 1px 0 #fff;
+                        opacity: .5;
+                        margin-right: 20px;
+                    }
+                    .dialog-container .close:hover {color: #000;text-decoration: none;}
+                    .dialog-container .close:not(:disabled):hover, .close:not(:disabled):focus {opacity: .75;}
+                    .dialog-container button.close {padding: 0;background-color: transparent;border: 0;}
+                    .dialog-container .counter {margin-left: 15px;}
+                    .dialog-container .counter, .dialog-container .suffixCounter {font-size:0.8em;}
+                </style>
+                <div class="dialog-overlay"></div>
+                <div class="dialog-content" role="document" style="width: 80%;">
+                <h1 id="dialog-resource-title"><span class="blockTitle">Données de la ressource</span>
+                    <span class="counter"></span> <span class="suffixCounter">appels à l'API</span>
+                    <button type = "button"
+                            class = "close"
+                            aria-label = "Close"
+                            title = "Fermer la boîte de dialogue">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </h1>
+                <div class="data-resource content"></div>
+                </div>
+            </div>
+        `;
     }
 };
 /*
