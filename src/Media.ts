@@ -228,4 +228,35 @@ export abstract class Media extends Base {
         }
         return this;
     }
+    /**
+     * Retourne l'URL de la page de la série à partir de son identifiant tvdb
+     * @param   {number} tvdb_id - Identifiant TheTvDB
+     * @returns {Promise<string>}
+     */
+    _getTvdbUrl(tvdb_id: number): Promise<string> {
+        const proxy = Base.serverBaseUrl + '/proxy/';
+        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
+            method: 'GET',
+            headers: {
+                'origin': 'https://www.betaseries.com',
+                'x-requested-with': '',
+                'Accept': 'application/json'
+            },
+            mode: 'cors',
+            cache: 'no-cache'
+        };
+        return new Promise((res, rej) => {
+            fetch(`${proxy}?tab=series&id=${tvdb_id}`, initFetch)
+            .then(res => {
+                // console.log('_getTvdbUrl response', res);
+                if (res.ok) {
+                    return res.json();
+                }
+                return rej();
+            }).then(data => {
+                // console.log('_getTvdbUrl data', data);
+                if (data) { res(data.url) } else { rej(); }
+            });
+        });
+    }
 }

@@ -1381,39 +1381,13 @@ export class Show extends Media implements implShow, implAddNote {
         }
         return null;
     }
-    _getTvdbUrl(): Promise<string> {
-        const proxy = Base.serverBaseUrl + '/proxy/';
-        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
-            method: 'GET',
-            headers: {
-                'origin': 'https://www.betaseries.com',
-                'x-requested-with': '',
-                'Accept': 'application/json'
-            },
-            mode: 'cors',
-            cache: 'no-cache'
-        };
-        return new Promise((res, rej) => {
-            fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
-            .then(res => {
-                // console.log('_getTvdbUrl response', res);
-                if (res.ok) {
-                    return res.json();
-                }
-                return rej();
-            }).then(data => {
-                // console.log('_getTvdbUrl data', data);
-                if (data) { res(data.url) } else { rej(); }
-            });
-        });
-    }
     /**
      * Retourne une image, si disponible, en fonction du format désiré
      * @param  {string = Images.formats.poster} format   Le format de l'image désiré
      * @return {Promise<string>}                         L'URL de l'image
      */
     getDefaultImage(format: string = Images.formats.poster): Promise<string> {
-        const proxy = Base.serverBaseUrl + '/proxy/';
+        const proxy = Base.serverBaseUrl + '/posters';
         const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
             method: 'GET',
             headers: {
@@ -1428,46 +1402,58 @@ export class Show extends Media implements implShow, implAddNote {
                 if (Base.debug) console.log('getDefaultImage poster', this.images.poster);
                 if (this.images.poster) res(this.images.poster);
                 else {
-                    fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
-                    .then((resp: Response) => {
-                        if (resp.ok) {
-                            return resp.text();
-                        }
-                        return null;
-                    }).then(html => {
-                        if (html == null) {
-                            return rej('HTML error');
-                        }
-                        const parser = new DOMParser();
-                        const doc: Document = parser.parseFromString(html, 'text/html');
-                        const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_posters"]');
-                        res(link.href.replace('original', 'w500'));
-                    }).catch(err => rej(err));
+                    this._getTvdbUrl(this.thetvdb_id).then(url => {
+                        if (!url) return res('');
+                        const urlTvdb = new URL(url);
+                        fetch(`${proxy}${urlTvdb.pathname}`, initFetch)
+                        .then((resp: Response) => {
+                            if (resp.ok) {
+                                return resp.text();
+                            }
+                            return null;
+                        }).then(html => {
+                            if (html == null) {
+                                return rej('HTML error');
+                            }
+                            const parser = new DOMParser();
+                            const doc: Document = parser.parseFromString(html, 'text/html');
+                            const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_posters"]');
+                            res(link.href.replace('original', 'w500'));
+                        }).catch(err => rej(err));
+                    });
                 }
             }
             else if (format === Images.formats.wide) {
                 if (this.images.show !== null) res(this.images.show);
                 else if(this.images.box !== null) res(this.images.box);
                 else {
-                    fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
-                    .then((resp: Response) => {
-                        if (resp.ok) {
-                            return resp.text();
-                        }
-                        return null;
-                    }).then(html => {
-                        if (html == null) {
-                            return rej('HTML error');
-                        }
-                        const parser = new DOMParser();
-                        const doc: Document = parser.parseFromString(html, 'text/html');
-                        const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_backgrounds"]');
-                        res(link.href.replace('original', 'w500'));
-                    }).catch(err => rej(err));
+                    this._getTvdbUrl(this.thetvdb_id).then(url => {
+                        if (!url) return res('');
+                        const urlTvdb = new URL(url);
+                        fetch(`${proxy}${urlTvdb.pathname}`, initFetch)
+                        .then((resp: Response) => {
+                            if (resp.ok) {
+                                return resp.text();
+                            }
+                            return null;
+                        }).then(html => {
+                            if (html == null) {
+                                return rej('HTML error');
+                            }
+                            const parser = new DOMParser();
+                            const doc: Document = parser.parseFromString(html, 'text/html');
+                            const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_backgrounds"]');
+                            res(link.href.replace('original', 'w500'));
+                        }).catch(err => rej(err));
+                    });
                 }
             }
         });
     }
+    /**
+     * Récupère et retourne les différentes affiches disponibles
+     * @returns {object}
+     */
     getAllPosters(): Promise<object> {
         if (this._posters) {
             return new Promise(res => res(this._posters));
@@ -1485,8 +1471,8 @@ export class Show extends Media implements implShow, implAddNote {
         return new Promise((res, rej) => {
             const posters = {};
             if (this.images?._local.poster) posters['local'] = [this.images._local.poster];
-            this._getTvdbUrl().then(url => {
-                console.log('getAllPosters url', url);
+            this._getTvdbUrl(this.thetvdb_id).then(url => {
+                // console.log('getAllPosters url', url);
                 if (!url) return res(posters);
                 const urlTvdb = new URL(url);
                 fetch(`${proxy}${urlTvdb.pathname}/artwork/posters`, initFetch)

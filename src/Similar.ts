@@ -378,7 +378,7 @@ export class Similar extends Media implements implShow, implMovie {
                 );
             }
             else {
-                const proxy = Base.serverBaseUrl + '/proxy/';
+                const proxy = Base.serverBaseUrl + '/posters/';
                 const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
                     method: 'GET',
                     headers: {
@@ -388,26 +388,30 @@ export class Similar extends Media implements implShow, implMovie {
                     mode: 'cors',
                     cache: 'no-cache'
                 };
-                fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
-                .then((resp: Response) => {
-                    if (resp.ok) {
-                        return resp.text();
-                    }
-                    return null;
-                }).then(html => {
-                    if (html == null) return;
-                    const parser = new DOMParser();
-                    const doc: Document = parser.parseFromString(html, 'text/html');
-                    const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_posters"]');
-                    if (link) {
-                        this.elt.find('div.block404').replaceWith(`
-                            <img class="u-opacityBackground fade-in"
-                                    width="125"
-                                    height="188"
-                                    alt="Affiche de la série ${self.title}"
-                                    src="${link.href}"/>`
-                        );
-                    }
+                this._getTvdbUrl(this.thetvdb_id).then(url => {
+                    if (!url) return;
+                    const urlTvdb = new URL(url);
+                    fetch(`${proxy}${urlTvdb.pathname}`, initFetch)
+                    .then((resp: Response) => {
+                        if (resp.ok) {
+                            return resp.text();
+                        }
+                        return null;
+                    }).then(html => {
+                        if (html == null) return;
+                        const parser = new DOMParser();
+                        const doc: Document = parser.parseFromString(html, 'text/html');
+                        const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_posters"]');
+                        if (link) {
+                            this.elt.find('div.block404').replaceWith(`
+                                <img class="u-opacityBackground fade-in"
+                                        width="125"
+                                        height="188"
+                                        alt="Affiche de la série ${self.title}"
+                                        src="${link.href}"/>`
+                            );
+                        }
+                    });
                 });
             }
         }
