@@ -2,7 +2,7 @@ import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback} from "./Base";
 import { implAddNote } from "./Note";
 import {Media} from "./Media";
 import {Season} from "./Season";
-import { Character } from "./Character";
+import { Character, Person } from "./Character";
 import {Next} from "./User";
 
 declare const PopupAlert;
@@ -195,6 +195,7 @@ export interface implShow {
     social_links: Array<string>;
     status: string;
     thetvdb_id: number;
+    persons: Array<Person>;
 }
 export class Show extends Media implements implShow, implAddNote {
     /***************************************************/
@@ -357,6 +358,10 @@ export class Show extends Media implements implShow, implAddNote {
      */
     rating: string;
     /**
+     * @type {Array<Person>} Tableau des acteurs de la série
+     */
+    persons: Array<Person>;
+    /**
      * @type {Array<Picture>} Tableau des images uploadées par les membres
      */
     pictures: Array<Picture>;
@@ -412,6 +417,7 @@ export class Show extends Media implements implShow, implAddNote {
             } else {
                 this.addShowClick();
             }
+            this._overrideProps();
             return this;
         });
     }
@@ -452,9 +458,10 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Récupère les personnages de la série
+     * @override
      * @returns {Promise<Show>}
      */
-    fetchCharacters(): Promise<Show> {
+    fetchCharacters(): Promise<this> {
         const self = this;
         return Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
         .then((data: Obj) => {
@@ -467,6 +474,80 @@ export class Show extends Media implements implShow, implAddNote {
             }
             return self;
         });
+    }
+    /**
+     * Retourne le personnage associé au nom d'acteur de la série
+     * @param   {String} name - Nom de l'acteur
+     * @returns {Character | null}
+     */
+    getCharacterByName(name: string): Character | null {
+        const comp = name.toLocaleLowerCase();
+        for (const actor of this.characters) {
+            if (actor.actor.toLocaleLowerCase() === comp) return actor;
+        }
+        return null;
+    }
+    /**
+     * Récupère les acteurs sur l'API BetaSeries
+     * @returns {Promise<Show>}
+     */
+    fetchPersons(): Promise<Show> {
+        const self = this;
+        return Base.callApi(HTTP_VERBS.GET, 'persons', 'show', {id: this.id})
+        .then(data => {
+            this.persons = [];
+            if (data.persons) {
+                for (let p = 0; p < data.persons.length; p++) {
+                    self.persons.push(new Person(data.persons[p]));
+                }
+            }
+            return self;
+        });
+    }
+    /**
+     * Récupère les acteurs sur l'API BetaSeries à partir
+     * des personnages de la série
+     * @async
+     * @returns {Promise<Show>}
+     */
+    async fetchPersonsFromCharacters(): Promise<Show> {
+        const self = this;
+        if (this.characters.length <= 0) {
+            await this.fetchCharacters();
+        }
+        const promises = [];
+        for (let c = 0; c < self.characters.length; c++) {
+            promises.push(Person.fetch(self.characters[c].person_id));
+        }
+        return Promise.all(promises).then((persons) => {
+            for (let p = 0; p < persons.length; p++) {
+                if (persons[p]) self.persons.push(persons[p]);
+            }
+            return self;
+        });
+    }
+    /**
+     * Retourne un acteur en le cherchant par son nom
+     * @param   {String} name - Nom de l'acteur
+     * @returns {Person | null}
+     */
+    getPersonByName(name: string): Person | null {
+        const comp = name.toLocaleLowerCase();
+        for (const actor of this.persons) {
+            if (actor.name.toLocaleLowerCase() === comp) return actor;
+        }
+        return null;
+    }
+    /**
+     * Retourne un acteur en le cherchant par son ID
+     * @param   {number} id - Identifiant de l'acteur
+     * @returns {Person | null}
+     */
+    getPersonById(id: number): Person | null {
+        for (const actor of this.persons) {
+            if (actor.id === id) return actor;
+        }
+        return null;
     }
     /**
      * isEnded - Indique si la série est terminée
@@ -1337,6 +1418,7 @@ export class Show extends Media implements implShow, implAddNote {
         };
         return new Promise((res, rej) => {
             if (format === Images.formats.poster) {
+                if (Base.debug) console.log('getDefaultImage poster', this.images.poster);
                 if (this.images.poster) res(this.images.poster);
                 else {
                     fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)

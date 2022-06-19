@@ -1,4 +1,5 @@
 import {Base, Obj, HTTP_VERBS, MediaType, EventTypes} from "./Base";
+import { Character } from "./Character";
 import { implAddNote } from "./Note";
 import { Season } from "./Season";
 import { Subtitles } from "./Subtitle";
@@ -469,6 +470,24 @@ export class Episode extends Base implements implAddNote {
                     res(link.href.replace('original', 'w500'));
                 }).catch(err => rej(err));
             }*/
+        });
+    }
+    /**
+     * Récupère les personnages de l'épisode
+     * @returns {Promise<this>}
+     */
+    fetchCharacters(): Promise<this> {
+        const self = this;
+        return Base.callApi(HTTP_VERBS.GET, 'episodes', 'characters', {id: this.id}, true)
+        .then((data: Obj) => {
+            self.characters = [];
+            if (data?.characters?.length <= 0) {
+                return self;
+            }
+            for (let c = 0; c < data.characters.length; c++) {
+                self.characters.push(new Character(data.characters[c]));
+            }
+            return self;
         });
     }
 }

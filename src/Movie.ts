@@ -2,6 +2,7 @@ import {Base, Obj, MediaType, HTTP_VERBS} from "./Base";
 import { implAddNote } from "./Note";
 import {Platform_link} from "./Episode";
 import {Media} from "./Media";
+import { Character } from "./Character";
 
 export type OtherTitle = {
     language: string;
@@ -122,7 +123,7 @@ export class Movie extends Media implements implAddNote {
      * @override
      */
     fill(data: Obj): this {
-        if (data.user.in_account !== undefined) {
+        if (data.user?.in_account !== undefined) {
             data.in_account = data.user.in_account;
             delete data.user.in_account;
         }
@@ -225,6 +226,24 @@ export class Movie extends Media implements implAddNote {
                     }).catch(err => rej(err));
                 }
             }
+        });
+    }
+    /**
+     * Récupère les personnages du film
+     * @returns {Promise<this>}
+     */
+    fetchCharacters(): Promise<this> {
+        const self = this;
+        return Base.callApi(HTTP_VERBS.GET, 'movies', 'characters', {id: this.id}, true)
+        .then((data: Obj) => {
+            self.characters = [];
+            if (data?.characters?.length <= 0) {
+                return self;
+            }
+            for (let c = 0; c < data.characters.length; c++) {
+                self.characters.push(new Character(data.characters[c]));
+            }
+            return self;
         });
     }
     getAllPosters(): Promise<object> {

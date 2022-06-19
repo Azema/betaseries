@@ -30,9 +30,11 @@ Show.prototype.fill = function(data: Obj): Show {
         this.platforms = new Platforms(data.platforms);
     // }
     if (this.id == null && this.seasons == null) {
-        this.seasons = new Array(parseInt(data.seasons, 10));
-        for (let s = 0; s < data.seasons_details.length; s++) {
-            this.seasons.push(new Season(data.seasons_details[s], this));
+        this.seasons = [];
+        if (data.seasons_details) {
+            for (let s = 0; s < data.seasons_details.length; s++) {
+                this.seasons.push(new Season(data.seasons_details[s], this));
+            }
         }
     }
     this.showrunner = null;
@@ -44,6 +46,7 @@ Show.prototype.fill = function(data: Obj): Show {
     this.thetvdb_id = parseInt(data.thetvdb_id, 10);
     this.pictures = null;
     this.mediaType = {singular: MediaType.show, plural: 'shows', className: Show};
+    this.persons = [];
     Media.prototype.fill.call(this, data);
     return this.save();
 };

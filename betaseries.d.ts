@@ -73,49 +73,6 @@ declare module 'Cache' {
 	export {};
 
 }
-declare module 'Character' {
-	import { Obj } from 'Base';
-	export class Character {
-	    /**
-	     * @type {string} Nom de l'acteur/actrice
-	     */
-	    actor: string;
-	    /**
-	     * @type {string} Description du rôle
-	     */
-	    description: string;
-	    /**
-	     * @type {boolean} Invité ?
-	     */
-	    guest: boolean;
-	    /**
-	     * @type {number} Identifiant de l'acteur
-	     */
-	    id: number;
-	    /**
-	     * @type {string} Nom du personnage
-	     */
-	    name: string;
-	    /**
-	     * @type {string} URL de l'image du personnage
-	     */
-	    picture: string;
-	    /**
-	     * @type {string} Type de rôle du personnage dans le média
-	     */
-	    role: string;
-	    /**
-	     * @type {number} Identifiant de la série
-	     */
-	    show_id: number;
-	    /**
-	     * @type {number} Identifiant du film
-	     */
-	    movie_id: number;
-	    constructor(data: Obj);
-	}
-
-}
 declare module 'Note' {
 	/// <reference types="jquery" />
 	import { Base, Obj, Callback } from 'Base';
@@ -177,6 +134,1328 @@ declare module 'Note' {
 	     * @returns {string}
 	     */
 	    static renderStars(note?: number, color?: string): string;
+	}
+
+}
+declare module 'Subtitle' {
+	import { Obj } from 'Base';
+	export class Subtitle {
+	    /**
+	     * @type {number} - L'identifiant du subtitle
+	     */
+	    id: number;
+	    /**
+	     * @type {string} - La langue du subtitle
+	     */
+	    language: string;
+	    /**
+	     * @type {string} - La source du subtitle
+	     */
+	    source: string;
+	    /**
+	     * @type {number} - La qualité du subtitle
+	     */
+	    quality: number;
+	    /**
+	     * @type {string} - Le nom du fichier du subtitle
+	     */
+	    file: string;
+	    /**
+	     * @type {string} - L'URL d'accès au subtitle
+	     */
+	    url: string;
+	    /**
+	     * @type {Date} - Date de mise en ligne
+	     */
+	    date: Date;
+	    episode: number;
+	    show: number;
+	    season: number;
+	    constructor(data: Obj);
+	}
+	export enum SortTypeSubtitles {
+	    LANGUAGE = "language",
+	    SOURCE = "source",
+	    QUALITY = "quality",
+	    DATE = "date"
+	}
+	export enum SubtitleTypes {
+	    EPISODE = "episode",
+	    SEASON = "season",
+	    SHOW = "show"
+	}
+	export enum SubtitleLanguages {
+	    ALL = "all",
+	    VOVF = "vovf",
+	    VO = "vo",
+	    VF = "vf"
+	}
+	export type ParamsFetchSubtitles = {
+	    id: number;
+	    season?: number;
+	};
+	export class Subtitles {
+	    /**
+	     * @type {Array<Subtitle>} - Collection de subtitles
+	     */
+	    subtitles: Array<Subtitle>;
+	    /**
+	     * Récupère et retourne une collection de subtitles
+	     * @param   {SubtitleTypes} type - Type de média
+	     * @param   {ParamsFetchSubtitles} ids - Les identifiants de recherche
+	     * @param   {SubtitleLanguages} language - La langue des subtitles recherchés
+	     * @returns {Promise<Subtitles>}
+	     */
+	    static fetch(type: SubtitleTypes, ids: ParamsFetchSubtitles, language?: SubtitleLanguages): Promise<Subtitles>;
+	    constructor(data: Array<Obj>);
+	    /**
+	     * Permet de trier les subtitles
+	     * @param   {SortTypeSubtitles} by - Le type de tri
+	     * @returns {Array<Subtitle>}
+	     */
+	    sortBy(by: SortTypeSubtitles): Array<Subtitle>;
+	}
+
+}
+declare module 'Episode' {
+	/// <reference types="jquery" />
+	import { Base, Obj, HTTP_VERBS } from 'Base';
+	import { implAddNote } from 'Note';
+	import { Season } from 'Season';
+	import { Subtitles } from 'Subtitle';
+	export type Platform_link = {
+	    /**
+	     * @type {number} Identifiant de l'épisode sur la plateforme
+	     */
+	    id: number;
+	    /**
+	     * @type {string} Lien vers l'épisode sur la plateforme
+	     */
+	    link: string;
+	    /**
+	     * @type {string} Le nom de la plateforme
+	     */
+	    platform: string;
+	};
+	export type ReleasesSvod = {
+	    displayOriginal: boolean;
+	    releases: Array<string>;
+	};
+	export type WatchedBy = {
+	    /**
+	     * @type {number} Identifiant du membre
+	     */
+	    id: number;
+	    /**
+	     * @type {string} Login du membre
+	     */
+	    login: string;
+	    /**
+	     * @type {number} La note du membre
+	     */
+	    note: number;
+	};
+	export class Episode extends Base implements implAddNote {
+	    static fetch(epId: number): Promise<Episode>;
+	    /**
+	     * @type {Season} L'objet Season contenant l'épisode
+	     */
+	    _season: Season;
+	    /**
+	     * @type {string} Le code de l'épisode SXXEXX
+	     */
+	    code: string;
+	    /**
+	     * @type {Date} La date de sortie de l'épisode
+	     */
+	    date: Date;
+	    /**
+	     * @type {string}
+	     */
+	    director: string;
+	    /**
+	     * @type {number} Le numéro de l'épisode dans la saison
+	     */
+	    episode: number;
+	    /**
+	     * @type {number} Le numéro de l'épisode dans la série
+	     */
+	    global: number;
+	    /**
+	     * @type {number} Le numéro de la saison
+	     */
+	    numSeason: number;
+	    /**
+	     * @type {Array<Platform_link>} Les plateformes de diffusion
+	     */
+	    platform_links: Array<Platform_link>;
+	    /**
+	     * @type {ReleasesSvod}
+	     */
+	    releasesSvod: ReleasesSvod;
+	    /**
+	     * @type {number} Nombre de membres de BS à avoir vu l'épisode
+	     */
+	    seen_total: number;
+	    /**
+	     * @type {boolean} Indique si il s'agit d'un épisode spécial
+	     */
+	    special: boolean;
+	    /**
+	     * @type {Array<Subtitle>} Tableau des sous-titres dispo sur BS
+	     */
+	    subtitles: Subtitles;
+	    /**
+	     * @type {number} Identifiant de l'épisode sur thetvdb.com
+	     */
+	    thetvdb_id: number;
+	    /**
+	     * @type {Array<WatchedBy>} Tableau des amis ayant vu l'épisode
+	     */
+	    watched_by: Array<WatchedBy>;
+	    /**
+	     * @type {Array<string>} Tableau des scénaristes de l'épisode
+	     */
+	    writers: Array<string>;
+	    /**
+	     * @type {string} Identifiant de la vidéo sur Youtube
+	     */
+	    youtube_id: string;
+	    /**
+	     * Constructeur de la classe Episode
+	     * @param   {Obj}       data    Les données provenant de l'API
+	     * @param   {Season}    season  L'objet Season contenant l'épisode
+	     * @returns {Episode}
+	     */
+	    constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>);
+	    /**
+	     * Remplit l'objet avec les données fournit en paramètre
+	     * @param  {Obj} data Les données provenant de l'API
+	     * @returns {Episode}
+	     * @override
+	     */
+	    fill(data: Obj): this;
+	    /**
+	     * Ajoute le titre de l'épisode à l'attribut Title
+	     * du DOMElement correspondant au titre de l'épisode
+	     * sur la page Web
+	     *
+	     * @return {Episode} L'épisode
+	     */
+	    addAttrTitle(): Episode;
+	    /**
+	     * Met à jour le DOMElement .checkSeen avec les
+	     * données de l'épisode (id, pos, special)
+	     * @param  {number} pos  La position de l'épisode dans la liste
+	     * @return {Episode}
+	     */
+	    initCheckSeen(pos: number): Episode;
+	    /**
+	     * Met à jour les infos de la vignette et appelle la fonction d'update du rendu
+	     * @param  {number} pos La position de l'épisode dans la liste
+	     * @return {boolean}    Indique si il y a eu un changement
+	     */
+	    updateCheckSeen(pos: number): boolean;
+	    /**
+	     * Met à jour le titre de l'épisode sur la page de la série
+	     * @returns {void}
+	     */
+	    updateTitle(): void;
+	    /**
+	     * Retourne le code HTML du titre de la popup
+	     * pour l'affichage de la description
+	     * @return {string}
+	     */
+	    getTitlePopup(): string;
+	    /**
+	     * Définit le film, sur le compte du membre connecté, comme "vu"
+	     * @returns {void}
+	     */
+	    markAsView(): void;
+	    /**
+	     * Définit le film, sur le compte du membre connecté, comme "non vu"
+	     * @returns {void}
+	     */
+	    markAsUnview(): void;
+	    /**
+	     * Modifie le statut d'un épisode sur l'API
+	     * @param  {String} status    Le nouveau statut de l'épisode
+	     * @param  {String} method    Verbe HTTP utilisé pour la requête à l'API
+	     * @return {void}
+	     */
+	    updateStatus(status: string, method: HTTP_VERBS): void;
+	    /**
+	     * Change le statut visuel de la vignette sur le site
+	     * @param  {String} newStatus     Le nouveau statut de l'épisode
+	     * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
+	     * @return {Episode}
+	     */
+	    updateRender(newStatus: string, update?: boolean): Episode;
+	    /**
+	     * Affiche/masque le spinner de modification de l'épisode
+	     *
+	     * @param  {boolean}  display  Le flag indiquant si afficher ou masquer
+	     * @return {Episode}
+	     */
+	    toggleSpinner(display: boolean): Episode;
+	    /**
+	     * Retourne une image, si disponible, en fonction du format désiré
+	     * @return {Promise<string>}                         L'URL de l'image
+	     */
+	    getDefaultImage(): Promise<string>;
+	    /**
+	     * Récupère les personnages de l'épisode
+	     * @returns {Promise<this>}
+	     */
+	    fetchCharacters(): Promise<this>;
+	}
+
+}
+declare module 'User' {
+	import { Obj } from 'Base';
+	import { WatchedBy } from 'Episode';
+	export class Next {
+	    id: number;
+	    code: string;
+	    date: Date;
+	    title: string;
+	    image: string;
+	    constructor(data: Obj);
+	}
+	export class User {
+	    archived: boolean;
+	    downloaded: boolean;
+	    favorited: boolean;
+	    friends_want_to_watch: Array<string>;
+	    friends_watched: Array<WatchedBy>;
+	    hidden: boolean;
+	    last: string;
+	    mail: boolean;
+	    next: Next;
+	    profile: string;
+	    remaining: number;
+	    seen: boolean;
+	    status: number;
+	    tags: string;
+	    twitter: boolean;
+	    constructor(data: Obj);
+	}
+
+}
+declare module 'Show' {
+	/// <reference types="jquery" />
+	import { Obj, EventTypes, Callback } from 'Base';
+	import { implAddNote } from 'Note';
+	import { Media } from 'Media';
+	import { Season } from 'Season';
+	import { Character, Person } from 'Character';
+	export class Images {
+	    static formats: {
+	        poster: string;
+	        wide: string;
+	    };
+	    constructor(data: Obj);
+	    show: string;
+	    banner: string;
+	    box: string;
+	    poster: string;
+	}
+	export enum Picked {
+	    none = 0,
+	    banner = 1,
+	    show = 2
+	}
+	export class Picture {
+	    constructor(data: Obj);
+	    id: number;
+	    show_id: number;
+	    login_id: number;
+	    url: string;
+	    width: number;
+	    height: number;
+	    date: Date;
+	    picked: Picked;
+	}
+	export class Platform {
+	    constructor(data: Obj);
+	    id: number;
+	    name: string;
+	    tag: string;
+	    link_url: string;
+	    available: object;
+	    logo: string;
+	    partner: boolean;
+	}
+	export class PlatformList {
+	    svod: Array<Platform>;
+	    vod: Array<Platform>;
+	    country: string;
+	    static types: Obj;
+	    /**
+	     * fetchPlatforms - Récupère la liste des plateformes sur l'API
+	     * @param  {string}                [country = 'us'] Le pays concerné par les plateformes
+	     * @return {Promise<PlatformList>}                  L'objet contenant les différentes plateformes
+	     */
+	    static fetchPlatforms(country?: string): Promise<PlatformList>;
+	    constructor(data: Obj, country?: string);
+	    /**
+	     * Retourne les plateformes sous forme d'éléments HTML Option
+	     * @param  {string}           [type = 'svod']  Le type de plateformes souhaité
+	     * @param  {Array<number>}    [exclude = null] Les identifiants des plateformes à exclure
+	     * @return {string}                            Les options sous forme de chaîne
+	     */
+	    renderHtmlOptions(type?: string, exclude?: Array<number>): string;
+	}
+	export class Platforms {
+	    constructor(data: Obj);
+	    svods: Array<Platform>;
+	    svod: Platform;
+	    vod: Array<Platform>;
+	}
+	export class Showrunner {
+	    constructor(data: Obj);
+	    id: number;
+	    name: string;
+	    picture: string;
+	}
+	export interface implShow {
+	    aliases: object;
+	    creation: string;
+	    country: string;
+	    images: Images;
+	    nbEpisodes: number;
+	    network: string;
+	    next_trailer: string;
+	    next_trailer_host: string;
+	    rating: string;
+	    pictures: Array<Picture>;
+	    platforms: Platforms;
+	    seasons: Array<Season>;
+	    showrunner: Showrunner;
+	    social_links: Array<string>;
+	    status: string;
+	    thetvdb_id: number;
+	    persons: Array<Person>;
+	}
+	export class Show extends Media implements implShow, implAddNote {
+	    /***************************************************/
+	    /***************************************************/
+	    /**
+	     * Types d'évenements gérés par cette classe
+	     * @type {Array}
+	     */
+	    static EventTypes: Array<EventTypes>;
+	    static propsAllowedOverride: object;
+	    static overrideType: string;
+	    /**
+	     * Méthode static servant à récupérer une série sur l'API BS
+	     * @param  {Obj} params - Critères de recherche de la série
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Show>}
+	     * @private
+	     */
+	    protected static _fetch(params: Obj, force?: boolean): Promise<Show>;
+	    /**
+	     * fetchLastSeen - Méthode static retournant les 10 dernières séries vues par le membre
+	     * @param  {number}  [limit = 10]  Le nombre limite de séries retournées
+	     * @return {Promise<Show>}         Une promesse avec les séries
+	     */
+	    static fetchLastSeen(limit?: number): Promise<Array<Show>>;
+	    /**
+	     * Méthode static servant à récupérer plusieurs séries sur l'API BS
+	     * @param  {Array<number>} ids - Les identifiants des séries recherchées
+	     * @return {Promise<Array<Show>>}
+	     */
+	    static fetchMulti(ids: Array<number>): Promise<Array<Show>>;
+	    /**
+	     * Methode static servant à récupérer une série par son identifiant BS
+	     * @param  {number} id - L'identifiant de la série
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Show>}
+	     */
+	    static fetch(id: number, force?: boolean): Promise<Show>;
+	    /**
+	     * Methode static servant à récupérer une série par son identifiant TheTVDB
+	     * @param  {number} id - L'identifiant TheTVDB de la série
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Show>}
+	     */
+	    static fetchByTvdb(id: number, force?: boolean): Promise<Show>;
+	    /**
+	     * Méthode static servant à récupérer une série par son identifiant URL
+	     * @param   {string} url - Identifiant URL (slug) de la série recherchée
+	     * @param   {boolean} force - Indique si on doit ignorer les données dans le cache
+	     * @returns {Promise<Show>}
+	     */
+	    static fetchByUrl(url: string, force?: boolean): Promise<Show>;
+	    /***************************************************/
+	    /***************************************************/
+	    /**
+	     * @type {object} Contient les alias de la série
+	     */
+	    aliases: object;
+	    /**
+	     * @type {string} Année de création de la série
+	     */
+	    creation: string;
+	    /**
+	     * @type {string} Pays d'origine de la série
+	     */
+	    country: string;
+	    /**
+	     * @type {number} Pointeur vers la saison courante
+	     */
+	    _currentSeason: number;
+	    /**
+	     * @type {Images} Contient les URLs d'accès aux images de la série
+	     */
+	    images: Images;
+	    /**
+	     * @type {boolean} Indique si la série se trouve dans les séries à voir
+	     */
+	    markToSee: boolean;
+	    /**
+	     * @type {number} Nombre total d'épisodes dans la série
+	     */
+	    nbEpisodes: number;
+	    /**
+	     * @type {string} Chaîne TV ayant produit la série
+	     */
+	    network: string;
+	    /**
+	     * @type {string}
+	     */
+	    next_trailer: string;
+	    /**
+	     * @type {string}
+	     */
+	    next_trailer_host: string;
+	    /**
+	     * @type {string} Code de classification TV parental
+	     */
+	    rating: string;
+	    /**
+	     * @type {Array<Person>} Tableau des acteurs de la série
+	     */
+	    persons: Array<Person>;
+	    /**
+	     * @type {Array<Picture>} Tableau des images uploadées par les membres
+	     */
+	    pictures: Array<Picture>;
+	    /**
+	     * @type {Platforms} Plateformes de diffusion
+	     */
+	    platforms: Platforms;
+	    /**
+	     * @type {Array<Season>} Tableau des saisons de la série
+	     */
+	    seasons: Array<Season>;
+	    /**
+	     * @type {Showrunner}
+	     */
+	    showrunner: Showrunner;
+	    /**
+	     * @type {Array<string>} Tableau des liens sociaux de la série
+	     */
+	    social_links: Array<string>;
+	    /**
+	     * @type {string} Status de la série sur le compte du membre
+	     */
+	    status: string;
+	    /**
+	     * @type {number} Identifiant TheTVDB de la série
+	     */
+	    thetvdb_id: number;
+	    _posters: object;
+	    /***************************************************/
+	    /***************************************************/
+	    /**
+	     * Constructeur de la classe Show
+	     * @param   {Obj} data - Les données du média
+	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+	     * @returns {Media}
+	     */
+	    constructor(data: Obj, element?: JQuery<HTMLElement>);
+	    /**
+	     * Initialise l'objet lors de sa construction et après son remplissage
+	     * @returns {Promise<Show>}
+	     */
+	    init(): Promise<this>;
+	    /**
+	     * Récupère les données de la série sur l'API
+	     * @param  {boolean} [force=true]   Indique si on utilise les données en cache
+	     * @return {Promise<*>}             Les données de la série
+	     */
+	    fetch(force?: boolean): Promise<Obj>;
+	    /**
+	     * Récupère les saisons de la série
+	     * @returns {Promise<Show>}
+	     */
+	    fetchSeasons(): Promise<Show>;
+	    /**
+	     * Récupère les personnages de la série
+	     * @override
+	     * @returns {Promise<Show>}
+	     */
+	    fetchCharacters(): Promise<this>;
+	    /**
+	     * Retourne le personnage associé au nom d'acteur de la série
+	     * @param   {String} name - Nom de l'acteur
+	     * @returns {Character | null}
+	     */
+	    getCharacterByName(name: string): Character | null;
+	    /**
+	     * Récupère les acteurs sur l'API BetaSeries
+	     * @returns {Promise<Show>}
+	     */
+	    fetchPersons(): Promise<Show>;
+	    /**
+	     * Récupère les acteurs sur l'API BetaSeries à partir
+	     * des personnages de la série
+	     * @async
+	     * @returns {Promise<Show>}
+	     */
+	    fetchPersonsFromCharacters(): Promise<Show>;
+	    /**
+	     * Retourne un acteur en le cherchant par son nom
+	     * @param   {String} name - Nom de l'acteur
+	     * @returns {Person | null}
+	     */
+	    getPersonByName(name: string): Person | null;
+	    /**
+	     * Retourne un acteur en le cherchant par son ID
+	     * @param   {number} id - Identifiant de l'acteur
+	     * @returns {Person | null}
+	     */
+	    getPersonById(id: number): Person | null;
+	    /**
+	     * isEnded - Indique si la série est terminée
+	     *
+	     * @return {boolean}  Terminée ou non
+	     */
+	    isEnded(): boolean;
+	    /**
+	     * isArchived - Indique si la série est archivée
+	     *
+	     * @return {boolean}  Archivée ou non
+	     */
+	    isArchived(): boolean;
+	    /**
+	     * isFavorite - Indique si la série est dans les favoris
+	     *
+	     * @returns {boolean}
+	     */
+	    isFavorite(): boolean;
+	    /**
+	     * isMarkToSee - Indique si la série se trouve dans les séries à voir
+	     * @returns {boolean}
+	     */
+	    isMarkedToSee(): boolean;
+	    /**
+	     * addToAccount - Ajout la série sur le compte du membre connecté
+	     * @return {Promise<Show>} Promise of show
+	     */
+	    addToAccount(): Promise<Show>;
+	    /**
+	     * Remove Show from account member
+	     * @return {Promise<Show>} Promise of show
+	     */
+	    removeFromAccount(): Promise<Show>;
+	    /**
+	     * Archive la série
+	     * @return {Promise<Show>} Promise of show
+	     */
+	    archive(): Promise<Show>;
+	    /**
+	     * Désarchive la série
+	     * @return {Promise<Show>} Promise of show
+	     */
+	    unarchive(): Promise<Show>;
+	    /**
+	     * Ajoute la série aux favoris
+	     * @return {Promise<Show>} Promise of show
+	     */
+	    favorite(): Promise<Show>;
+	    /**
+	     * Supprime la série des favoris
+	     * @return {Promise<Show>} Promise of show
+	     */
+	    unfavorite(): Promise<Show>;
+	    /**
+	     * Met à jour les données de la série
+	     * @param  {Boolean}  [force=false]     Forcer la récupération des données sur l'API
+	     * @param  {Callback} [cb = Base.noop]  Fonction de callback
+	     * @return {Promise<Show>}              Promesse (Show)
+	     */
+	    update(force?: boolean, cb?: Callback): Promise<Show>;
+	    /**
+	     * Met à jour le rendu de la barre de progression
+	     * et du prochain épisode
+	     * @param  {Callback} [cb=Base.noop] Fonction de callback
+	     * @return {void}
+	     */
+	    updateRender(cb?: Callback): void;
+	    /**
+	     * Met à jour la barre de progression de visionnage de la série
+	     * @return {void}
+	     */
+	    updateProgressBar(): void;
+	    /**
+	     * Met à jour le bloc du prochain épisode à voir
+	     * @param   {Callback} [cb=noop] Fonction de callback
+	     * @returns {void}
+	     */
+	    updateNextEpisode(cb?: Callback): void;
+	    /**
+	     * On gère l'ajout de la série dans le compte utilisateur
+	     *
+	     * @param   {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
+	     * @returns {void}
+	     */
+	    addShowClick(trigEpisode?: boolean): void;
+	    /**
+	     * Gère la suppression de la série du compte utilisateur
+	     * @returns {void}
+	     */
+	    deleteShowClick(): void;
+	    /**
+	     * Ajoute le bouton toSee dans les actions de la série
+	     */
+	    addBtnToSee(): void;
+	    /**
+	     * Ajoute un eventHandler sur les boutons Archiver et Favoris
+	     * @returns {void}
+	     */
+	    addEventBtnsArchiveAndFavoris(): void;
+	    /**
+	     * Ajoute la classification dans les détails de la ressource
+	     */
+	    addRating(): void;
+	    /**
+	     * Définit la saison courante
+	     * @param   {number} seasonNumber Le numéro de la saison courante (commence à 1)
+	     * @returns {Show}  L'instance de la série
+	     * @throws  {Error} if seasonNumber is out of range of seasons
+	     */
+	    setCurrentSeason(seasonNumber: number): Show;
+	    /**
+	     * Retourne la saison courante
+	     * @return {Season}
+	     */
+	    get currentSeason(): Season;
+	    /**
+	     * Retourne l'objet Season correspondant au numéro de saison fournit en paramètre
+	     * @param   {number} seasonNumber - Numéro de saison (base: 1)
+	     * @returns {Season}
+	     */
+	    getSeason(seasonNumber: number): Season;
+	    _getTvdbUrl(): Promise<string>;
+	    /**
+	     * Retourne une image, si disponible, en fonction du format désiré
+	     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+	     * @return {Promise<string>}                         L'URL de l'image
+	     */
+	    getDefaultImage(format?: string): Promise<string>;
+	    getAllPosters(): Promise<object>;
+	}
+
+}
+declare module 'Season' {
+	import { Callback, Obj } from 'Base';
+	import { Episode } from 'Episode';
+	import { Show } from 'Show';
+	export class Season {
+	    /**
+	     * @type {number} Numéro de la saison dans la série
+	     */
+	    number: number;
+	    /**
+	     * @type {Array<Episode>} Tableau des épisodes de la saison
+	     */
+	    episodes: Array<Episode>;
+	    /**
+	     * Nombre d'épisodes dans la saison
+	     * @type {number}
+	     */
+	    nbEpisodes: number;
+	    /**
+	     * @type {boolean} Possède des sous-titres
+	     */
+	    has_subtitles: boolean;
+	    /**
+	     * @type {boolean} Saison pas vu
+	     */
+	    hidden: boolean;
+	    /**
+	     * @type {string} URL de l'image
+	     */
+	    _image: string;
+	    /**
+	     * @type {boolean} Saison vu
+	     */
+	    seen: boolean;
+	    /**
+	     * @type {Show} L'objet Show auquel est rattaché la saison
+	     */
+	    private _show;
+	    /**
+	     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
+	     */
+	    private _elt;
+	    /**
+	     * Constructeur de la classe Season
+	     * @param   {Obj}   data    Les données provenant de l'API
+	     * @param   {Show}  show    L'objet Show contenant la saison
+	     * @returns {Season}
+	     */
+	    constructor(data: Obj, show: Show);
+	    get length(): number;
+	    /**
+	     * Setter pour l'attribut image
+	     * @param {string} src - L'URL d'accès à l'image
+	     */
+	    set image(src: string);
+	    /**
+	     * Getter pour l'attribut image
+	     */
+	    get image(): string;
+	    /**
+	     * Récupère les épisodes de la saison sur l'API
+	     * @returns {Promise<Season>}
+	     */
+	    fetchEpisodes(): Promise<Season>;
+	    watched(): Promise<Season>;
+	    hide(): Promise<Season>;
+	    /**
+	     * Retourne l'épisode correspondant à l'identifiant fournit
+	     * @param  {number} id
+	     * @returns {Episode}
+	     */
+	    getEpisode(id: number): Episode;
+	    /**
+	     * Retourne le nombre d'épisodes vus
+	     * @returns {number} Le nombre d'épisodes vus dans la saison
+	     */
+	    getNbEpisodesSeen(): number;
+	    /**
+	     * Retourne le nombre d'épisodes non vus
+	     * @returns {number} Le nombre d'épisodes non vus dans la saison
+	     */
+	    getNbEpisodesUnwatched(): number;
+	    /**
+	     * Retourne le nombre d'épisodes spéciaux
+	     * @returns {number} Le nombre d'épisodes spéciaux
+	     */
+	    getNbEpisodesSpecial(): number;
+	    /**
+	     * Met à jour l'objet Show
+	     * @param {Function} cb Function de callback
+	     * @returns {Season}
+	     */
+	    updateShow(cb?: Callback): Season;
+	    /**
+	     * Change le statut visuel de la saison sur le site
+	     * @return {Season}
+	     */
+	    updateRender(): Season;
+	    /**
+	     * Modifie la saison courante de l'objet Show
+	     * @param   {number} seasonNumber Le numéro de la saison
+	     * @returns {Season}
+	     */
+	    changeCurrentSeason(seasonNumber: number): Season;
+	    /**
+	     * Indique si la série est sur le compte du membre connecté
+	     * @returns {boolean}
+	     */
+	    showInAccount(): boolean;
+	    /**
+	     * Définit la série comme étant sur le compte du membre connecté
+	     * @returns {Season}
+	     */
+	    addShowToAccount(): Season;
+	    /**
+	     * Retourne le prochain épisode non vu
+	     * @return {Episode} Le prochain épisode non vu
+	     */
+	    getNextEpisodeUnwatched(): Episode;
+	}
+
+}
+declare module 'Movie' {
+	/// <reference types="jquery" />
+	import { Obj } from 'Base';
+	import { implAddNote } from 'Note';
+	import { Platform_link } from 'Episode';
+	import { Media } from 'Media';
+	export type OtherTitle = {
+	    language: string;
+	    title: string;
+	};
+	export interface implMovie {
+	    backdrop: string;
+	    director: string;
+	    original_release_date: Date;
+	    other_title: OtherTitle;
+	    platform_links: Array<Platform_link>;
+	    poster: string;
+	    production_year: number;
+	    release_date: Date;
+	    sale_date: Date;
+	    tagline: string;
+	    tmdb_id: number;
+	    trailer: string;
+	    url: string;
+	}
+	export enum MovieStatus {
+	    TOSEE = 0,
+	    SEEN = 1,
+	    DONTWANTTOSEE = 2
+	}
+	export class Movie extends Media implements implAddNote {
+	    /***************************************************/
+	    /***************************************************/
+	    static propsAllowedOverride: object;
+	    static overrideType: string;
+	    /**
+	     * Méthode static servant à récupérer un film sur l'API BS
+	     * @param  {Obj} params - Critères de recherche du film
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Show>}
+	     * @private
+	     */
+	    protected static _fetch(params: Obj, force?: boolean): Promise<Movie>;
+	    /**
+	     * Methode static servant à retourner un objet show
+	     * à partir de son ID
+	     * @param  {number} id             L'identifiant de la série
+	     * @param  {boolean} [force=false] Indique si on utilise le cache ou non
+	     * @return {Promise<Movie>}
+	     */
+	    static fetch(id: number, force?: boolean): Promise<Movie>;
+	    /**
+	     * Méthode static servant à récupérer un film sur l'API BS à partir
+	     * de son identifiant TheMovieDB
+	     * @param id - Identifiant du film sur TheMovieDB
+	     * @param force - Indique si on utilise le cache ou non
+	     * @returns {Promise<Movie>}
+	     */
+	    static fetchByTmdb(id: number, force?: boolean): Promise<Movie>;
+	    static search(title: string, force?: boolean): Promise<Movie>;
+	    /***************************************************/
+	    /***************************************************/
+	    backdrop: string;
+	    director: string;
+	    original_release_date: Date;
+	    other_title: OtherTitle;
+	    platform_links: Array<Platform_link>;
+	    poster: string;
+	    production_year: number;
+	    release_date: Date;
+	    sale_date: Date;
+	    tagline: string;
+	    tmdb_id: number;
+	    trailer: string;
+	    _posters: object;
+	    /***************************************************/
+	    /***************************************************/
+	    /**
+	     * Constructeur de la classe Movie
+	     * @param   {Obj} data - Les données du média
+	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+	     * @returns {Media}
+	     */
+	    constructor(data: Obj, element?: JQuery<HTMLElement>);
+	    /**
+	     * Remplit l'objet avec les données fournit en paramètre
+	     * @param  {any} data Les données provenant de l'API
+	     * @returns {Movie}
+	     * @override
+	     */
+	    fill(data: Obj): this;
+	    /**
+	     * Définit le film, sur le compte du membre connecté, comme "vu"
+	     * @returns {Promise<Movie>}
+	     */
+	    markAsView(): Promise<this>;
+	    /**
+	     * Définit le film, sur le compte du membre connecté, comme "à voir"
+	     * @returns {Promise<Movie>}
+	     */
+	    markToSee(): Promise<this>;
+	    /**
+	     * Définit le film, sur le compte du membre connecté, comme "ne pas voir"
+	     * @returns {Promise<Movie>}
+	     */
+	    markDontWantToSee(): Promise<this>;
+	    /**
+	     * Modifie le statut du film sur le compte du membre connecté
+	     * @param   {number} state     Le nouveau statut du film
+	     * @returns {Promise<Movie>}    L'instance du film
+	     */
+	    changeStatus(state: MovieStatus): Promise<this>;
+	    /**
+	     * Retourne une image, si disponible, en fonction du format désiré
+	     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+	     * @return {Promise<string>}                         L'URL de l'image
+	     */
+	    getDefaultImage(format?: string): Promise<string>;
+	    /**
+	     * Récupère les personnages du film
+	     * @returns {Promise<this>}
+	     */
+	    fetchCharacters(): Promise<this>;
+	    getAllPosters(): Promise<object>;
+	}
+
+}
+declare module 'Similar' {
+	import { Obj, MediaTypes } from 'Base';
+	import { Media } from 'Media';
+	import { Season } from 'Season';
+	import { implShow, Showrunner, Platforms, Images, Picture } from 'Show';
+	import { implMovie, OtherTitle } from 'Movie';
+	import { Platform_link } from 'Episode';
+	import { Person } from 'Character';
+	interface implDialog {
+	    show: () => void;
+	    close: () => void;
+	    setContent: (text: string) => void;
+	    setCounter: (text: string) => void;
+	    setTitle: (title: string) => void;
+	    init: () => void;
+	}
+	export class Similar extends Media implements implShow, implMovie {
+	    backdrop: string;
+	    director: string;
+	    original_release_date: Date;
+	    other_title: OtherTitle;
+	    platform_links: Platform_link[];
+	    poster: string;
+	    production_year: number;
+	    release_date: Date;
+	    sale_date: Date;
+	    tagline: string;
+	    tmdb_id: number;
+	    trailer: string;
+	    url: string;
+	    aliases: object;
+	    creation: string;
+	    country: string;
+	    images: Images;
+	    nbEpisodes: number;
+	    network: string;
+	    next_trailer: string;
+	    next_trailer_host: string;
+	    rating: string;
+	    pictures: Picture[];
+	    platforms: Platforms;
+	    seasons: Season[];
+	    nbSeasons: number;
+	    showrunner: Showrunner;
+	    social_links: string[];
+	    status: string;
+	    thetvdb_id: number;
+	    persons: Array<Person>;
+	    constructor(data: Obj, type: MediaTypes);
+	    /**
+	     * Remplit l'objet avec les données fournit en paramètre
+	     * @param  {Obj} data Les données provenant de l'API
+	     * @returns {Similar}
+	     * @override
+	     */
+	    fill(data: Obj): this;
+	    /**
+	     * Récupère les données de la série sur l'API
+	     * @param  {boolean} [force=true]   Indique si on utilise les données en cache
+	     * @return {Promise<*>}             Les données de la série
+	     */
+	    fetch(force?: boolean): Promise<Obj>;
+	    /**
+	     * Ajoute le bandeau Viewed sur le poster du similar
+	     * @return {Similar}
+	     */
+	    addViewed(): Similar;
+	    /**
+	     * Ajoute l'icône wrench à côté du titre du similar
+	     * pour permettre de visualiser les données du similar
+	     * @param   {implDialog} dialog L'objet Dialog pour afficher les données
+	     * @returns {Similar}
+	     */
+	    wrench(dialog: implDialog): Similar;
+	    /**
+	     * Retourne le contenu HTML pour la popup
+	     * de présentation du similar
+	     * @return {string}
+	     */
+	    getContentPopup(): string;
+	    /**
+	     * Retourne le contenu HTML du titre de la popup
+	     * @return {string}
+	     */
+	    getTitlePopup(): string;
+	    /**
+	     * Met à jour l'attribut title de la note du similar
+	     * @param  {Boolean} change Indique si il faut modifier l'attribut
+	     * @return {string}         La valeur modifiée de l'attribut title
+	     */
+	    updateTitleNote(change?: boolean): string;
+	    /**
+	     * Ajoute la note, sous forme d'étoiles, du similar sous son titre
+	     * @return {Similar}
+	     */
+	    renderStars(): Similar;
+	    /**
+	     * Vérifie la présence de l'image du similar
+	     * et tente d'en trouver une si celle-ci n'est pas présente
+	     * @return {Similar}
+	     */
+	    checkImg(): Similar;
+	    /**
+	     * Add Show to account member
+	     * @return {Promise<Similar>} Promise of show
+	     */
+	    addToAccount(state?: number): Promise<Similar>;
+	    /**
+	     * Modifie le statut du similar
+	     * @param   {number} state Le nouveau statut du similar
+	     * @returns {Promise<Similar>}
+	     */
+	    changeState(state: number): Promise<Similar>;
+	    /**
+	     * Ajoute une note au média
+	     * @param   {number} note Note du membre connecté pour le média
+	     * @returns {Promise<boolean>}
+	     */
+	    addVote(note: number): Promise<boolean>;
+	}
+	export {};
+
+}
+declare module 'Media' {
+	/// <reference types="jquery" />
+	import { Base, Obj } from 'Base';
+	import { Similar } from 'Similar';
+	export abstract class Media extends Base {
+	    /***************************************************/
+	    /***************************************************/
+	    static propsAllowedOverride: object;
+	    static overrideType: string;
+	    /**
+	     * Méthode static servant à récupérer un média sur l'API BS
+	     * @param  {Obj} params - Critères de recherche du média
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Show>}
+	     * @protected
+	     * @abstract
+	     */
+	    protected static _fetch(params: Obj, force: boolean): Promise<Media>;
+	    /**
+	     * Methode static servant à récupérer un média par son identifiant IMDB
+	     * @param  {number} id - L'identifiant IMDB du média
+	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+	     * @return {Promise<Media>}
+	     */
+	    static fetchByImdb(id: number, force?: boolean): Promise<Media>;
+	    /***************************************************/
+	    /***************************************************/
+	    /**
+	     * @type {number} Nombre de membres ayant ce média sur leur compte
+	     */
+	    followers: number;
+	    /**
+	     * @type {Array<string>} Les genres attribués à ce média
+	     */
+	    genres: Array<string>;
+	    /**
+	     * @type {string} Identifiant IMDB
+	     */
+	    imdb_id: string;
+	    /**
+	     * @type {string} Langue originale du média
+	     */
+	    language: string;
+	    /**
+	     * @type {number} Durée du média en minutes
+	     */
+	    length: number;
+	    /**
+	     * @type {string} Titre original du média
+	     */
+	    original_title: string;
+	    /**
+	     * @type {Array<Similar>} Tableau des médias similaires
+	     */
+	    similars: Array<Similar>;
+	    /**
+	     * @type {number} Nombre de médias similaires
+	     */
+	    nbSimilars: number;
+	    /**
+	     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
+	     */
+	    _in_account: boolean;
+	    /**
+	     * @type {string} slug - Identifiant du média servant pour l'URL
+	     */
+	    slug: string;
+	    /**
+	     * Constructeur de la classe Media
+	     * @param   {Obj} data - Les données du média
+	     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
+	     * @returns {Media}
+	     */
+	    constructor(data: Obj, element?: JQuery<HTMLElement>);
+	    /**
+	     * Initialise l'objet lors de sa construction et après son remplissage
+	     * @returns {Promise<Media>}
+	     */
+	    init(): Promise<this>;
+	    /**
+	     * Remplit l'objet avec les données fournit en paramètre
+	     * @param  {Obj} data Les données provenant de l'API
+	     * @returns {Media}
+	     * @override
+	     */
+	    fill(data: Obj): this;
+	    /**
+	     * Indique si le média est enregistré sur le compte du membre
+	     * @returns {boolean}
+	     */
+	    get in_account(): boolean;
+	    /**
+	     * Définit si le média est enregistré sur le compte du membre
+	     * @param {boolean} i Flag
+	     */
+	    set in_account(i: boolean);
+	    /**
+	     * Retourne les similars associés au media
+	     * @return {Promise<Media>}
+	     */
+	    fetchSimilars(): Promise<Media>;
+	    /**
+	     * Retourne le similar correspondant à l'identifiant
+	     * @abstract
+	     * @param  {number} id      L'identifiant du similar
+	     * @return {Similar|void}   Le similar ou null
+	     */
+	    getSimilar(id: number): Similar;
+	    /**
+	     * override - Permet de surcharger des propriétés de l'objet, parmis celles autorisées,
+	     * et de stocker les nouvelles valeurs
+	     * @see Show.propsAllowedOverride
+	     * @param   {string} prop - Nom de la propriété à modifier
+	     * @param   {string} value - Nouvelle valeur de la propriété
+	     * @param   {object} [params] - Optional: paramètres à fournir pour modifier le path de la propriété
+	     * @returns {boolean}
+	     */
+	    override(prop: string, value: string, params?: object): boolean;
+	    /**
+	     * _overrideProps - Permet de restaurer les valeurs personalisées dans l'objet
+	     * @see Show.propsAllowedOverride
+	     * @private
+	     * @returns {Media}
+	     */
+	    _overrideProps(): Media;
+	}
+
+}
+declare module 'Character' {
+	import { MediaType, Obj } from 'Base';
+	import { Media } from 'Media';
+	import { Movie } from 'Movie';
+	import { Show } from 'Show';
+	export class Character {
+	    /**
+	     * @type {string} Nom de l'acteur/actrice
+	     */
+	    actor: string;
+	    /**
+	     * @type {string} Description du rôle
+	     */
+	    description: string;
+	    /**
+	     * @type {boolean} Invité ?
+	     */
+	    guest: boolean;
+	    /**
+	     * @type {number} Identifiant de l'acteur
+	     */
+	    id: number;
+	    /**
+	     * @type {string} Nom du personnage
+	     */
+	    name: string;
+	    /**
+	     * @type {string} URL de l'image du personnage
+	     */
+	    picture: string;
+	    /**
+	     * @type {string} Type de rôle du personnage dans le média
+	     */
+	    role: string;
+	    /**
+	     * @type {number} Identifiant de la série
+	     */
+	    show_id: number;
+	    /**
+	     * @type {number} Identifiant du film
+	     */
+	    movie_id: number;
+	    /**
+	     * @type {number} Identifiant de l'objet Person correspondant à l'acteur
+	     */
+	    person_id: number;
+	    constructor(data: Obj);
+	}
+	export class personMedia {
+	    show?: Show;
+	    movie?: Movie;
+	    role: string;
+	    type: MediaType;
+	    constructor(data: Obj, type: MediaType);
+	    get media(): Media;
+	}
+	export class Person {
+	    /**
+	     * Récupère les données d'un acteur à partir de son identifiant et retourne un objet Person
+	     * @param   {number} personId - L'identifiant de l'acteur / actrice
+	     * @returns {Promise<Person | null>}
+	     */
+	    static fetch(personId: number): Promise<Person | null>;
+	    /**
+	     * @type {number} Identifiant de l'acteur / actrice
+	     */
+	    id: number;
+	    /**
+	     * @type {string} Nom de l'acteur
+	     */
+	    name: string;
+	    /**
+	     * @type {Date} Date de naissance
+	     */
+	    birthday: Date;
+	    /**
+	     * @type {Date} Date de décès
+	     */
+	    deathday: Date;
+	    /**
+	     * @type {string} Description
+	     */
+	    description: string;
+	    /**
+	     * @type {personMedia} Dernier média enregistré sur BetaSeries
+	     */
+	    last: personMedia;
+	    /**
+	     * @type {Array<personMedia>} Tableau des séries dans lesquelles à joué l'acteur
+	     */
+	    shows: Array<personMedia>;
+	    /**
+	     * @type {Array<personMedia>} Tableau des films dans lesquels a joué l'acteur
+	     */
+	    movies: Array<personMedia>;
+	    constructor(data: Obj);
 	}
 
 }
@@ -677,1101 +1956,6 @@ declare module 'Comments' {
 	}
 
 }
-declare module 'Movie' {
-	/// <reference types="jquery" />
-	import { Obj } from 'Base';
-	import { implAddNote } from 'Note';
-	import { Platform_link } from 'Episode';
-	import { Media } from 'Media';
-	export type OtherTitle = {
-	    language: string;
-	    title: string;
-	};
-	export interface implMovie {
-	    backdrop: string;
-	    director: string;
-	    original_release_date: Date;
-	    other_title: OtherTitle;
-	    platform_links: Array<Platform_link>;
-	    poster: string;
-	    production_year: number;
-	    release_date: Date;
-	    sale_date: Date;
-	    tagline: string;
-	    tmdb_id: number;
-	    trailer: string;
-	    url: string;
-	}
-	export enum MovieStatus {
-	    TOSEE = 0,
-	    SEEN = 1,
-	    DONTWANTTOSEE = 2
-	}
-	export class Movie extends Media implements implAddNote {
-	    /***************************************************/
-	    /***************************************************/
-	    /**
-	     * Methode static servant à retourner un objet show
-	     * à partir de son ID
-	     * @param  {number} id             L'identifiant de la série
-	     * @param  {boolean} [force=false] Indique si on utilise le cache ou non
-	     * @return {Promise<Movie>}
-	     */
-	    static fetch(id: number, force?: boolean): Promise<Movie>;
-	    static search(title: string, force?: boolean): Promise<Movie>;
-	    /***************************************************/
-	    /***************************************************/
-	    backdrop: string;
-	    director: string;
-	    original_release_date: Date;
-	    other_title: OtherTitle;
-	    platform_links: Array<Platform_link>;
-	    poster: string;
-	    production_year: number;
-	    release_date: Date;
-	    sale_date: Date;
-	    tagline: string;
-	    tmdb_id: number;
-	    trailer: string;
-	    /***************************************************/
-	    /***************************************************/
-	    /**
-	     * Constructeur de la classe Movie
-	     * @param   {Obj} data - Les données du média
-	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
-	     * @returns {Media}
-	     */
-	    constructor(data: Obj, element?: JQuery<HTMLElement>);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {any} data Les données provenant de l'API
-	     * @returns {Movie}
-	     * @override
-	     */
-	    fill(data: Obj): this;
-	    /**
-	     * Définit le film, sur le compte du membre connecté, comme "vu"
-	     * @returns {Promise<Movie>}
-	     */
-	    markAsView(): Promise<this>;
-	    /**
-	     * Définit le film, sur le compte du membre connecté, comme "à voir"
-	     * @returns {Promise<Movie>}
-	     */
-	    markToSee(): Promise<this>;
-	    /**
-	     * Définit le film, sur le compte du membre connecté, comme "ne pas voir"
-	     * @returns {Promise<Movie>}
-	     */
-	    markDontWantToSee(): Promise<this>;
-	    /**
-	     * Modifie le statut du film sur le compte du membre connecté
-	     * @param   {number} state     Le nouveau statut du film
-	     * @returns {Promise<Movie>}    L'instance du film
-	     */
-	    changeStatus(state: MovieStatus): Promise<this>;
-	    /**
-	     * Retourne une image, si disponible, en fonction du format désiré
-	     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
-	     * @return {Promise<string>}                         L'URL de l'image
-	     */
-	    getDefaultImage(format?: string): Promise<string>;
-	}
-
-}
-declare module 'Similar' {
-	import { Obj, MediaTypes } from 'Base';
-	import { Media } from 'Media';
-	import { Season } from 'Season';
-	import { implShow, Showrunner, Platforms, Images, Picture } from 'Show';
-	import { implMovie, OtherTitle } from 'Movie';
-	import { Platform_link } from 'Episode';
-	interface implDialog {
-	    show: () => void;
-	    close: () => void;
-	    setContent: (text: string) => void;
-	    setCounter: (text: string) => void;
-	    setTitle: (title: string) => void;
-	    init: () => void;
-	}
-	export class Similar extends Media implements implShow, implMovie {
-	    backdrop: string;
-	    director: string;
-	    original_release_date: Date;
-	    other_title: OtherTitle;
-	    platform_links: Platform_link[];
-	    poster: string;
-	    production_year: number;
-	    release_date: Date;
-	    sale_date: Date;
-	    tagline: string;
-	    tmdb_id: number;
-	    trailer: string;
-	    url: string;
-	    aliases: object;
-	    creation: string;
-	    country: string;
-	    images: Images;
-	    nbEpisodes: number;
-	    network: string;
-	    next_trailer: string;
-	    next_trailer_host: string;
-	    rating: string;
-	    pictures: Picture[];
-	    platforms: Platforms;
-	    seasons: Season[];
-	    nbSeasons: number;
-	    showrunner: Showrunner;
-	    social_links: string[];
-	    status: string;
-	    thetvdb_id: number;
-	    constructor(data: Obj, type: MediaTypes);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data Les données provenant de l'API
-	     * @returns {Similar}
-	     * @override
-	     */
-	    fill(data: Obj): this;
-	    /**
-	     * Récupère les données de la série sur l'API
-	     * @param  {boolean} [force=true]   Indique si on utilise les données en cache
-	     * @return {Promise<*>}             Les données de la série
-	     */
-	    fetch(force?: boolean): Promise<Obj>;
-	    /**
-	     * Ajoute le bandeau Viewed sur le poster du similar
-	     * @return {Similar}
-	     */
-	    addViewed(): Similar;
-	    /**
-	     * Ajoute l'icône wrench à côté du titre du similar
-	     * pour permettre de visualiser les données du similar
-	     * @param   {implDialog} dialog L'objet Dialog pour afficher les données
-	     * @returns {Similar}
-	     */
-	    wrench(dialog: implDialog): Similar;
-	    /**
-	     * Retourne le contenu HTML pour la popup
-	     * de présentation du similar
-	     * @return {string}
-	     */
-	    getContentPopup(): string;
-	    /**
-	     * Retourne le contenu HTML du titre de la popup
-	     * @return {string}
-	     */
-	    getTitlePopup(): string;
-	    /**
-	     * Met à jour l'attribut title de la note du similar
-	     * @param  {Boolean} change Indique si il faut modifier l'attribut
-	     * @return {string}         La valeur modifiée de l'attribut title
-	     */
-	    updateTitleNote(change?: boolean): string;
-	    /**
-	     * Ajoute la note, sous forme d'étoiles, du similar sous son titre
-	     * @return {Similar}
-	     */
-	    renderStars(): Similar;
-	    /**
-	     * Vérifie la présence de l'image du similar
-	     * et tente d'en trouver une si celle-ci n'est pas présente
-	     * @return {Similar}
-	     */
-	    checkImg(): Similar;
-	    /**
-	     * Add Show to account member
-	     * @return {Promise<Similar>} Promise of show
-	     */
-	    addToAccount(state?: number): Promise<Similar>;
-	    /**
-	     * Modifie le statut du similar
-	     * @param   {number} state Le nouveau statut du similar
-	     * @returns {Promise<Similar>}
-	     */
-	    changeState(state: number): Promise<Similar>;
-	    /**
-	     * Ajoute une note au média
-	     * @param   {number} note Note du membre connecté pour le média
-	     * @returns {Promise<boolean>}
-	     */
-	    addVote(note: number): Promise<boolean>;
-	}
-	export {};
-
-}
-declare module 'Media' {
-	/// <reference types="jquery" />
-	import { Base, Obj } from 'Base';
-	import { Similar } from 'Similar';
-	export abstract class Media extends Base {
-	    /**
-	     * @type {number} Nombre de membres ayant ce média sur leur compte
-	     */
-	    followers: number;
-	    /**
-	     * @type {Array<string>} Les genres attribués à ce média
-	     */
-	    genres: Array<string>;
-	    /**
-	     * @type {string} Identifiant IMDB
-	     */
-	    imdb_id: string;
-	    /**
-	     * @type {string} Langue originale du média
-	     */
-	    language: string;
-	    /**
-	     * @type {number} Durée du média en minutes
-	     */
-	    length: number;
-	    /**
-	     * @type {string} Titre original du média
-	     */
-	    original_title: string;
-	    /**
-	     * @type {Array<Similar>} Tableau des médias similaires
-	     */
-	    similars: Array<Similar>;
-	    /**
-	     * @type {number} Nombre de médias similaires
-	     */
-	    nbSimilars: number;
-	    /**
-	     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
-	     */
-	    _in_account: boolean;
-	    /**
-	     * @type {string} slug - Identifiant du média servant pour l'URL
-	     */
-	    slug: string;
-	    /**
-	     * Constructeur de la classe Media
-	     * @param   {Obj} data - Les données du média
-	     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
-	     * @returns {Media}
-	     */
-	    constructor(data: Obj, element?: JQuery<HTMLElement>);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data Les données provenant de l'API
-	     * @returns {Media}
-	     * @override
-	     */
-	    fill(data: Obj): this;
-	    /**
-	     * Indique si le média est enregistré sur le compte du membre
-	     * @returns {boolean}
-	     */
-	    get in_account(): boolean;
-	    /**
-	     * Définit si le média est enregistré sur le compte du membre
-	     * @param {boolean} i Flag
-	     */
-	    set in_account(i: boolean);
-	    /**
-	     * Retourne les similars associés au media
-	     * @return {Promise<Media>}
-	     */
-	    fetchSimilars(): Promise<Media>;
-	    /**
-	     * Retourne le similar correspondant à l'identifiant
-	     * @abstract
-	     * @param  {number} id      L'identifiant du similar
-	     * @return {Similar|void}   Le similar ou null
-	     */
-	    getSimilar(id: number): Similar;
-	}
-
-}
-declare module 'Show' {
-	/// <reference types="jquery" />
-	import { Obj, EventTypes, Callback } from 'Base';
-	import { implAddNote } from 'Note';
-	import { Media } from 'Media';
-	import { Season } from 'Season';
-	export class Images {
-	    static formats: {
-	        poster: string;
-	        wide: string;
-	    };
-	    constructor(data: Obj);
-	    show: string;
-	    banner: string;
-	    box: string;
-	    poster: string;
-	}
-	export enum Picked {
-	    none = 0,
-	    banner = 1,
-	    show = 2
-	}
-	export class Picture {
-	    constructor(data: Obj);
-	    id: number;
-	    show_id: number;
-	    login_id: number;
-	    url: string;
-	    width: number;
-	    height: number;
-	    date: Date;
-	    picked: Picked;
-	}
-	export class Platform {
-	    constructor(data: Obj);
-	    id: number;
-	    name: string;
-	    tag: string;
-	    link_url: string;
-	    available: object;
-	    logo: string;
-	    partner: boolean;
-	}
-	export class PlatformList {
-	    svod: Array<Platform>;
-	    vod: Array<Platform>;
-	    country: string;
-	    static types: Obj;
-	    /**
-	     * fetchPlatforms - Récupère la liste des plateformes sur l'API
-	     * @param  {string}                [country = 'us'] Le pays concerné par les plateformes
-	     * @return {Promise<PlatformList>}                  L'objet contenant les différentes plateformes
-	     */
-	    static fetchPlatforms(country?: string): Promise<PlatformList>;
-	    constructor(data: Obj, country?: string);
-	    /**
-	     * Retourne les plateformes sous forme d'éléments HTML Option
-	     * @param  {string}           [type = 'svod']  Le type de plateformes souhaité
-	     * @param  {Array<number>}    [exclude = null] Les identifiants des plateformes à exclure
-	     * @return {string}                            Les options sous forme de chaîne
-	     */
-	    renderHtmlOptions(type?: string, exclude?: Array<number>): string;
-	}
-	export class Platforms {
-	    constructor(data: Obj);
-	    svods: Array<Platform>;
-	    svod: Platform;
-	    vod: Array<Platform>;
-	}
-	export class Showrunner {
-	    constructor(data: Obj);
-	    id: number;
-	    name: string;
-	    picture: string;
-	}
-	export interface implShow {
-	    aliases: object;
-	    creation: string;
-	    country: string;
-	    images: Images;
-	    nbEpisodes: number;
-	    network: string;
-	    next_trailer: string;
-	    next_trailer_host: string;
-	    rating: string;
-	    pictures: Array<Picture>;
-	    platforms: Platforms;
-	    seasons: Array<Season>;
-	    showrunner: Showrunner;
-	    social_links: Array<string>;
-	    status: string;
-	    thetvdb_id: number;
-	}
-	export class Show extends Media implements implShow, implAddNote {
-	    /***************************************************/
-	    /***************************************************/
-	    /**
-	     * Types d'évenements gérés par cette classe
-	     * @type {Array}
-	     */
-	    static EventTypes: Array<EventTypes>;
-	    /**
-	     * Méthode static servant à récupérer une série sur l'API BS
-	     * @param  {Obj} params - Critères de recherche de la série
-	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
-	     * @return {Promise<Show>}
-	     * @private
-	     */
-	    private static _fetch;
-	    /**
-	     * fetchLastSeen - Méthode static retournant les 10 dernières séries vues par le membre
-	     * @param  {number}  [limit = 10]  Le nombre limite de séries retournées
-	     * @return {Promise<Show>}         Une promesse avec les séries
-	     */
-	    static fetchLastSeen(limit?: number): Promise<Array<Show>>;
-	    /**
-	     * Méthode static servant à récupérer plusieurs séries sur l'API BS
-	     * @param  {Array<number>} ids - Les identifiants des séries recherchées
-	     * @return {Promise<Array<Show>>}
-	     */
-	    static fetchMulti(ids: Array<number>): Promise<Array<Show>>;
-	    /**
-	     * Methode static servant à récupérer une série par son identifiant BS
-	     * @param  {number} id - L'identifiant de la série
-	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
-	     * @return {Promise<Show>}
-	     */
-	    static fetch(id: number, force?: boolean): Promise<Show>;
-	    /**
-	     * Methode static servant à récupérer une série par son identifiant TheTVDB
-	     * @param  {number} id - L'identifiant TheTVDB de la série
-	     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
-	     * @return {Promise<Show>}
-	     */
-	    static fetchByTvdb(id: number, force?: boolean): Promise<Show>;
-	    /**
-	     * Méthode static servant à récupérer une série par son identifiant URL
-	     * @param   {string} url - Identifiant URL (slug) de la série recherchée
-	     * @param   {boolean} force - Indique si on doit ignorer les données dans le cache
-	     * @returns {Promise<Show>}
-	     */
-	    static fetchByUrl(url: string, force?: boolean): Promise<Show>;
-	    /***************************************************/
-	    /***************************************************/
-	    /**
-	     * @type {object} Contient les alias de la série
-	     */
-	    aliases: object;
-	    /**
-	     * @type {string} Année de création de la série
-	     */
-	    creation: string;
-	    /**
-	     * @type {string} Pays d'origine de la série
-	     */
-	    country: string;
-	    /**
-	     * @type {number} Pointeur vers la saison courante
-	     */
-	    _currentSeason: number;
-	    /**
-	     * @type {Images} Contient les URLs d'accès aux images de la série
-	     */
-	    images: Images;
-	    /**
-	     * @type {number} Nombre total d'épisodes dans la série
-	     */
-	    nbEpisodes: number;
-	    /**
-	     * @type {string} Chaîne TV ayant produit la série
-	     */
-	    network: string;
-	    /**
-	     * @type {string}
-	     */
-	    next_trailer: string;
-	    /**
-	     * @type {string}
-	     */
-	    next_trailer_host: string;
-	    /**
-	     * @type {string} Code de classification TV parental
-	     */
-	    rating: string;
-	    /**
-	     * @type {Array<Picture>} Tableau des images uploadées par les membres
-	     */
-	    pictures: Array<Picture>;
-	    /**
-	     * @type {Platforms} Plateformes de diffusion
-	     */
-	    platforms: Platforms;
-	    /**
-	     * @type {Array<Season>} Tableau des saisons de la série
-	     */
-	    seasons: Array<Season>;
-	    /**
-	     * @type {Showrunner}
-	     */
-	    showrunner: Showrunner;
-	    /**
-	     * @type {Array<string>} Tableau des liens sociaux de la série
-	     */
-	    social_links: Array<string>;
-	    /**
-	     * @type {string} Status de la série sur le compte du membre
-	     */
-	    status: string;
-	    /**
-	     * @type {number} Identifiant TheTVDB de la série
-	     */
-	    thetvdb_id: number;
-	    /**
-	     * @type {boolean} Indique si la série se trouve dans les séries à voir
-	     */
-	    markToSee: boolean;
-	    /***************************************************/
-	    /***************************************************/
-	    /**
-	     * Constructeur de la classe Show
-	     * @param   {Obj} data - Les données du média
-	     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
-	     * @returns {Media}
-	     */
-	    constructor(data: Obj, element: JQuery<HTMLElement>);
-	    /**
-	     * Initialise l'objet lors de sa construction et après son remplissage
-	     * @returns {Promise<Show>}
-	     */
-	    init(): Promise<this>;
-	    /**
-	     * Récupère les données de la série sur l'API
-	     * @param  {boolean} [force=true]   Indique si on utilise les données en cache
-	     * @return {Promise<*>}             Les données de la série
-	     */
-	    fetch(force?: boolean): Promise<Obj>;
-	    /**
-	     * Récupère les saisons de la série
-	     * @returns {Promise<Show>}
-	     */
-	    fetchSeasons(): Promise<Show>;
-	    /**
-	     * Récupère les personnages de la série
-	     * @returns {Promise<Show>}
-	     */
-	    fetchCharacters(): Promise<Show>;
-	    /**
-	     * isEnded - Indique si la série est terminée
-	     *
-	     * @return {boolean}  Terminée ou non
-	     */
-	    isEnded(): boolean;
-	    /**
-	     * isArchived - Indique si la série est archivée
-	     *
-	     * @return {boolean}  Archivée ou non
-	     */
-	    isArchived(): boolean;
-	    /**
-	     * isFavorite - Indique si la série est dans les favoris
-	     *
-	     * @returns {boolean}
-	     */
-	    isFavorite(): boolean;
-	    /**
-	     * isMarkToSee - Indique si la série se trouve dans les séries à voir
-	     * @returns {boolean}
-	     */
-	    isMarkedToSee(): boolean;
-	    /**
-	     * addToAccount - Ajout la série sur le compte du membre connecté
-	     * @return {Promise<Show>} Promise of show
-	     */
-	    addToAccount(): Promise<Show>;
-	    /**
-	     * Remove Show from account member
-	     * @return {Promise<Show>} Promise of show
-	     */
-	    removeFromAccount(): Promise<Show>;
-	    /**
-	     * Archive la série
-	     * @return {Promise<Show>} Promise of show
-	     */
-	    archive(): Promise<Show>;
-	    /**
-	     * Désarchive la série
-	     * @return {Promise<Show>} Promise of show
-	     */
-	    unarchive(): Promise<Show>;
-	    /**
-	     * Ajoute la série aux favoris
-	     * @return {Promise<Show>} Promise of show
-	     */
-	    favorite(): Promise<Show>;
-	    /**
-	     * Supprime la série des favoris
-	     * @return {Promise<Show>} Promise of show
-	     */
-	    unfavorite(): Promise<Show>;
-	    /**
-	     * Met à jour les données de la série
-	     * @param  {Boolean}  [force=false]     Forcer la récupération des données sur l'API
-	     * @param  {Callback} [cb = Base.noop]  Fonction de callback
-	     * @return {Promise<Show>}              Promesse (Show)
-	     */
-	    update(force?: boolean, cb?: Callback): Promise<Show>;
-	    /**
-	     * Met à jour le rendu de la barre de progression
-	     * et du prochain épisode
-	     * @param  {Callback} [cb=Base.noop] Fonction de callback
-	     * @return {void}
-	     */
-	    updateRender(cb?: Callback): void;
-	    /**
-	     * Met à jour la barre de progression de visionnage de la série
-	     * @return {void}
-	     */
-	    updateProgressBar(): void;
-	    /**
-	     * Met à jour le bloc du prochain épisode à voir
-	     * @param   {Callback} [cb=noop] Fonction de callback
-	     * @returns {void}
-	     */
-	    updateNextEpisode(cb?: Callback): void;
-	    /**
-	     * On gère l'ajout de la série dans le compte utilisateur
-	     *
-	     * @param   {boolean} trigEpisode Flag indiquant si l'appel vient d'un episode vu ou du bouton
-	     * @returns {void}
-	     */
-	    addShowClick(trigEpisode?: boolean): void;
-	    /**
-	     * Gère la suppression de la série du compte utilisateur
-	     * @returns {void}
-	     */
-	    deleteShowClick(): void;
-	    /**
-	     * Ajoute le bouton toSee dans les actions de la série
-	     */
-	    addBtnToSee(): void;
-	    /**
-	     * Ajoute un eventHandler sur les boutons Archiver et Favoris
-	     * @returns {void}
-	     */
-	    addEventBtnsArchiveAndFavoris(): void;
-	    /**
-	     * Ajoute la classification dans les détails de la ressource
-	     */
-	    addRating(): void;
-	    /**
-	     * Définit la saison courante
-	     * @param   {number} seasonNumber Le numéro de la saison courante (commence à 1)
-	     * @returns {Show}  L'instance de la série
-	     * @throws  {Error} if seasonNumber is out of range of seasons
-	     */
-	    setCurrentSeason(seasonNumber: number): Show;
-	    /**
-	     * Retourne la saison courante
-	     * @return {Season}
-	     */
-	    get currentSeason(): Season;
-	    /**
-	     * Retourne l'objet Season correspondant au numéro de saison fournit en paramètre
-	     * @param   {number} seasonNumber - Numéro de saison (base: 1)
-	     * @returns {Season}
-	     */
-	    getSeason(seasonNumber: number): Season;
-	    /**
-	     * Retourne une image, si disponible, en fonction du format désiré
-	     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
-	     * @return {Promise<string>}                         L'URL de l'image
-	     */
-	    getDefaultImage(format?: string): Promise<string>;
-	}
-
-}
-declare module 'Season' {
-	import { Callback, Obj } from 'Base';
-	import { Episode } from 'Episode';
-	import { Show } from 'Show';
-	export class Season {
-	    /**
-	     * @type {number} Numéro de la saison dans la série
-	     */
-	    number: number;
-	    /**
-	     * @type {Array<Episode>} Tableau des épisodes de la saison
-	     */
-	    episodes: Array<Episode>;
-	    /**
-	     * Nombre d'épisodes dans la saison
-	     * @type {number}
-	     */
-	    nbEpisodes: number;
-	    /**
-	     * @type {boolean} Possède des sous-titres
-	     */
-	    has_subtitles: boolean;
-	    /**
-	     * @type {boolean} Saison pas vu
-	     */
-	    hidden: boolean;
-	    /**
-	     * @type {string} URL de l'image
-	     */
-	    image: string;
-	    /**
-	     * @type {boolean} Saison vu
-	     */
-	    seen: boolean;
-	    /**
-	     * @type {Show} L'objet Show auquel est rattaché la saison
-	     */
-	    private _show;
-	    /**
-	     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
-	     */
-	    private _elt;
-	    /**
-	     * Constructeur de la classe Season
-	     * @param   {Obj}   data    Les données provenant de l'API
-	     * @param   {Show}  show    L'objet Show contenant la saison
-	     * @returns {Season}
-	     */
-	    constructor(data: Obj, show: Show);
-	    get length(): number;
-	    /**
-	     * Récupère les épisodes de la saison sur l'API
-	     * @returns {Promise<Season>}
-	     */
-	    fetchEpisodes(): Promise<Season>;
-	    watched(): Promise<Season>;
-	    hide(): Promise<Season>;
-	    /**
-	     * Retourne l'épisode correspondant à l'identifiant fournit
-	     * @param  {number} id
-	     * @returns {Episode}
-	     */
-	    getEpisode(id: number): Episode;
-	    /**
-	     * Retourne le nombre d'épisodes vus
-	     * @returns {number} Le nombre d'épisodes vus dans la saison
-	     */
-	    getNbEpisodesSeen(): number;
-	    /**
-	     * Retourne le nombre d'épisodes non vus
-	     * @returns {number} Le nombre d'épisodes non vus dans la saison
-	     */
-	    getNbEpisodesUnwatched(): number;
-	    /**
-	     * Retourne le nombre d'épisodes spéciaux
-	     * @returns {number} Le nombre d'épisodes spéciaux
-	     */
-	    getNbEpisodesSpecial(): number;
-	    /**
-	     * Met à jour l'objet Show
-	     * @param {Function} cb Function de callback
-	     * @returns {Season}
-	     */
-	    updateShow(cb?: Callback): Season;
-	    /**
-	     * Change le statut visuel de la saison sur le site
-	     * @return {Season}
-	     */
-	    updateRender(): Season;
-	    /**
-	     * Modifie la saison courante de l'objet Show
-	     * @param   {number} seasonNumber Le numéro de la saison
-	     * @returns {Season}
-	     */
-	    changeCurrentSeason(seasonNumber: number): Season;
-	    /**
-	     * Indique si la série est sur le compte du membre connecté
-	     * @returns {boolean}
-	     */
-	    showInAccount(): boolean;
-	    /**
-	     * Définit la série comme étant sur le compte du membre connecté
-	     * @returns {Season}
-	     */
-	    addShowToAccount(): Season;
-	    /**
-	     * Retourne le prochain épisode non vu
-	     * @return {Episode} Le prochain épisode non vu
-	     */
-	    getNextEpisodeUnwatched(): Episode;
-	}
-
-}
-declare module 'Subtitle' {
-	import { Obj } from 'Base';
-	export class Subtitle {
-	    /**
-	     * @type {number} - L'identifiant du subtitle
-	     */
-	    id: number;
-	    /**
-	     * @type {string} - La langue du subtitle
-	     */
-	    language: string;
-	    /**
-	     * @type {string} - La source du subtitle
-	     */
-	    source: string;
-	    /**
-	     * @type {number} - La qualité du subtitle
-	     */
-	    quality: number;
-	    /**
-	     * @type {string} - Le nom du fichier du subtitle
-	     */
-	    file: string;
-	    /**
-	     * @type {string} - L'URL d'accès au subtitle
-	     */
-	    url: string;
-	    /**
-	     * @type {Date} - Date de mise en ligne
-	     */
-	    date: Date;
-	    episode: number;
-	    show: number;
-	    season: number;
-	    constructor(data: Obj);
-	}
-	export enum SortTypeSubtitles {
-	    LANGUAGE = "language",
-	    SOURCE = "source",
-	    QUALITY = "quality",
-	    DATE = "date"
-	}
-	export enum SubtitleTypes {
-	    EPISODE = "episode",
-	    SEASON = "season",
-	    SHOW = "show"
-	}
-	export enum SubtitleLanguages {
-	    ALL = "all",
-	    VOVF = "vovf",
-	    VO = "vo",
-	    VF = "vf"
-	}
-	export type ParamsFetchSubtitles = {
-	    id: number;
-	    season?: number;
-	};
-	export class Subtitles {
-	    /**
-	     * @type {Array<Subtitle>} - Collection de subtitles
-	     */
-	    subtitles: Array<Subtitle>;
-	    /**
-	     * Récupère et retourne une collection de subtitles
-	     * @param   {SubtitleTypes} type - Type de média
-	     * @param   {ParamsFetchSubtitles} ids - Les identifiants de recherche
-	     * @param   {SubtitleLanguages} language - La langue des subtitles recherchés
-	     * @returns {Promise<Subtitles>}
-	     */
-	    static fetch(type: SubtitleTypes, ids: ParamsFetchSubtitles, language?: SubtitleLanguages): Promise<Subtitles>;
-	    constructor(data: Array<Obj>);
-	    /**
-	     * Permet de trier les subtitles
-	     * @param   {SortTypeSubtitles} by - Le type de tri
-	     * @returns {Array<Subtitle>}
-	     */
-	    sortBy(by: SortTypeSubtitles): Array<Subtitle>;
-	}
-
-}
-declare module 'Episode' {
-	import { Base, Obj, HTTP_VERBS } from 'Base';
-	import { implAddNote } from 'Note';
-	import { Season } from 'Season';
-	import { Subtitles } from 'Subtitle';
-	export type Platform_link = {
-	    /**
-	     * @type {number} Identifiant de l'épisode sur la plateforme
-	     */
-	    id: number;
-	    /**
-	     * @type {string} Lien vers l'épisode sur la plateforme
-	     */
-	    link: string;
-	    /**
-	     * @type {string} Le nom de la plateforme
-	     */
-	    platform: string;
-	};
-	export type ReleasesSvod = {
-	    displayOriginal: boolean;
-	    releases: Array<string>;
-	};
-	export type WatchedBy = {
-	    /**
-	     * @type {number} Identifiant du membre
-	     */
-	    id: number;
-	    /**
-	     * @type {string} Login du membre
-	     */
-	    login: string;
-	    /**
-	     * @type {number} La note du membre
-	     */
-	    note: number;
-	};
-	export class Episode extends Base implements implAddNote {
-	    static fetch(epId: number): Promise<Episode>;
-	    /**
-	     * @type {Season} L'objet Season contenant l'épisode
-	     */
-	    _season: Season;
-	    /**
-	     * @type {string} Le code de l'épisode SXXEXX
-	     */
-	    code: string;
-	    /**
-	     * @type {Date} La date de sortie de l'épisode
-	     */
-	    date: Date;
-	    /**
-	     * @type {string}
-	     */
-	    director: string;
-	    /**
-	     * @type {number} Le numéro de l'épisode dans la saison
-	     */
-	    episode: number;
-	    /**
-	     * @type {number} Le numéro de l'épisode dans la série
-	     */
-	    global: number;
-	    /**
-	     * @type {number} Le numéro de la saison
-	     */
-	    numSeason: number;
-	    /**
-	     * @type {Array<Platform_link>} Les plateformes de diffusion
-	     */
-	    platform_links: Array<Platform_link>;
-	    /**
-	     * @type {ReleasesSvod}
-	     */
-	    releasesSvod: ReleasesSvod;
-	    /**
-	     * @type {number} Nombre de membres de BS à avoir vu l'épisode
-	     */
-	    seen_total: number;
-	    /**
-	     * @type {boolean} Indique si il s'agit d'un épisode spécial
-	     */
-	    special: boolean;
-	    /**
-	     * @type {Array<Subtitle>} Tableau des sous-titres dispo sur BS
-	     */
-	    subtitles: Subtitles;
-	    /**
-	     * @type {number} Identifiant de l'épisode sur thetvdb.com
-	     */
-	    thetvdb_id: number;
-	    /**
-	     * @type {Array<WatchedBy>} Tableau des amis ayant vu l'épisode
-	     */
-	    watched_by: Array<WatchedBy>;
-	    /**
-	     * @type {Array<string>} Tableau des scénaristes de l'épisode
-	     */
-	    writers: Array<string>;
-	    /**
-	     * @type {string} Identifiant de la vidéo sur Youtube
-	     */
-	    youtube_id: string;
-	    /**
-	     * Constructeur de la classe Episode
-	     * @param   {Obj}       data    Les données provenant de l'API
-	     * @param   {Season}    season  L'objet Season contenant l'épisode
-	     * @returns {Episode}
-	     */
-	    constructor(data: Obj, season?: Season);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data Les données provenant de l'API
-	     * @returns {Episode}
-	     * @override
-	     */
-	    fill(data: Obj): this;
-	    /**
-	     * Ajoute le titre de l'épisode à l'attribut Title
-	     * du DOMElement correspondant au titre de l'épisode
-	     * sur la page Web
-	     *
-	     * @return {Episode} L'épisode
-	     */
-	    addAttrTitle(): Episode;
-	    /**
-	     * Met à jour le DOMElement .checkSeen avec les
-	     * données de l'épisode (id, pos, special)
-	     * @param  {number} pos  La position de l'épisode dans la liste
-	     * @return {Episode}
-	     */
-	    initCheckSeen(pos: number): Episode;
-	    /**
-	     * Met à jour les infos de la vignette et appelle la fonction d'update du rendu
-	     * @param  {number} pos La position de l'épisode dans la liste
-	     * @return {boolean}    Indique si il y a eu un changement
-	     */
-	    updateCheckSeen(pos: number): boolean;
-	    /**
-	     * Met à jour le titre de l'épisode sur la page de la série
-	     * @returns {void}
-	     */
-	    updateTitle(): void;
-	    /**
-	     * Retourne le code HTML du titre de la popup
-	     * pour l'affichage de la description
-	     * @return {string}
-	     */
-	    getTitlePopup(): string;
-	    /**
-	     * Définit le film, sur le compte du membre connecté, comme "vu"
-	     * @returns {void}
-	     */
-	    markAsView(): void;
-	    /**
-	     * Définit le film, sur le compte du membre connecté, comme "non vu"
-	     * @returns {void}
-	     */
-	    markAsUnview(): void;
-	    /**
-	     * Modifie le statut d'un épisode sur l'API
-	     * @param  {String} status    Le nouveau statut de l'épisode
-	     * @param  {String} method    Verbe HTTP utilisé pour la requête à l'API
-	     * @return {void}
-	     */
-	    updateStatus(status: string, method: HTTP_VERBS): void;
-	    /**
-	     * Change le statut visuel de la vignette sur le site
-	     * @param  {String} newStatus     Le nouveau statut de l'épisode
-	     * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
-	     * @return {Episode}
-	     */
-	    updateRender(newStatus: string, update?: boolean): Episode;
-	    /**
-	     * Affiche/masque le spinner de modification de l'épisode
-	     *
-	     * @param  {boolean}  display  Le flag indiquant si afficher ou masquer
-	     * @return {Episode}
-	     */
-	    toggleSpinner(display: boolean): Episode;
-	    /**
-	     * Retourne une image, si disponible, en fonction du format désiré
-	     * @return {Promise<string>}                         L'URL de l'image
-	     */
-	    getDefaultImage(): Promise<string>;
-	}
-
-}
-declare module 'User' {
-	import { Obj } from 'Base';
-	import { WatchedBy } from 'Episode';
-	export class Next {
-	    id: number;
-	    code: string;
-	    date: Date;
-	    title: string;
-	    image: string;
-	    constructor(data: Obj);
-	}
-	export class User {
-	    archived: boolean;
-	    downloaded: boolean;
-	    favorited: boolean;
-	    friends_want_to_watch: Array<string>;
-	    friends_watched: Array<WatchedBy>;
-	    hidden: boolean;
-	    last: string;
-	    mail: boolean;
-	    next: Next;
-	    profile: string;
-	    remaining: number;
-	    seen: boolean;
-	    status: number;
-	    tags: string;
-	    twitter: boolean;
-	    constructor(data: Obj);
-	}
-
-}
 declare module 'Base' {
 	/// <reference types="jquery" />
 	import { CacheUS } from 'Cache';
@@ -1933,6 +2117,22 @@ declare module 'Base' {
 	     * @throws Error
 	     */
 	    static callApi(type: string, resource: string, action: string, args: Obj, force?: boolean): Promise<Obj>;
+	    /**
+	     * setPropValue - Permet de modifier la valeur d'une propriété dans un objet,
+	     * ou dans un sous objet de manière dynamique
+	     * @param obj - Objet à modifier
+	     * @param key - chemin d'accès à la propriété à modifier
+	     * @param val - Nouvelle valeur de la propriété
+	     */
+	    static setPropValue(obj: object, key: string, val: string): void;
+	    /**
+	     * replaceParams - Permet de remplacer des paramètres par des valeurs dans une chaîne de caractères
+	     * @param   {string} path - Chaine à modifier avec les valeurs
+	     * @param   {object} params - Objet contenant les paramètres autorisés et leur type
+	     * @param   {object} data - Objet contenant les valeurs des paramètres
+	     * @returns {string}
+	     */
+	    static replaceParams(path: string, params: object, data: object): string;
 	    description: string;
 	    characters: Array<Character>;
 	    comments: CommentsBS;
@@ -2027,6 +2227,18 @@ declare module 'Base' {
 	     * @returns {Promise<boolean>}
 	     */
 	    addVote(note: number): Promise<boolean>;
+	    /**
+	     * fetchCharacters - Récupère les acteurs du média
+	     * @abstract
+	     * @returns {Promise<this>}
+	     */
+	    fetchCharacters(): Promise<this>;
+	    /**
+	     * getCharacter - Retourne un personnage à partir de son identifiant
+	     * @param   {number} id - Identifiant du personnage
+	     * @returns {Character | null}
+	     */
+	    getCharacter(id: number): Character | null;
 	} global {
 	    interface Date {
 	        format: (mask: string, utc?: boolean) => string;
@@ -2042,6 +2254,9 @@ declare module 'Base' {
 }
 declare module 'Notification' {
 	import { Obj } from 'Base';
+	/**
+	 * Les différents types de notifications
+	 */
 	export enum NotifTypes {
 	    episode = "episode",
 	    reportNew = "report_new",
@@ -2065,7 +2280,16 @@ declare module 'Notification' {
 	    subtitles = "subtitles",
 	    video = "video"
 	}
+	/**
+	 * Classe NotifPayload
+	 * Contient les data de l'objet Payload dans les notifications
+	 * @class NotifPayload
+	 */
 	export class NotifPayload {
+	    /**
+	     * Tableau des différentes propriétés de la classe NotifPayload
+	     * avec leur type, leur valeur par défaut et leur fonction de traitement
+	     */
 	    static props: ({
 	        key: string;
 	        type: string;
@@ -2092,29 +2316,88 @@ declare module 'Notification' {
 	    type_id?: number;
 	    constructor(data: Obj);
 	}
+	/**
+	 * Classe NotificationList
+	 * Contient les notifications anciennes et nouvelles
+	 * @class NotificationList
+	 */
 	export class NotificationList {
 	    /**
 	     * Retourne les notifications du membre
-	     * @param {number} [nb = 10] Nombre de notifications à récupérer
+	     * @param   {number} [nb = 10] Nombre de notifications à récupérer
+	     * @returns {Promise<NotificationList>}
+	     * @throws  {Error}
 	     */
 	    static fetch(nb?: number): Promise<NotificationList>;
 	    old: Array<NotificationBS>;
 	    new: Array<NotificationBS>;
 	    seen: boolean;
 	    constructor();
+	    /**
+	     * Symbol Iterator pour pouvoir itérer sur l'objet dans les boucles for
+	     */
 	    [Symbol.iterator](): Generator<"new" | "old", void, unknown>;
+	    /**
+	     * length - Retourne le nombre total de notifications
+	     * @returns {number}
+	     */
 	    get length(): number;
+	    /**
+	     * add - Ajoute une notification
+	     * @param {NotificationBS} notif La notification à ajouter
+	     */
 	    add(notif: NotificationBS): void;
+	    /**
+	     * markAllAsSeen - Met à jour les nouvelles notifications en ajoutant
+	     * la date à la propriété seen et en déplacant les notifs dans le
+	     * tableau old
+	     */
 	    markAllAsSeen(): void;
 	}
+	/**
+	 * Classe NotificationBS
+	 * Définit l'objet Notification reçu de l'API BetaSeries
+	 * @class NotificationBS
+	 */
 	export class NotificationBS {
+	    /**
+	     * Identifiant de la notification
+	     * @type {number}
+	     */
 	    id: number;
+	    /**
+	     * Type de notification
+	     * @type {NotifTypes}
+	     */
 	    type: NotifTypes;
+	    /**
+	     * Identifiant correspondant à l'objet définit par le type de notification
+	     * @type {number}
+	     */
 	    ref_id: number;
+	    /**
+	     * Texte brut de la notification
+	     * @type {string}
+	     */
 	    text: string;
+	    /**
+	     * Version HTML du texte de la notification
+	     * @type {string}
+	     */
 	    html: string;
+	    /**
+	     * Date de création de la notification
+	     * @type {Date}
+	     */
 	    date: Date;
+	    /**
+	     * Date à laquelle le membre à vu la notification
+	     * @type {Date}
+	     */
 	    seen: Date;
+	    /**
+	     * Payload - contient les données de référence liées à la notification
+	     */
 	    payload: NotifPayload;
 	    constructor(data: Obj);
 	    render(): string;
@@ -2313,9 +2596,16 @@ declare module 'UpdateAuto' {
 	     * @type {Date}
 	     */
 	    private _lastUpdate;
+	    /**
+	     * Constructeur privé, modèle Singleton
+	     * @private
+	     * @param {Show} show - L'objet Show sur lequel faire les mises à jour
+	     * @returns {UpdateAuto} L'instance de mise à jour
+	     */
 	    private constructor();
 	    /**
 	     * Retourne l'instance de l'objet de mise à jour auto des épisodes
+	     * @static
 	     * @param   {Show} s - L'objet de la série
 	     * @returns {UpdateAuto}
 	     */
@@ -2379,7 +2669,7 @@ declare module 'UpdateAuto' {
 	     * Retourne la date de la dernière mise à jour éffectuée
 	     * @return {Date} La date de la dernière mise à jour
 	     */
-	    get lastUpdate(): Date;
+	    get lastUpdate(): number;
 	    /**
 	     * changeColorBtn - Modifie la couleur du bouton d'update
 	     * des épisodes sur la page Web

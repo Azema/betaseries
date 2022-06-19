@@ -77,9 +77,9 @@ export abstract class Base implements implAddNote {
             "versions": {"current": '3.0', "last": '3.0'},
             "resources": [ // Les ressources disponibles dans l'API
                 'badges', 'comments', 'episodes', 'friends', 'members', 'messages',
-                'movies', 'news', 'oauth', 'pictures', 'planning', 'platforms',
-                'polls', 'reports', 'search', 'seasons', 'shows', 'subtitles',
-                'timeline'
+                'movies', 'news', 'oauth', 'persons', 'pictures', 'planning',
+                'platforms', 'polls', 'reports', 'search', 'seasons', 'shows',
+                'subtitles', 'timeline'
             ],
             "check": { // Les endpoints qui nécessite de vérifier la volidité du token
                 "episodes": ['display', 'list', 'search', 'watched'],
@@ -565,10 +565,10 @@ export abstract class Base implements implAddNote {
         if (!(this.comments instanceof CommentsBS)) {
             this.comments = new CommentsBS(this.nbComments, this);
         }
-        this.objNote = (data.note) ? new Note(data.note, this) : new Note(data.notes, this);
+        this.objNote = (data.note) ? new Note(data.note, this) : (data.notes) ? new Note(data.notes, this) : null;
         this.resource_url = data.resource_url;
         this.title = data.title;
-        this.user = new User(data.user);
+        this.user = (data.user !== undefined) ? new User(data.user) : null;
         this.description = data.description;
         return this;
     }
@@ -778,6 +778,25 @@ export abstract class Base implements implAddNote {
                 reject(err);
             })
         });
+    }
+    /**
+     * fetchCharacters - Récupère les acteurs du média
+     * @abstract
+     * @returns {Promise<this>}
+     */
+    fetchCharacters(): Promise<this> {
+        throw new Error('Method abstract');
+    }
+    /**
+     * getCharacter - Retourne un personnage à partir de son identifiant
+     * @param   {number} id - Identifiant du personnage
+     * @returns {Character | null}
+     */
+    getCharacter(id: number): Character | null {
+        for (const actor of this.characters) {
+            if (actor.id === id) return actor;
+        }
+        return null;
     }
 }
 

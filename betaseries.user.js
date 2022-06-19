@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-QfEgp+533wjnNSE7M6/D2/5TtBL0OH0SNR52gs4Q+1CfjORaraXtJhFvas2vEFfW';
+const sriBundle = 'sha384-Ma+dV2X1Ux2JHt8azAVdC4vhc9Vymts/ZT32zC3T4k3BIXpaZJLNgyuVJnij7yv6';
 /************************************************************************************************/
 // @ts-check
 
@@ -254,7 +254,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-I90ird4BN8rL5N/TGo8Xvd/QT/Ysa4Uzh8MDnbhBjOYNt1wbGX27NHSYdK2nVkGQ',
+            integrity: 'sha384-hJp4x3xoyhAcak3flrhOEfQiQQIoQgjVpJhe2Q+kjwX8sj3yb3zIjVROo+AqjXxb',
             media: 'all',
             called: false,
             loaded: false
@@ -289,7 +289,7 @@ const launchScript = function($) {
             type: 'script',
             id: 'lazyload',
             src: `${serverBaseUrl}/js/lazyload.min.js`,
-            integrity: 'sha384-DNnjTTTKGQNWXgozKOQHF7gtNJFW4tLuNwwlwLP+MBGaNBe2yRalc1v0ujwXNYKK',
+            integrity: 'sha384-8gXW/wktVOP4rpxLl4HiT2HgQ3hXR5ZKKGLEUafE8nZJUV//CkBmec2tlAMaSj4Y',
             called: false,
             loaded: false
         },
@@ -2711,6 +2711,34 @@ const launchScript = function($) {
                     $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
                 });
             }
+        },
+        /**
+         * Permet d'afficher les infos de l'acteur
+         * @param {Show} res Objet de type Show
+         */
+        upgradeActors: function(res) {
+            /*
+             * 1. Agrémenter les noeuds des acteurs avec leurs identifiants
+             * 2. Afficher leurs infos dans une popup
+            */
+            /**
+             * @type {JQuery<HTMLElement>}
+             */
+            const $actors = $('#actors .slide_flex .slide__title');
+            res.fetchPersonsFromCharacters()
+            .then(() => {
+                for (let a = 0; a < $actors.length; a++) {
+                    const $actor = $($actors.get(a));
+                    const name = $actor.text().trim();
+                    const character = res.getCharacterByName(name);
+                    const $link = $actor.parents('.slide_flex');
+                    if (character) {
+                        $link
+                            .attr('data-person-id', character.person_id)
+
+                    }
+                }
+            })
         }
     };
     const members = {
@@ -3957,6 +3985,7 @@ const launchScript = function($) {
                 medias.upgradeSeasonsActions(objRes);
                 medias.proposePlatform(objRes);
                 medias.checkNextEpisode(objRes);
+                medias.upgradeActors(objRes);
             }
             else if (/^\/film\//.test(url)) {
                 medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu

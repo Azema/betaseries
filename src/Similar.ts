@@ -4,6 +4,7 @@ import { Season } from "./Season";
 import {implShow, Showrunner, Platforms, Images, Picture} from "./Show";
 import {implMovie, OtherTitle} from "./Movie";
 import {Platform_link} from "./Episode";
+import { Person } from "./Character";
 
 declare const renderjson;
 
@@ -48,6 +49,7 @@ export class Similar extends Media implements implShow, implMovie {
     social_links: string[];
     status: string;
     thetvdb_id: number;
+    persons: Array<Person>;
 
     constructor(data: Obj, type: MediaTypes) {
         if (type.singular === MediaType.movie) {
@@ -95,6 +97,7 @@ export class Similar extends Media implements implShow, implMovie {
             this.status = data.status;
             this.thetvdb_id = parseInt(data.thetvdb_id, 10);
             this.pictures = [];
+            this.persons = [];
         } else if (this.mediaType.singular === MediaType.movie) {
             if (data.user.in_account !== undefined) {
                 data.in_account = data.user.in_account;
@@ -219,7 +222,7 @@ export class Similar extends Media implements implShow, implMovie {
                     html += `<u>Pays:</u> <strong>${self.country}</strong>`;
                 }
                 if (self.creation) {
-                    html += `<strong style="margin-left:5px;">${self.creation}</strong>`;
+                    html += `<span style="margin-left:5px;">${self.creation}</span>`;
                 }
                 html += '</p>';
             }
@@ -385,7 +388,7 @@ export class Similar extends Media implements implShow, implMovie {
                     mode: 'cors',
                     cache: 'no-cache'
                 };
-                fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
+                fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
                 .then((resp: Response) => {
                     if (resp.ok) {
                         return resp.text();
