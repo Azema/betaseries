@@ -254,7 +254,7 @@ const launchScript = function($) {
             type: 'style',
             id: 'stylehome',
             href: `${serverBaseUrl}/css/style.min.css`,
-            integrity: 'sha384-hJp4x3xoyhAcak3flrhOEfQiQQIoQgjVpJhe2Q+kjwX8sj3yb3zIjVROo+AqjXxb',
+            integrity: 'sha384-Cekddv8gf4cq4AusXXtPX3r9DlcjafJgbufsVTp6JWWlh8r1Jq11d0DKiB53wlIc',
             media: 'all',
             called: false,
             loaded: false

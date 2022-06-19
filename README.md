@@ -102,6 +102,7 @@ tmdb: 634649
 ### Séries
 
 * Ajout d'une popup, au survol d'une vignette d'un épisode, pour afficher le synopsis.
+* Ajout de la note, sous la forme d'étoiles, dans le titre de la popup d'un épisode. Survolez les étoiles pour obtenir le détail de la note (nombre de votants et note moyenne sur 5).
 * Ajout de la gestion des boutons **Ajouter**, **Archiver**, **Favoris** et **Options**. Plus besoin de recharger la page lors de l'ajout ou de la suppression d'une série.
 * Lorsque le dernier épisode de la série est coché **Vu** et que le statut de la série est terminé, il vous sera proposé d'archiver la série et de la noter.
 * Ajout d'un bouton pour sélectionner une série à voir plus tard !["Bouton Série à voir plus tard"](./screenshots/btnToSee.jpg "Bouton Série à voir plus tard") Il fonctionne en mode `toggle`, donc vous pouvez ajouter/enlever la série facilement. La série est automatiquement enlevée lorsqu'elle est ajoutée au compte du membre.
