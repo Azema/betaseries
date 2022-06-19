@@ -34,14 +34,14 @@ export class User {
     twitter: boolean;
 
     constructor(data: Obj) {
-        this.archived = !!data.archived || false;
-        this.downloaded = !!data.downloaded || false;
-        this.favorited = !!data.favorited || false;
+        this.archived = (data.archived !== undefined) ? !!data.archived : false;
+        this.downloaded = (data.downloaded !== undefined) ? !!data.downloaded : false;
+        this.favorited = (data.favorited !== undefined) ? !!data.favorited : false;
         this.friends_want_to_watch = data.friends_want_to_watch || [];
         this.friends_watched = data.friends_watched || [];
-        this.hidden = !!data.hidden || false;
+        this.hidden = (data.hidden !== undefined) ? !!data.hidden : false;
         this.last = data.last || '';
-        this.mail = !!data.mail || false;
+        this.mail = (data.mail !== undefined) ? !!data.mail : false;
         this.next = null;
         if (data.next !== undefined) {
             this.next = new Next(data.next);
