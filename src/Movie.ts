@@ -34,6 +34,21 @@ export class Movie extends Media implements implAddNote {
     /***************************************************/
 
     /**
+     * Méthode static servant à récupérer un film sur l'API BS
+     * @param  {Obj} params - Critères de recherche du film
+     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+     * @return {Promise<Show>}
+     * @private
+     */
+    protected static _fetch(params: Obj, force = false): Promise<Movie> {
+        return new Promise((resolve, reject) => {
+            Base.callApi('GET', 'movies', 'movie', params, force)
+            .then(data => resolve(new Movie(data.movie, jQuery('.blockInformations'))) )
+            .catch(err => reject(err) );
+        });
+    }
+
+    /**
      * Methode static servant à retourner un objet show
      * à partir de son ID
      * @param  {number} id             L'identifiant de la série
@@ -41,11 +56,18 @@ export class Movie extends Media implements implAddNote {
      * @return {Promise<Movie>}
      */
     public static fetch(id: number, force = false): Promise<Movie> {
-        return new Promise((resolve, reject) => {
-            Base.callApi('GET', 'movies', 'movie', {id: id}, force)
-            .then(data => resolve(new Movie(data.movie, jQuery('.blockInformations'))) )
-            .catch(err => reject(err) );
-        });
+        return Movie._fetch({id}, force);
+    }
+
+    /**
+     * Méthode static servant à récupérer un film sur l'API BS à partir
+     * de son identifiant TheMovieDB
+     * @param id - Identifiant du film sur TheMovieDB
+     * @param force - Indique si on utilise le cache ou non
+     * @returns {Promise<Movie>}
+     */
+    public static fetchByTmdb(id: number, force = false): Promise<Movie> {
+        return this._fetch({tmdb_id: id}, force);
     }
 
     public static search(title: string, force = false): Promise<Movie> {

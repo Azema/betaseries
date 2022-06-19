@@ -223,7 +223,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}
      * @private
      */
-    private static _fetch(params: Obj, force = false): Promise<Show> {
+    protected static _fetch(params: Obj, force = false): Promise<Show> {
         return new Promise((resolve, reject) => {
             Base.callApi('GET', 'shows', 'display', params, force)
             .then(data => resolve(new Show(data.show, jQuery('.blockInformations'))) )
@@ -280,7 +280,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}
      */
     static fetch(id: number, force = false): Promise<Show> {
-        return this._fetch({id: id}, force);
+        return Show._fetch({id: id}, force);
     }
 
     /**

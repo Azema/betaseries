@@ -32,7 +32,14 @@ Différentes améliorations seront ajoutées au fur et à mesure, mais vos idée
 ### Générales
 * Masque les emplacements de pub
 * Ajout d'une fonction d'authentification sur le site API BetaSeries, en cas de perte du token sur le site
-
+* Ajout d'une fonctionnalité de recherche par identifiants externes ([IMDB](https://www.imdb.com/), [TheTVDB](https://www.thetvdb.com/), [TheMovieDB](https://www.themoviedb.org/)). Pour l'utiliser, il suffit de réaliser une recherche dans le bandeau supérieur de la page et d'indiquer le tag suivi de l'identifiant.
+```
+imdb: tt5045900
+or
+tvdb: 299881
+or
+tmdb: 634649
+```
 ### Séries, Films et épisodes
 
 * Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode

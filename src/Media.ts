@@ -2,6 +2,38 @@ import {Base, Obj} from "./Base";
 import {Similar} from "./Similar";
 
 export abstract class Media extends Base {
+
+    /***************************************************/
+    /*                      STATIC                     */
+    /***************************************************/
+
+    /**
+     * Méthode static servant à récupérer un média sur l'API BS
+     * @param  {Obj} params - Critères de recherche du média
+     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+     * @return {Promise<Show>}
+     * @protected
+     * @abstract
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected static _fetch(params: Obj, force: boolean): Promise<Media> {
+        throw new Error("Abstract Static Method");
+    }
+
+    /**
+     * Methode static servant à récupérer un média par son identifiant IMDB
+     * @param  {number} id - L'identifiant IMDB du média
+     * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
+     * @return {Promise<Media>}
+     */
+    static fetchByImdb(id: number, force = false): Promise<Media> {
+        return this._fetch({imdb_id: id}, force);
+    }
+
+    /***************************************************/
+    /*                  PROPERTIES                     */
+    /***************************************************/
+
     /**
      * @type {number} Nombre de membres ayant ce média sur leur compte
      */

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.1
+// @version      1.3.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -549,17 +549,144 @@ const launchScript = function($) {
                     };
                     for (let mutation of mutationsList) {
                         if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
+                            /** @type {JQuery<HTMLElement>} */
                             const $node = $(mutation.addedNodes[0]);
                             if ($node.hasClass('col-md-4')) {
                                 $('.mainLink', $node).each(updateTitle);
                                 $('a.js-searchResult', $node).each(updateImg);
                             }
-                            else if ($node.hasClass('js-searchResult')) {
+                            /*else if ($node.hasClass('js-searchResult')) {
                                 const title = $('.mainLink', $node).get(0);
                                 if (system.isTruncated(title)) {
                                     $node.attr('title', $(title).text());
                                 }
                                 updateImg(0, $node);
+                            }*/
+                            else if (mutation.addedNodes[0].nodeName.toLowerCase() === 'form') {
+                                console.log('Observer HeaderSearch mutation', mutation);
+                                $('input', $node).keyup((e) => {
+                                    const target = $(e.currentTarget);
+                                    console.log('HeaderSearch input value', e.currentTarget.value);
+                                    if (target && /^imdb:\s*tt\d+/i.test(target.val())) {
+                                        e.stopPropagation();
+                                        const imdb_id = target.val().match(/^imdb:\s*(tt\d+)/i)[1].trim();
+                                        console.log('HeaderSearch imdb_id: ', imdb_id);
+                                        Show.fetchByImdb(imdb_id, true).then(show => {
+                                            let template = `
+                                            <div class="col-md-4 kz_k1 show_searchResult">
+                                                <div class="ComponentHeaderSearchTitle kz_il">Séries</div>
+                                                <div style="max-height: 580px; overflow-y: hidden;">
+                                                    <a href="${show.resource_url}"
+                                                        class="js-searchResult kv_kx">
+                                                        <div class="media">
+                                                            <div class="media-left">
+                                                                <img class="greyBorder"
+                                                                    src="${show.images.poster}"
+                                                                    width="27" height="40" alt="Affiche de ${show.title}">
+                                                            </div>
+                                                            <div class="media-body media-body--ellipsis">
+                                                                <div class="mainLink" style="margin-top: 1px;">${show.title}</div>
+                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                    <div>${show.creation}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            `;
+                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                        });
+                                        Movie.fetchByImdb(imdb_id, true).then(movie => {
+                                            let template = `
+                                            <div class="col-md-4 kz_k1 movie_searchResult">
+                                                <div class="ComponentHeaderSearchTitle kz_il">Films</div>
+                                                <div style="max-height: 580px; overflow-y: hidden;">
+                                                    <a href="${movie.resource_url}"
+                                                        class="js-searchResult kv_kx">
+                                                        <div class="media">
+                                                            <div class="media-left">
+                                                                <img class="greyBorder"
+                                                                    src="${movie.poster}"
+                                                                    width="27" height="40" alt="Affiche de ${movie.title}">
+                                                            </div>
+                                                            <div class="media-body media-body--ellipsis">
+                                                                <div class="mainLink" style="margin-top: 1px;">${movie.title}</div>
+                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                    <div>${movie.creation}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            `;
+                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                        });
+                                    }
+                                    else if (target && /^tvdb:\s*\d+/i.test(target.val())) {
+                                        e.stopPropagation();
+                                        const tvdb_id = target.val().match(/^tvdb:\s*(\d+)/i)[1].trim();
+                                        console.log('HeaderSearch tvdb_id: ', tvdb_id);
+                                        Show.fetchByTvdb(tvdb_id).then(show => {
+                                            let template = `
+                                            <div class="col-md-4 kz_k1 show_searchResult">
+                                                <div class="ComponentHeaderSearchTitle kz_il">Séries</div>
+                                                <div style="max-height: 580px; overflow-y: hidden;">
+                                                    <a href="${show.resource_url}"
+                                                        class="js-searchResult kv_kx">
+                                                        <div class="media">
+                                                            <div class="media-left">
+                                                                <img class="greyBorder"
+                                                                    src="${show.images.poster}"
+                                                                    width="27" height="40" alt="Affiche de ${show.title}">
+                                                            </div>
+                                                            <div class="media-body media-body--ellipsis">
+                                                                <div class="mainLink" style="margin-top: 1px;">${show.title}</div>
+                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                    <div>${show.creation}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            `;
+                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                        });
+                                    }
+                                    else if (target && /^tmdb:\s*\d+/i.test(target.val())) {
+                                        e.stopPropagation();
+                                        const tmdb_id = target.val().match(/^tmdb:\s*(\d+)/i)[1].trim();
+                                        console.log('HeaderSearch tmdb_id: ', tmdb_id);
+                                        Movie.fetchByTmdb(tmdb_id, true).then(movie => {
+                                            let template = `
+                                            <div class="col-md-4 kz_k1 movie_searchResult">
+                                                <div class="ComponentHeaderSearchTitle kz_il">Films</div>
+                                                <div style="max-height: 580px; overflow-y: hidden;">
+                                                    <a href="${movie.resource_url}"
+                                                        class="js-searchResult kv_kx">
+                                                        <div class="media">
+                                                            <div class="media-left">
+                                                                <img class="greyBorder"
+                                                                    src="${movie.poster}"
+                                                                    width="27" height="40" alt="Affiche de ${movie.title}">
+                                                            </div>
+                                                            <div class="media-body media-body--ellipsis">
+                                                                <div class="mainLink" style="margin-top: 1px;">${movie.title}</div>
+                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                    <div>${movie.creation}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            `;
+                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                        });
+                                    }
+                                });
                             }
                         }
                     }
