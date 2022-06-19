@@ -217,15 +217,42 @@ module.exports = function(grunt) {
                                 // console.log('URL is not proxy');
                                 return next();
                             }
-                            console.log('Middleware proxy', req.url);
-                            const { createProxyMiddleware } = require('http-proxy-middleware');
+                            // console.log('Middleware proxy', req.url);
+                            const { createProxyMiddleware, responseInterceptor } = require('http-proxy-middleware');
                             const options = {
-                                target: 'http://51.254.211.202:8081/',
-                                changeOrigin: false,
+                                target: 'https://thetvdb.com',
+                                changeOrigin: true,
                                 pathRewrite: {'^/proxy' : ''},
-                                logLevel: 'debug'
+                                // logLevel: 'debug',
+                                followRedirects: true,
+                                secure: false,
+                                selfHandleResponse: true, // res.end() will be called internally by responseInterceptor()
+                                onProxyRes: responseInterceptor(async (buffer, proxyRes, req, res) => {
+                                    // console.log('[DEBUG] response proxy', proxyRes.responseUrl);
+                                    res.setHeader('content-type', 'application/json');
+                                    return JSON.stringify({url: proxyRes.responseUrl});
+                                }),
+                                logger: console,
                             };
                             const apiProxy = createProxyMiddleware('/proxy', options);
+                            apiProxy(req, res, next);
+                        });
+                        middlewares.unshift(function(req, res, next) {
+                            if (!/^\/posters\//.test(req.url)) {
+                                // console.log('URL is not proxy');
+                                return next();
+                            }
+                            // console.log('Middleware proxy', req.url);
+                            const { createProxyMiddleware } = require('http-proxy-middleware');
+                            const options = {
+                                target: 'https://thetvdb.com',
+                                changeOrigin: true,
+                                pathRewrite: {'^/posters' : ''},
+                                followRedirects: true,
+                                secure: false,
+                                logger: console
+                            };
+                            const apiProxy = createProxyMiddleware('/posters', options);
                             apiProxy(req, res, next);
                         });
                         // Middleware CORS
