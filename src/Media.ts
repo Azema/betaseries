@@ -7,6 +7,9 @@ export abstract class Media extends Base {
     /*                      STATIC                     */
     /***************************************************/
 
+    static propsAllowedOverride: object = {};
+    static overrideType: string;
+
     /**
      * Méthode static servant à récupérer un média sur l'API BS
      * @param  {Obj} params - Critères de recherche du média
@@ -87,6 +90,16 @@ export abstract class Media extends Base {
             this.elt = element;
         return this;
     }
+    /**
+     * Initialise l'objet lors de sa construction et après son remplissage
+     * @returns {Promise<Media>}
+     */
+    public init(): Promise<this> {
+        return new Promise(resolve => {
+            this._overrideProps();
+            resolve(this)
+        });
+    }
 
     /**
      * Remplit l'objet avec les données fournit en paramètre
@@ -161,5 +174,58 @@ export abstract class Media extends Base {
             }
         }
         return null;
+    }
+    /**
+     * override - Permet de surcharger des propriétés de l'objet, parmis celles autorisées,
+     * et de stocker les nouvelles valeurs
+     * @see Show.propsAllowedOverride
+     * @param   {string} prop - Nom de la propriété à modifier
+     * @param   {string} value - Nouvelle valeur de la propriété
+     * @param   {object} [params] - Optional: paramètres à fournir pour modifier le path de la propriété
+     * @returns {boolean}
+     */
+    override(prop: string, value: string, params?: object): boolean {
+        const type = (this.constructor as typeof Media);
+        if (type.propsAllowedOverride[prop]) {
+            const override = Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
+            if (override[type.overrideType][this.id] === undefined) override[type.overrideType][this.id] = {};
+            override[type.overrideType][this.id][prop] = value;
+            let path = type.propsAllowedOverride[prop].path;
+            if (type.propsAllowedOverride[prop].params) {
+                override[type.overrideType][this.id][prop] = {value, params};
+                path = Base.replaceParams(path, type.propsAllowedOverride[prop].params, params);
+                console.log('override', {prop, value, params, path});
+            }
+            Base.setPropValue(this, path, value);
+            Base.gm_funcs.setValue('override', override);
+            return true;
+        }
+        return false;
+    }
+    /**
+     * _overrideProps - Permet de restaurer les valeurs personalisées dans l'objet
+     * @see Show.propsAllowedOverride
+     * @private
+     * @returns {Media}
+     */
+    _overrideProps(): Media {
+        const type = (this.constructor as typeof Media);
+        const overrideType = type.overrideType;
+        const override = Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
+        if (override[overrideType][this.id]) {
+            console.log('_overrideProps override found', override[overrideType][this.id]);
+            for (const prop in override[overrideType][this.id]) {
+                let path = type.propsAllowedOverride[prop].path;
+                let value = override[overrideType][this.id][prop];
+                if (type.propsAllowedOverride[prop].params && typeof override[overrideType][this.id][prop] === 'object') {
+                    value = override[overrideType][this.id][prop].value;
+                    const params = override[overrideType][this.id][prop].params;
+                    path = Base.replaceParams(path, type.propsAllowedOverride[prop].params, params);
+                }
+                console.log('_overrideProps prop[%s]', prop, {path, value});
+                Base.setPropValue(this, path, value);
+            }
+        }
+        return this;
     }
 }

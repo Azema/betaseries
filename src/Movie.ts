@@ -33,6 +33,11 @@ export class Movie extends Media implements implAddNote {
     /*                      STATIC                     */
     /***************************************************/
 
+    static propsAllowedOverride: object = {
+        poster: { path: 'poster' }
+    };
+    static overrideType = 'movies';
+
     /**
      * Méthode static servant à récupérer un film sur l'API BS
      * @param  {Obj} params - Critères de recherche du film
@@ -94,6 +99,7 @@ export class Movie extends Media implements implAddNote {
     tagline: string;
     tmdb_id: number;
     trailer: string;
+    _posters: object;
 
     /***************************************************/
     /*                      METHODS                    */
@@ -200,7 +206,7 @@ export class Movie extends Media implements implAddNote {
                 if (this.poster) res(this.poster);
                 else {
                     const baseImgTmdb = 'https://image.tmdb.org/t/p/w500';
-                    const api_key = 'e506df46268747316e82bbd38c1a1439';
+                    const api_key = Base.themoviedb_api_user_key;
                     const uri = `https://api.themoviedb.org/3/movie/${this.tmdb_id}?api_key=${api_key}&language=fr`;
                     // https://api.themoviedb.org/3/movie/961330?api_key=e506df46268747316e82bbd38c1a1439&language=fr
                     fetch(uri, initFetch)
@@ -219,6 +225,45 @@ export class Movie extends Media implements implAddNote {
                     }).catch(err => rej(err));
                 }
             }
+        });
+    }
+    getAllPosters(): Promise<object> {
+        if (this._posters) {
+            if (this.poster && this._posters['local'][0] !== this.poster) {
+                this._posters['local'] = [this.poster];
+            }
+            return new Promise(res => res(this._posters));
+        }
+        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        };
+        return new Promise((res, rej) => {
+            const posters = {};
+            if (this.poster) posters['local'] = [this.poster];
+            const baseImgTmdb = 'https://image.tmdb.org/t/p/w500';
+            const api_key = Base.themoviedb_api_user_key;
+            const uri = `https://api.themoviedb.org/3/movie/${this.tmdb_id}/images?api_key=${api_key}`;
+            // https://api.themoviedb.org/3/movie/961330?api_key=e506df46268747316e82bbd38c1a1439&language=fr
+            fetch(uri, initFetch)
+            .then((resp: Response) => {
+                if (resp.ok) {
+                    return resp.json();
+                }
+                return null;
+            }).then(data => {
+                if (data == null) {
+                    return rej('Response JSON error');
+                } else if (data.posters && data.posters.length > 0) {
+                    posters['TheMovieDB'] = [];
+                    for (let p = 0; p < data.posters.length; p++) {
+                        posters['TheMovieDB'].push(baseImgTmdb + data.posters[p].file_path);
+                    }
+                }
+                this._posters = posters;
+                res(posters);
+            }).catch(err => rej(err));
         });
     }
 }
