@@ -215,11 +215,6 @@ export class Show extends Media implements implShow, implAddNote {
         EventTypes.ARCHIVE,
         EventTypes.UNARCHIVE
     ];
-    static propsAllowedOverride: object = {
-        poster: { path: 'images.poster' },
-        season: { path: 'seasons[#season#].image', params: {season: 'number'} }
-    };
-    static overrideType = 'shows';
 
     /**
      * Méthode static servant à récupérer une série sur l'API BS
@@ -333,10 +328,6 @@ export class Show extends Media implements implShow, implAddNote {
      */
     images: Images;
     /**
-     * @type {boolean} Indique si la série se trouve dans les séries à voir
-     */
-    markToSee: boolean;
-    /**
      * @type {number} Nombre total d'épisodes dans la série
      */
     nbEpisodes: number;
@@ -384,7 +375,10 @@ export class Show extends Media implements implShow, implAddNote {
      * @type {number} Identifiant TheTVDB de la série
      */
     thetvdb_id: number;
-    _posters: object;
+    /**
+     * @type {boolean} Indique si la série se trouve dans les séries à voir
+     */
+    markToSee: boolean;
 
     /***************************************************/
     /*                      METHODS                    */
@@ -396,7 +390,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
      * @returns {Media}
      */
-    constructor(data: Obj, element?: JQuery<HTMLElement>) {
+    constructor(data: Obj, element: JQuery<HTMLElement>) {
         super(data, element);
         return this.fill(data);
     }
@@ -412,7 +406,6 @@ export class Show extends Media implements implShow, implAddNote {
             } else {
                 this.addShowClick();
             }
-            this._overrideProps();
             return this;
         });
     }
@@ -1294,32 +1287,6 @@ export class Show extends Media implements implShow, implAddNote {
         }
         return null;
     }
-    _getTvdbUrl(): Promise<string> {
-        const proxy = Base.serverBaseUrl + '/proxy/';
-        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
-            method: 'GET',
-            headers: {
-                'origin': 'https://www.betaseries.com',
-                'x-requested-with': '',
-                'Accept': 'application/json'
-            },
-            mode: 'cors',
-            cache: 'no-cache'
-        };
-        return new Promise((res, rej) => {
-            fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
-            .then(res => {
-                // console.log('_getTvdbUrl response', res);
-                if (res.ok) {
-                    return res.json();
-                }
-                return rej();
-            }).then(data => {
-                // console.log('_getTvdbUrl data', data);
-                if (data) { res(data.url) } else { rej(); }
-            });
-        });
-    }
     /**
      * Retourne une image, si disponible, en fonction du format désiré
      * @param  {string = Images.formats.poster} format   Le format de l'image désiré
@@ -1340,7 +1307,7 @@ export class Show extends Media implements implShow, implAddNote {
             if (format === Images.formats.poster) {
                 if (this.images.poster) res(this.images.poster);
                 else {
-                    fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
+                    fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
                     .then((resp: Response) => {
                         if (resp.ok) {
                             return resp.text();
@@ -1361,7 +1328,7 @@ export class Show extends Media implements implShow, implAddNote {
                 if (this.images.show !== null) res(this.images.show);
                 else if(this.images.box !== null) res(this.images.box);
                 else {
-                    fetch(`${proxy}?tab=series&id=${this.thetvdb_id}`, initFetch)
+                    fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
                     .then((resp: Response) => {
                         if (resp.ok) {
                             return resp.text();
@@ -1378,53 +1345,6 @@ export class Show extends Media implements implShow, implAddNote {
                     }).catch(err => rej(err));
                 }
             }
-        });
-    }
-    getAllPosters(): Promise<object> {
-        if (this._posters) {
-            if (this.images?.poster && this._posters['local'][0] !== this.images.poster) {
-                this._posters['local'] = [this.images.poster];
-            }
-            return new Promise(res => res(this._posters));
-        }
-        const proxy = Base.serverBaseUrl + '/posters';
-        const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
-            method: 'GET',
-            headers: {
-                'origin': 'https://www.betaseries.com',
-                'x-requested-with': ''
-            },
-            mode: 'cors',
-            cache: 'no-cache'
-        };
-        return new Promise((res, rej) => {
-            const posters = {};
-            if (this.images.poster) posters['local'] = [this.images.poster];
-            this._getTvdbUrl().then(url => {
-                console.log('getAllPosters url', url);
-                if (!url) return res(posters);
-                const urlTvdb = new URL(url);
-                fetch(`${proxy}${urlTvdb.pathname}/artwork/posters`, initFetch)
-                .then((resp: Response) => {
-                    if (resp.ok) {
-                        return resp.text();
-                    }
-                    return null;
-                }).then(html => {
-                    if (html == null) {
-                        return rej('HTML error');
-                    }
-                    posters['TheTVDB'] = [];
-                    const parser = new DOMParser();
-                    const doc: Document = parser.parseFromString(html, 'text/html');
-                    const imgs: NodeListOf<HTMLImageElement> = doc.querySelectorAll('a.thumbnail img');
-                    for (let l = 0; l < imgs.length; l++) {
-                        posters['TheTVDB'].push(imgs[l].dataset.src);
-                    }
-                    this._posters = posters;
-                    res(posters);
-                }).catch(err => rej(err));
-            })
         });
     }
 }

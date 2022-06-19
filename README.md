@@ -97,7 +97,6 @@ tmdb: 634649
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource principale (série et film)
 * ~~Ajout de la récupération d'images, pour les similars, sur les sites [_thetvdb_](http://www.thetvdb.com) et [_themoviedb_](http://www.themoviedb.org), Si elles ne sont pas présentes sur [betaseries](https://www.betaseries.com).~~ Les images ne sont pas accessibles directement sur ces sites.
-* Ajout d'une fonction permettant de surcharger le choix de l'affiche du film ou de la série. Pour l'utiliser, vous trouverez une icône format camera, en haut à droite de l'affiche. Il vous suffit de cliquer dessus pour afficher les différentes affiches disponibles. Sélectionnez celle que vous souhaitez en cliquant dessus.
 
 ### Séries
 
@@ -110,7 +109,6 @@ tmdb: 634649
 !["Display séries à voir plus tard"](./screenshots/displayShowsToSee.jpg "Display séries à voir plus tard")
 * Un lien a été ajouté dans le menu "_Séries_" (10 last seen) pour afficher les 10 dernières séries vues par le membre, dans le même style que les séries à voir plus tard.
 * Ouverture de la fiche TheTVDB dans un nouvel onglet
-* Ajout d'une fonction permettant de surcharger le choix de l'affiche d'une saison. Pour l'utiliser, vous trouverez une icône format camera, en haut à gauche de l'affiche de chaque saison. Il vous suffit de cliquer dessus pour afficher les différentes affiches disponibles. Sélectionnez celle que vous souhaitez en cliquant dessus.
 
 #### Gestion des épisodes
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.

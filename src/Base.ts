@@ -459,67 +459,6 @@ export abstract class Base implements implAddNote {
             }
         });
     }
-    /**
-     * setPropValue - Permet de modifier la valeur d'une propriété dans un objet,
-     * ou dans un sous objet de manière dynamique
-     * @param obj - Objet à modifier
-     * @param key - chemin d'accès à la propriété à modifier
-     * @param val - Nouvelle valeur de la propriété
-     */
-    static setPropValue(obj: object, key: string, val: string) {
-        if (key.indexOf('.') >= 0) {
-            const data: Array<string> = key.split('.');
-            const path = data.shift();
-            key = data.join('.');
-
-            // On verifie si il s'agit d'un element de tableau
-            if (/\[\d+\]$/.test(path)) {
-                // On récupère le tableau et on laisse l'index
-                const tab = path.replace(/\[\d+\]$/, '');
-                const index = parseInt(path.replace(/[^\d]*/, ''), 10);
-                Base.setPropValue(obj[tab][index], key, val);
-            } else if (/\[.*\]$/.test(path)) {
-                const tab = path.replace(/\[.+\]$/, '');
-                const index = path.replace(/^.*\[/, '').replace(/\]$/, '');
-                Base.setPropValue(obj[tab][index], key, val);
-            }
-            else {
-                Base.setPropValue(obj[path], key, val);
-            }
-        }
-        else if (/\[.*\]$/.test(key)) {
-            const tab = key.replace(/\[.+\]$/, '');
-            const index = key.replace(/^.*\[/, '').replace(/\]$/, '');
-            obj[tab][index] = val;
-        }
-        else {
-            obj[key] = val;
-        }
-    }
-    /**
-     * replaceParams - Permet de remplacer des paramètres par des valeurs dans une chaîne de caractères
-     * @param   {string} path - Chaine à modifier avec les valeurs
-     * @param   {object} params - Objet contenant les paramètres autorisés et leur type
-     * @param   {object} data - Objet contenant les valeurs des paramètres
-     * @returns {string}
-     */
-    static replaceParams(path: string, params: object, data: object): string {
-        const keys = Object.keys(params);
-        for (let k = 0; k < keys.length; k++) {
-            const key = keys[k];
-            const type = params[key];
-            if (data[key] === undefined) { throw new Error(`Parameter[${key}] missing`); }
-            let param = data[key];
-            if (type == 'number') {
-                param = parseInt(param, 10);
-            } else if (type == 'string') {
-                param = String(param);
-            }
-            const reg = new RegExp(`#${key}#`, 'g');
-            path = path.replace(reg, param);
-        }
-        return path;
-    }
 
     /*
                     PROPERTIES
