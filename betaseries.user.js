@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.4
+// @version      1.3.5
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-OeswsS1wlfF4zW8InNdgGAh9ztlPPqbYQIFJGysX2Aqi989kF3drOTHnegpFiyEs';
+const sriBundle = 'sha384-1vhH/jPYjm906K4q6xp47eDnmZw1LOo193HibiaDxiurg/1yimrAyvexPygpVZ5V';
 /************************************************************************************************/
 // @ts-check
 

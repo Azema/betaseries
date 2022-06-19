@@ -855,13 +855,16 @@ declare module 'Show' {
 	     * @returns {Season}
 	     */
 	    getSeason(seasonNumber: number): Season;
-	    _getTvdbUrl(): Promise<string>;
 	    /**
 	     * Retourne une image, si disponible, en fonction du format désiré
 	     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
 	     * @return {Promise<string>}                         L'URL de l'image
 	     */
 	    getDefaultImage(format?: string): Promise<string>;
+	    /**
+	     * Récupère et retourne les différentes affiches disponibles
+	     * @returns {object}
+	     */
 	    getAllPosters(): Promise<object>;
 	}
 
@@ -1366,6 +1369,12 @@ declare module 'Media' {
 	     * @returns {Media}
 	     */
 	    _overrideProps(): Media;
+	    /**
+	     * Retourne l'URL de la page de la série à partir de son identifiant tvdb
+	     * @param   {number} tvdb_id - Identifiant TheTvDB
+	     * @returns {Promise<string>}
+	     */
+	    _getTvdbUrl(tvdb_id: number): Promise<string>;
 	}
 
 }
