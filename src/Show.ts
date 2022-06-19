@@ -18,12 +18,19 @@ export class Images {
         this.banner = data.banner;
         this.box = data.box;
         this.poster = data.poster;
+        this._local = {
+            show: this.show,
+            banner: this.banner,
+            box: this.box,
+            poster: this.poster
+        };
     }
 
     show: string;
     banner: string;
     box: string;
     poster: string;
+    _local: {show: string, banner: string, box: string, poster: string};
 }
 export enum Picked {
     none,
@@ -1463,9 +1470,6 @@ export class Show extends Media implements implShow, implAddNote {
     }
     getAllPosters(): Promise<object> {
         if (this._posters) {
-            if (this.images?.poster && this._posters['local'][0] !== this.images.poster) {
-                this._posters['local'] = [this.images.poster];
-            }
             return new Promise(res => res(this._posters));
         }
         const proxy = Base.serverBaseUrl + '/posters';
@@ -1480,7 +1484,7 @@ export class Show extends Media implements implShow, implAddNote {
         };
         return new Promise((res, rej) => {
             const posters = {};
-            if (this.images.poster) posters['local'] = [this.images.poster];
+            if (this.images?._local.poster) posters['local'] = [this.images._local.poster];
             this._getTvdbUrl().then(url => {
                 console.log('getAllPosters url', url);
                 if (!url) return res(posters);

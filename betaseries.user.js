@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-Ma+dV2X1Ux2JHt8azAVdC4vhc9Vymts/ZT32zC3T4k3BIXpaZJLNgyuVJnij7yv6';
+const sriBundle = 'sha384-OeswsS1wlfF4zW8InNdgGAh9ztlPPqbYQIFJGysX2Aqi989kF3drOTHnegpFiyEs';
 /************************************************************************************************/
 // @ts-check
 

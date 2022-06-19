@@ -101,6 +101,7 @@ export class Movie extends Media implements implAddNote {
     tmdb_id: number;
     trailer: string;
     _posters: object;
+    _local: {poster: string};
 
     /***************************************************/
     /*                      METHODS                    */
@@ -114,6 +115,7 @@ export class Movie extends Media implements implAddNote {
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data, element);
+        this._local = {poster: null};
         return this.fill(data);
     }
     /**
@@ -138,6 +140,7 @@ export class Movie extends Media implements implAddNote {
         this.other_title = data.other_title;
         this.platform_links = data.platform_links;
         this.poster = data.poster;
+        this._local = {poster: this.poster};
         this.production_year = parseInt(data.production_year);
         this.release_date = new Date(data.release_date);
         this.sale_date = new Date(data.sale_date);
@@ -248,9 +251,6 @@ export class Movie extends Media implements implAddNote {
     }
     getAllPosters(): Promise<object> {
         if (this._posters) {
-            if (this.poster && this._posters['local'][0] !== this.poster) {
-                this._posters['local'] = [this.poster];
-            }
             return new Promise(res => res(this._posters));
         }
         const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
@@ -260,7 +260,7 @@ export class Movie extends Media implements implAddNote {
         };
         return new Promise((res, rej) => {
             const posters = {};
-            if (this.poster) posters['local'] = [this.poster];
+            if (this.poster) posters['local'] = [this._local.poster];
             const baseImgTmdb = 'https://image.tmdb.org/t/p/w500';
             const api_key = Base.themoviedb_api_user_key;
             const uri = `https://api.themoviedb.org/3/movie/${this.tmdb_id}/images?api_key=${api_key}`;

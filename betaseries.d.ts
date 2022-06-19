@@ -459,6 +459,12 @@ declare module 'Show' {
 	    banner: string;
 	    box: string;
 	    poster: string;
+	    _local: {
+	        show: string;
+	        banner: string;
+	        box: string;
+	        poster: string;
+	    };
 	}
 	export enum Picked {
 	    none = 0,
@@ -1057,6 +1063,9 @@ declare module 'Movie' {
 	    tmdb_id: number;
 	    trailer: string;
 	    _posters: object;
+	    _local: {
+	        poster: string;
+	    };
 	    /***************************************************/
 	    /***************************************************/
 	    /**
