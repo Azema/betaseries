@@ -29,7 +29,7 @@ export class Season {
     /**
      * @type {string} URL de l'image
      */
-    image: string;
+    _image: string;
     /**
      * @type {boolean} Saison vu
      */
@@ -69,6 +69,25 @@ export class Season {
 
     get length(): number {
         return this.episodes.length;
+    }
+    /**
+     * Setter pour l'attribut image
+     * @param {string} src - L'URL d'accès à l'image
+     */
+    set image(src: string) {
+        this._image = src;
+        if (src) {
+            const $imgs = jQuery('#seasons .slide_flex .slide__image img');
+            if ($imgs.length >= this.number) {
+                $($imgs.get(this.number - 1)).attr('src', src);
+            }
+        }
+    }
+    /**
+     * Getter pour l'attribut image
+     */
+    get image(): string {
+        return this._image;
     }
 
     /**
