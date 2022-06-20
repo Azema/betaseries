@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.5
+// @version      1.3.6
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -50,7 +50,7 @@ const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 const sriBundle = 'sha384-1vhH/jPYjm906K4q6xp47eDnmZw1LOo193HibiaDxiurg/1yimrAyvexPygpVZ5V';
 /************************************************************************************************/
 // @ts-check
-
+let resources = {};
 /**
  * Fonction de chargement dynamique de feuilles de style CSS
  * @param   {string}            href        Le source de la feuille de style
@@ -214,8 +214,84 @@ const launchScript = function($) {
           url = window.location.pathname,
           noop = function () {},
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
+    // URI des images et description des classifications TV et films
+    ratings = {
+        'D-10': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
+            title: "Déconseillé au moins de 10 ans"
+        },
+        'D-12': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
+            title: 'Déconseillé au moins de 12 ans'
+        },
+        'D-16': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
+            title: 'Déconseillé au moins de 16 ans'
+        },
+        'D-18': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
+            title: 'Ce programme est uniquement réservé aux adultes'
+        },
+        'TV-Y': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
+            title: 'Ce programme est évalué comme étant approprié aux enfants'
+        },
+        'TV-Y7': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
+            title: 'Ce programme est désigné pour les enfants âgés de 7 ans et plus'
+        },
+        'TV-G': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
+            title: 'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants'
+        },
+        'TV-PG': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
+            title: 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants'
+        },
+        'TV-14': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
+            title: 'Ce programme est déconseillé aux enfants de moins de 14 ans'
+        },
+        'TV-MA': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
+            title: 'Ce programme est uniquement réservé aux adultes'
+        },
+        'G': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
+            title: 'Tous publics'
+        },
+        'PG': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
+            title: 'Accord parental souhaitable'
+        },
+        'PG-13': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
+            title: 'Accord parental recommandé, film déconseillé aux moins de 13 ans'
+        },
+        'R': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
+            title: 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte'
+        },
+        'NC-17': {
+            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
+            title: 'Interdit aux enfants de 17 ans et moins'
+        }
+    },
+    templatePopover = `
+        <div class="popover" role="tooltip">
+            <div class="arrow"></div>
+            <h3 class="popover-header"></h3>
+            <div class="popover-body"></div>
+        </div>`,
+    optionsLazyload = {
+        root: null,
+        rootMargin: "50px 0px",
+        threshold: 0.01,
+        selector: '.js-lazy-image'
+    };
+
     // Objet contenant les scripts et feuilles de style utilisées par le userscript
-    scriptsAndStyles = {
+    let scriptsAndStyles = {
         "renderjson": {
             type: 'script',
             id: 'renderjson',
@@ -316,81 +392,6 @@ const launchScript = function($) {
             called: false,
             loaded: false
         }
-    },
-    // URI des images et description des classifications TV et films
-    ratings = {
-        'D-10': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Moins10.svg/30px-Moins10.svg.png',
-            title: "Déconseillé au moins de 10 ans"
-        },
-        'D-12': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Moins12.svg/30px-Moins12.svg.png',
-            title: 'Déconseillé au moins de 12 ans'
-        },
-        'D-16': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Moins16.svg/30px-Moins16.svg.png',
-            title: 'Déconseillé au moins de 16 ans'
-        },
-        'D-18': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Moins18.svg/30px-Moins18.svg.png',
-            title: 'Ce programme est uniquement réservé aux adultes'
-        },
-        'TV-Y': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/TV-Y_icon.svg/50px-TV-Y_icon.svg.png',
-            title: 'Ce programme est évalué comme étant approprié aux enfants'
-        },
-        'TV-Y7': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/TV-Y7_icon.svg/50px-TV-Y7_icon.svg.png',
-            title: 'Ce programme est désigné pour les enfants âgés de 7 ans et plus'
-        },
-        'TV-G': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/TV-G_icon.svg/50px-TV-G_icon.svg.png',
-            title: 'La plupart des parents peuvent considérer ce programme comme approprié pour les enfants'
-        },
-        'TV-PG': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/TV-PG_icon.svg/50px-TV-PG_icon.svg.png',
-            title: 'Ce programme contient des éléments que les parents peuvent considérer inappropriés pour les enfants'
-        },
-        'TV-14': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TV-14_icon.svg/50px-TV-14_icon.svg.png',
-            title: 'Ce programme est déconseillé aux enfants de moins de 14 ans'
-        },
-        'TV-MA': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/TV-MA_icon.svg/50px-TV-MA_icon.svg.png',
-            title: 'Ce programme est uniquement réservé aux adultes'
-        },
-        'G': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/RATED_G.svg/30px-RATED_G.svg.png',
-            title: 'Tous publics'
-        },
-        'PG': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/RATED_PG.svg/54px-RATED_PG.svg.png',
-            title: 'Accord parental souhaitable'
-        },
-        'PG-13': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/RATED_PG-13.svg/95px-RATED_PG-13.svg.png',
-            title: 'Accord parental recommandé, film déconseillé aux moins de 13 ans'
-        },
-        'R': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RATED_R.svg/40px-RATED_R.svg.png',
-            title: 'Les enfants de moins de 17 ans doivent être accompagnés d\'un adulte'
-        },
-        'NC-17': {
-            img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Nc-17.svg/85px-Nc-17.svg.png',
-            title: 'Interdit aux enfants de 17 ans et moins'
-        }
-    },
-    templatePopover = `
-        <div class="popover" role="tooltip">
-            <div class="arrow"></div>
-            <h3 class="popover-header"></h3>
-            <div class="popover-body"></div>
-        </div>`,
-    optionsLazyload = {
-        root: null,
-        rootMargin: "50px 0px",
-        threshold: 0.01,
-        selector: '.js-lazy-image'
     };
     // let indexCallLoad = 0;
     let timer, currentUser, cache, fnLazy, state = {},
@@ -412,6 +413,7 @@ const launchScript = function($) {
             $head.append(`<link rel="preconnect" href="${new URL(serverBaseUrl).origin}" crossorigin>`);
             $head.append(`<link rel="dns-prefetch" href="${new URL(Base.api.url).origin}">`);
             $head.append(`<link rel="preconnect" href="${new URL(Base.api.url).origin}" crossorigin>`);
+            system.updateResources();
             /*
                     CHARGEMENT LIBRARY SearchFriend pour la recommandation à un ami
              */
@@ -710,6 +712,37 @@ const launchScript = function($) {
                 observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
             }
             headerSearch();
+        },
+        /**
+         * Met à jour les attributs integrity des ressources CSS et JS
+         * Et ajoute le numéro de version du build aux URLs
+         * @returns {void}
+         */
+        updateResources: function() {
+            if (Object.keys(resources) <= 0) {
+                return;
+            }
+            const version = resources.version;
+            // Styles
+            for (const style in resources.css) {
+                if (scriptsAndStyles[style]) {
+                    let key = Object.keys(resources.css[style])[0];
+                    if (scriptsAndStyles[style].integrity) {
+                        scriptsAndStyles[style].integrity = resources.css[style][key];
+                    }
+                    scriptsAndStyles[style].href += '?v=' + version;
+                }
+            }
+            // Scripts
+            for (const script in resources.js) {
+                if (scriptsAndStyles[script]) {
+                    let key = Object.keys(resources.js[script])[0];
+                    if (scriptsAndStyles[script].integrity) {
+                        scriptsAndStyles[script].integrity = resources.js[script][key];
+                    }
+                    scriptsAndStyles[script].src += '?v=' + version;
+                }
+            }
         },
         /**
          * Patiente en attendant que la fonction de check soit OK
@@ -4305,33 +4338,55 @@ types: [
     'forum'
 ]
 */
-
-const now = new Date().getTime();
-let loop = 0;
-let timerLaunch = setInterval(function() {
-    if (loop++ > 150) { // timeout 30 seconds
-        clearInterval(timerLaunch);
-        console.warn('Le UserScript BetaSeries n\'a pas pu être lancé, car il manque jQuery');
-        GM_notification({
-            title: "Erreur Timeout UserScript BS",
-            text: "Le userscript n'a pas pu être chargé, car jQuery n'est pas présent. Rechargez la page SVP",
-            timeout: 30000
-        });
+const initFetch = {
+    method: 'GET',
+    headers: {
+        accept: 'application/json'
+    },
+    mode: 'cors',
+    cache: 'no-cache'
+};
+/*
+ * Récupère le manifest des ressources pour le userscript
+ */
+fetch(`${serverBaseUrl}/config/betaseries/manifest.json`, initFetch)
+.then(resp => {
+    if (resp.ok) {
+        return resp.json();
+    }
+    return null;
+}).then(manifest => {
+    if (!manifest) {
         return;
     }
-    if (typeof jQuery === 'undefined') { return; }
-    clearInterval(timerLaunch);
-    loadJS(`${serverBaseUrl}/js/app-bundle.js?t=${now}`, {
-            integrity: sriBundle,
-            crossOrigin: 'anonymous',
-            referrerPolicy: 'no-referrer'
-        }, () => launchScript(jQuery), (oError) => {
+    resources = manifest;
+    const now = new Date().getTime();
+    let loop = 0;
+    let timerLaunch = setInterval(function() {
+        if (loop++ > 150) { // timeout 30 seconds
+            clearInterval(timerLaunch);
+            console.warn('Le UserScript BetaSeries n\'a pas pu être lancé, car il manque jQuery');
             GM_notification({
-                title: "Erreur chargement UserScript BS",
-                text: "Le userscript n'a pas pu être chargé, rechargez la page SVP",
+                title: "Erreur Timeout UserScript BS",
+                text: "Le userscript n'a pas pu être chargé, car jQuery n'est pas présent. Rechargez la page SVP",
                 timeout: 30000
             });
-            throw new URIError("The script " + oError.target.src + " didn't load correctly.");
+            return;
         }
-    );
-}, 200);
+        if (typeof jQuery === 'undefined') { return; }
+        clearInterval(timerLaunch);
+        loadJS(`${serverBaseUrl}/js/app-bundle.js?t=${now}`, {
+                integrity: sriBundle,
+                crossOrigin: 'anonymous',
+                referrerPolicy: 'no-referrer'
+            }, () => launchScript(jQuery), (oError) => {
+                GM_notification({
+                    title: "Erreur chargement UserScript BS",
+                    text: "Le userscript n'a pas pu être chargé, rechargez la page SVP",
+                    timeout: 30000
+                });
+                throw new URIError("The script " + oError.target.src + " didn't load correctly.");
+            }
+        );
+    }, 200);
+});
