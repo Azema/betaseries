@@ -40,6 +40,9 @@ tvdb: 299881
 or
 tmdb: 634649
 ```
+
+-------
+
 ### Séries, Films et épisodes
 
 * Ajout du nombre de votants à la note d'une série ou d'un film ou d'un épisode
@@ -84,6 +87,8 @@ tmdb: 634649
 
 ![Evaluations du média dans les commentaires](./screenshots/evaluationsComments.jpg "Evaluations du média dans les commentaires")
 
+-------
+
 ### Séries et Films
 
 * En mode DEV, ajout d'un bouton à côté du titre d'un similar, pour visualiser ses données JSON.
@@ -97,7 +102,14 @@ tmdb: 634649
 * Ajout des notes sous les titres des similaires
 * Ajout du logo de classification TV dans les infos de la ressource principale (série et film)
 * ~~Ajout de la récupération d'images, pour les similars, sur les sites [_thetvdb_](http://www.thetvdb.com) et [_themoviedb_](http://www.themoviedb.org), Si elles ne sont pas présentes sur [betaseries](https://www.betaseries.com).~~ Les images ne sont pas accessibles directement sur ces sites.
+* Dans le cas ou l'affiche du média n'existe pas, une affiche d'un autre site sera recherché.
 * Ajout d'une fonction permettant de surcharger le choix de l'affiche du film ou de la série. Pour l'utiliser, vous trouverez une icône format camera, en haut à droite de l'affiche. Il vous suffit de cliquer dessus pour afficher les différentes affiches disponibles. Sélectionnez celle que vous souhaitez en cliquant dessus.
+
+> :warning: ***Attention, pour le chargement d'images provenant d'un autre site, les bloqueurs de pubs peuvent poser problème.*** :warning:
+>
+> ***Donc, si le poster du média ne s'affiche pas, vérifiez d'abord si votre bloqueur de pubs n'est pas en cause.***
+
+-------
 
 ### Séries
 
@@ -137,23 +149,33 @@ tmdb: 634649
 
 ![Options de mise à jour auto](./screenshots/OptionsUpdateAutoEpisodes.jpg "Options de mise à jour auto")
 
+-------
+
 ### Films
 
 * Ajout de la gestion du bouton **Vu**, afin d'activer la notation. La popup de notation est ouverte lorsque le film est indiqué comme vu.
+
+-------
 
 ### Liste des séries
 
 * ~~Ajout d'un paginateur en haut de la liste des séries~~ Plutôt qu'un nouveau paginateur, j'ai préféré remonter en haut de page automatiquement.
 * Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays __(Seul un pays ajouté sera retenu, si vous rafraîchissez la page)__.
 
+-------
+
 ### Gestion des séries
 
 * Ajout du statut des séries sur la page de gestion des séries du membre connecté
+
+-------
 
 ### Membres
 
 * Ajout de la fonction de comparaison entre 2 membres. Visible sur la page des autres membres, accessible via le bouton "Se comparer à ce membre" en haut du profil.
 * Ajout d'un champ de recherche sur la page des amis d'un membre
+
+-------
 
 ### API
 
