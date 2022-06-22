@@ -1168,10 +1168,16 @@ const launchScript = function($) {
                     /*
                     <img class="displayBlock objectFitCover" src="" width="300" height="450" alt="">
                      */
+                    const reg = new RegExp(window.location.hostname, 'i');
+                    let cross = '';
+                    if (!reg.test(img)) {
+                        cross = 'crossorigin="Anonymous"';
+                    }
                     res.elt.find('div.block404').replaceWith(`
                         <img class="displayBlock objectFitCover"
                                 width="300"
                                 height="450"
+                                ${cross}
                                 alt="Affiche de la série ${res.title}"
                                 src="${img}" />`
                     );
@@ -1624,7 +1630,7 @@ const launchScript = function($) {
                     // On ajoute l'update auto des épisodes de la saison courante
                     medias.updateAutoEpisodeList(res);
                     // On ajoute la gestion de l'event click sur le bouton
-                    $('.updateEpisodes').click((e) => {
+                    $('#episodes .updateEpisodes').click((e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         if (Base.debug) console.groupCollapsed('updateEpisodes');
@@ -1636,25 +1642,25 @@ const launchScript = function($) {
                             // if (Base.debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
                             vignettes = getVignettes();
                             // len = getNbVignettes();
-                            let $vignette, objEpisode, changed = false, retour;
+                            let $vignette, objEpisode, changed = false;
                             for (let v = 0; v < vignettes.length; v++) {
                                 $vignette = $(vignettes.get(v)); // DOMElement jQuery de l'image de l'épisode
                                 objEpisode = res.currentSeason.episodes[v];
                                 objEpisode.elt = $vignette.parents('.slide_flex'); // Données de l'épisode
                                 //if (Base.debug) console.log('Episode ID', getEpisodeId($vignette), episode.id);
-                                retour = objEpisode.updateCheckSeen(v);
-                                if (!changed) {
-                                    changed = retour;
+                                if (!changed && objEpisode.updateCheckSeen(v)) {
+                                    changed = true;
                                 }
                             }
                             // On met à jour les éléments, seulement si il y a eu des modifications
                             if (changed) {
                                 if (Base.debug) console.log('updateEpisodes changed true', res);
                                 // Si il reste des épisodes à voir, on scroll
-                                if ($('#episodes .slide_flex.slide--notSeen').length > 0) {
+                                /* const $epNotSeen = $('#episodes .slide_flex.slide--notSeen');
+                                if ($epNotSeen.length > 0) {
                                     $('#episodes .slides_flex').get(0).scrollLeft =
-                                        $('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
-                                }
+                                        $epNotSeen.get(0).offsetLeft - 69;
+                                } */
                                 res.currentSeason.updateRender();
                                 res.update(true).then(() => {
                                     self.addClass('finish');
@@ -2733,8 +2739,12 @@ const launchScript = function($) {
                     let onerror = null;
                     if (defImgShow != null) {
                         onerror = (err, elt, url, attr) => {
+                            const reg = new RegExp(window.location.hostname, 'i');
                             // console.log('checkNextEpisode lazyLoad error URL: ', defImgShow, url);
                             elt.classList.add("js-lazy-image-handled");
+                            if (!reg.test(defImgShow)) {
+                                elt.crossOrigin = 'Anonymous';
+                            }
                             elt[attr] = defImgShow;
                             elt.classList.add("fade-in");
                             // console.log('lazyload onerror show', elt, res.images.show, attr);
