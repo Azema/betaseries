@@ -1,8 +1,11 @@
 /* eslint-disable no-undef */
 'use strict';
-
+const fs = require('fs');
 var path = require('path');
+//const exit = require('process');
 // var util = require('util');
+
+const storageFile = './db/betaseries.json';
 
 /**
  *
@@ -203,13 +206,23 @@ module.exports = function(grunt) {
                             dotfiles: 'deny',
                             etag: true,
                             lastModified: true,
-                            maxAge: '1d'
+                            maxAge: '1w',
+                            index: false
                         }
                     },
                     debug: true,
                     keepalive: true,
+                    /**
+                     *
+                     * @param {Server} _server
+                     * @param {Connect} _connect
+                     */
+                    // eslint-disable-next-line no-unused-vars
+                    onCreateServer: function(server, connect) {
+                        connect.storageFile = false;
+                    },
                     // remove next from params
-                    middleware: function(connect, options, middlewares) {
+                    middleware: function(connect, _options, middlewares) {
                         // inject a custom middleware into the array of default middlewares
                         // Middleware PROXY
                         middlewares.unshift(function(req, res, next) {
@@ -227,7 +240,7 @@ module.exports = function(grunt) {
                                 followRedirects: true,
                                 secure: false,
                                 selfHandleResponse: true, // res.end() will be called internally by responseInterceptor()
-                                onProxyRes: responseInterceptor(async (buffer, proxyRes, req, res) => {
+                                onProxyRes: responseInterceptor(async (_buffer, proxyRes, _req, res) => {
                                     // console.log('[DEBUG] response proxy', proxyRes.responseUrl);
                                     res.setHeader('content-type', 'application/json');
                                     return JSON.stringify({url: proxyRes.responseUrl});
@@ -255,23 +268,121 @@ module.exports = function(grunt) {
                             const apiProxy = createProxyMiddleware('/posters', options);
                             apiProxy(req, res, next);
                         });
+                        /**
+                         * Middleware pour le stockage des données partagées
+                         */
+                        middlewares.unshift(
+                            /**
+                             * @param {Request} req - La requête HTTP
+                             * @param {Response} res - La réponse HTTP
+                             * @param {function} next - Fonction de callback
+                             */
+                            async function(req, res, next) {
+                                if (!/^\/db\/(get|save)\//.test(req.url)) {
+                                    return next();
+                                }
+                                res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type');
+                                res.setHeader('Access-Control-Allow-Origin', 'https://www.betaseries.com');
+                                res.setHeader('Access-Control-Max-Age', 0);
+                                res.setHeader('Cache-Control', 'no-cache, private');
+                                /*if (req.method.toUpperCase() === 'OPTIONS') {
+                                    return res.end();
+                                }*/
+                                if (connect.storageFile) {
+                                    return setTimeout(() => {this(req, res, next)}, 50);
+                                }
+                                const releaseFile = function() {
+                                    connect.storageFile = false;
+                                }
+                                connect.storageFile = true;
+                                res.setHeader('Content-Type', 'application/json');
+                                try {
+                                    fs.accessSync(storageFile, fs.constants.R_OK | fs.constants.W_OK);
+                                } catch (error) {
+                                    fs.writeFileSync(storageFile, JSON.stringify({
+                                        objUpAuto: {},
+                                        toSee: {},
+                                        override: {}
+                                    }));
+                                }
+                                // console.log('db tested ok');
+                                /*
+                                * RegExp Groups:
+                                *  1: Type d'appel (GET or SAVE)
+                                *  2: La clé d'identification dans la table
+                                */
+                                const reg = new RegExp(/^\/db\/(\w*)\/(\w*)\/*/);
+                                const resultReq = reg.exec(req.url);
+                                // console.log('resultReq', resultReq);
+                                if (resultReq.length >= 3) {
+                                    let dataFile = null;
+                                    try {
+                                        dataFile = JSON.parse(fs.readFileSync(storageFile));
+                                    } catch (err) {
+                                        return res.end(JSON.stringify({error: 'Error from get data: ' + err.toString()}));
+                                    }
+                                    const method = resultReq[1].toUpperCase();
+                                    const key = resultReq[2];
+                                    if (method === 'GET') {
+                                        releaseFile();
+                                        res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+                                        if (dataFile && dataFile[key]) {
+                                            return res.end(JSON.stringify({error: null, data: dataFile[key]}));
+                                        }
+                                        return res.end(JSON.stringify({error: null, data: null}));
+                                    } else if (method === 'SAVE' && req.method === 'POST') {
+                                        res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+                                        const buffers = [];
+                                        for await (const chunk of req) {
+                                            buffers.push(chunk);
+                                        }
+                                        let data = Buffer.concat(buffers).toString();
+                                        if (data.length <= 0) {
+                                            releaseFile();
+                                            return res.end(JSON.stringify({error: 'No data to save'}));
+                                        }
+                                        data = JSON.parse(data);
+                                        dataFile[key] = data;
+                                        try {
+                                            fs.writeFileSync(storageFile, JSON.stringify(dataFile));
+                                        } catch(err) {
+                                            console.error('data are not saved', err);
+                                            return res.end(JSON.stringify({error: 'Data are not saved: '+ err.toString(), save: false}));
+                                        }
+                                        releaseFile();
+                                        return res.end(JSON.stringify({error:null, save: true}));
+                                    } else {
+                                        releaseFile();
+                                        return res.end(JSON.stringify({error: `Method unknown: ${method} - req.method: ${req.method}`}));
+                                    }
+                                } else {
+                                    releaseFile();
+                                    return res.end(JSON.stringify({error: 'Error on middleware: check the url'}));
+                                }
+                            }
+                        );
                         // Middleware CORS
                         middlewares.unshift(function(req, res, next) {
                             // console.log('allowingCrossDomain');
                             res.setHeader('Access-Control-Allow-Origin', '*');
-                            res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-                            res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, Authorization, X-Mindflash-SessionID');
+                            // res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+                            // res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, Authorization, X-Mindflash-SessionID');
                             // res.setHeader('Access-Control-Allow-Private-Network', 'true');
                             // res.setHeader('Access-Control-Allow-Credentials', 'true');
+                            // res.setHeader('pragma', 'public');
+                            res.setHeader('vary', 'Accept-Encoding');
+                            if (/(.js|.css)$/.test(req.url)) {
+                                res.setHeader('Expires', new Date(Date.now() + 604800000).toUTCString());
+                            } else if (/.json$/.test(req.url)) {
+                                res.setHeader('Cache-Control', 'no-cache, private');
+                            }
 
                             // intercept OPTIONS method
-                            if ('OPTIONS' == req.method) {
+                            if ('OPTIONS' == req.method.toUpperCase()) {
                                 res.statusCode = 200;
-                                res.end();
+                                return res.end();
                             }
-                            else {
-                                next();
-                            }
+                            next();
                         });
                         return middlewares;
                     }
