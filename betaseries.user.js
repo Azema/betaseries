@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.6
+// @version      1.3.7
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-1vhH/jPYjm906K4q6xp47eDnmZw1LOo193HibiaDxiurg/1yimrAyvexPygpVZ5V';
+const sriBundle = 'sha384-AeT3RPbi89DIrTmasFrIz+lTzLcBOK2Hd+p0/trGmf7bJVwTD3x2g6bLPd4d1f3n';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -61,7 +61,7 @@ let resources = {};
  * @param   {Function}          onerror     Fonction de callback en cas d'erreur
  * @returns {HTMLLinkElement}
  */
-const loadCSS = function( href, before, media, attributes, callback, onerror ) {
+const loadCSS = function( href, before, media, attributes = {}, callback, onerror ) {
     // Arguments explained:
     // `href` [REQUIRED] is the URL for your CSS file.
     // `before` [OPTIONAL] is the element the script should use as a reference for injecting our stylesheet <link> before
@@ -73,25 +73,20 @@ const loadCSS = function( href, before, media, attributes, callback, onerror ) {
     let ref;
     if( before ){
         ref = before;
-    }
-    else {
+    } else {
         const refs = ( doc.body || doc.getElementsByTagName( "head" )[ 0 ] ).childNodes;
-        ref = refs[ refs.length - 1];
+        ref = refs[refs.length - 1];
     }
 
     const sheets = doc.styleSheets;
     // Set any of the provided attributes to the stylesheet DOM Element.
-    if( attributes ){
-        for( let attributeName in attributes ){
-            if ( attributes[attributeName] !== undefined ){
-                ss.setAttribute( attributeName, attributes[attributeName] );
-            }
+    // temporarily set media to something inapplicable to ensure it'll fetch without blocking render
+    attributes = Object.assign({rel: 'stylesheet', href, media: 'only x'}, attributes);
+    for( let attributeName in attributes ){
+        if ( attributes[attributeName] !== undefined ){
+            ss.setAttribute( attributeName, attributes[attributeName] );
         }
     }
-    ss.rel = "stylesheet";
-    ss.href = href;
-    // temporarily set media to something inapplicable to ensure it'll fetch without blocking render
-    ss.media = "only x";
 
     // wait until body is defined before injecting link. This ensures a non-blocking load in IE11.
     function ready( cb ){
@@ -151,7 +146,7 @@ const loadCSS = function( href, before, media, attributes, callback, onerror ) {
  * @param   {Function}  onerror     Fonction de callback en cas d'erreur
  * @returns {HTMLScriptElement}     L'objet script
  */
-const loadJS = function( src, attributes, callback, onerror ) {
+const loadJS = function( src, attributes = {}, callback, onerror ) {
     // Arguments explained:
     // `href` [REQUIRED] is the URL for your CSS file.
     // `before` [OPTIONAL] is the element the script should use as a reference for injecting our stylesheet <link> before
@@ -162,13 +157,11 @@ const loadJS = function( src, attributes, callback, onerror ) {
     const ss = doc.createElement( "script" );
     const refs = ( doc.body || doc.getElementsByTagName( "head" )[ 0 ] ).childNodes;
     const ref = refs[ refs.length - 1];
-
+    attributes = Object.assign({type: "text/javascript"}, attributes);
     // Set any of the provided attributes to the stylesheet DOM Element.
-    if ( attributes ) {
-        for ( let attributeName in attributes ) {
-            if ( attributes[attributeName] !== undefined ) {
-                ss.setAttribute( attributeName, attributes[attributeName] );
-            }
+    for ( let attributeName in attributes ) {
+        if ( attributes[attributeName] !== undefined ) {
+            ss.setAttribute( attributeName, attributes[attributeName] );
         }
     }
     ss.src = src;
@@ -394,9 +387,7 @@ const launchScript = function($) {
         }
     };
     // let indexCallLoad = 0;
-    let timer, currentUser, cache, fnLazy, state = {},
-        mainLogoMargins = {top: 0, bottom: 0},
-        mainlogoModified = false;
+    let timer, currentUser, cache, fnLazy, state = {};
     /**
      * @type {Member}
      */
@@ -420,21 +411,15 @@ const launchScript = function($) {
             if (typeof SearchFriend === 'undefined') {
                 system.addScriptAndLink(['searchFriend']);
             }
-            /*let elt, link;
-            for (let key of Object.keys(scriptsAndStyles)) {
-                elt = scriptsAndStyles[key];
-                link = elt.type === 'script' ? elt.src : elt.href;
-                $head.append(`<link rel="preload" as="${elt.type}" crossorigin="anonymous" href="${link}" integrity="${elt.integrity}">`);
-            }*/
+            /*
+             *          AJOUT DU LOADER
+             */
             $('#popup-bg').after('<div id="loader-bg"><i class="fa fa-spinner fa-pulse fa-4x fa-fw"></i><span class="sr-only">Loading...</span></div>');
             // Ajout des feuilles de styles pour le userscript
             system.addScriptAndLink(['awesome', 'stylehome']);
             if (system.userIdentified()) {
                 Member.fetch().then(member => {
-                    /**
-                     * Membre
-                     * @type {Member}
-                     */
+                    /** @type {Member} */
                     user = unsafeWindow.user = member;
                     // On affiche la version du script
                     if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
@@ -473,44 +458,35 @@ const launchScript = function($) {
             }
             system.checkApiVersion();
             /*
-                        BANDEAU EN-TETES DU SITE WEB
+             *          BANDEAU DE NAVIGATION DU SITE WEB
              */
-            const $mainlogo = $('nav .mainlogo');
-            const boundHandleScroll = function() {
-                // console.log('scrollEvent', window.visualViewport.pageTop, mainlogoModified);
-                if (window.visualViewport.pageTop > 40 && !mainlogoModified) {
-                    mainLogoMargins.top = $mainlogo.css('margin-top');
-                    mainLogoMargins.bottom = $mainlogo.css('margin-bottom');
-                    $mainlogo.css('margin-top', '0px');
-                    $mainlogo.css('margin-bottom', '0px');
-                    const $body = $('body');
-                    if (!$body.hasClass('is-scrolled')) {
-                        $body.addClass('is-scrolled');
-                    }
-                    mainlogoModified = true;
-                } else if (window.visualViewport.pageTop < 40 && mainlogoModified) {
-                    $mainlogo.css('margin-top', mainLogoMargins.top);
-                    $mainlogo.css('margin-bottom', mainLogoMargins.bottom);
-                    mainlogoModified = false;
-                }
-            }
-            boundHandleScroll('call initial');
-            window.addEventListener("scroll", boundHandleScroll);
-            $('#reactjs-header-search .menu-item .b_g').click(() => {
-                // if (debug) console.log('click search menu');
-                if (window.visualViewport.pageTop > 40 || mainlogoModified) {
-                    $mainlogo.css('margin-top', mainLogoMargins.top);
-                    $mainlogo.css('margin-bottom', mainLogoMargins.bottom);
-                    const $body = $('body');
-                    if (!$body.hasClass('is-scrolled')) {
-                        $body.addClass('is-scrolled');
-                    }
-                    mainlogoModified = false;
-                }
-                system.waitDomPresent('#reactjs-header-search .menu-item form .c4_c8', () => {
-                    $('#reactjs-header-search .menu-item form .c4_c8').click(boundHandleScroll);
+            (function navigation() {
+                /** @type {jQuery<HTMLElement>} */
+                const $nav = $('nav#top'); // Jquery<HTMLElement> Bandeau de navigation
+                let forceNotScrolled = false; // Permet de forcer ou non la taille initiale du bandeau
+                /*
+                 * Permet de diminuer ou remettre à la normale, le bandeau de navigation durant le scrolling
+                 */
+                const boundHandleScroll = function() {
+                    $nav.toggleClass('scrolled', (window.visualViewport.pageTop > 40 && !forceNotScrolled));
+                };
+                boundHandleScroll('call initial');
+                window.addEventListener("scroll", boundHandleScroll);
+                $('#reactjs-header-search .menu-item > button').click(() => {
+                    /*
+                     * Force la taille du bandeau de navigation à sa taille initiale,
+                     * lors d'une recherche de média
+                     */
+                    forceNotScrolled = true;
+                    $nav.removeClass('scrolled');
+                    system.waitDomPresent('#reactjs-header-search .menu-item form', () => {
+                        $('#reactjs-header-search .menu-item form button:last-child').click(() => {
+                            forceNotScrolled = false;
+                            boundHandleScroll();
+                        });
+                    });
                 });
-            });
+            })();
             /*
                             LAZYLOAD
              */
@@ -520,9 +496,11 @@ const launchScript = function($) {
                 };
             });
             /**
+             *          FORMULAIRE DE RECHERCHE DE MEDIAS
+             *
              * Permet d'ajouter des améliorations au menu de recherche du site
              */
-            function headerSearch() {
+            (function headerSearch() {
                 // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
                 // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
                 const observer = new MutationObserver(mutationsList => {
@@ -710,8 +688,7 @@ const launchScript = function($) {
                     }
                 });
                 observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
-            }
-            headerSearch();
+            })();
         },
         /**
          * Met à jour les attributs integrity des ressources CSS et JS
