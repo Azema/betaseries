@@ -69,7 +69,11 @@ export class UpdateAuto {
         }
         this._show = show;
         this._showId = show.id;
-        const objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
+        return this;
+    }
+
+    private async _init() {
+        const objUpAuto = await Base.gm_funcs.getValue('objUpAuto', {});
         this._exist = false;
         this._lastUpdate = null;
         if (objUpAuto[this._showId] !== undefined) {
@@ -92,11 +96,12 @@ export class UpdateAuto {
      * @param   {Show} s - L'objet de la série
      * @returns {UpdateAuto}
      */
-    public static getInstance(s: Show): UpdateAuto {
+    public static getInstance(s: Show): Promise<UpdateAuto> {
         if (! UpdateAuto.instance) {
             UpdateAuto.instance = new UpdateAuto(s);
+            return this.instance._init();
         }
-        return UpdateAuto.instance;
+        return Promise.resolve(UpdateAuto.instance);
     }
 
     /**
@@ -106,8 +111,8 @@ export class UpdateAuto {
      * @private
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
-    _save() {
-        const objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
+    async _save() {
+        const objUpAuto = await Base.gm_funcs.getValue('objUpAuto', {});
         const obj = {
             status: this._status,
             auto: this._auto,
@@ -247,9 +252,9 @@ export class UpdateAuto {
      *
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
-    delete(): UpdateAuto {
+    async delete(): Promise<UpdateAuto> {
         this.stop();
-        const objUpAuto = Base.gm_funcs.getValue('objUpAuto', {});
+        const objUpAuto = await Base.gm_funcs.getValue('objUpAuto', {});
         if (objUpAuto[this._showId] !== undefined) {
             delete objUpAuto[this._showId];
             Base.gm_funcs.setValue('objUpAuto', objUpAuto);
@@ -290,9 +295,10 @@ export class UpdateAuto {
                 if (Base.debug) console.log('close old interval timer');
                 clearInterval(this._timer);
             }
-            this.status = true;
+            if (! this.status) this.status = true;
             this._tick();
             this._timer = setInterval(this._tick.bind(this), (this.interval * 60) * 1000);
+            this.changeColorBtn();
         }
         return this;
     }
@@ -308,12 +314,9 @@ export class UpdateAuto {
         if (Base.debug) {
             console.log('%s update episode list', `[${now.format('datetime')}]`);
         }
-        const btnUpEpisodeList = jQuery('.updateEpisodes');
-        if (btnUpEpisodeList.length > 0) {
-            btnUpEpisodeList.trigger('click');
-            if ( ! this.status) {
-                this.status = true;
-            }
+        jQuery('#episodes .updateEpisodes').trigger('click');
+        if ( ! this.status) {
+            this.status = true;
         }
         // if (Base.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
         if (! this.auto || this.show.user.remaining <= 0) {

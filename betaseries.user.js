@@ -1224,223 +1224,224 @@ const launchScript = function($) {
          * @return {void}
          */
         updateAutoEpisodeList: function(show) {
-            let objUpAuto = UpdateAuto.getInstance(show);
-            /**
-             * Retourne une valeur d'intervalle en fonction de la durée des épisodes de la série
-             * @param {number} duration - La durée des épisodes de la série
-             * @returns {number} La valeur d'une intervalle
-             */
-            const getIntervalProp = function(duration) {
-                if (duration <= 25) return 10;
-                else if (duration <= 45) return 15;
-                else if (duration <= 60) return 30;
-                else return 45;
-            }
-            /**
-             * Fonction retournant le contenu de la Popup des options update
-             * de la liste des épisodes
-             * @param {UpdateAuto} objUpAuto -
-             * @return {String} Contenu HTML de la PopUp des options update
-             */
-            const contentUp = function (objUpAuto) {
-                const intervals = UpdateAuto.intervals;
-                const propNumber = getIntervalProp(objUpAuto.show.length);
-                const propText = objUpAuto.show.in_account && objUpAuto.interval <= 0 ? `
-                <div class="form-group"><p class="alert alert-info">Pour cette série, nous vous conseillons une intervalle de <span id="propNumber" data-value="${propNumber}">${propNumber.toString()}</span> minutes.</p></div>` : '';
-                const timerText = objUpAuto.status ? `<div class="form-group"><p class="alert alert-success">Prochain update: <span id="timer_remaining">${objUpAuto.remaining()}</span></p></div>` : '';
-                let contentUpdate = `
-                        <form id="optionsUpdateEpisodeList">
-                        <div class="form-group form-check">
-                            <input type="checkbox"
-                                class="form-check-input"
-                                id="updateEpisodeListAuto"
-                                ${objUpAuto.auto ? ' checked="true"' : ''}
-                                ${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>
-                            <label class="form-check-label"
-                                for="updateEpisodeListAuto">Activer la mise à jour auto des épisodes</label>
-                        </div>
-                        <div class="form-group">
-                            <label for="updateEpisodeListTime">Fréquence de mise à jour</label>
-                            <select class="form-control"
-                                    id="updateEpisodeListTime"
-                                    ${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>`;
-                for (let i = 0; i < intervals.length; i++) {
-                    contentUpdate += `<option value="${intervals[i].val}"
-                        ${objUpAuto.interval === intervals[i].val ? 'selected="true"' : ''}>
-                        ${intervals[i].label}</option>`;
+            UpdateAuto.getInstance(show).then(objUpAuto => {
+                /**
+                 * Retourne une valeur d'intervalle en fonction de la durée des épisodes de la série
+                 * @param {number} duration - La durée des épisodes de la série
+                 * @returns {number} La valeur d'une intervalle
+                 */
+                const getIntervalProp = function(duration) {
+                    if (duration <= 25) return 10;
+                    else if (duration <= 45) return 15;
+                    else if (duration <= 60) return 30;
+                    else return 45;
                 }
-                contentUpdate += `</select></div>
-                        ${!objUpAuto.show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>' : ''}
-                        ${propText}
-                        ${timerText}
-                        <button type="submit" class="btn btn-primary"${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>Sauver</button>
-                        <button type="button" class="close btn btn-danger">Annuler</button>
-                        <button type="button" class="btn btn-info relaunch" style="${!objUpAuto.status ? 'display:none;' : ''}">Relancer</button>
-                    </form>`;
-                return contentUpdate;
-            };
-            /**
-             * Fonction retournant le titre de la Popup des options pour l'update
-             * de la liste des épisodes de la saison courante
-             * @param  {UpdateAuto} objUpAuto
-             * @return {String} Contenu HTML du titre de la PopUp des options update
-             */
-            const titlePopup = function (objUpAuto) {
-                const className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary',
-                    label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running',
-                    title = (objUpAuto && objUpAuto.status) ? 'Arrêter la tâche en cours' : 'Lancer la tâche de mise à jour auto',
-                    help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
-                return `<style>
-                            .optionsUpAuto .close {
-                                position: absolute;
-                                right: 5px;
-                                border: none;
-                                background: transparent;
-                                font-size: 1.5em;
-                                top: 0;
-                                color: var(--default_color);
-                            }
-                            .optionsUpAuto .badge {cursor: pointer;}
-                            .optionsUpAuto .close:hover {border: none;outline: none;}
-                            .optionsUpAuto .close:focus {border: none;outline: none;}
-                        </style>
-                        <div class="optionsUpAuto">Options de mise à jour
-                        <span class="badge badge-pill badge-${className}" title="${title}">${label}</span>
-                        <button type="button" class="close" aria-label="Close" title="Fermer">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <i class="fa fa-question-circle" style="color:blue;margin-left:5px;" aria-hidden="true" title="${help}"></i>
-                        </div>`;
-            };
-            // On relance l'update auto des épisodes au chargement de la page
-            if (show.in_account && show.user.remaining > 0 && objUpAuto.status) {
-                objUpAuto.launch();
-            }
-            else if (objUpAuto.status) {
-                objUpAuto.stop();
-            }
-            system.addScriptAndLink(['popover', 'bootstrap'], function() {
-                if (Base.debug) console.log('Loaded popover updateEpisodes');
-                $('#updateEpisodeList .updateElement').popover({
-                    container: $('#updateEpisodeList'),
-                    // delay: { "show": 500, "hide": 100 },
-                    html: true,
-                    content: ' ',
-                    placement: 'right',
-                    template: templatePopover,
-                    title: ' ',
-                    trigger: 'manual',
-                    boundary: 'window'
-                });
-                let timeoutHover = null,
-                    timerRemaining = null;
-                $('#updateEpisodeList .updateElement').hover(
-                    // In
-                    function (e) {
-                        e.stopPropagation();
-                        timeoutHover = setTimeout(function () {
-                            $('#updateEpisodeList .updateElement').popover('show');
-                        }, 500);
-                    },
-                    // Out
-                    function (e) {
-                        e.stopPropagation();
-                        clearTimeout(timeoutHover);
+                /**
+                 * Fonction retournant le contenu de la Popup des options update
+                 * de la liste des épisodes
+                 * @param {UpdateAuto} objUpAuto -
+                 * @return {String} Contenu HTML de la PopUp des options update
+                 */
+                const contentUp = function (objUpAuto) {
+                    const intervals = UpdateAuto.intervals;
+                    const propNumber = getIntervalProp(objUpAuto.show.length);
+                    const propText = objUpAuto.show.in_account && objUpAuto.interval <= 0 ? `
+                    <div class="form-group"><p class="alert alert-info">Pour cette série, nous vous conseillons une intervalle de <span id="propNumber" data-value="${propNumber}">${propNumber.toString()}</span> minutes.</p></div>` : '';
+                    const timerText = objUpAuto.status ? `<div class="form-group"><p class="alert alert-success">Prochain update: <span id="timer_remaining">${objUpAuto.remaining()}</span></p></div>` : '';
+                    let contentUpdate = `
+                            <form id="optionsUpdateEpisodeList">
+                            <div class="form-group form-check">
+                                <input type="checkbox"
+                                    class="form-check-input"
+                                    id="updateEpisodeListAuto"
+                                    ${objUpAuto.auto ? ' checked="true"' : ''}
+                                    ${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>
+                                <label class="form-check-label"
+                                    for="updateEpisodeListAuto">Activer la mise à jour auto des épisodes</label>
+                            </div>
+                            <div class="form-group">
+                                <label for="updateEpisodeListTime">Fréquence de mise à jour</label>
+                                <select class="form-control"
+                                        id="updateEpisodeListTime"
+                                        ${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>`;
+                    for (let i = 0; i < intervals.length; i++) {
+                        contentUpdate += `<option value="${intervals[i].val}"
+                            ${objUpAuto.interval === intervals[i].val ? 'selected="true"' : ''}>
+                            ${intervals[i].label}</option>`;
                     }
-                );
-                // On ferme et désactive les autres popups lorsque celle des options est ouverte
-                $('#updateEpisodeList .updateElement').on('show.bs.popover', function () {
-                    const $updateElement = $('#episodes .slide__image');
-                    $updateElement.popover('hide');
-                    $updateElement.popover('disable');
-                    timerRemaining = setInterval(() => {
-                        $('#timer_remaining').text(objUpAuto.remaining());
-                    }, 1000);
-                });
-                // On réactive les autres popus lorsque celle des options se ferme
-                // Et on supprime les listeners de la popup
-                $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
-                    $('#episodes .slide__image').popover('enable');
-                    $('.optionsUpAuto .badge').off('click');
-                    $('#updateEpisodeList button.close').off('click');
-                    $('#optionsUpdateEpisodeList button.btn-primary').off('click');
-                    $('#updateEpisodeListAuto').off('change');
-                    clearInterval(timerRemaining);
-                });
-                $('#updateEpisodeList .updateElement').on('inserted.bs.popover', function () {
-                    $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
-                    $('#updateEpisodeList .popover-body').html(contentUp(objUpAuto));
-                    $('.optionsUpAuto .badge').click(e => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const $badge = $(e.currentTarget);
-                        if ($badge.hasClass('badge-success')) {
-                            // On arrête la tâche d'update auto
-                            objUpAuto.stop();
-                            $badge
-                                .removeClass('badge-success')
-                                .addClass('badge-secondary')
-                                .text('not running')
-                                .attr('title', 'Activer la tâche de mise à jour auto');
-                        } else {
-                            if (!objUpAuto.show.in_account) {
-                                if (Base.debug) console.log('La série n\'est pas sur le compte du membre');
-                                return;
-                            } else if (objUpAuto.interval <= 0) {
-                                if (Base.debug) console.log('Le paramètre interval est <= 0');
-                                $('.popover button[type="submit"]').before('<div class="form-group"><p class="alert alert-warning">Veuillez renseigner les paramètres de mise à jour.</p></div>');
-                                return;
-                            } else if (objUpAuto.interval > 0) {
-                                $('.optionsUpAuto .alert').parent().remove();
-                            }
-                            objUpAuto.auto = true;
-                            const $checkAuto = $('#updateEpisodeListAuto');
-                            if (!$checkAuto.is(':checked')) {
-                                $checkAuto.attr('checked', 'true');
-                            }
-                            objUpAuto.launch();
-                            $badge
-                                .removeClass('badge-secondary')
-                                .addClass('badge-success')
-                                .text('running')
-                                .attr('title', 'Arrêter la tâche en cours');
-                        }
+                    contentUpdate += `</select></div>
+                            ${!objUpAuto.show.in_account ? '<div class="form-group"><p class="alert alert-warning">Veuillez ajouter la série avant de pouvoir activer cette fonctionnalité.</p></div>' : ''}
+                            ${propText}
+                            ${timerText}
+                            <button type="submit" class="btn btn-primary"${!objUpAuto.show.in_account ? ' disabled="true"' : ''}>Sauver</button>
+                            <button type="button" class="close btn btn-danger">Annuler</button>
+                            <button type="button" class="btn btn-info relaunch" style="${!objUpAuto.status ? 'display:none;' : ''}">Relancer</button>
+                        </form>`;
+                    return contentUpdate;
+                };
+                /**
+                 * Fonction retournant le titre de la Popup des options pour l'update
+                 * de la liste des épisodes de la saison courante
+                 * @param  {UpdateAuto} objUpAuto
+                 * @return {String} Contenu HTML du titre de la PopUp des options update
+                 */
+                const titlePopup = function (objUpAuto) {
+                    const className = (objUpAuto && objUpAuto.status) ? 'success' : 'secondary',
+                        label = (objUpAuto && objUpAuto.status) ? 'running' : 'not running',
+                        title = (objUpAuto && objUpAuto.status) ? 'Arrêter la tâche en cours' : 'Lancer la tâche de mise à jour auto',
+                        help = "Cette fonctionnalité permet de mettre à jour les épisodes de la saison courante, à une fréquence choisie.";
+                    return `<style>
+                                .optionsUpAuto .close {
+                                    position: absolute;
+                                    right: 5px;
+                                    border: none;
+                                    background: transparent;
+                                    font-size: 1.5em;
+                                    top: 0;
+                                    color: var(--default_color);
+                                }
+                                .optionsUpAuto .badge {cursor: pointer;}
+                                .optionsUpAuto .close:hover {border: none;outline: none;}
+                                .optionsUpAuto .close:focus {border: none;outline: none;}
+                            </style>
+                            <div class="optionsUpAuto">Options de mise à jour
+                            <span class="badge badge-pill badge-${className}" title="${title}">${label}</span>
+                            <button type="button" class="close" aria-label="Close" title="Fermer">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <i class="fa fa-question-circle" style="color:blue;margin-left:5px;" aria-hidden="true" title="${help}"></i>
+                            </div>`;
+                };
+                // On relance l'update auto des épisodes au chargement de la page
+                if (show.in_account && show.user.remaining > 0 && objUpAuto.status) {
+                    objUpAuto.launch();
+                }
+                else if (objUpAuto.status) {
+                    objUpAuto.stop();
+                }
+                system.addScriptAndLink(['popover', 'bootstrap'], function() {
+                    if (Base.debug) console.log('Loaded popover updateEpisodes');
+                    $('#updateEpisodeList .updateElement').popover({
+                        container: $('#updateEpisodeList'),
+                        // delay: { "show": 500, "hide": 100 },
+                        html: true,
+                        content: ' ',
+                        placement: 'right',
+                        template: templatePopover,
+                        title: ' ',
+                        trigger: 'manual',
+                        boundary: 'window'
                     });
-                    $('#updateEpisodeList button.close').click((e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        $('#updateEpisodeList .updateElement').popover('hide');
-                    });
-                    $('#updateEpisodeList button.relaunch').click((e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        objUpAuto.stop().launch();
-                    });
-                    $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
-                            intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
-                        if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
-                        if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
-                        if (Base.debug) console.log('updateEpisodeList submit', objUpAuto);
-                        objUpAuto.launch();
-                        $('#updateEpisodeList .updateElement').popover('hide');
-                    });
-                    if ($('#propNumber').length > 0) {
-                        $('#updateEpisodeListAuto').change((e) => {
+                    let timeoutHover = null,
+                        timerRemaining = null;
+                    $('#updateEpisodeList .updateElement').hover(
+                        // In
+                        function (e) {
                             e.stopPropagation();
-                            const $auto = $(e.currentTarget);
-                            $('#updateEpisodeListTime').children().each((_, elt) => {
-                                elt.selected = false;
-                            });
-                            if ($auto.is(':checked')) {
-                                $('#updateEpisodeListTime').find(`option[value="${$('#propNumber').data('value')}"]`).get(0).selected = true;
+                            timeoutHover = setTimeout(function () {
+                                $('#updateEpisodeList .updateElement').popover('show');
+                            }, 500);
+                        },
+                        // Out
+                        function (e) {
+                            e.stopPropagation();
+                            clearTimeout(timeoutHover);
+                        }
+                    );
+                    // On ferme et désactive les autres popups lorsque celle des options est ouverte
+                    $('#updateEpisodeList .updateElement').on('show.bs.popover', function () {
+                        const $updateElement = $('#episodes .slide__image');
+                        $updateElement.popover('hide');
+                        $updateElement.popover('disable');
+                        timerRemaining = setInterval(() => {
+                            $('#timer_remaining').text(objUpAuto.remaining());
+                        }, 1000);
+                    });
+                    // On réactive les autres popus lorsque celle des options se ferme
+                    // Et on supprime les listeners de la popup
+                    $('#updateEpisodeList .updateElement').on('hide.bs.popover', function () {
+                        $('#episodes .slide__image').popover('enable');
+                        $('.optionsUpAuto .badge').off('click');
+                        $('#updateEpisodeList button.close').off('click');
+                        $('#optionsUpdateEpisodeList button.btn-primary').off('click');
+                        $('#updateEpisodeListAuto').off('change');
+                        clearInterval(timerRemaining);
+                    });
+                    $('#updateEpisodeList .updateElement').on('inserted.bs.popover', function () {
+                        $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
+                        $('#updateEpisodeList .popover-body').html(contentUp(objUpAuto));
+                        $('.optionsUpAuto .badge').click(e => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const $badge = $(e.currentTarget);
+                            if ($badge.hasClass('badge-success')) {
+                                // On arrête la tâche d'update auto
+                                objUpAuto.stop();
+                                $badge
+                                    .removeClass('badge-success')
+                                    .addClass('badge-secondary')
+                                    .text('not running')
+                                    .attr('title', 'Activer la tâche de mise à jour auto');
                             } else {
-                                $('#updateEpisodeListTime').find(`option[value="0"]`).get(0).selected = true;
+                                if (!objUpAuto.show.in_account) {
+                                    if (Base.debug) console.log('La série n\'est pas sur le compte du membre');
+                                    return;
+                                } else if (objUpAuto.interval <= 0) {
+                                    if (Base.debug) console.log('Le paramètre interval est <= 0');
+                                    $('.popover button[type="submit"]').before('<div class="form-group"><p class="alert alert-warning">Veuillez renseigner les paramètres de mise à jour.</p></div>');
+                                    return;
+                                } else if (objUpAuto.interval > 0) {
+                                    $('.optionsUpAuto .alert').parent().remove();
+                                }
+                                objUpAuto.auto = true;
+                                const $checkAuto = $('#updateEpisodeListAuto');
+                                if (!$checkAuto.is(':checked')) {
+                                    $checkAuto.attr('checked', 'true');
+                                }
+                                objUpAuto.launch();
+                                $badge
+                                    .removeClass('badge-secondary')
+                                    .addClass('badge-success')
+                                    .text('running')
+                                    .attr('title', 'Arrêter la tâche en cours');
                             }
                         });
-                    }
+                        $('#updateEpisodeList button.close').click((e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            $('#updateEpisodeList .updateElement').popover('hide');
+                        });
+                        $('#updateEpisodeList button.relaunch').click((e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            objUpAuto.stop().launch();
+                        });
+                        $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
+                                intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
+                            if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
+                            if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
+                            if (Base.debug) console.log('updateEpisodeList submit', objUpAuto);
+                            objUpAuto.launch();
+                            $('#updateEpisodeList .updateElement').popover('hide');
+                        });
+                        if ($('#propNumber').length > 0) {
+                            $('#updateEpisodeListAuto').change((e) => {
+                                e.stopPropagation();
+                                const $auto = $(e.currentTarget);
+                                $('#updateEpisodeListTime').children().each((_, elt) => {
+                                    elt.selected = false;
+                                });
+                                if ($auto.is(':checked')) {
+                                    $('#updateEpisodeListTime').find(`option[value="${$('#propNumber').data('value')}"]`).get(0).selected = true;
+                                } else {
+                                    $('#updateEpisodeListTime').find(`option[value="0"]`).get(0).selected = true;
+                                }
+                            });
+                        }
+                    });
                 });
             });
         },
@@ -1464,33 +1465,34 @@ const launchScript = function($) {
             */
             const updateAuto = function(event, show) {
                 if (Base.debug) console.log('Listener called');
-                let objUpAuto = UpdateAuto.getInstance(show);
-                // Si il n'y a plus d'épisodes à regarder sur la série
-                if (event.detail.name === EventTypes.UPDATE && show.user.remaining <= 0) {
-                    // Si la série est terminée
-                    if (show.isEnded()) {
-                        // On supprime la série des options d'update
+                UpdateAuto.getInstance(show).then(objUpAuto => {
+                    // Si il n'y a plus d'épisodes à regarder sur la série
+                    if (event.detail.name === EventTypes.UPDATE && show.user.remaining <= 0) {
+                        // Si la série est terminée
+                        if (show.isEnded()) {
+                            // On supprime la série des options d'update
+                            objUpAuto.delete();
+                        }
+                        else {
+                            // On désactive la mise à jour auto
+                            objUpAuto.stop();
+                        }
+                    } else if (event.detail.name === EventTypes.ARCHIVE) {
                         objUpAuto.delete();
+                    } else if (event.detail.name === EventTypes.UNARCHIVE) {
+                        objUpAuto.launch();
                     }
-                    else {
-                        // On désactive la mise à jour auto
-                        objUpAuto.stop();
-                    }
-                } else if (event.detail.name === EventTypes.ARCHIVE) {
-                    objUpAuto.delete();
-                } else if (event.detail.name === EventTypes.UNARCHIVE) {
-                    objUpAuto.launch();
-                }
-                res.getDefaultImage('wide').then(defImgShow => {
-                    let onerror = null;
-                    if (defImgShow != null) {
-                        onerror = (err, elt, url, attr) => {
-                            elt.classList.add("js-lazy-image-handled");
-                            elt[attr] = defImgShow;
-                            elt.classList.add("fade-in");
-                        };
-                    }
-                    $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
+                    res.getDefaultImage('wide').then(defImgShow => {
+                        let onerror = null;
+                        if (defImgShow != null) {
+                            onerror = (err, elt, url, attr) => {
+                                elt.classList.add("js-lazy-image-handled");
+                                elt[attr] = defImgShow;
+                                elt.classList.add("fade-in");
+                            };
+                        }
+                        $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
+                    });
                 });
             };
             res.addListener(EventTypes.UPDATE, updateAuto);
@@ -2098,8 +2100,8 @@ const launchScript = function($) {
                                     console.error('Popover addShow error', err);
                                 });
                             });
-                            const toggleToSeeShow = (showId) => {
-                                let showsToSee = GM_getValue('toSee', {});
+                            const toggleToSeeShow = async(showId) => {
+                                let showsToSee = await dbGetValue('toSee', {});
                                 let toSee;
                                 if (showsToSee[showId] !== undefined) {
                                     delete showsToSee[showId];
@@ -2108,7 +2110,7 @@ const launchScript = function($) {
                                     showsToSee[showId] = true;
                                     toSee = true;
                                 }
-                                GM_setValue('toSee', showsToSee);
+                                await dbSetValue('toSee', showsToSee);
                                 return toSee;
                             };
                             $('.popover .toSeeShow').click(e => {
@@ -2447,8 +2449,8 @@ const launchScript = function($) {
          * @param {Show} res
          */
         addBtnToSee: function() {
-            const toggleToSeeShow = (showId) => {
-                let storeToSee = GM_getValue('toSee', {});
+            const toggleToSeeShow = async(showId) => {
+                let storeToSee = await dbGetValue('toSee', {});
                 let toSee;
                 if (storeToSee[showId] === undefined) {
                     storeToSee[showId] = true;
@@ -2457,7 +2459,7 @@ const launchScript = function($) {
                     delete storeToSee[showId];
                     toSee = false;
                 }
-                GM_setValue('toSee', storeToSee);
+                await dbSetValue('toSee', storeToSee);
                 return toSee;
             };
             const $navSeries = $('#js-menu-aim > div.menu-item:nth-child(3) > div.header-navigation');
@@ -2466,10 +2468,10 @@ const launchScript = function($) {
              * @type {Dialog}
              */
             const dialog = system.getDialog();
-            $('#js-menu-aim a.seriesToSee').click(e => {
+            $('#js-menu-aim a.seriesToSee').click(async(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                let toSee = GM_getValue('toSee', {});
+                let toSee = await dbGetValue('toSee', {});
                 Show.fetchMulti(Object.keys(toSee)).then(shows => {
                     let template = '<div id="annuaire-list" class="gridSeries">';
                     for (let s = 0; s < shows.length; s++) {
@@ -3963,6 +3965,69 @@ const launchScript = function($) {
     cache = new CacheUS();
 
     /**
+     * dbGetValue - Permet de récuperer des données partagées
+     * @param {string} key - La clé d'identification des données souhaitées
+     * @param {object|number|string} defaults - La valeur par défaut
+     * @returns {object}
+     */
+    const dbGetValue = async function(key, defaults) {
+        if (!key) {
+            throw new Error('dbGetValue - key are missing');
+        }
+        const url = `${serverBaseUrl}/db/get/${key}`;
+        const paramsReq = {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache',
+            headers: {
+                'Accept': 'application/json'
+            }
+        };
+        const resp = await fetch(url, paramsReq);
+        if (!resp.ok) {
+            throw new Error('dbGetValue error connection server');
+        }
+        const result = await resp.json();
+        if (result && result.error) {
+            throw new Error('dbGetValue error result: ' + result.error);
+        } else if (result.data === null) {
+            return defaults;
+        }
+        return result.data;
+    };
+    /**
+     * dbSetValue - Permet de stocker des données partagées
+     * @param   {string} key - La clé d'identification des données
+     * @param   {object|number|string} data - Les données à sauvegarder
+     * @returns {boolean}
+     */
+    const dbSetValue = async function(key, data) {
+        if (!key || !data) {
+            throw new Error('dbSetValue - key or data are missing');
+        }
+        let url = `${serverBaseUrl}/db/save/${key}`;
+        const paramsReq = {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(data)
+        };
+        const resp = await fetch(url, paramsReq);
+        if (!resp.ok) {
+            throw new Error('dbSetValue error connection server');
+        }
+        const result = await resp.json();
+        if (result && result.error) {
+            throw new Error('dbSetValue error result: ' + result.error);
+        }
+        return result.save;
+    }
+
+    /**
      * Paramétrage de la super classe abstraite Base et UpdateAuto
      */
     Base.debug = debug;
@@ -3978,8 +4043,9 @@ const launchScript = function($) {
     Base.serverBaseUrl = serverBaseUrl;
     Base.serverOauthUrl = serverOauthUrl;
     Base.theme = system.checkThemeStyle();
-    Base.gm_funcs.getValue = GM_getValue;
-    Base.gm_funcs.setValue = GM_setValue;
+    Base.gm_funcs.getValue = dbGetValue;
+    Base.gm_funcs.setValue = dbSetValue;
+
 
     /**
      * Initialization du script

@@ -397,6 +397,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     thetvdb_id: number;
     _posters: object;
+    private _fetches: Record<string, Promise<Show|this|Obj>>;
 
     /***************************************************/
     /*                      METHODS                    */
@@ -410,6 +411,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data, element);
+        this._fetches = {};
         return this.fill(data);
     }
     /**
@@ -434,7 +436,14 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<*>}             Les données de la série
      */
     fetch(force = true): Promise<Obj> {
-        return Base.callApi('GET', 'shows', 'display', {id: this.id}, force);
+        const self = this;
+        if (this._fetches.show) return this._fetches.show;
+        this._fetches.show = Base.callApi('GET', 'shows', 'display', {id: this.id}, force)
+        .then((data) => {
+            delete self._fetches.show;
+            return data;
+        });
+        return this._fetches.show;
     }
     /**
      * Récupère les saisons de la série
@@ -442,6 +451,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetchSeasons(): Promise<Show> {
         const self = this;
+        if (this._fetches.seasons) return this._fetches.seasons as Promise<Show>;
         const params: Obj = {thetvdb_id: this.thetvdb_id};
         let force = false;
         if (this.thetvdb_id <= 0) {
@@ -449,19 +459,21 @@ export class Show extends Media implements implShow, implAddNote {
             params.id = this.id;
             force = true;
         }
-        return Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
+        this._fetches.seasons = Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
         .then((data: Obj) => {
             self.seasons = [];
             if (data?.seasons?.length <= 0) {
                 return self;
             }
-            let seasonNumber;
+            let seasonNumber: number;
             for (let s = 0; s < data.seasons.length; s++) {
                 seasonNumber = parseInt(data.seasons[s].number, 10);
                 self.seasons[seasonNumber - 1] = new Season(data.seasons[s], this);
             }
+            delete self._fetches.seasons;
             return self;
         });
+        return this._fetches.seasons as Promise<Show>;
     }
     /**
      * Récupère les personnages de la série
@@ -470,7 +482,8 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetchCharacters(): Promise<this> {
         const self = this;
-        return Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
+        if (this._fetches.characters) return this._fetches.characters as Promise<this>;
+        this._fetches.characters = Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
         .then((data: Obj) => {
             self.characters = [];
             if (data?.characters?.length <= 0) {
@@ -479,8 +492,10 @@ export class Show extends Media implements implShow, implAddNote {
             for (let c = 0; c < data.characters.length; c++) {
                 self.characters.push(new Character(data.characters[c]));
             }
+            delete self._fetches.characters;
             return self;
         });
+        return this._fetches.characters as Promise<this>;
     }
     /**
      * Retourne le personnage associé au nom d'acteur de la série
@@ -500,7 +515,8 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetchPersons(): Promise<Show> {
         const self = this;
-        return Base.callApi(HTTP_VERBS.GET, 'persons', 'show', {id: this.id})
+        if (this._fetches.persons) return this._fetches.persons as Promise<Show>;
+        this._fetches.persons = Base.callApi(HTTP_VERBS.GET, 'persons', 'show', {id: this.id})
         .then(data => {
             this.persons = [];
             if (data.persons) {
@@ -508,8 +524,10 @@ export class Show extends Media implements implShow, implAddNote {
                     self.persons.push(new Person(data.persons[p]));
                 }
             }
+            delete self._fetches.persons;
             return self;
         });
+        return this._fetches.persons as Promise<Show>;
     }
     /**
      * Récupère les acteurs sur l'API BetaSeries à partir
@@ -584,8 +602,8 @@ export class Show extends Media implements implShow, implAddNote {
      * isMarkToSee - Indique si la série se trouve dans les séries à voir
      * @returns {boolean}
      */
-    isMarkedToSee(): boolean {
-        const toSee: Obj = Base.gm_funcs.getValue('toSee', {});
+    async isMarkedToSee(): Promise<boolean> {
+        const toSee: Obj = await Base.gm_funcs.getValue('toSee', {});
         return toSee[this.id] !== undefined;
     }
     /**
@@ -973,7 +991,7 @@ export class Show extends Media implements implShow, implAddNote {
          * @param  {Show} show L'objet de type Show
          * @return {void}
          */
-        function changeBtnAdd(show: Show): void {
+        async function changeBtnAdd(show: Show): Promise<void> {
             const $optionsLinks = jQuery('.blockInformations__action .dropdown-menu a.header-navigation-item');
             if ($optionsLinks.length <= 3) {
                 const react_id = jQuery('script[id^="/reactjs/"]').get(0).id.split('.')[1],
@@ -1078,7 +1096,7 @@ export class Show extends Media implements implShow, implAddNote {
                 // On supprime le btn ToSeeLater
                 self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
                 self.elt.find('.blockInformations__title .fa-clock-o').remove();
-                const toSee = Base.gm_funcs.getValue('toSee', {});
+                const toSee = await Base.gm_funcs.getValue('toSee', {});
                 if (toSee[self.id] !== undefined) {
                     delete toSee[self.id];
                     Base.gm_funcs.setValue('toSee', toSee);
@@ -1201,7 +1219,7 @@ export class Show extends Media implements implShow, implAddNote {
     /**
      * Ajoute le bouton toSee dans les actions de la série
      */
-    addBtnToSee(): void {
+    async addBtnToSee(): Promise<void> {
         if (this.elt.find('.btnMarkToSee').length > 0) return;
         const self = this;
         const btnHTML = `
@@ -1211,8 +1229,8 @@ export class Show extends Media implements implShow, implAddNote {
                 </button>
                 <div class="label">A voir</div>
             </div>`;
-        const toggleToSeeShow = (showId: number): boolean => {
-            const storeToSee = Base.gm_funcs.getValue('toSee', {});
+        const toggleToSeeShow = async (showId: number): Promise<boolean> => {
+            const storeToSee = await Base.gm_funcs.getValue('toSee', {});
             let toSee: boolean;
             if (storeToSee[showId] === undefined) {
                 storeToSee[showId] = true;
@@ -1242,7 +1260,7 @@ export class Show extends Media implements implShow, implAddNote {
             }
             $btn.blur();
         });
-        const toSee: Obj = Base.gm_funcs.getValue('toSee', {});
+        const toSee: Obj = await Base.gm_funcs.getValue('toSee', {});
         if (toSee[this.id] !== undefined) {
             $btn.find('i.fa').css('color', 'var(--body_background)');
             $btn.attr('title', 'Retirer la série des séries à voir');

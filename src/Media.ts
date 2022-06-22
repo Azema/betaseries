@@ -182,12 +182,12 @@ export abstract class Media extends Base {
      * @param   {string} prop - Nom de la propriété à modifier
      * @param   {string} value - Nouvelle valeur de la propriété
      * @param   {object} [params] - Optional: paramètres à fournir pour modifier le path de la propriété
-     * @returns {boolean}
+     * @returns {Promise<boolean>}
      */
-    override(prop: string, value: string, params?: object): boolean {
+    async override(prop: string, value: string, params?: object): Promise<boolean> {
         const type = (this.constructor as typeof Media);
         if (type.propsAllowedOverride[prop]) {
-            const override = Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
+            const override = await Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
             if (override[type.overrideType][this.id] === undefined) override[type.overrideType][this.id] = {};
             override[type.overrideType][this.id][prop] = value;
             let path = type.propsAllowedOverride[prop].path;
@@ -197,7 +197,7 @@ export abstract class Media extends Base {
                 console.log('override', {prop, value, params, path});
             }
             Base.setPropValue(this, path, value);
-            Base.gm_funcs.setValue('override', override);
+            await Base.gm_funcs.setValue('override', override);
             return true;
         }
         return false;
@@ -206,12 +206,13 @@ export abstract class Media extends Base {
      * _overrideProps - Permet de restaurer les valeurs personalisées dans l'objet
      * @see Show.propsAllowedOverride
      * @private
-     * @returns {Media}
+     * @returns {Promise<Media>}
      */
-    _overrideProps(): Media {
+    async _overrideProps(): Promise<Media> {
         const type = (this.constructor as typeof Media);
         const overrideType = type.overrideType;
-        const override = Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
+        const override = await Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
+        console.log('_overrideProps override', override);
         if (override[overrideType][this.id]) {
             console.log('_overrideProps override found', override[overrideType][this.id]);
             for (const prop in override[overrideType][this.id]) {
