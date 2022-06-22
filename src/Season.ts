@@ -42,6 +42,7 @@ export class Season {
      * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
      */
     private _elt: JQuery<HTMLElement>;
+    private _fetches: Record<string, Promise<Season>>;
 
     /**
      * Constructeur de la classe Season
@@ -50,6 +51,7 @@ export class Season {
      * @returns {Season}
      */
     constructor(data: Obj, show: Show) {
+        this._fetches = {};
         this.number = parseInt(data.number, 10);
         this._show = show;
         this.episodes = [];
@@ -98,19 +100,22 @@ export class Season {
         if (!this.number || this.number <= 0) {
             throw new Error('season number incorrect');
         }
+        if (this._fetches.episodes) return this._fetches.episodes;
         const self = this;
-        return new Promise((resolve, reject) => {
+        this._fetches.episodes = new Promise((resolve, reject) => {
             Base.callApi('GET', 'shows', 'episodes', {id: self._show.id, season: self.number}, true)
             .then(data => {
                 self.episodes = [];
                 for (let e = 0; e < data.episodes.length; e++) {
                     self.episodes.push(new Episode(data.episodes[e], self));
                 }
+                delete self._fetches.episodes;
                 resolve(self);
             }, err => {
                 reject(err);
             });
         });
+        return this._fetches.episodes;
     }
 
     watched(): Promise<Season> {
@@ -262,6 +267,11 @@ export class Season {
                         .addClass('slide--notSeen')
                         .removeClass('slide--seen');
                 }
+            }
+            // On scroll jusqu'au premier épisode non vu
+            const $epNotSeen = jQuery('#episodes .slide_flex.slide--notSeen');
+            if ($epNotSeen.length > 0) {
+                jQuery('#episodes .slides_flex').get(0).scrollLeft = $epNotSeen.get(0).offsetLeft - 69;
             }
         }
 
