@@ -673,6 +673,7 @@ declare module 'Show' {
 	     */
 	    thetvdb_id: number;
 	    _posters: object;
+	    private _fetches;
 	    /***************************************************/
 	    /***************************************************/
 	    /**
@@ -756,7 +757,7 @@ declare module 'Show' {
 	     * isMarkToSee - Indique si la série se trouve dans les séries à voir
 	     * @returns {boolean}
 	     */
-	    isMarkedToSee(): boolean;
+	    isMarkedToSee(): Promise<boolean>;
 	    /**
 	     * addToAccount - Ajout la série sur le compte du membre connecté
 	     * @return {Promise<Show>} Promise of show
@@ -827,7 +828,7 @@ declare module 'Show' {
 	    /**
 	     * Ajoute le bouton toSee dans les actions de la série
 	     */
-	    addBtnToSee(): void;
+	    addBtnToSee(): Promise<void>;
 	    /**
 	     * Ajoute un eventHandler sur les boutons Archiver et Favoris
 	     * @returns {void}
@@ -911,6 +912,7 @@ declare module 'Season' {
 	     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
 	     */
 	    private _elt;
+	    private _fetches;
 	    /**
 	     * Constructeur de la classe Season
 	     * @param   {Obj}   data    Les données provenant de l'API
@@ -1359,16 +1361,16 @@ declare module 'Media' {
 	     * @param   {string} prop - Nom de la propriété à modifier
 	     * @param   {string} value - Nouvelle valeur de la propriété
 	     * @param   {object} [params] - Optional: paramètres à fournir pour modifier le path de la propriété
-	     * @returns {boolean}
+	     * @returns {Promise<boolean>}
 	     */
-	    override(prop: string, value: string, params?: object): boolean;
+	    override(prop: string, value: string, params?: object): Promise<boolean>;
 	    /**
 	     * _overrideProps - Permet de restaurer les valeurs personalisées dans l'objet
 	     * @see Show.propsAllowedOverride
 	     * @private
-	     * @returns {Media}
+	     * @returns {Promise<Media>}
 	     */
-	    _overrideProps(): Media;
+	    _overrideProps(): Promise<Media>;
 	    /**
 	     * Retourne l'URL de la page de la série à partir de son identifiant tvdb
 	     * @param   {number} tvdb_id - Identifiant TheTvDB
@@ -2022,6 +2024,17 @@ declare module 'Base' {
 	    [key: string]: any;
 	};
 	export type Callback = () => void;
+	export type QueueItem = {
+	    promise: Promise<Obj>;
+	    cancel: Callback;
+	};
+	export type Queue = {
+	    [key: string]: QueueItem;
+	};
+	export enum NetworkState {
+	    OFFLINE = "offline",
+	    ONLINE = "online"
+	}
 	export abstract class Base implements implAddNote {
 	    /**
 	     * Flag de debug pour le dev
@@ -2110,6 +2123,9 @@ declare module 'Base' {
 	        getValue: (key: string, defaultValue: Obj | Array<Obj> | Array<string> | Array<number>) => any;
 	        setValue: (key: string, val: Obj | Array<Obj> | Array<string> | Array<number>) => void;
 	    };
+	    static networkState: NetworkState;
+	    static networkQueue: Queue;
+	    static changeNetworkState(state: NetworkState): void;
 	    /**
 	     * Types d'évenements gérés par cette classe
 	     * @type {Array}
@@ -2621,13 +2637,14 @@ declare module 'UpdateAuto' {
 	     * @returns {UpdateAuto} L'instance de mise à jour
 	     */
 	    private constructor();
+	    private _init;
 	    /**
 	     * Retourne l'instance de l'objet de mise à jour auto des épisodes
 	     * @static
 	     * @param   {Show} s - L'objet de la série
 	     * @returns {UpdateAuto}
 	     */
-	    static getInstance(s: Show): UpdateAuto;
+	    static getInstance(s: Show): Promise<UpdateAuto>;
 	    /**
 	     * _save - Sauvegarde les options de la tâche d'update
 	     * auto dans l'espace de stockage de Tampermonkey
@@ -2635,7 +2652,7 @@ declare module 'UpdateAuto' {
 	     * @private
 	     * @return {UpdateAuto} L'instance unique UpdateAuto
 	     */
-	    _save(): this;
+	    _save(): Promise<this>;
 	    /**
 	     * Retourne l'objet Show associé
 	     * @returns {Show}
@@ -2709,7 +2726,7 @@ declare module 'UpdateAuto' {
 	     *
 	     * @return {UpdateAuto} L'instance unique UpdateAuto
 	     */
-	    delete(): UpdateAuto;
+	    delete(): Promise<UpdateAuto>;
 	    /**
 	     * launch - Permet de lancer la tâche d'update auto
 	     * des épisodes
