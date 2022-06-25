@@ -1167,7 +1167,7 @@ export class CommentsBS implements implRepliesComment {
              */
             let template = `
                 <div class="evaluations">
-                    <div class="size-base">${nbEvaluations} évaluation${nbEvaluations > 1 ? 's': ''} parmis les commentaires et ${this.media.objNote.total} au total</div>
+                    <div class="size-base">${this.media.objNote.total} évaluation${this.media.objNote.total > 1 ? 's': ''} dont ${nbEvaluations} parmis les commentaires</div>
                     <div class="size-base average">Note globale: <strong>${self._parent.objNote.mean.toFixed(2)}</strong></div>
                     <div><table><tbody>`;
             for (let i = 5; i > 0; i--) {
