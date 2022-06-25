@@ -315,13 +315,14 @@ export abstract class Base implements implAddNote {
             // Identification required
             throw new ExceptionIdentification("Identification required");
         }
-        Base.showLoader();
         let check = false;
         let display = true;
 
         // On vérifie si on doit afficher les infos de requêtes dans la console
         if (Base.api.notDisplay.indexOf(resource + action) >= 0) {
             display = false;
+        } else {
+            Base.showLoader();
         }
 
         // Les en-têtes pour l'API
