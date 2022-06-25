@@ -762,6 +762,8 @@ export class Show extends Media implements implShow, implAddNote {
         const self = this;
         this.updateProgressBar();
         this.updateNextEpisode();
+        this.updateArchived();
+        this.updateNote();
         const note = this.objNote;
         if (Base.debug) {
             console.log('Next ID et status', {
@@ -835,6 +837,19 @@ export class Show extends Media implements implShow, implAddNote {
         if (Base.debug) console.log('updateProgressBar');
         // On met à jour la barre de progression
         jQuery('.progressBarShow').css('width', this.user.status.toFixed(1) + '%');
+    }
+    updateArchived(): void {
+        if (Base.debug) console.log('Show updateArchived');
+        const $btnArchive = jQuery('#reactjs-show-actions button.btn-archive');
+        if (this.isArchived() && $btnArchive.length > 0) {
+            $btnArchive.trigger('click');
+        }
+    }
+    updateNote(): void {
+        if (Base.debug) console.log('Show updateNote');
+        if (this.objNote.user) {
+            this._callListeners(EventTypes.NOTE);
+        }
     }
     /**
      * Met à jour le bloc du prochain épisode à voir
