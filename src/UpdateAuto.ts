@@ -172,7 +172,6 @@ export class UpdateAuto {
      */
     set auto(auto: boolean) {
         this._auto = auto;
-        this._save();
     }
 
     /**
@@ -193,7 +192,6 @@ export class UpdateAuto {
      */
     set interval(val: number) {
         this._interval = val;
-        this._save();
     }
 
     /**
