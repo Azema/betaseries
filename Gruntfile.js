@@ -57,6 +57,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/tsc/UpdateAuto.js',
                 '<%= distdir %>/tsc/Member.js',
                 '<%= distdir %>/tsc/Notification.js',
+                '<%= distdir %>/tsc/Search.js',
                 '<%= distdir %>/tsc/index.js'
             ],
             js: [
@@ -77,6 +78,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/js/UpdateAuto.js',
                 '<%= distdir %>/js/Member.js',
                 '<%= distdir %>/js/Notification.js',
+                '<%= distdir %>/js/Search.js',
                 '<%= distdir %>/js/index.js'
             ]
         },
@@ -268,6 +270,29 @@ module.exports = function(grunt) {
                             const apiProxy = createProxyMiddleware('/posters', options);
                             apiProxy(req, res, next);
                         });
+                        // Middleware CORS
+                        middlewares.unshift(function(req, res, next) {
+                            // console.log('allowingCrossDomain');
+                            res.setHeader('Access-Control-Allow-Origin', '*');
+                            res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+                            // res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, Authorization, X-Mindflash-SessionID');
+                            res.setHeader('Access-Control-Allow-Private-Network', 'true');
+                            // res.setHeader('Access-Control-Allow-Credentials', 'true');
+                            // res.setHeader('pragma', 'public');
+                            res.setHeader('vary', 'Accept-Encoding');
+                            if (/(.js|.css)$/.test(req.url)) {
+                                res.setHeader('Expires', new Date(Date.now() + 604800000).toUTCString());
+                            } else if (/.json$/.test(req.url)) {
+                                res.setHeader('Cache-Control', 'no-cache, private');
+                            }
+
+                            // intercept OPTIONS method
+                            if ('OPTIONS' == req.method.toUpperCase()) {
+                                res.statusCode = 204;
+                                return res.end();
+                            }
+                            next();
+                        });
                         /**
                          * Middleware pour le stockage des données partagées
                          */
@@ -282,12 +307,14 @@ module.exports = function(grunt) {
                                     return next();
                                 }
                                 res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type');
+                                res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
                                 res.setHeader('Access-Control-Allow-Origin', 'https://www.betaseries.com');
                                 res.setHeader('Access-Control-Max-Age', 0);
                                 res.setHeader('Cache-Control', 'no-cache, private');
-                                /*if (req.method.toUpperCase() === 'OPTIONS') {
+                                if (req.method.toUpperCase() === 'OPTIONS') {
+                                    res.statusCode = 204;
                                     return res.end();
-                                }*/
+                                }
                                 if (connect.storageFile) {
                                     return setTimeout(() => {this(req, res, next)}, 50);
                                 }
@@ -325,13 +352,11 @@ module.exports = function(grunt) {
                                     const key = resultReq[2];
                                     if (method === 'GET') {
                                         releaseFile();
-                                        res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
                                         if (dataFile && dataFile[key]) {
                                             return res.end(JSON.stringify({error: null, data: dataFile[key]}));
                                         }
                                         return res.end(JSON.stringify({error: null, data: null}));
                                     } else if (method === 'SAVE' && req.method === 'POST') {
-                                        res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
                                         const buffers = [];
                                         for await (const chunk of req) {
                                             buffers.push(chunk);
@@ -361,29 +386,6 @@ module.exports = function(grunt) {
                                 }
                             }
                         );
-                        // Middleware CORS
-                        middlewares.unshift(function(req, res, next) {
-                            // console.log('allowingCrossDomain');
-                            res.setHeader('Access-Control-Allow-Origin', '*');
-                            // res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-                            // res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, Authorization, X-Mindflash-SessionID');
-                            // res.setHeader('Access-Control-Allow-Private-Network', 'true');
-                            // res.setHeader('Access-Control-Allow-Credentials', 'true');
-                            // res.setHeader('pragma', 'public');
-                            res.setHeader('vary', 'Accept-Encoding');
-                            if (/(.js|.css)$/.test(req.url)) {
-                                res.setHeader('Expires', new Date(Date.now() + 604800000).toUTCString());
-                            } else if (/.json$/.test(req.url)) {
-                                res.setHeader('Cache-Control', 'no-cache, private');
-                            }
-
-                            // intercept OPTIONS method
-                            if ('OPTIONS' == req.method.toUpperCase()) {
-                                res.statusCode = 200;
-                                return res.end();
-                            }
-                            next();
-                        });
                         return middlewares;
                     }
                 }
