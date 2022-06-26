@@ -19,6 +19,7 @@ export type Platform_link = {
      * @type {string} Le nom de la plateforme
      */
     platform: string;
+    color?: string;
 };
 export type ReleasesSvod = {
     displayOriginal: boolean;

@@ -1,9 +1,9 @@
-import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback} from "./Base";
-import { implAddNote } from "./Note";
+import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, MediaType} from "./Base";
+import { implAddNote, Note } from "./Note";
 import {Media} from "./Media";
 import {Season} from "./Season";
 import { Character, Person } from "./Character";
-import {Next} from "./User";
+import {Next, User} from "./User";
 
 declare const PopupAlert;
 
@@ -228,6 +228,70 @@ export class Show extends Media implements implShow, implAddNote {
         season: { path: 'seasons[#season#].image', params: {season: 'number'} }
     };
     static overrideType = 'shows';
+    static selectorsCSS = {
+        title: '.blockInformations h1.blockInformations__title',
+        description: '.blockInformations p.blockInformations__synopsis',
+        creation: '.blockInformations .blockInformations__metadatas time',
+        followers: '.blockInformations .blockInformations__metadatas span.u-colorWhiteOpacity05.textAlignCenter:nth-of-type(2)',
+        nbSeasons: '.blockInformations .blockInformations__metadatas span.u-colorWhiteOpacity05.textAlignCenter:nth-of-type(3)',
+        nbEpisodes: '.blockInformations .blockInformations__metadatas span.u-colorWhiteOpacity05.textAlignCenter:nth-of-type(4)',
+        country: '.blockInformations .blockInformations__details li:nth-child(#n#) a',
+        genres: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        duration: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        status: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        network: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        showrunner: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        rating: '#rating',
+        seasons: '#seasons',
+        episodes: '#episodes',
+        comments: '#comments',
+        characters: '#actors',
+        similars: '#similars'
+    };
+    static relatedProps = {
+        // data: Obj => object: Show
+        aliases: {key: "aliases", type: 'object'},
+        comments: {key: "nbComments", type: 'number'},
+        country: {key: "country", type: 'string'},
+        creation: {key: "creation", type: 'number'},
+        description: {key: "description", type: 'string'},
+        episodes: {key: "nbEpisodes", type: 'number'},
+        followers: {key: "followers", type: 'number'},
+        genres: {key: "genres", type: 'array', transform: objToArr},
+        id: {key: "id", type: 'number'},
+        images: {key: "images", type: Images},
+        imdb_id: {key: "imdb_id", type: 'string'},
+        in_account: {key: "in_account", type: 'boolean'},
+        language: {key: "language", type: 'string'},
+        length: {key: "duration", type: 'number'},
+        network: {key: "network", type: 'string'},
+        next_trailer: {key: "next_trailer", type: 'string'},
+        next_trailer_host: {key: "next_trailer_host", type: 'string'},
+        notes: {key: "objNote", type: Note},
+        original_title: {key: "original_title", type: 'string'},
+        platforms: {key: "platforms", type: Platforms},
+        rating: {key: "rating", type: 'string'},
+        resource_url: {key: "resource_url", type: 'string'},
+        seasons: {key: "nbSeasons", type: 'number'},
+        seasons_details: {key: "seasons", type: "array", transform: Show.seasonsDetailsToSeasons},
+        showrunner: {key: "showrunner", type: Showrunner},
+        similars: {key: "nbSimilars", type: 'number'},
+        slug: {key: 'slug', type: 'string'},
+        social_links: {key: "social_links", type: 'array'},
+        status: {key: "status", type: "string"},
+        thetvdb_id: {key: "thetvdb_id", type: 'number'},
+        themoviedb_id: {key: "tmdb_id", type: 'number'},
+        title: {key: "title", type: 'string'},
+        user: {key: "user", type: User}
+    };
+
+    static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season> {
+        const seasons = [];
+        for (let s = 0; s < data.length; s++) {
+            seasons.push(new Season(data[s], obj));
+        }
+        return seasons;
+    }
 
     /**
      * Méthode static servant à récupérer une série sur l'API BS
@@ -348,6 +412,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @type {number} Nombre total d'épisodes dans la série
      */
     nbEpisodes: number;
+    nbSeasons: number;
     /**
      * @type {string} Chaîne TV ayant produit la série
      */
@@ -412,23 +477,127 @@ export class Show extends Media implements implShow, implAddNote {
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data, element);
         this._fetches = {};
-        return this.fill(data);
+        this.persons = [];
+        this.seasons = [];
+        this.mediaType = {singular: MediaType.show, plural: 'shows', className: Show};
+        return this.fill(data)._initRender();
+    }
+    _initRender(): this {
+        if (!this.elt) {
+            return;
+        }
+        super._initRender();
+        // title
+        const $title = jQuery(Show.selectorsCSS.title);
+        if ($title.length > 0) {
+            const title = $title.text();
+            $title.empty().append(`<span class="title">${title}</span>`);
+            Show.selectorsCSS.title += ' span.title';
+        }
+        const $details = jQuery('.blockInformations__details li', this.elt);
+        for (let d = 0, _len = $details.length; d < _len; d++) {
+            const $li = jQuery($details.get(d));
+            if ($li.get(0).classList.length <= 0) {
+                const title = $li.find('strong').text().trim().toLowerCase();
+                switch (title) {
+                    case 'pays':
+                        Show.selectorsCSS.country = Show.selectorsCSS.country.replace('#n#', (d+1).toString());
+                        break;
+                    case 'genres':
+                        Media.selectorsCSS.genres = Media.selectorsCSS.genres.replace('#n#', (d+1).toString());
+                        Show.selectorsCSS.genres = Show.selectorsCSS.genres.replace('#n#', (d+1).toString());
+                        break;
+                    case 'durée d’un épisode': {
+                        Show.selectorsCSS.duration = Show.selectorsCSS.duration.replace('#n#', (d+1).toString());
+                        const $span = jQuery(Show.selectorsCSS.duration);
+                        const value = $span.text().trim();
+                        const minutes = value.substring(0, value.indexOf(' '));
+                        const text = value.substring(value.indexOf(' '));
+                        $span.empty().append(`<span class="time">${minutes}</span>${text}`);
+                        Show.selectorsCSS.duration += ' span.time';
+                        Media.selectorsCSS.duration = Show.selectorsCSS.duration;
+                        break;
+                    }
+                    case 'statut':
+                        Show.selectorsCSS.status = Show.selectorsCSS.status.replace('#n#', (d+1).toString());
+                        break;
+                    case 'chaîne':
+                        Show.selectorsCSS.network = Show.selectorsCSS.network.replace('#n#', (d+1).toString());
+                        break;
+                    case 'showrunner':
+                        Show.selectorsCSS.showrunner = Show.selectorsCSS.showrunner.replace('#n#', (d+1).toString());
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        return this;
+    }
+    updatePropRenderFollowers(): void {
+        const $followers = jQuery(Show.selectorsCSS.followers);
+        if ($followers.length > 0) {
+            let text = `${this.followers.toString()} membre${this.followers > 1 ? 's' : ''}`;
+            $followers.attr('title', text);
+            if (this.followers >= 1000) {
+                const thousand = Math.round(this.followers / 1000);
+                text = `${thousand.toString()}K membres`;
+            }
+            $followers.text(text);
+        }
+        delete this.__changes.followers;
+    }
+    updatePropRenderNbSeasons(): void {
+        const $seasons = jQuery(Show.selectorsCSS.nbSeasons);
+        if ($seasons.length > 0) {
+            $seasons.text(`${this.nbSeasons.toString()} saison${this.nbSeasons > 1 ? 's' : ''}`);
+        }
+        delete this.__changes.nbSeasons;
+    }
+    updatePropRenderNbEpisodes(): void {
+        const $episodes = jQuery(Show.selectorsCSS.nbEpisodes);
+        if ($episodes.length > 0) {
+            $episodes.text(`${this.nbEpisodes.toString()} épisode${this.nbEpisodes > 1 ? 's' : ''}`);
+        }
+        delete this.__changes.nbEpisodes;
+    }
+    updatePropRenderStatus(): void {
+        const $status = jQuery(Show.selectorsCSS.status);
+        if ($status.length > 0) {
+            let text = 'Terminée';
+            if (this.status.toLowerCase() === 'continuing') {
+                text = 'En cours';
+            }
+            $status.text(text);
+        }
+        delete this.__changes.status;
+    }
+    updatePropRenderDuration(): void {
+        const $duration = jQuery(Show.selectorsCSS.duration);
+        if ($duration.length > 0) {
+            $duration.text(this.duration.toString());
+        }
     }
     /**
      * Initialise l'objet lors de sa construction et après son remplissage
      * @returns {Promise<Show>}
      */
     public init(): Promise<this> {
-        return this.fetchSeasons().then(() => {
-            // On gère l'ajout et la suppression de la série dans le compte utilisateur
-            if (this.in_account) {
-                this.deleteShowClick();
-            } else {
-                this.addShowClick();
-            }
-            this._overrideProps();
-            return this;
-        });
+        if (this.elt) {
+            const promises = [];
+            promises.push(this.fetchSeasons().then(() => {
+                // On gère l'ajout et la suppression de la série dans le compte utilisateur
+                if (this.in_account) {
+                    this.deleteShowClick();
+                } else {
+                    this.addShowClick();
+                }
+                return this;
+            }));
+            promises.push(super.init());
+            return Promise.all(promises).then(() => this);
+        }
+        return super.init();
     }
     /**
      * Récupère les données de la série sur l'API
@@ -557,9 +726,9 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {Person | null}
      */
     getPersonByName(name: string): Person | null {
-        const comp = name.toLocaleLowerCase();
+        const comp = name.toLowerCase();
         for (const actor of this.persons) {
-            if (actor.name.toLocaleLowerCase() === comp) return actor;
+            if (actor.name.toLowerCase() === comp) return actor;
         }
         return null;
     }

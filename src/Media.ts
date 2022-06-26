@@ -9,6 +9,10 @@ export abstract class Media extends Base {
 
     static propsAllowedOverride: object = {};
     static overrideType: string;
+    static selectorsCSS = {
+        genres: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        duration: '.blockInformations .blockInformations__details li:nth-child(#n#) span'
+    };
 
     /**
      * Méthode static servant à récupérer un média sur l'API BS
@@ -56,7 +60,7 @@ export abstract class Media extends Base {
     /**
      * @type {number} Durée du média en minutes
      */
-    length: number;
+    duration: number;
     /**
      * @type {string} Titre original du média
      */
@@ -88,6 +92,8 @@ export abstract class Media extends Base {
         super(data);
         if (element)
             this.elt = element;
+        this.similars = [];
+        this.genres = [];
         return this;
     }
     /**
@@ -95,10 +101,13 @@ export abstract class Media extends Base {
      * @returns {Promise<Media>}
      */
     public init(): Promise<this> {
-        return new Promise(resolve => {
-            this._overrideProps();
-            resolve(this)
-        });
+        if (this.elt) {
+            return super.init().then(() => {
+                this._overrideProps();
+                return this;
+            });
+        }
+        return super.init();
     }
 
     /**
@@ -108,33 +117,14 @@ export abstract class Media extends Base {
      * @override
      */
     fill(data: Obj): this {
-        this.followers = parseInt(data.followers, 10);
-        this.imdb_id = data.imdb_id;
-        this.language = data.language;
-        this.length = parseInt(data.length, 10);
-        this.original_title = data.original_title;
-        if (!this.similars || this.similars.length <= 0) {
-            this.similars = [];
+        return super.fill(data);
+    }
+    updatePropRenderGenres(): void {
+        const $genres = jQuery(Media.selectorsCSS.genres);
+        if ($genres.length > 0) {
+            $genres.text(this.genres.join(', '));
         }
-        this.nbSimilars = 0;
-        if (data.similars && data.similars instanceof Array) {
-            this.similars = data.similars;
-            this.nbSimilars = this.similars.length;
-        } else if (data.similars) {
-            this.nbSimilars = parseInt(data.similars);
-        }
-        this.genres = [];
-        if (data.genres && data.genres instanceof Array) {
-            this.genres = data.genres;
-        } else if (data.genres instanceof Object) {
-            for (const g in data.genres) {
-                this.genres.push(data.genres[g]);
-            }
-        }
-        this.in_account = !!data.in_account;
-        this.slug = data.slug;
-        super.fill(data);
-        return this;
+        delete this.__changes.genres;
     }
     /**
      * Indique si le média est enregistré sur le compte du membre

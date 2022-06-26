@@ -75,7 +75,9 @@ declare module 'Cache' {
 }
 declare module 'Note' {
 	/// <reference types="jquery" />
-	import { Base, Obj, Callback } from 'Base';
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
+	import { Base, Obj, Callback, Changes } from 'Base';
 	export interface implAddNote {
 	    addVote(note: number): Promise<boolean>;
 	}
@@ -100,7 +102,12 @@ declare module 'Note' {
 	     * @type {Base}
 	     */
 	    _parent: Base;
-	    constructor(data: Obj, parent: Base);
+	    private __initial;
+	    protected __changes: Record<string, Changes>;
+	    constructor(data: Obj, parent?: Base);
+	    fill(data: Obj): Note;
+	    get parent(): Base;
+	    set parent(parent: Base);
 	    /**
 	     * Retourne la note moyenne sous forme de pourcentage
 	     * @returns {number} La note sous forme de pourcentage
@@ -219,6 +226,8 @@ declare module 'Subtitle' {
 }
 declare module 'Episode' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Base, Obj, HTTP_VERBS } from 'Base';
 	import { implAddNote } from 'Note';
 	import { Season } from 'Season';
@@ -236,6 +245,7 @@ declare module 'Episode' {
 	     * @type {string} Le nom de la plateforme
 	     */
 	    platform: string;
+	    color?: string;
 	};
 	export type ReleasesSvod = {
 	    displayOriginal: boolean;
@@ -439,16 +449,20 @@ declare module 'User' {
 	    tags: string;
 	    twitter: boolean;
 	    constructor(data: Obj);
+	    compare(data: Obj): boolean;
 	}
 
 }
 declare module 'Show' {
 	/// <reference types="jquery" />
-	import { Obj, EventTypes, Callback } from 'Base';
-	import { implAddNote } from 'Note';
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
+	import { Obj, EventTypes, Callback, objToArr } from 'Base';
+	import { implAddNote, Note } from 'Note';
 	import { Media } from 'Media';
 	import { Season } from 'Season';
 	import { Character, Person } from 'Character';
+	import { User } from 'User';
 	export class Images {
 	    static formats: {
 	        poster: string;
@@ -553,6 +567,163 @@ declare module 'Show' {
 	    static EventTypes: Array<EventTypes>;
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
+	    static selectorsCSS: {
+	        title: string;
+	        description: string;
+	        creation: string;
+	        followers: string;
+	        nbSeasons: string;
+	        nbEpisodes: string;
+	        country: string;
+	        genres: string;
+	        duration: string;
+	        status: string;
+	        network: string;
+	        showrunner: string;
+	        rating: string;
+	        seasons: string;
+	        episodes: string;
+	        comments: string;
+	        characters: string;
+	        similars: string;
+	    };
+	    static relatedProps: {
+	        aliases: {
+	            key: string;
+	            type: string;
+	        };
+	        comments: {
+	            key: string;
+	            type: string;
+	        };
+	        country: {
+	            key: string;
+	            type: string;
+	        };
+	        creation: {
+	            key: string;
+	            type: string;
+	        };
+	        description: {
+	            key: string;
+	            type: string;
+	        };
+	        episodes: {
+	            key: string;
+	            type: string;
+	        };
+	        followers: {
+	            key: string;
+	            type: string;
+	        };
+	        genres: {
+	            key: string;
+	            type: string;
+	            transform: typeof objToArr;
+	        };
+	        id: {
+	            key: string;
+	            type: string;
+	        };
+	        images: {
+	            key: string;
+	            type: typeof Images;
+	        };
+	        imdb_id: {
+	            key: string;
+	            type: string;
+	        };
+	        in_account: {
+	            key: string;
+	            type: string;
+	        };
+	        language: {
+	            key: string;
+	            type: string;
+	        };
+	        length: {
+	            key: string;
+	            type: string;
+	        };
+	        network: {
+	            key: string;
+	            type: string;
+	        };
+	        next_trailer: {
+	            key: string;
+	            type: string;
+	        };
+	        next_trailer_host: {
+	            key: string;
+	            type: string;
+	        };
+	        notes: {
+	            key: string;
+	            type: typeof Note;
+	        };
+	        original_title: {
+	            key: string;
+	            type: string;
+	        };
+	        platforms: {
+	            key: string;
+	            type: typeof Platforms;
+	        };
+	        rating: {
+	            key: string;
+	            type: string;
+	        };
+	        resource_url: {
+	            key: string;
+	            type: string;
+	        };
+	        seasons: {
+	            key: string;
+	            type: string;
+	        };
+	        seasons_details: {
+	            key: string;
+	            type: string;
+	            transform: typeof Show.seasonsDetailsToSeasons;
+	        };
+	        showrunner: {
+	            key: string;
+	            type: typeof Showrunner;
+	        };
+	        similars: {
+	            key: string;
+	            type: string;
+	        };
+	        slug: {
+	            key: string;
+	            type: string;
+	        };
+	        social_links: {
+	            key: string;
+	            type: string;
+	        };
+	        status: {
+	            key: string;
+	            type: string;
+	        };
+	        thetvdb_id: {
+	            key: string;
+	            type: string;
+	        };
+	        themoviedb_id: {
+	            key: string;
+	            type: string;
+	        };
+	        title: {
+	            key: string;
+	            type: string;
+	        };
+	        user: {
+	            key: string;
+	            type: typeof User;
+	        };
+	    };
+	    static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season>;
 	    /**
 	     * Méthode static servant à récupérer une série sur l'API BS
 	     * @param  {Obj} params - Critères de recherche de la série
@@ -624,6 +795,7 @@ declare module 'Show' {
 	     * @type {number} Nombre total d'épisodes dans la série
 	     */
 	    nbEpisodes: number;
+	    nbSeasons: number;
 	    /**
 	     * @type {string} Chaîne TV ayant produit la série
 	     */
@@ -683,6 +855,12 @@ declare module 'Show' {
 	     * @returns {Media}
 	     */
 	    constructor(data: Obj, element?: JQuery<HTMLElement>);
+	    _initRender(): this;
+	    updatePropRenderFollowers(): void;
+	    updatePropRenderNbSeasons(): void;
+	    updatePropRenderNbEpisodes(): void;
+	    updatePropRenderStatus(): void;
+	    updatePropRenderDuration(): void;
 	    /**
 	     * Initialise l'objet lors de sa construction et après son remplissage
 	     * @returns {Promise<Show>}
@@ -807,6 +985,8 @@ declare module 'Show' {
 	     * @return {void}
 	     */
 	    updateProgressBar(): void;
+	    updateArchived(): void;
+	    updateNote(): void;
 	    /**
 	     * Met à jour le bloc du prochain épisode à voir
 	     * @param   {Callback} [cb=noop] Fonction de callback
@@ -995,10 +1175,13 @@ declare module 'Season' {
 }
 declare module 'Movie' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Obj } from 'Base';
-	import { implAddNote } from 'Note';
+	import { implAddNote, Note } from 'Note';
 	import { Platform_link } from 'Episode';
 	import { Media } from 'Media';
+	import { User } from 'User';
 	export type OtherTitle = {
 	    language: string;
 	    title: string;
@@ -1028,6 +1211,136 @@ declare module 'Movie' {
 	    /***************************************************/
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
+	    static selectorsCSS: {
+	        title: string;
+	        description: string;
+	        tagline: string;
+	        release_date: string;
+	        followers: string;
+	        director: string;
+	        duration: string;
+	        genres: string;
+	        language: string;
+	        comments: string;
+	        characters: string;
+	        similars: string;
+	    };
+	    static relatedProps: {
+	        backdrop: {
+	            key: string;
+	            type: string;
+	        };
+	        comments: {
+	            key: string;
+	            type: string;
+	        };
+	        director: {
+	            key: string;
+	            type: string;
+	        };
+	        followers: {
+	            key: string;
+	            type: string;
+	        };
+	        genres: {
+	            key: string;
+	            type: string;
+	        };
+	        id: {
+	            key: string;
+	            type: string;
+	        };
+	        imdb_id: {
+	            key: string;
+	            type: string;
+	        };
+	        in_account: {
+	            key: string;
+	            type: string;
+	            transform: typeof Movie._getInAccount;
+	        };
+	        language: {
+	            key: string;
+	            type: string;
+	        };
+	        length: {
+	            key: string;
+	            type: string;
+	        };
+	        notes: {
+	            key: string;
+	            type: typeof Note;
+	        };
+	        original_release_date: {
+	            key: string;
+	            type: string;
+	        };
+	        original_title: {
+	            key: string;
+	            type: string;
+	        };
+	        other_title: {
+	            key: string;
+	            type: string;
+	        };
+	        platform_links: {
+	            key: string;
+	            type: string;
+	        };
+	        poster: {
+	            key: string;
+	            type: string;
+	        };
+	        production_year: {
+	            key: string;
+	            type: string;
+	        };
+	        release_date: {
+	            key: string;
+	            type: string;
+	        };
+	        resource_url: {
+	            key: string;
+	            type: string;
+	        };
+	        sale_date: {
+	            key: string;
+	            type: string;
+	        };
+	        similars: {
+	            key: string;
+	            type: string;
+	        };
+	        synopsis: {
+	            key: string;
+	            type: string;
+	        };
+	        tagline: {
+	            key: string;
+	            type: string;
+	        };
+	        title: {
+	            key: string;
+	            type: string;
+	        };
+	        tmdb_id: {
+	            key: string;
+	            type: string;
+	        };
+	        trailer: {
+	            key: string;
+	            type: string;
+	        };
+	        url: {
+	            key: string;
+	            type: string;
+	        };
+	        user: {
+	            key: string;
+	            type: typeof User;
+	        };
+	    };
+	    static _getInAccount(obj: Movie, data: Obj): boolean;
 	    /**
 	     * Méthode static servant à récupérer un film sur l'API BS
 	     * @param  {Obj} params - Critères de recherche du film
@@ -1080,13 +1393,10 @@ declare module 'Movie' {
 	     * @returns {Media}
 	     */
 	    constructor(data: Obj, element?: JQuery<HTMLElement>);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {any} data Les données provenant de l'API
-	     * @returns {Movie}
-	     * @override
-	     */
-	    fill(data: Obj): this;
+	    _initRender(): this;
+	    updatePropRenderFollowers(): void;
+	    updatePropRenderReleaseDate(): void;
+	    updatePropRenderDuration(): void;
 	    /**
 	     * Définit le film, sur le compte du membre connecté, comme "vu"
 	     * @returns {Promise<Movie>}
@@ -1140,6 +1450,7 @@ declare module 'Similar' {
 	    init: () => void;
 	}
 	export class Similar extends Media implements implShow, implMovie {
+	    static relatedProps: {};
 	    backdrop: string;
 	    director: string;
 	    original_release_date: Date;
@@ -1248,6 +1559,8 @@ declare module 'Similar' {
 }
 declare module 'Media' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Base, Obj } from 'Base';
 	import { Similar } from 'Similar';
 	export abstract class Media extends Base {
@@ -1255,6 +1568,10 @@ declare module 'Media' {
 	    /***************************************************/
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
+	    static selectorsCSS: {
+	        genres: string;
+	        duration: string;
+	    };
 	    /**
 	     * Méthode static servant à récupérer un média sur l'API BS
 	     * @param  {Obj} params - Critères de recherche du média
@@ -1292,7 +1609,7 @@ declare module 'Media' {
 	    /**
 	     * @type {number} Durée du média en minutes
 	     */
-	    length: number;
+	    duration: number;
 	    /**
 	     * @type {string} Titre original du média
 	     */
@@ -1332,6 +1649,7 @@ declare module 'Media' {
 	     * @override
 	     */
 	    fill(data: Obj): this;
+	    updatePropRenderGenres(): void;
 	    /**
 	     * Indique si le média est enregistré sur le compte du membre
 	     * @returns {boolean}
@@ -1481,6 +1799,8 @@ declare module 'Character' {
 }
 declare module 'Comment' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Obj, EventTypes, Callback } from 'Base';
 	import { CommentsBS, OrderComments } from 'Comments';
 	export interface implRepliesComment {
@@ -1733,6 +2053,8 @@ declare module 'Comment' {
 }
 declare module 'Comments' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Base, Obj, EventTypes, Callback } from 'Base';
 	import { CommentBS, implRepliesComment } from 'Comment';
 	export enum OrderComments {
@@ -1978,6 +2300,8 @@ declare module 'Comments' {
 }
 declare module 'Base' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { CacheUS } from 'Cache';
 	import { Character } from 'Character';
 	import { CommentsBS } from 'Comments';
@@ -2024,17 +2348,11 @@ declare module 'Base' {
 	    [key: string]: any;
 	};
 	export type Callback = () => void;
-	export type QueueItem = {
-	    promise: Promise<Obj>;
-	    cancel: Callback;
+	export type Changes = {
+	    oldValue: any;
+	    newValue: any;
 	};
-	export type Queue = {
-	    [key: string]: QueueItem;
-	};
-	export enum NetworkState {
-	    OFFLINE = "offline",
-	    ONLINE = "online"
-	}
+	export function objToArr(obj: Base, data: Obj): any[];
 	export abstract class Base implements implAddNote {
 	    /**
 	     * Flag de debug pour le dev
@@ -2123,9 +2441,6 @@ declare module 'Base' {
 	        getValue: (key: string, defaultValue: Obj | Array<Obj> | Array<string> | Array<number>) => any;
 	        setValue: (key: string, val: Obj | Array<Obj> | Array<string> | Array<number>) => void;
 	    };
-	    static networkState: NetworkState;
-	    static networkQueue: Queue;
-	    static changeNetworkState(state: NetworkState): void;
 	    /**
 	     * Types d'évenements gérés par cette classe
 	     * @type {Array}
@@ -2167,19 +2482,29 @@ declare module 'Base' {
 	     * @returns {string}
 	     */
 	    static replaceParams(path: string, params: object, data: object): string;
+	    static relatedProps: {};
+	    static selectorsCSS: {};
 	    description: string;
-	    characters: Array<Character>;
-	    comments: CommentsBS;
 	    nbComments: number;
 	    id: number;
 	    objNote: Note;
 	    resource_url: string;
 	    title: string;
 	    user: User;
+	    characters: Array<Character>;
+	    comments: CommentsBS;
 	    mediaType: MediaTypes;
-	    private _elt;
-	    private _listeners;
+	    protected __initial: boolean;
+	    protected __changes: Record<string, Changes>;
+	    protected __props: Array<string>;
+	    private __elt;
+	    private __listeners;
 	    constructor(data: Obj);
+	    /**
+	     * Symbol.Iterator - Methode Iterator pour les boucles for..of
+	     * @returns {object}
+	     */
+	    [Symbol.iterator](): object;
 	    /**
 	     * Remplit l'objet avec les données fournit en paramètre
 	     * @param  {Obj} data - Les données provenant de l'API
@@ -2187,6 +2512,17 @@ declare module 'Base' {
 	     * @virtual
 	     */
 	    fill(data: Obj): this;
+	    _initRender(): void;
+	    /**
+	     * Met à jour le rendu HTML des propriétés de l'objet
+	     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
+	     * Méthode appelée automatiquement par le setter de la propriété
+	     * @see Show.selectorsCSS
+	     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+	     * @returns {void}
+	     */
+	    updatePropRender(propKey: string): void;
+	    updatePropRenderNote(): void;
 	    /**
 	     * Initialize le tableau des écouteurs d'évènements
 	     * @returns {Base}
@@ -2224,14 +2560,14 @@ declare module 'Base' {
 	    save(): this;
 	    /**
 	     * Retourne le DOMElement correspondant au média
-	     * @returns {JQuery} Le DOMElement jQuery
+	     * @returns {JQuery<HTMLElement>} Le DOMElement jQuery
 	     */
-	    get elt(): JQuery;
+	    get elt(): JQuery<HTMLElement>;
 	    /**
 	     * Définit le DOMElement de référence pour ce média
-	     * @param  {JQuery} elt - DOMElement auquel est rattaché le média
+	     * @param  {JQuery<HTMLElement>} elt - DOMElement auquel est rattaché le média
 	     */
-	    set elt(elt: JQuery);
+	    set elt(elt: JQuery<HTMLElement>);
 	    /**
 	     * Retourne le nombre d'acteurs référencés dans ce média
 	     * @returns {number}
@@ -2581,6 +2917,95 @@ declare module 'Member' {
 	    renderNotifications(): void;
 	}
 	export {};
+
+}
+declare module 'Search' {
+	export interface ShowSearch {
+	    id: number;
+	    following: number;
+	    release_date: Date;
+	    poster: string;
+	    svods: Array<Record<string, string | number>>;
+	    slug: string;
+	    title: string;
+	}
+	export interface MovieSearch {
+	    id: number;
+	    slug: string;
+	    release_date: Date;
+	    poster: string;
+	    svods: Array<Record<string, string | number>>;
+	    title: string;
+	}
+	export type ResultSearch = {
+	    shows?: Array<ShowSearch>;
+	    movies?: Array<MovieSearch>;
+	    total: number;
+	    locale: string;
+	    limit: number;
+	    page: number;
+	};
+	export abstract class ParamsSearchAbstract {
+	    static valuesAllowed: Record<string, Array<string>>;
+	    static valuesDefault: {
+	        limit: 20;
+	        offset: 0;
+	        tri: 'popularite';
+	    };
+	    static separator: string;
+	    text: string;
+	    _limit: number;
+	    _offset: number;
+	    genres: Array<string>;
+	    _diffusions: Array<string>;
+	    svods: Array<number>;
+	    _tri: string;
+	    _autres: string;
+	    _fields: Array<string>;
+	    constructor();
+	    get limit(): number;
+	    set limit(limit: number);
+	    get offset(): number;
+	    set offset(offset: number);
+	    get diffusions(): Array<string>;
+	    set diffusions(diff: Array<string>);
+	    get tri(): string;
+	    set tri(val: string);
+	    get fields(): Array<string>;
+	    set fields(values: Array<string>);
+	    get autres(): string;
+	    set autres(value: string);
+	    abstract toRequest(): Record<string, any>;
+	}
+	export class ParamsSearchShows extends ParamsSearchAbstract {
+	    static valuesAllowed: Record<string, Array<string>>;
+	    _duration: string;
+	    _creations: Array<number>;
+	    _pays: Array<string>;
+	    chaines: Array<string>;
+	    constructor();
+	    get duration(): string;
+	    set duration(val: string);
+	    get creations(): Array<number>;
+	    set creations(values: Array<number>);
+	    get pays(): Array<string>;
+	    set pays(values: Array<string>);
+	    toRequest(): Record<string, string | number>;
+	}
+	export class ParamsSearchMovies extends ParamsSearchAbstract {
+	    static valuesAllowed: Record<string, Array<string>>;
+	    _releases: Array<number>;
+	    casting: string;
+	    constructor();
+	    get releases(): Array<number>;
+	    set releases(values: Array<number>);
+	    toRequest(): Record<string, string | number>;
+	}
+	export class Search {
+	    static searchShows(params: ParamsSearchShows): Promise<ResultSearch>;
+	    static getShowIds(params: ParamsSearchShows): Promise<Array<number>>;
+	    static searchMovies(params: ParamsSearchMovies): Promise<ResultSearch>;
+	}
 
 }
 declare module 'UpdateAuto' {

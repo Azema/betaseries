@@ -9,7 +9,7 @@ export class Next {
     image: string;
 
     constructor(data: Obj) {
-        this.id = (data.id !== undefined) ? parseInt(data.id, 10) : NaN;
+        this.id = (data.id != undefined) ? parseInt(data.id, 10) : NaN;
         this.code = data.code;
         this.date = new Date(data.date) || null;
         this.title = data.title;
@@ -52,5 +52,14 @@ export class User {
         this.status = (data.status !== undefined) ? parseInt(data.status, 10) : 0;
         this.tags = data.tags || '';
         this.twitter = !!data.twitter || false;
+    }
+    compare(data: Obj): boolean {
+        const props = Object.getOwnPropertyNames(this);
+        for (const prop of props) {
+            if (typeof this[prop] !== 'object' && Object.hasOwn(data, prop) && this[prop] != data[prop]) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -1,0 +1,346 @@
+{
+    "Character": {
+        "actor": "Alka Matewa",
+        "person_id": 12345,
+        "picture": "https:\/\/pictures.betaseries.com\/persons\/t6uP9FhplUkd1D62VbxOR7Z9eWV.jpg",
+        "name": "",
+        "guest": false
+    },
+    "Comment": {
+        "id": "string",
+        "reference": "string",
+        "type": "string",
+        "ref_id": 0,
+        "user_id": 0,
+        "login": "string",
+        "avatar": "url",
+        "date": "1964-10-03", // datetime
+        "text": "string",
+        "inner_id": 0,
+        "in_reply_to": 0,
+        "user_note": 0
+    },
+    "Note": {
+        "total": 0,
+        "mean": 0,
+        "user": 0
+    },
+    "Subtitle": {
+        "id": 913282,
+        "language": "VF",
+        "source": "addic7ed",
+        "quality": 3,
+        "file": "Braqueurs - 01x01 - Episode 1.WEBRip.German.C.orig.Addic7ed.com.srt",
+        "url": "https:\/\/www.betaseries.com\/srt\/913282",
+        "date": "2021-09-24 23:46:03"
+    },
+    "User": {
+        "archived": false,
+        "downloaded": false,
+        "favorited": false,
+        "friends_want_to_watch": [],
+        "friends_watched": [],
+        "hidden": false,
+        "in_account": false,
+        "last": "S01E06",
+        "mail": false,
+        "next": {
+            "id": null,
+            "code": "S00E00",
+            "date": null,
+            "title": null,
+            "image": null
+        },
+        "profile": false,
+        "remaining": 0,
+        "seen": true,
+        "status": 100,
+        "tags": "",
+        "twitter": false,
+    },
+    "base": {
+        "characters": [
+            // @Character
+        ],
+        "comments": [
+            // @Comment
+        ],
+        "id": 2498351,
+        "nbCharacters": 1,
+        "nbComments": "1",
+        "objNote": "@Note",
+        "resource_url": "https:\/\/www.betaseries.com\/episode\/ganglands\/s01e01",
+        "title": "\u00c9pisode 1",
+        "user": {
+            // @user
+        },
+    },
+    "media": { // extends Base
+        "followers": 1868,
+        "imdb_id": "tt13278100",
+        "language": "en", // or Anglais
+        "length": 9240,
+        "nbSimilars": 0,
+        "notes": {"total": 0, "mean": 0, "user": 0},
+        "original_title": "Braqueurs : La s\u00e9rie",
+        "similars": [
+            // @similar
+        ]
+    },
+    "episode": { // extends Base
+        "code": "S01E01",
+        "comments": "1",
+        "characters": [ // @character
+            {
+                "actor": "Alka Matewa",
+                "person_id": 12345,
+                "picture": "https:\/\/pictures.betaseries.com\/persons\/t6uP9FhplUkd1D62VbxOR7Z9eWV.jpg",
+                "name": "",
+                "guest": false
+            }
+        ],
+        "date": "2021-09-24",
+        "description": "Sha\u00efnez et Liana, petites arnaqueuses, \u00e9veillent la furie d'un trafiquant de drogue bruxellois en d\u00e9valisant l'un de ses sbires. L'oncle de Sha\u00efnez vient \u00e0 la rescousse.",
+        "episode": 1,
+        "global": 1,
+        "note": {
+            "total": 62,
+            "mean": 4.20967999999999964444441502564586699008941650390625,
+            "user": 0,
+            "moyenne": null
+        },
+        "platform_links": [
+            {
+                "link": "https:\/\/www.betaseries.com\/link\/58785581",
+                "platform": "Netflix"
+            }
+        ],
+        "season": 1,
+        "seen_total": 1602,
+        "show": {
+            "id": 29763,
+            "thetvdb_id": 408071,
+            "title": "Braqueurs : La s\u00e9rie",
+            "in_account": true
+        },
+        "special": 0,
+        "subtitles": [
+            // @subtitle
+        ],
+        "thetvdb_id": 8597185,
+        "youtube_id": null,
+    },
+    "show": { // extends Media
+        "aliases": {
+            "57884": "O Rei Eterno",
+            "57251": "The King: Eternal Monarch",
+            "57222": "The King: Forever Sovereign",
+            "57223": "The King: Monarch of Eternity",
+            "57745": "\ub354 \ud0b9 : \uc601\uc6d0\uc758 \uad70\uc8fc",
+            "57221": "\ub354 \ud0b9: \uc601\uc6d0\uc758 \uad70\uc8fc"
+        },
+        "characters": "0",
+        "comments": "16",
+        "country": "Cor\u00e9e du Sud",
+        "creation": "2020",
+        "description": "L'histoire est celle d'un empereur cor\u00e9en Lee Gon qui tente de fermer les portes d'un monde parall\u00e8le ouvert par des d\u00e9mons qui ont \u00e9t\u00e9 d\u00e9cha\u00een\u00e9s par une divinit\u00e9 dans le monde humain, et d'un d\u00e9tective Jung Tae-eul qui tente de prot\u00e9ger le peuple et celui qu'il aime.",
+        "episodes": "16",
+        "followers": "4393",
+        "genres": {
+            "Fantasy": "Fantastique",
+            "Mystery": "Myst\u00e8re",
+            "Romance": "Romance",
+            "Science Fiction": "Science-fiction"
+        },
+        "id": 23959,
+        "images": {
+            "show": null,
+            "banner": "https:\/\/pictures.betaseries.com\/fonds\/banner\/23959_62175605.jpg",
+            "box": "https:\/\/pictures.betaseries.com\/fonds\/box\/23959_62175605.jpg",
+            "poster": "https:\/\/pictures.betaseries.com\/fonds\/poster\/b2dcfeb086769a6721315024cd16484e.jpg"
+        },
+        "imdb_id": "tt11228748",
+        "in_account": false,
+        "language": "en",
+        "length": "72", // en minutes
+        "network": "SBS (KR)",
+        "next_trailer": "x87a408",
+        "next_trailer_host": "dailymotion",
+        "notes": {
+            "total": 191,
+            "mean": 4.26180000000000003268496584496460855007171630859375,
+            "user": 0
+        },
+        "original_title": "The King: Eternal Monarch",
+        "platforms": {
+            "svods": [
+                {
+                    "id": 1,
+                    "name": "Netflix",
+                    "tag": null,
+                    "color": "#000000",
+                    "link_url": "https:\/\/www.betaseries.com\/link\/23959\/1\/fr",
+                    "available": {
+                        "last": 1
+                    },
+                    "logo": "https:\/\/pictures.betaseries.com\/platforms\/1.jpg"
+                }
+            ],
+            "svod": {
+                "id": 1,
+                "name": "Netflix",
+                "tag": null,
+                "color": "#000000",
+                "link_url": "https:\/\/www.betaseries.com\/link\/23959\/1\/fr",
+                "available": {
+                    "last": 1
+                },
+                "logo": "https:\/\/pictures.betaseries.com\/platforms\/1.jpg"
+            }
+        },
+        "rating": "",
+        "resource_url": "https:\/\/www.betaseries.com\/serie\/the-king-eternal-monarch",
+        "seasons": "1",
+        "seasons_details": [
+            {
+                "number": 1,
+                "episodes": 16
+            }
+        ],
+        "showrunner": {
+            "id": "63493",
+            "name": "Kim Eun-sook",
+            "picture": "https:\/\/pictures.betaseries.com\/persons\/8GTTodrfCfLkPLJolU4sZV9HDK7.jpg"
+        },
+        "similars": "0",
+        "slug": "the-king-eternal-monarch",
+        "social_links": [],
+        "status": "Ended",
+        "thetvdb_id": 377559,
+        "themoviedb_id": 93846,
+        "title": "The King: Eternal Monarch",
+        "user": {
+            "archived": false,
+            "favorited": false,
+            "remaining": 0,
+            "status": 0,
+            "last": "S00E00",
+            "tags": null,
+            "next": {
+                "id": null,
+                "code": "S00E00",
+                "date": null,
+                "title": null,
+                "image": null
+            },
+            "friends_watching": [
+                {
+                    "id": 1485822,
+                    "login": "Bananita",
+                    "note": null,
+                    "avatar": "\/data\/avatars\/79\/793dd095fe04af25d72569273476b4cc.jpg"
+                },
+                {
+                    "id": 325016,
+                    "login": "Mlovationer1",
+                    "note": null,
+                    "avatar": "\/data\/avatars\/d6\/d68a7294f0fb886eb82273573bd1162b.jpg"
+                }
+            ]
+        }
+    },
+    "movie": {
+        "backdrop": "https:\/\/pictures.betaseries.com\/films\/backdrops\/fr\/2392.jpg",
+        "characters": 24,
+        "comments": 1,
+        "director": "Grant Heslov",
+        "followers": 2268,
+        "genres": [
+            "Com\u00e9die",
+            "Guerre"
+        ],
+        "id": 2392,
+        "imdb_id": "tt1234548",
+        "language": "Anglais",
+        "length": 5400, // en secondes
+        "notes": {
+            "mean": 3.160000000000000142108547152020037174224853515625,
+            "total": 360,
+            "user": 0
+        },
+        "original_release_date": "2009-10-17",
+        "original_title": "The Men Who Stare at Goats",
+        "other_title": {
+            "language": "original",
+            "title": "The Men Who Stare at Goats"
+        },
+        "platform_links": [
+            {
+                "platform": "Bbox VOD",
+                "id": "12",
+                "color": "#3B8DD0",
+                "link": "https:\/\/www.betaseries.com\/link\/154795"
+            },
+            {
+                "platform": "Google Play Movies",
+                "id": "7",
+                "color": "#3B8DD0",
+                "link": "https:\/\/www.betaseries.com\/link\/154793"
+            },
+            {
+                "platform": "Microsoft Store",
+                "id": "10",
+                "color": "#3B8DD0",
+                "link": "https:\/\/www.betaseries.com\/link\/154788"
+            },
+            {
+                "platform": "Orange VOD",
+                "id": "16",
+                "color": "#3B8DD0",
+                "link": "https:\/\/www.betaseries.com\/link\/154787"
+            },
+            {
+                "platform": "Rakuten TV",
+                "id": "18",
+                "color": "#3B8DD0",
+                "link": "https:\/\/www.betaseries.com\/link\/154790"
+            },
+            {
+                "platform": "YouTube",
+                "id": "15",
+                "color": "#3B8DD0",
+                "link": "https:\/\/www.betaseries.com\/link\/154794"
+            }
+        ],
+        "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/2392.jpg",
+        "production_year": 2009,
+        "release_date": "2010-03-10",
+        "resource_url": "https:\/\/www.betaseries.com\/film\/2392-the-men-who-stare-at-goats",
+        "sale_date": "0000-00-00",
+        "similars": 0,
+        "synopsis": "Bob Wilton, un journaliste d\u00e9sesp\u00e9r\u00e9 fait l'heureuse rencontre de Lyn Cassady, un soldat aux pouvoirs paranormaux combattant le terrorisme. Ils se rendent ensemble en Irak ou ils rencontrent Bill Django, le fondateur de l'unit\u00e9, et Larry Hooper, soldat de l'unit\u00e9 qui dirige une prison.",
+        "tagline": "No goats. No glory.",
+        "title": "Les Ch\u00e8vres du Pentagone",
+        "tmdb_id": 10313,
+        "trailer": "wyNcf4tNLb4",
+        "url": "the-men-who-stare-at-goats",
+        "user": {
+            "in_account": false,
+            "status": -1,
+            "date": null,
+            "mail": false,
+            "twitter": false,
+            "profile": false,
+            "favorited": false,
+            "friends_watched": [
+                {
+                    "id": 180113,
+                    "login": "LOPO",
+                    "note": null,
+                    "avatar": "\/data\/avatars\/5f\/5f4d362216f30ffbc081aa9231aa4761.jpg"
+                }
+            ],
+            "friends_want_to_watch": []
+        }
+    }
+}
