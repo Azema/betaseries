@@ -9,7 +9,7 @@ export abstract class Media extends Base {
 
     static propsAllowedOverride: object = {};
     static overrideType: string;
-    static selectorsCSS = {
+    static selectorsCSS: Record<string, string> = {
         genres: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
         duration: '.blockInformations .blockInformations__details li:nth-child(#n#) span'
     };

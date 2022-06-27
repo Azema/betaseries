@@ -1,4 +1,4 @@
-import {Base, Obj, HTTP_VERBS, MediaType, EventTypes} from "./Base";
+import {Base, Obj, HTTP_VERBS, MediaType, EventTypes, RelatedProp} from "./Base";
 import { Character } from "./Character";
 import { implAddNote, Note } from "./Note";
 import { Season } from "./Season";
@@ -45,13 +45,14 @@ export type WatchedBy = {
 };
 
 export class Episode extends Base implements implAddNote {
-    static relatedProps = {
+    static selectorsCSS: Record<string, string> = {};
+    static relatedProps: Record<string, RelatedProp> = {
         // data: Obj => object: Show
         characters: {key: "characters", type: 'array', default: []},
         code: {key: "code", type: 'string', default: ''},
         comments: {key: "nbComments", type: 'number', default: 0},
         date: {key: "date", type: 'date', default: null},
-        description: {key: "description", type: 'string'}, default: '',
+        description: {key: "description", type: 'string', default: ''},
         episode: {key: "episode", type: 'number', default: 0},
         global: {key: "global", type: 'number', default: 0},
         id: {key: "id", type: 'number'},
@@ -318,8 +319,8 @@ export class Episode extends Base implements implAddNote {
                 args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
             }
 
-            Base.callApi(method, 'episodes', 'watched', args).then((data: Obj) =>
-            {
+            Base.callApi(method, 'episodes', 'watched', args)
+            .then((data: Obj) => {
                 if (Base.debug) console.log('updateStatus %s episodes/watched', method, data);
                 // Si un épisode est vu et que la série n'a pas été ajoutée
                 // au compte du membre connecté

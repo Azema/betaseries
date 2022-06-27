@@ -1,4 +1,4 @@
-import {Base, Obj, MediaType, HTTP_VERBS} from "./Base";
+import {Base, Obj, MediaType, HTTP_VERBS, RelatedProp} from "./Base";
 import { implAddNote, Note } from "./Note";
 import {Platform_link} from "./Episode";
 import {Media} from "./Media";
@@ -39,7 +39,7 @@ export class Movie extends Media implements implAddNote {
         poster: { path: 'poster' }
     };
     static overrideType = 'movies';
-    static selectorsCSS = {
+    static selectorsCSS: Record<string, string> = {
         title: '.blockInformations h1.blockInformations__title',
         description: '.blockInformations p.blockInformations__description',
         tagline: '.blockInformations p.blockInformations__tagline',
@@ -53,35 +53,35 @@ export class Movie extends Media implements implAddNote {
         characters: '#actors',
         similars: '#similars'*/
     };
-    static relatedProps = {
+    static relatedProps: Record<string, RelatedProp> = {
         // data: Obj => object: Show
-        backdrop: {key: "backdrop", type: 'string'},
-        comments: {key: "nbComments", type: 'number'},
-        director: {key: "director", type: 'string'},
-        followers: {key: "followers", type: 'number'},
-        genres: {key: "genres", type: 'array'},
+        backdrop: {key: "backdrop", type: 'string', default: ''},
+        comments: {key: "nbComments", type: 'number', default: 0},
+        director: {key: "director", type: 'string', default: ''},
+        followers: {key: "followers", type: 'number', default: 0},
+        genres: {key: "genres", type: 'array', default: []},
         id: {key: "id", type: 'number'},
-        imdb_id: {key: "imdb_id", type: 'string'},
-        in_account: {key: "in_account", type: 'boolean', transform: Movie._getInAccount},
-        language: {key: "language", type: 'string'},
-        length: {key: "duration", type: 'number'},
+        imdb_id: {key: "imdb_id", type: 'string', default: ''},
+        in_account: {key: "in_account", type: 'boolean', transform: Movie._getInAccount, default: false},
+        language: {key: "language", type: 'string', default: ''},
+        length: {key: "duration", type: 'number', default: 0},
         notes: {key: "objNote", type: Note},
         original_release_date: {key: "original_release_date", type: 'date'},
-        original_title: {key: "original_title", type: 'string'},
-        other_title: {key: "other_title", type: 'object'},
-        platform_links: {key: "platforms", type: 'array'},
-        poster: {key: "poster", type: 'string'},
-        production_year: {key: "production_year", type: 'number'},
+        original_title: {key: "original_title", type: 'string', default: ''},
+        other_title: {key: "other_title", type: 'object', default: {}},
+        platform_links: {key: "platforms", type: 'array', default: []},
+        poster: {key: "poster", type: 'string', default: ''},
+        production_year: {key: "production_year", type: 'number', default: 0},
         release_date: {key: "release_date", type: 'date'},
-        resource_url: {key: "resource_url", type: 'string'},
+        resource_url: {key: "resource_url", type: 'string', default: ''},
         sale_date: {key: "sale_date", type: 'date'},
-        similars: {key: "nbSimilars", type: 'number'},
-        synopsis: {key: "description", type: 'string'},
-        tagline: {key: "tagline", type: 'string'},
-        title: {key: "title", type: 'string'},
-        tmdb_id: {key: "tmdb_id", type: 'number'},
-        trailer: {key: "trailer", type: 'string'},
-        url: {key: 'slug', type: 'string'},
+        similars: {key: "nbSimilars", type: 'number', default: 0},
+        synopsis: {key: "description", type: 'string', default: ''},
+        tagline: {key: "tagline", type: 'string', default: ''},
+        title: {key: "title", type: 'string', default: ''},
+        tmdb_id: {key: "tmdb_id", type: 'number', default: 0},
+        trailer: {key: "trailer", type: 'string', default: ''},
+        url: {key: 'slug', type: 'string', default: ''},
         user: {key: "user", type: User}
     };
     static _getInAccount(obj: Movie, data: Obj): boolean {

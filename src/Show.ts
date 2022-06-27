@@ -1,4 +1,4 @@
-import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, MediaType} from "./Base";
+import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, MediaType, RelatedProp} from "./Base";
 import { implAddNote, Note } from "./Note";
 import {Media} from "./Media";
 import {Season} from "./Season";
@@ -228,7 +228,7 @@ export class Show extends Media implements implShow, implAddNote {
         season: { path: 'seasons[#season#].image', params: {season: 'number'} }
     };
     static overrideType = 'shows';
-    static selectorsCSS = {
+    static selectorsCSS: Record<string, string> = {
         title: '.blockInformations h1.blockInformations__title',
         description: '.blockInformations p.blockInformations__synopsis',
         creation: '.blockInformations .blockInformations__metadatas time',
@@ -248,13 +248,13 @@ export class Show extends Media implements implShow, implAddNote {
         characters: '#actors',
         similars: '#similars'*/
     };
-    static relatedProps = {
+    static relatedProps: Record<string, RelatedProp> = {
         // data: Obj => object: Show
         aliases: {key: "aliases", type: 'object', default: {}},
         comments: {key: "nbComments", type: 'number', default: 0},
         country: {key: "country", type: 'string', default: ''},
         creation: {key: "creation", type: 'number', default: 0},
-        description: {key: "description", type: 'string'}, default: '',
+        description: {key: "description", type: 'string', default: ''},
         episodes: {key: "nbEpisodes", type: 'number', default: 0},
         followers: {key: "followers", type: 'number', default: 0},
         genres: {key: "genres", type: 'array', transform: objToArr, default: []},
