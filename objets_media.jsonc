@@ -56,7 +56,7 @@
         "seen": true,
         "status": 100,
         "tags": "",
-        "twitter": false,
+        "twitter": false
     },
     "base": {
         "characters": [
@@ -73,7 +73,7 @@
         "title": "\u00c9pisode 1",
         "user": {
             // @user
-        },
+        }
     },
     "media": { // extends Base
         "followers": 1868,

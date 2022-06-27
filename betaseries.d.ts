@@ -260,11 +260,10 @@ declare module 'Episode' {
 	/// <reference types="jquery" />
 	/// <reference types="jquery" />
 	/// <reference types="bootstrap" />
-	import { Base, Obj, HTTP_VERBS } from 'Base';
-	import { implAddNote, Note } from 'Note';
+	import { Base, Obj, HTTP_VERBS, RelatedProp } from 'Base';
+	import { implAddNote } from 'Note';
 	import { Season } from 'Season';
 	import { Subtitles } from 'Subtitle';
-	import { User } from 'User';
 	export type Platform_link = {
 	    /**
 	     * @type {number} Identifiant de l'épisode sur la plateforme
@@ -302,100 +301,8 @@ declare module 'Episode' {
 	    note: number;
 	};
 	export class Episode extends Base implements implAddNote {
-	    static relatedProps: {
-	        characters: {
-	            key: string;
-	            type: string;
-	            default: any[];
-	        };
-	        code: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        comments: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        date: {
-	            key: string;
-	            type: string;
-	            default: any;
-	        };
-	        description: {
-	            key: string;
-	            type: string;
-	        };
-	        default: string;
-	        episode: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        global: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        id: {
-	            key: string;
-	            type: string;
-	        };
-	        note: {
-	            key: string;
-	            type: typeof Note;
-	        };
-	        platform_links: {
-	            key: string;
-	            type: string;
-	            default: any[];
-	        };
-	        resource_url: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        season: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        seen_total: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        special: {
-	            key: string;
-	            type: string;
-	            default: boolean;
-	        };
-	        subtitles: {
-	            key: string;
-	            type: string;
-	            default: any[];
-	        };
-	        thetvdb_id: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        title: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        user: {
-	            key: string;
-	            type: typeof User;
-	        };
-	        youtube_id: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	    };
+	    static selectorsCSS: Record<string, string>;
+	    static relatedProps: Record<string, RelatedProp>;
 	    static fetch(epId: number): Promise<Episode>;
 	    /**
 	     * @type {Season} L'objet Season contenant l'épisode
@@ -548,12 +455,11 @@ declare module 'Show' {
 	/// <reference types="jquery" />
 	/// <reference types="jquery" />
 	/// <reference types="bootstrap" />
-	import { Obj, EventTypes, Callback, objToArr } from 'Base';
-	import { implAddNote, Note } from 'Note';
+	import { Obj, EventTypes, Callback, RelatedProp } from 'Base';
+	import { implAddNote } from 'Note';
 	import { Media } from 'Media';
 	import { Season } from 'Season';
 	import { Character, Person } from 'Character';
-	import { User } from 'User';
 	export class Images {
 	    static formats: {
 	        poster: string;
@@ -658,182 +564,8 @@ declare module 'Show' {
 	    static EventTypes: Array<EventTypes>;
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
-	    static selectorsCSS: {
-	        title: string;
-	        description: string;
-	        creation: string;
-	        followers: string;
-	        nbSeasons: string;
-	        nbEpisodes: string;
-	        country: string;
-	        genres: string;
-	        duration: string;
-	        status: string;
-	        network: string;
-	        showrunner: string;
-	    };
-	    static relatedProps: {
-	        aliases: {
-	            key: string;
-	            type: string;
-	            default: {};
-	        };
-	        comments: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        country: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        creation: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        description: {
-	            key: string;
-	            type: string;
-	        };
-	        default: string;
-	        episodes: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        followers: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        genres: {
-	            key: string;
-	            type: string;
-	            transform: typeof objToArr;
-	            default: any[];
-	        };
-	        id: {
-	            key: string;
-	            type: string;
-	        };
-	        images: {
-	            key: string;
-	            type: typeof Images;
-	        };
-	        imdb_id: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        in_account: {
-	            key: string;
-	            type: string;
-	            default: boolean;
-	        };
-	        language: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        length: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        network: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        next_trailer: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        next_trailer_host: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        notes: {
-	            key: string;
-	            type: typeof Note;
-	        };
-	        original_title: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        platforms: {
-	            key: string;
-	            type: typeof Platforms;
-	        };
-	        rating: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        resource_url: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        seasons: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        seasons_details: {
-	            key: string;
-	            type: string;
-	            transform: typeof Show.seasonsDetailsToSeasons;
-	        };
-	        showrunner: {
-	            key: string;
-	            type: typeof Showrunner;
-	        };
-	        similars: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        slug: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        social_links: {
-	            key: string;
-	            type: string;
-	            default: any[];
-	        };
-	        status: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        thetvdb_id: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        themoviedb_id: {
-	            key: string;
-	            type: string;
-	            default: number;
-	        };
-	        title: {
-	            key: string;
-	            type: string;
-	            default: string;
-	        };
-	        user: {
-	            key: string;
-	            type: typeof User;
-	        };
-	    };
+	    static selectorsCSS: Record<string, string>;
+	    static relatedProps: Record<string, RelatedProp>;
 	    static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season>;
 	    /**
 	     * Méthode static servant à récupérer une série sur l'API BS
@@ -1288,11 +1020,10 @@ declare module 'Movie' {
 	/// <reference types="jquery" />
 	/// <reference types="jquery" />
 	/// <reference types="bootstrap" />
-	import { Obj } from 'Base';
-	import { implAddNote, Note } from 'Note';
+	import { Obj, RelatedProp } from 'Base';
+	import { implAddNote } from 'Note';
 	import { Platform_link } from 'Episode';
 	import { Media } from 'Media';
-	import { User } from 'User';
 	export type OtherTitle = {
 	    language: string;
 	    title: string;
@@ -1322,132 +1053,8 @@ declare module 'Movie' {
 	    /***************************************************/
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
-	    static selectorsCSS: {
-	        title: string;
-	        description: string;
-	        tagline: string;
-	        release_date: string;
-	        followers: string;
-	        director: string;
-	        duration: string;
-	        genres: string;
-	        language: string;
-	    };
-	    static relatedProps: {
-	        backdrop: {
-	            key: string;
-	            type: string;
-	        };
-	        comments: {
-	            key: string;
-	            type: string;
-	        };
-	        director: {
-	            key: string;
-	            type: string;
-	        };
-	        followers: {
-	            key: string;
-	            type: string;
-	        };
-	        genres: {
-	            key: string;
-	            type: string;
-	        };
-	        id: {
-	            key: string;
-	            type: string;
-	        };
-	        imdb_id: {
-	            key: string;
-	            type: string;
-	        };
-	        in_account: {
-	            key: string;
-	            type: string;
-	            transform: typeof Movie._getInAccount;
-	        };
-	        language: {
-	            key: string;
-	            type: string;
-	        };
-	        length: {
-	            key: string;
-	            type: string;
-	        };
-	        notes: {
-	            key: string;
-	            type: typeof Note;
-	        };
-	        original_release_date: {
-	            key: string;
-	            type: string;
-	        };
-	        original_title: {
-	            key: string;
-	            type: string;
-	        };
-	        other_title: {
-	            key: string;
-	            type: string;
-	        };
-	        platform_links: {
-	            key: string;
-	            type: string;
-	        };
-	        poster: {
-	            key: string;
-	            type: string;
-	        };
-	        production_year: {
-	            key: string;
-	            type: string;
-	        };
-	        release_date: {
-	            key: string;
-	            type: string;
-	        };
-	        resource_url: {
-	            key: string;
-	            type: string;
-	        };
-	        sale_date: {
-	            key: string;
-	            type: string;
-	        };
-	        similars: {
-	            key: string;
-	            type: string;
-	        };
-	        synopsis: {
-	            key: string;
-	            type: string;
-	        };
-	        tagline: {
-	            key: string;
-	            type: string;
-	        };
-	        title: {
-	            key: string;
-	            type: string;
-	        };
-	        tmdb_id: {
-	            key: string;
-	            type: string;
-	        };
-	        trailer: {
-	            key: string;
-	            type: string;
-	        };
-	        url: {
-	            key: string;
-	            type: string;
-	        };
-	        user: {
-	            key: string;
-	            type: typeof User;
-	        };
-	    };
+	    static selectorsCSS: Record<string, string>;
+	    static relatedProps: Record<string, RelatedProp>;
 	    static _getInAccount(obj: Movie, data: Obj): boolean;
 	    /**
 	     * Méthode static servant à récupérer un film sur l'API BS
@@ -1676,10 +1283,7 @@ declare module 'Media' {
 	    /***************************************************/
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
-	    static selectorsCSS: {
-	        genres: string;
-	        duration: string;
-	    };
+	    static selectorsCSS: Record<string, string>;
 	    /**
 	     * Méthode static servant à récupérer un média sur l'API BS
 	     * @param  {Obj} params - Critères de recherche du média
@@ -2460,7 +2064,13 @@ declare module 'Base' {
 	    oldValue: any;
 	    newValue: any;
 	};
-	export function objToArr(obj: Base, data: Obj): any[];
+	export type RelatedProp = {
+	    key: string;
+	    type: any;
+	    default?: any;
+	    transform?: (obj: Base, data: Obj) => any;
+	};
+	export function objToArr(obj: Base, data: Obj): Array<any>;
 	export abstract class Base implements implAddNote {
 	    /**
 	     * Flag de debug pour le dev
@@ -2590,8 +2200,8 @@ declare module 'Base' {
 	     * @returns {string}
 	     */
 	    static replaceParams(path: string, params: object, data: object): string;
-	    static relatedProps: {};
-	    static selectorsCSS: {};
+	    static relatedProps: Record<string, RelatedProp>;
+	    static selectorsCSS: Record<string, string>;
 	    description: string;
 	    nbComments: number;
 	    id: number;
