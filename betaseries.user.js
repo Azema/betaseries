@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-LhhQeXhmo2zTsF+A/FmE9mikJxsTrPzDAVoazWBAHWN5wuZCttO9lO/9TImoD0Mo';
+const sriBundle = 'sha384-HN9V2SEfU3uVk8zDb210hiYIuPCVjOgMzrskzdUx81ym2G6NZf8+wVqG43Sa0BzR';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -2266,6 +2266,7 @@ const launchScript = function($) {
             // const $btnCmt = $('#comments div.slide__image > button');
             res.comments.addListener(EventTypes.ADDED, eventComments);
             res.comments.addListener(EventTypes.ADD, evaluations);
+            res.addListener(EventTypes.NOTE, evaluations);
             res.comments.addListener(EventTypes.SHOW, () => {
                 if (debug) console.log('Listener show of comments');
                 const $textarea = $('.writing textarea');
@@ -4038,140 +4039,6 @@ const launchScript = function($) {
     }
 
     /**
-     * Paramétrage de la super classe abstraite Base et UpdateAuto
-     */
-    Base.debug = debug;
-    Base.cache = cache;
-    Base.notification = system.notification;
-    Base.userIdentified = system.userIdentified;
-    Base.token = typeof betaseries_api_user_token !== 'undefined' ? betaseries_api_user_token : null;
-    Base.userKey = typeof betaseries_api_user_key !== 'undefined' ? betaseries_api_user_key : null;
-    Base.userId = typeof betaseries_user_id !== 'undefined' ? parseInt(betaseries_user_id, 10) : null;
-    Base.trans = trans;
-    Base.ratings = ratings;
-    Base.themoviedb_api_user_key = themoviedb_api_user_key;
-    Base.serverBaseUrl = serverBaseUrl;
-    Base.serverOauthUrl = serverOauthUrl;
-    Base.theme = system.checkThemeStyle();
-    Base.gm_funcs.getValue = dbGetValue;
-    Base.gm_funcs.setValue = dbSetValue;
-
-
-    /**
-     * Initialization du script
-     */
-    system.init();
-
-    // Fonctions appeler pour les pages des series, des films et des episodes
-    if (/^\/(serie|film|episode)\/.*/.test(url)) {
-        system.addScriptAndLink('renderjson');
-        // On récupère d'abord la ressource courante pour instancier un objet Media
-        medias.getResource(true).then((objRes) => {
-            if (debug) {
-                console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
-                medias.addBtnDev(); // On ajoute le bouton de Dev
-            }
-            system.removeAds(); // On retire les pubs
-            medias.similarsViewed(objRes); // On s'occupe des ressources similaires
-            objRes.decodeTitle(); // On décode le titre de la ressource
-            objRes.addNumberVoters(); // On ajoute le nombre de votes à la note
-            objRes.objNote.updateStars(); // On met à jour l'affichage de la note
-            medias.upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
-            medias.comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
-            medias.addBtnToSee();
-            members.lastSeen();
-            medias.replaceVoteFn(objRes);
-            medias.checkPoster(objRes);
-            if (/^\/serie\//.test(url)) {
-                objRes.addRating(); // On ajoute la classification TV de la ressource courante
-                // .blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)
-                $('.blockInformations .blockInformations__action .dropdown-menu a.header-navigation-item')
-                    .first().attr('target', '_blank');
-                // On ajoute la gestion des épisodes
-                medias.waitSeasonsAndEpisodesLoaded(() => medias.upgradeEpisodes(objRes));
-                medias.upgradeSeasonsActions(objRes);
-                medias.proposePlatform(objRes);
-                medias.checkNextEpisode(objRes);
-                medias.upgradeActors(objRes);
-            }
-            else if (/^\/film\//.test(url)) {
-                medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
-            }
-        });
-    }
-    // Fonctions appeler pour la page de gestion des series du membre
-    else if (/^\/membre\/.*\/series$/.test(url)) {
-        members.addStatusToGestionSeries().then((shows) => {
-            Base.shows = shows;
-            members.sortGestionSeries();
-        });
-        medias.addBtnToSee();
-        members.lastSeen();
-    }
-    // Fonctions appeler sur les pages des membres
-    else if (system.userIdentified() && (regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url))) {
-        system.waitPresent(() => { return typeof user !== 'undefined'; }, () => {
-            if (debug) console.log('regexUser OK');
-
-            if (regexUser.test(url)) {
-                // On récupère les infos du membre connecté
-                members.getMember()
-                    .then(function (member) {
-                    currentUser = member;
-                    let login = url.split('/')[2];
-                    // On ajoute la fonction de comparaison des membres
-                    if (currentUser && login != currentUser.login) {
-                        members.compareMembers();
-                    }
-                });
-            }
-            else if (!url.includes(user.login)) {
-                members.searchFriends();
-            }
-        });
-        medias.addBtnToSee();
-        members.lastSeen();
-    }
-    // Fonctions appeler sur les pages de documentation de l'API
-    else if (/^\/api/.test(url)) {
-        if (/\/methodes/.test(url)) {
-            api.sommaireDevApi();
-        }
-        else if (/\/console/.test(url)) {
-            api.updateApiConsole();
-        }
-    }
-    // Fonctions appeler sur la page de recherche des séries
-    else if (/^\/series\//.test(url)) {
-        if (Base.debug) console.log('Page des séries');
-        system.waitPagination();
-        series.seriesFilterPays();
-        if (/agenda/.test(url)) {
-            system.waitDomPresent('#reactjs-episodes-to-watch .ComponentEpisodeContainer', series.updateAgenda, 50, 1000);
-        }
-        medias.addBtnToSee();
-        members.lastSeen();
-    }
-    // Fonctions appeler sur la page de recherche des films
-    else if (/^\/films\//.test(url)) {
-        if (debug) console.log('Pages des films');
-        system.waitPagination();
-        medias.addBtnToSee();
-        members.lastSeen();
-        if (/agenda/.test(url)) {
-            system.waitDomPresent('#reactjs-movies-to-watch .ComponentEpisodeContainer', movies.updateAgenda, 50, 1000);
-        }
-    }
-    // Fonctions appeler sur les pages des articles
-    else if (/^\/article\//.test(url)) {
-        if (Base.debug) console.log('Page d\'un article');
-        articles.checkArticle();
-        articles.addPopupOnLinks();
-        medias.addBtnToSee();
-        members.lastSeen();
-    }
-
-    /**
      * Dialog - Classe servant à manipuler une boîte de dialogue
      * pour y afficher des informations
      * @class
@@ -4375,6 +4242,142 @@ const launchScript = function($) {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Paramétrage de la super classe abstraite Base et UpdateAuto
+     */
+    Base.debug = debug;
+    Base.cache = cache;
+    Base.notification = system.notification;
+    Base.userIdentified = system.userIdentified;
+    Base.token = typeof betaseries_api_user_token !== 'undefined' ? betaseries_api_user_token : null;
+    Base.userKey = typeof betaseries_api_user_key !== 'undefined' ? betaseries_api_user_key : null;
+    Base.userId = typeof betaseries_user_id !== 'undefined' ? parseInt(betaseries_user_id, 10) : null;
+    Base.trans = trans;
+    Base.ratings = ratings;
+    Base.themoviedb_api_user_key = themoviedb_api_user_key;
+    Base.serverBaseUrl = serverBaseUrl;
+    Base.serverOauthUrl = serverOauthUrl;
+    Base.theme = system.checkThemeStyle();
+    Base.gm_funcs.getValue = dbGetValue;
+    Base.gm_funcs.setValue = dbSetValue;
+
+    unsafeWindow.addEventListener('offline', () => { Base.changeNetworkState('OFFLINE'); });
+    unsafeWindow.addEventListener('online', () => { Base.changeNetworkState('ONLINE'); });
+
+    /**
+     * Initialization du script
+     */
+    system.init();
+
+    // Fonctions appeler pour les pages des series, des films et des episodes
+    if (/^\/(serie|film|episode)\/.*/.test(url)) {
+        system.addScriptAndLink('renderjson');
+        // On récupère d'abord la ressource courante pour instancier un objet Media
+        medias.getResource(true).then((objRes) => {
+            if (debug) {
+                console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
+                medias.addBtnDev(); // On ajoute le bouton de Dev
+            }
+            system.removeAds(); // On retire les pubs
+            medias.similarsViewed(objRes); // On s'occupe des ressources similaires
+            // objRes.decodeTitle(); // On décode le titre de la ressource
+            // objRes.addNumberVoters(); // On ajoute le nombre de votes à la note
+            // objRes.objNote.updateStars(); // On met à jour l'affichage de la note
+            medias.upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
+            medias.comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
+            medias.addBtnToSee();
+            members.lastSeen();
+            medias.replaceVoteFn(objRes);
+            medias.checkPoster(objRes);
+            if (/^\/serie\//.test(url)) {
+                objRes.addRating(); // On ajoute la classification TV de la ressource courante
+                // .blockInformations .blockInformations__action .dropdown-menu a:nth-child(1)
+                $('.blockInformations .blockInformations__action .dropdown-menu a.header-navigation-item')
+                    .first().attr('target', '_blank');
+                // On ajoute la gestion des épisodes
+                medias.waitSeasonsAndEpisodesLoaded(() => medias.upgradeEpisodes(objRes));
+                medias.upgradeSeasonsActions(objRes);
+                medias.proposePlatform(objRes);
+                medias.checkNextEpisode(objRes);
+                medias.upgradeActors(objRes);
+            }
+            else if (/^\/film\//.test(url)) {
+                medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
+            }
+        });
+    }
+    // Fonctions appeler pour la page de gestion des series du membre
+    else if (/^\/membre\/.*\/series$/.test(url)) {
+        members.addStatusToGestionSeries().then((shows) => {
+            Base.shows = shows;
+            members.sortGestionSeries();
+        });
+        medias.addBtnToSee();
+        members.lastSeen();
+    }
+    // Fonctions appeler sur les pages des membres
+    else if (system.userIdentified() && (regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url))) {
+        system.waitPresent(() => { return typeof user !== 'undefined'; }, () => {
+            if (debug) console.log('regexUser OK');
+
+            if (regexUser.test(url)) {
+                // On récupère les infos du membre connecté
+                members.getMember()
+                    .then(function (member) {
+                    currentUser = member;
+                    let login = url.split('/')[2];
+                    // On ajoute la fonction de comparaison des membres
+                    if (currentUser && login != currentUser.login) {
+                        members.compareMembers();
+                    }
+                });
+            }
+            else if (!url.includes(user.login)) {
+                members.searchFriends();
+            }
+        });
+        medias.addBtnToSee();
+        members.lastSeen();
+    }
+    // Fonctions appeler sur les pages de documentation de l'API
+    else if (/^\/api/.test(url)) {
+        if (/\/methodes/.test(url)) {
+            api.sommaireDevApi();
+        }
+        else if (/\/console/.test(url)) {
+            api.updateApiConsole();
+        }
+    }
+    // Fonctions appeler sur la page de recherche des séries
+    else if (/^\/series\//.test(url)) {
+        if (Base.debug) console.log('Page des séries');
+        system.waitPagination();
+        series.seriesFilterPays();
+        if (/agenda/.test(url)) {
+            system.waitDomPresent('#reactjs-episodes-to-watch .ComponentEpisodeContainer', series.updateAgenda, 50, 1000);
+        }
+        medias.addBtnToSee();
+        members.lastSeen();
+    }
+    // Fonctions appeler sur la page de recherche des films
+    else if (/^\/films\//.test(url)) {
+        if (debug) console.log('Pages des films');
+        system.waitPagination();
+        medias.addBtnToSee();
+        members.lastSeen();
+        if (/agenda/.test(url)) {
+            system.waitDomPresent('#reactjs-movies-to-watch .ComponentEpisodeContainer', movies.updateAgenda, 50, 1000);
+        }
+    }
+    // Fonctions appeler sur les pages des articles
+    else if (/^\/article\//.test(url)) {
+        if (Base.debug) console.log('Page d\'un article');
+        articles.checkArticle();
+        articles.addPopupOnLinks();
+        medias.addBtnToSee();
+        members.lastSeen();
     }
 };
 /*
