@@ -49,9 +49,9 @@ export class Movie extends Media implements implAddNote {
         duration: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
         genres: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
         language: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
-        comments: '#comments',
+        /*comments: '#comments',
         characters: '#actors',
-        similars: '#similars'
+        similars: '#similars'*/
     };
     static relatedProps = {
         // data: Obj => object: Show
