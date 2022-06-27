@@ -224,19 +224,53 @@ declare module 'Subtitle' {
 	}
 
 }
+declare module 'User' {
+	import { Obj } from 'Base';
+	import { WatchedBy } from 'Episode';
+	export class Next {
+	    id: number;
+	    code: string;
+	    date: Date;
+	    title: string;
+	    image: string;
+	    constructor(data: Obj);
+	}
+	export class User {
+	    archived: boolean;
+	    downloaded: boolean;
+	    favorited: boolean;
+	    friends_want_to_watch: Array<string>;
+	    friends_watched: Array<WatchedBy>;
+	    hidden: boolean;
+	    last: string;
+	    mail: boolean;
+	    next: Next;
+	    profile: string;
+	    remaining: number;
+	    seen: boolean;
+	    status: number;
+	    tags: string;
+	    twitter: boolean;
+	    constructor(data: Obj);
+	    compare(data: Obj): boolean;
+	}
+
+}
 declare module 'Episode' {
 	/// <reference types="jquery" />
 	/// <reference types="jquery" />
 	/// <reference types="bootstrap" />
 	import { Base, Obj, HTTP_VERBS } from 'Base';
-	import { implAddNote } from 'Note';
+	import { implAddNote, Note } from 'Note';
 	import { Season } from 'Season';
 	import { Subtitles } from 'Subtitle';
+	import { User } from 'User';
 	export type Platform_link = {
 	    /**
 	     * @type {number} Identifiant de l'épisode sur la plateforme
 	     */
 	    id: number;
+	    platform_id?: number;
 	    /**
 	     * @type {string} Lien vers l'épisode sur la plateforme
 	     */
@@ -246,6 +280,8 @@ declare module 'Episode' {
 	     */
 	    platform: string;
 	    color?: string;
+	    type?: string;
+	    logo?: string;
 	};
 	export type ReleasesSvod = {
 	    displayOriginal: boolean;
@@ -266,6 +302,100 @@ declare module 'Episode' {
 	    note: number;
 	};
 	export class Episode extends Base implements implAddNote {
+	    static relatedProps: {
+	        characters: {
+	            key: string;
+	            type: string;
+	            default: any[];
+	        };
+	        code: {
+	            key: string;
+	            type: string;
+	            default: string;
+	        };
+	        comments: {
+	            key: string;
+	            type: string;
+	            default: number;
+	        };
+	        date: {
+	            key: string;
+	            type: string;
+	            default: any;
+	        };
+	        description: {
+	            key: string;
+	            type: string;
+	        };
+	        default: string;
+	        episode: {
+	            key: string;
+	            type: string;
+	            default: number;
+	        };
+	        global: {
+	            key: string;
+	            type: string;
+	            default: number;
+	        };
+	        id: {
+	            key: string;
+	            type: string;
+	        };
+	        note: {
+	            key: string;
+	            type: typeof Note;
+	        };
+	        platform_links: {
+	            key: string;
+	            type: string;
+	            default: any[];
+	        };
+	        resource_url: {
+	            key: string;
+	            type: string;
+	            default: string;
+	        };
+	        season: {
+	            key: string;
+	            type: string;
+	            default: number;
+	        };
+	        seen_total: {
+	            key: string;
+	            type: string;
+	            default: number;
+	        };
+	        special: {
+	            key: string;
+	            type: string;
+	            default: boolean;
+	        };
+	        subtitles: {
+	            key: string;
+	            type: string;
+	            default: any[];
+	        };
+	        thetvdb_id: {
+	            key: string;
+	            type: string;
+	            default: number;
+	        };
+	        title: {
+	            key: string;
+	            type: string;
+	            default: string;
+	        };
+	        user: {
+	            key: string;
+	            type: typeof User;
+	        };
+	        youtube_id: {
+	            key: string;
+	            type: string;
+	            default: string;
+	        };
+	    };
 	    static fetch(epId: number): Promise<Episode>;
 	    /**
 	     * @type {Season} L'objet Season contenant l'épisode
@@ -339,13 +469,6 @@ declare module 'Episode' {
 	     */
 	    constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>);
 	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data Les données provenant de l'API
-	     * @returns {Episode}
-	     * @override
-	     */
-	    fill(data: Obj): this;
-	    /**
 	     * Ajoute le titre de l'épisode à l'attribut Title
 	     * du DOMElement correspondant au titre de l'épisode
 	     * sur la page Web
@@ -418,38 +541,6 @@ declare module 'Episode' {
 	     * @returns {Promise<this>}
 	     */
 	    fetchCharacters(): Promise<this>;
-	}
-
-}
-declare module 'User' {
-	import { Obj } from 'Base';
-	import { WatchedBy } from 'Episode';
-	export class Next {
-	    id: number;
-	    code: string;
-	    date: Date;
-	    title: string;
-	    image: string;
-	    constructor(data: Obj);
-	}
-	export class User {
-	    archived: boolean;
-	    downloaded: boolean;
-	    favorited: boolean;
-	    friends_want_to_watch: Array<string>;
-	    friends_watched: Array<WatchedBy>;
-	    hidden: boolean;
-	    last: string;
-	    mail: boolean;
-	    next: Next;
-	    profile: string;
-	    remaining: number;
-	    seen: boolean;
-	    status: number;
-	    tags: string;
-	    twitter: boolean;
-	    constructor(data: Obj);
-	    compare(data: Obj): boolean;
 	}
 
 }
@@ -580,46 +671,48 @@ declare module 'Show' {
 	        status: string;
 	        network: string;
 	        showrunner: string;
-	        rating: string;
-	        seasons: string;
-	        episodes: string;
-	        comments: string;
-	        characters: string;
-	        similars: string;
 	    };
 	    static relatedProps: {
 	        aliases: {
 	            key: string;
 	            type: string;
+	            default: {};
 	        };
 	        comments: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        country: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        creation: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        description: {
 	            key: string;
 	            type: string;
 	        };
+	        default: string;
 	        episodes: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        followers: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        genres: {
 	            key: string;
 	            type: string;
 	            transform: typeof objToArr;
+	            default: any[];
 	        };
 	        id: {
 	            key: string;
@@ -632,30 +725,37 @@ declare module 'Show' {
 	        imdb_id: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        in_account: {
 	            key: string;
 	            type: string;
+	            default: boolean;
 	        };
 	        language: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        length: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        network: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        next_trailer: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        next_trailer_host: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        notes: {
 	            key: string;
@@ -664,6 +764,7 @@ declare module 'Show' {
 	        original_title: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        platforms: {
 	            key: string;
@@ -672,14 +773,17 @@ declare module 'Show' {
 	        rating: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        resource_url: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        seasons: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        seasons_details: {
 	            key: string;
@@ -693,30 +797,37 @@ declare module 'Show' {
 	        similars: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        slug: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        social_links: {
 	            key: string;
 	            type: string;
+	            default: any[];
 	        };
 	        status: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        thetvdb_id: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        themoviedb_id: {
 	            key: string;
 	            type: string;
+	            default: number;
 	        };
 	        title: {
 	            key: string;
 	            type: string;
+	            default: string;
 	        };
 	        user: {
 	            key: string;
@@ -1221,9 +1332,6 @@ declare module 'Movie' {
 	        duration: string;
 	        genres: string;
 	        language: string;
-	        comments: string;
-	        characters: string;
-	        similars: string;
 	    };
 	    static relatedProps: {
 	        backdrop: {
