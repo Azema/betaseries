@@ -87,48 +87,59 @@
             // @similar
         ]
     },
-    "episode": { // extends Base
+    "episode": {
+        "characters": [],
         "code": "S01E01",
-        "comments": "1",
-        "characters": [ // @character
-            {
-                "actor": "Alka Matewa",
-                "person_id": 12345,
-                "picture": "https:\/\/pictures.betaseries.com\/persons\/t6uP9FhplUkd1D62VbxOR7Z9eWV.jpg",
-                "name": "",
-                "guest": false
-            }
-        ],
-        "date": "2021-09-24",
-        "description": "Sha\u00efnez et Liana, petites arnaqueuses, \u00e9veillent la furie d'un trafiquant de drogue bruxellois en d\u00e9valisant l'un de ses sbires. L'oncle de Sha\u00efnez vient \u00e0 la rescousse.",
+        "comments": "8",
+        "date": "2019-01-25",
+        "description": "\u00c0 Hanyang, les autorit\u00e9s apprennent le d\u00e9c\u00e8s du roi. Alors que le prince h\u00e9ritier Chang Lee tente de se rendre au chevet de son p\u00e8re, la jeune reine s'y oppose.",
         "episode": 1,
         "global": 1,
+        "id": 1221520,
         "note": {
-            "total": 62,
-            "mean": 4.20967999999999964444441502564586699008941650390625,
+            "total": 303,
+            "mean": 4.1287000000000002586375558166764676570892333984375,
             "user": 0,
             "moyenne": null
         },
         "platform_links": [
             {
-                "link": "https:\/\/www.betaseries.com\/link\/58785581",
-                "platform": "Netflix"
+                "platform_id": "1",
+                "platform": "Netflix",
+                "color": "#000000",
+                "type": "svod",
+                "logo": "https:\/\/pictures.betaseries.com\/platforms\/1.jpg",
+                "link": "https:\/\/www.betaseries.com\/link\/233083"
             }
         ],
+        "resource_url": "https:\/\/www.betaseries.com\/episode\/kingdom-2019\/s01e01",
         "season": 1,
-        "seen_total": 1602,
+        "seen_total": 6379,
         "show": {
-            "id": 29763,
-            "thetvdb_id": 408071,
-            "title": "Braqueurs : La s\u00e9rie",
-            "in_account": true
+            "id": 19826,
+            "in_account": true,
+            "thetvdb_id": 355228,
+            "title": "Kingdom (2019)"
         },
         "special": 0,
-        "subtitles": [
-            // @subtitle
-        ],
-        "thetvdb_id": 8597185,
-        "youtube_id": null,
+        "subtitles": [],
+        "thetvdb_id": 6897742,
+        "title": "\u00c9pisode 1",
+        "user": {
+            "downloaded": false,
+            "hidden": false,
+            "friends_watched": [
+                {
+                    "avatar": "\/data\/avatars\/79\/793dd095fe04af25d72569273476b4cc.jpg",
+                    "id": 1485822,
+                    "login": "Bananita",
+                    "note": null
+                }
+            ],
+            "seen": true,
+            "seen_date": "2022-06-26 20:19:29"
+        },
+        "youtube_id": null
     },
     "show": { // extends Media
         "aliases": {
@@ -342,5 +353,144 @@
             ],
             "friends_want_to_watch": []
         }
+    },
+    "person": {
+        "id": 239,
+        "name": "Billy MacLellan",
+        "birthday": "1974-01-31",
+        "deathday": null,
+        "description": "Billy MacLellan is a Canadian stage, film and television actor and director. He's a graduate of the National Theatre School of Canada in Montreal, and he holds degrees in Acting from Concordia University, Montreal, Quebec, and in Independent Documentary Film from Humber College, Toronto, Ontario, Canada.",
+        "last": {
+            "movie": {
+                "id": 72235,
+                "title": "Nobody",
+                "originalTitle": "Nobody",
+                "theMovieDBId": 615457,
+                "IMDBId": "tt7888964",
+                "netflixId": 0,
+                "allocineId": 0,
+                "url": "nobody",
+                "productionYear": 2021,
+                "addedDate": "2019-10-02 19:20:55",
+                "releaseDate": "2021-06-02",
+                "originalReleaseDate": "2021-03-18",
+                "saleDate": "0000-00-00",
+                "director": "Ilya Naishuller",
+                "length": 5520,
+                "genres": [
+                    "Action",
+                    "Crime",
+                    "Thriller"
+                ],
+                "synopsis": "Hutch Mansell, un p\u00e8re et un mari frustr\u00e9, totalement d\u00e9consid\u00e9r\u00e9 par sa famille, se contente d\u2019encaisser les coups, sans jamais les rendre. Il n\u2019est rien. Une nuit, alors que deux cambrioleurs p\u00e9n\u00e8trent chez lui, il fait le choix de ne pas intervenir, plut\u00f4t que de risquer une escalade sanglante. Une d\u00e9cision qui le discr\u00e9dite d\u00e9finitivement aux yeux de son fils Blake, et qui semble l\u2019\u00e9loigner encore plus de sa femme Becca. Cet incident r\u00e9veille chez cet homme bless\u00e9 des instincts larv\u00e9s qui vont le propulser sur une voie violente, r\u00e9v\u00e9lant des zones d\u2019ombres et des comp\u00e9tences l\u00e9tales insoup\u00e7onn\u00e9es. Dans une avalanche de coups de poings, de fusillades et de crissements de pneus, il va tout faire pour tirer sa famille des griffes d\u2019un redoutable ennemi et s\u2019assurer que, plus jamais, personne ne le prenne pour un moins que rien.",
+                "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/72235.jpg",
+                "backdrop": "https:\/\/pictures.betaseries.com\/films\/backdrops\/fr\/72235.jpg",
+                "tagline": "Ne jamais sous-estimer un \u00ab nobody \u00bb.",
+                "youtubeTrailer": "ysdUaLkkFO4",
+                "language": "Anglais",
+                "followers": 3782,
+                "comments": 27,
+                "characters": 24,
+                "similars": 8,
+                "user": {
+                    "inAccount": false,
+                    "currentStatus": -1,
+                    "mail": false,
+                    "twitter": false,
+                    "profile": false,
+                    "isFavorited": false,
+                    "date": null
+                },
+                "authUser": [],
+                "otherTitle": "",
+                "lastUpdate": "1655761760"
+            },
+            "name": "Charlie Williams"
+        },
+        "shows": [
+            {
+                "name": "Duncan",
+                "show": {
+                    "id": 2215,
+                    "thetvdb_id": 182061,
+                    "imdb_id": "tt1429449",
+                    "themoviedb_id": 33852,
+                    "title": "Lost Girl",
+                    "seasons": "5",
+                    "episodes": "77",
+                    "followers": "10973",
+                    "creation": "2010",
+                    "slug": "lost-girl",
+                    "poster": "https:\/\/pictures.betaseries.com\/fonds\/poster\/cd69174000e25161aedce27a02ee0d06.jpg"
+                }
+            }
+        ],
+        "movies": [
+            {
+                "name": "Charlie Williams",
+                "movie": {
+                    "id": 72235,
+                    "title": "Nobody",
+                    "tmdb_id": 615457,
+                    "imdb_id": "tt7888964",
+                    "followers": 3782,
+                    "production_year": 2021,
+                    "url": "nobody",
+                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/72235.jpg"
+                }
+            },
+            {
+                "name": "The Reverend",
+                "movie": {
+                    "id": 68700,
+                    "title": "The Silence",
+                    "tmdb_id": 527261,
+                    "imdb_id": "tt7315484",
+                    "followers": 17258,
+                    "production_year": 2019,
+                    "url": "the-silence",
+                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/68700.jpg"
+                }
+            },
+            {
+                "name": "Frank",
+                "movie": {
+                    "id": 59318,
+                    "title": "Maudie",
+                    "tmdb_id": 359784,
+                    "imdb_id": "tt3721954",
+                    "followers": 97,
+                    "production_year": 2016,
+                    "url": "maudie",
+                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/59318.jpg"
+                }
+            },
+            {
+                "name": "Daniel Lapp",
+                "movie": {
+                    "id": 15089,
+                    "title": "Condamn\u00e9s au silence",
+                    "tmdb_id": 159937,
+                    "imdb_id": "tt2234451",
+                    "followers": 40,
+                    "production_year": 2013,
+                    "url": "an-amish-murder",
+                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/15089.jpg"
+                }
+            },
+            {
+                "name": "Cadet",
+                "movie": {
+                    "id": 3995,
+                    "title": "American Psycho 2",
+                    "tmdb_id": 10726,
+                    "imdb_id": "tt0283877",
+                    "followers": 252,
+                    "production_year": 2002,
+                    "url": "american-psycho-ii-all-american-girl",
+                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/3995.jpg"
+                }
+            }
+        ]
     }
 }
