@@ -58,7 +58,13 @@ export type Changes = {
     oldValue: any;
     newValue: any;
 }
-export function objToArr(obj: Base, data: Obj) {
+export type RelatedProp = {
+    key: string;
+    type: any;
+    default?: any;
+    transform?: (obj: Base, data: Obj) => any;
+}
+export function objToArr(obj: Base, data: Obj): Array<any> {
     if (data instanceof Array) return data;
     const values = [];
     for (const key in data) {
@@ -533,8 +539,8 @@ export abstract class Base implements implAddNote {
         }
         return path;
     }
-    static relatedProps = {};
-    static selectorsCSS = {};
+    static relatedProps: Record<string, RelatedProp> = {};
+    static selectorsCSS: Record<string, string> = {};
 
     /*
                     PROPERTIES
@@ -606,21 +612,45 @@ export abstract class Base implements implAddNote {
             if (!Reflect.has(data, propKey)) continue;
             const relatedProp = (this.constructor as typeof Base).relatedProps[propKey];
             const dataProp = data[propKey];
-            const descriptor: PropertyDescriptor = {
-                configurable: true,
-                enumerable: true,
-                get: () => {
-                    return self['_' + relatedProp.key];
-                },
-                set: (newValue: any) => {
-                    const oldValue = self['_' + relatedProp.key];
-                    if (oldValue === newValue) return;
-                    self['_' + relatedProp.key] = newValue;
-                    if (!self.__initial) {
-                        self.__changes[relatedProp.key] = {oldValue, newValue};
-                        self.updatePropRender(relatedProp.key);
+            let descriptor: PropertyDescriptor;
+            if (this.__initial) {
+                descriptor = {
+                    configurable: true,
+                    enumerable: true,
+                    get: () => {
+                        return self['_' + relatedProp.key];
+                    },
+                    set: (newValue: any) => {
+                        const oldValue = self['_' + relatedProp.key];
+                        if (Array.isArray(oldValue) && oldValue.length !== newValue.length) {
+                            let diff = false;
+                            for (let i = 0, _len = oldValue.length; i < _len; i++) {
+                                if (oldValue[i] !== newValue[i]) {
+                                    diff = true;
+                                    break;
+                                }
+                            }
+                            if (!diff) return;
+                        }
+                        else if (typeof oldValue === 'object') {
+                            let changed = false;
+                            const keysNew = Reflect.ownKeys(newValue)
+                                .filter((key:string) => !key.startsWith('_'));
+                            for (let k = 0, _len = keysNew.length; k < _len; k++) {
+                                if (oldValue[keysNew[k]] !== newValue[keysNew[k]]) {
+                                    changed = true;
+                                    break;
+                                }
+                            }
+                            if (!changed) return;
+                        } else if (oldValue === newValue) return;
+                        self['_' + relatedProp.key] = newValue;
+                        if (!self.__initial) {
+                            self.__changes[relatedProp.key] = {oldValue, newValue};
+                            self.updatePropRender(relatedProp.key);
+                        }
                     }
-                }
+                };
             }
             let setValue = false,
                 value = undefined;
@@ -673,13 +703,19 @@ export abstract class Base implements implAddNote {
                     value = relatedProp.transform(this, dataToTransform);
                 }
                 // if (Base.debug) console.log('Base.fill descriptor[%s]', propKey, relatedProp, value);
-                Object.defineProperty(this, relatedProp.key, descriptor);
-                Reflect.set(this, relatedProp.key, value);
-                this.__props.push(relatedProp.key);
+                if (this.__initial) {
+                    Object.defineProperty(this, relatedProp.key, descriptor);
+                    Reflect.set(this, relatedProp.key, value);
+                    this.__props.push(relatedProp.key);
+                } else {
+                    this[relatedProp.key] = value;
+                }
             }
         }
-        this.__props.sort();
-        this.__initial = false;
+        if (this.__initial) {
+            this.__props.sort();
+            this.__initial = false;
+        }
         return this.save();
     }
     _initRender(): void {
