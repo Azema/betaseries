@@ -319,7 +319,7 @@ export class Show extends Media implements implShow, implAddNote {
             .then((data: Obj) => {
                 const shows: Array<Show> = [];
                 for (let s = 0; s < data.shows.length; s++) {
-                    shows.push(new Show(data.shows[s], jQuery('body')));
+                    shows.push(new Show(data.shows[s]));
                 }
                 resolve(shows);
             })
@@ -339,10 +339,10 @@ export class Show extends Media implements implShow, implAddNote {
                 const shows: Array<Show> = [];
                 if (ids.length > 1) {
                     for (let s = 0; s < data.shows.length; s++) {
-                        shows.push(new Show(data.shows[s], jQuery('.blockInformations')));
+                        shows.push(new Show(data.shows[s]));
                     }
                 } else {
-                    shows.push(new Show(data.show, jQuery('.blockInformations')));
+                    shows.push(new Show(data.show));
                 }
                 resolve(shows);
             })
@@ -1428,7 +1428,7 @@ export class Show extends Media implements implShow, implAddNote {
         };
         this.elt.find('.blockInformations__actions').last().append(btnHTML);
         const $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
-        $btn.click((e: JQuery.ClickEvent) => {
+        $btn.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             const $btn = jQuery(e.currentTarget);
