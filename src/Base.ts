@@ -603,6 +603,7 @@ export abstract class Base implements implAddNote {
     fill(data: Obj): this {
         const self = this;
         for (const propKey in (this.constructor as typeof Base).relatedProps) {
+            if (!Reflect.has(data, propKey)) continue;
             const relatedProp = (this.constructor as typeof Base).relatedProps[propKey];
             const dataProp = data[propKey];
             const descriptor: PropertyDescriptor = {
@@ -622,7 +623,7 @@ export abstract class Base implements implAddNote {
                 }
             }
             let setValue = false,
-                value = null;
+                value = undefined;
             switch (relatedProp.type) {
                 case 'string':
                     value = String(dataProp);
@@ -661,6 +662,10 @@ export abstract class Base implements implAddNote {
                     }
                     break;
                 }
+            }
+            if (!setValue && value == undefined && Reflect.has(relatedProp, 'default')) {
+                value = relatedProp.default;
+                setValue = true;
             }
             if (setValue) {
                 if (typeof relatedProp.transform === 'function') {
@@ -777,7 +782,7 @@ export abstract class Base implements implAddNote {
      * @sealed
      */
     public _callListeners(name: EventTypes): this {
-        if (Base.debug) console.log('Base[%s] call Listeners of event %s', this.constructor.name, name, this.__listeners);
+        // if (Base.debug) console.log('Base[%s] call Listeners of event %s', this.constructor.name, name, this.__listeners);
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) >= 0 && this.__listeners[name].length > 0)
         {
             if (Base.debug) console.log('Base[%s] call %d Listeners on event %s', this.constructor.name, this.__listeners[name].length, name, this.__listeners);
