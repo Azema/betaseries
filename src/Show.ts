@@ -1276,7 +1276,7 @@ export class Show extends Media implements implShow, implAddNote {
                 >
                     ${Base.trans("popup.suggest_show.title", {'%title%': "une série"})}</button>`;
                 jQuery('#similars h2.blockTitle').after(btnAddSimilars);
-                self.addNumberVoters();
+                // self.addNumberVoters();
                 // On supprime le btn ToSeeLater
                 self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
                 self.elt.find('.blockInformations__title .fa-clock-o').remove();
@@ -1363,7 +1363,7 @@ export class Show extends Media implements implShow, implAddNote {
                             </span>`
                         );
                         self.elt = $('.blockInformations');
-                        self.addNumberVoters();
+                        // self.addNumberVoters();
                         self.addBtnToSee();
                         self.addShowClick();
                         self.updateProgressBar();

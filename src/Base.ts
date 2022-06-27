@@ -907,45 +907,6 @@ export abstract class Base implements implAddNote {
         return title;
     }
     /**
-     * Ajoute le nombre de votes à la note de la ressource
-     * @return {Base} L'instance du média
-     */
-    addNumberVoters(): Base {
-        const self = this;
-        /* const votes = jQuery('.blockInformations__metadatas .stars.js-render-stars', this.elt); // ElementHTML ayant pour attribut le titre avec la note de la série
-
-        let title = this.changeTitleNote(true);
-        // if (Base.debug) console.log('addNumberVoters - title: %s', title);
-        // On ajoute un observer sur l'attribut title de la note, en cas de changement lors d'un vote
-        new MutationObserver((mutationsList) => {
-            const changeTitleMutation = () => {
-                // On met à jour le nombre de votants, ainsi que la note du membre connecté
-                const upTitle = self.changeTitleNote(false);
-                // if (Base.debug) console.log('Observer upTitle: %s', upTitle);
-                // On évite une boucle infinie
-                if (upTitle !== title) {
-                    votes.attr('title', upTitle);
-                    title = upTitle;
-                }
-            };
-            let mutation: MutationRecord;
-            for (mutation of mutationsList) {
-                // On vérifie si le titre a été modifié
-                // @TODO: A tester
-                if (! /vote/.test(mutation.target.nodeValue) && mutation.target.nodeValue != title) {
-                    changeTitleMutation();
-                }
-            }
-        }).observe(votes.get(0), {
-            attributes: true,
-            childList: false,
-            characterData: false,
-            subtree: false,
-            attributeFilter: ['title']
-        }); */
-        return this;
-    }
-    /**
      * Ajoute une note au média
      * @param   {number} note - Note du membre connecté pour le média
      * @returns {Promise<boolean>}
