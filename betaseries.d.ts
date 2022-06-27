@@ -2300,15 +2300,10 @@ declare module 'Base' {
 	     * Ajoute le nombre de votes à la note dans l'attribut title de la balise
 	     * contenant la représentation de la note de la ressource
 	     *
-	     * @param  {Boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
-	     * @return {String} Le titre modifié de la note
+	     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
+	     * @return {string} Le titre modifié de la note
 	     */
 	    changeTitleNote(change?: boolean): string;
-	    /**
-	     * Ajoute le nombre de votes à la note de la ressource
-	     * @return {Base} L'instance du média
-	     */
-	    addNumberVoters(): Base;
 	    /**
 	     * Ajoute une note au média
 	     * @param   {number} note - Note du membre connecté pour le média
