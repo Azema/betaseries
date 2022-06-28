@@ -78,16 +78,19 @@ export abstract class Base implements implAddNote {
     */
     /**
      * Flag de debug pour le dev
+     * @static
      * @type {boolean}
      */
     static debug = false;
     /**
      * L'objet cache du script pour stocker les données
+     * @static
      * @type {CacheUS}
      */
     static cache: CacheUS = null;
     /**
      * Objet contenant les informations de l'API
+     * @static
      * @type {Obj}
      */
     static api: Obj = {
@@ -107,7 +110,7 @@ export abstract class Base implements implAddNote {
                 "shows"   : ['display', 'episodes', 'list', 'member', 'search', 'similars']
             },
             "notDisplay": ['membersnotifications'],
-            "tokenRequired": {
+            "tokenRequired": { // Endpoints nécessitant un token
                 "comments": {
                     "close": ['POST'],
                     "comment": ['POST', 'DELETE'],
@@ -171,42 +174,52 @@ export abstract class Base implements implAddNote {
             }
     };
     /**
-     * Le token d'authentification de l'API
+     * Le token d'authentification de l'API BetaSeries
+     * @static
      * @type {String}
      */
     static token: string = null;
     /**
-     * La clé d'utilisation de l'API
+     * La clé d'utilisation de l'API BetaSeries
+     * @static
      * @type {String}
      */
     static userKey: string = null;
     /**
      * L'identifiant du membre connecté
+     * @static
      * @type {Number}
      */
     static userId: number = null;
     /**
-     * Clé pour l'API TheMovieDB
+     * Clé d'authentification pour l'API TheMovieDB
+     * @static
      * @type {string}
      */
     static themoviedb_api_user_key: string = null;
     /**
-     * Le nombre d'appels à l'API
+     * Compteur d'appels à l'API
+     * @static
      * @type {Number}
      */
     static counter = 0;
     /**
      * L'URL de base du serveur contenant les ressources statiques
+     * et les proxy
+     * @static
      * @type {String}
      */
     static serverBaseUrl = '';
     /**
-     * L'URL de base du serveur servant pour l'authentification
+     * L'URL de base du serveur pour l'authentification
+     * @static
+     * @see Base.authenticate
      * @type {String}
      */
     static serverOauthUrl = '';
     /**
      * Indique le theme d'affichage du site Web (light or dark)
+     * @static
      * @type {string}
      */
     static theme = 'light';
@@ -255,15 +268,23 @@ export abstract class Base implements implAddNote {
         EventTypes.SAVE,
         EventTypes.NOTE
     ];
+    /**
+     * Méthode servant à afficher le loader sur la page Web
+     * @static
+     */
     static showLoader() {
         jQuery('#loader-bg').show();
     }
+    /**
+     * Méthode servant à masque le loader sur la page Web
+     * @static
+     */
     static hideLoader() {
         jQuery('#loader-bg').hide();
     }
     /**
-     * Fonction d'authentification sur l'API BetaSeries
-     *
+     * Fonction d'authentification à l'API BetaSeries
+     * @static
      * @return {Promise}
      */
     static authenticate(): Promise<string> {
@@ -308,12 +329,13 @@ export abstract class Base implements implAddNote {
     }
     /**
      * Fonction servant à appeler l'API de BetaSeries
-     *
+     * @static
      * @param  {String}   type - Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
      * @param  {String}   resource - La ressource de l'API (ex: shows, seasons, episodes...)
      * @param  {String}   action - L'action à appliquer sur la ressource (ex: search, list...)
      * @param  {Obj}      args - Un objet (clef, valeur) à transmettre dans la requête
-     * @param  {bool}     [force=false] - Indique si on doit utiliser le cache ou non (Par défaut: false)
+     * @param  {bool}     [force=false] - Indique si on doit forcer l'appel à l'API ou
+     * si on peut utiliser le cache (Par défaut: false)
      * @return {Promise<Obj>} Les données provenant de l'API
      * @throws Error
      */
@@ -479,7 +501,7 @@ export abstract class Base implements implAddNote {
         });
     }
     /**
-     * setPropValue - Permet de modifier la valeur d'une propriété dans un objet,
+     * *setPropValue* - Permet de modifier la valeur d'une propriété dans un objet,
      * ou dans un sous objet de manière dynamique
      * @param obj - Objet à modifier
      * @param key - chemin d'accès à la propriété à modifier
@@ -516,10 +538,10 @@ export abstract class Base implements implAddNote {
         }
     }
     /**
-     * replaceParams - Permet de remplacer des paramètres par des valeurs dans une chaîne de caractères
-     * @param   {string} path - Chaine à modifier avec les valeurs
+     * *replaceParams* - Permet de remplacer des paramètres par des valeurs dans une chaîne de caractères
+     * @param   {string} path -   Chaine à modifier avec les valeurs
      * @param   {object} params - Objet contenant les paramètres autorisés et leur type
-     * @param   {object} data - Objet contenant les valeurs des paramètres
+     * @param   {object} data -   Objet contenant les valeurs des paramètres
      * @returns {string}
      */
     static replaceParams(path: string, params: object, data: object): string {
@@ -545,21 +567,46 @@ export abstract class Base implements implAddNote {
     /*
                     PROPERTIES
     */
+    /** @type {string} */
     description: string;
+    /** @type {number} */
     nbComments: number;
+    /** @type {number} */
     id: number;
+    /** @type {Note} */
     objNote: Note;
+    /** @type {string} */
     resource_url: string;
+    /** @type {string} */
     title: string;
+    /** @type {User} */
     user: User;
+    /** @type {Array<Character>} */
     characters: Array<Character>;
+    /** @type {CommentsBS} */
     comments: CommentsBS;
+    /** @type {MediaTypes} */
     mediaType: MediaTypes;
 
-    protected __initial: boolean; // Indique si l'objet est nouveau ou non pour les methodes fill and compare
+    /**
+     * @type {boolean} Flag d'initialisation de l'objet, nécessaire pour les methodes fill and compare
+     */
+    protected __initial: boolean;
+    /**
+     * @type {Record<string, Changes} Stocke les changements des propriétés de l'objet
+     */
     protected __changes: Record<string, Changes>;
+    /**
+     * @type {Array<string>} Tableau des propriétés énumerables de l'objet
+     */
     protected __props: Array<string>;
+    /**
+     * @type {JQuery<HTMLElement>} Element HTML de référence du média
+     */
     private __elt: JQuery<HTMLElement>;
+    /**
+     * @type {object} Contient les écouteurs d'évènements de l'objet
+     */
     private __listeners: object;
 
     /*
@@ -622,7 +669,7 @@ export abstract class Base implements implAddNote {
                     },
                     set: (newValue: any) => {
                         const oldValue = self['_' + relatedProp.key];
-                        if (Array.isArray(oldValue) && oldValue.length !== newValue.length) {
+                        if (Array.isArray(oldValue) && oldValue.length === newValue.length) {
                             let diff = false;
                             for (let i = 0, _len = oldValue.length; i < _len; i++) {
                                 if (oldValue[i] !== newValue[i]) {
@@ -683,7 +730,7 @@ export abstract class Base implements implAddNote {
                 }
                 default: {
                     if (typeof relatedProp.type === 'function' && dataProp) {
-                        if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
+                        // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
                         value = Reflect.construct(relatedProp.type, [dataProp]);
                         if (value && Reflect.has(value, 'parent')) {
                             value.parent = self;
@@ -833,6 +880,10 @@ export abstract class Base implements implAddNote {
         }
         return this;
     }
+    /**
+     * Méthode d'initialisation de l'objet
+     * @returns {Promise<Base>}
+     */
     public init(): Promise<this> {
         if (this.elt) {
             this.comments = new CommentsBS(this.nbComments, this);
@@ -850,22 +901,22 @@ export abstract class Base implements implAddNote {
         }
         return this;
     }
-
     /**
-     * Retourne le DOMElement correspondant au média
+     * Retourne le DOMElement de référence du média
      * @returns {JQuery<HTMLElement>} Le DOMElement jQuery
      */
     get elt(): JQuery<HTMLElement> {
         return this.__elt;
     }
     /**
-     * Définit le DOMElement de référence pour ce média
+     * Définit le DOMElement de référence du média\
+     * Nécessaire **uniquement** pour le média principal de la page Web\
+     * Il sert à mettre à jour les données du média sur la page Web
      * @param  {JQuery<HTMLElement>} elt - DOMElement auquel est rattaché le média
      */
     set elt(elt: JQuery<HTMLElement>) {
         this.__elt = elt;
     }
-
     /**
      * Retourne le nombre d'acteurs référencés dans ce média
      * @returns {number}
@@ -887,8 +938,8 @@ export abstract class Base implements implAddNote {
         return this;
     }
     /**
-     * Ajoute le nombre de votes à la note dans l'attribut title de la balise
-     * contenant la représentation de la note de la ressource
+     * Ajoute le nombre de votes, à la note, dans l'attribut title de la balise
+     * contenant la représentation de la note du média
      *
      * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
      * @return {string} Le titre modifié de la note
@@ -907,7 +958,7 @@ export abstract class Base implements implAddNote {
         return title;
     }
     /**
-     * Ajoute une note au média
+     * Ajoute le vote du membre connecté pour le média
      * @param   {number} note - Note du membre connecté pour le média
      * @returns {Promise<boolean>}
      */
@@ -926,7 +977,7 @@ export abstract class Base implements implAddNote {
         });
     }
     /**
-     * fetchCharacters - Récupère les acteurs du média
+     * *fetchCharacters* - Récupère les acteurs du média
      * @abstract
      * @returns {Promise<this>}
      */
@@ -934,7 +985,7 @@ export abstract class Base implements implAddNote {
         throw new Error('Method abstract');
     }
     /**
-     * getCharacter - Retourne un personnage à partir de son identifiant
+     * *getCharacter* - Retourne un personnage à partir de son identifiant
      * @param   {number} id - Identifiant du personnage
      * @returns {Character | null}
      */
