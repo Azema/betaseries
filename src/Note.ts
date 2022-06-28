@@ -1,4 +1,4 @@
-import { Base, EventTypes, MediaType, Obj, Callback } from "./Base";
+import { Base, EventTypes, MediaType, Obj, Callback, Changes } from "./Base";
 
 export interface implAddNote {
     addVote(note: number): Promise<boolean>;
@@ -30,11 +30,49 @@ export class Note {
      * @type {Base}
      */
     _parent: Base;
+    private __initial: boolean;
+    protected __changes: Record<string, Changes> = {};
 
-    constructor(data: Obj, parent: Base) {
-        this.total = parseInt(data.total, 10);
-        this.mean = parseFloat(data.mean);
-        this.user = parseInt(data.user, 10);
+    constructor(data: Obj, parent?: Base) {
+        this.__initial = true;
+        this._parent = parent ? parent : null;
+        return this.fill(data);
+    }
+    fill(data: Obj): Note {
+        const self = this;
+        const fnTransform = {
+            total: parseInt,
+            user: parseInt,
+            mean: parseFloat
+        };
+        for (const propKey of Object.keys(fnTransform)) {
+            const descriptor: PropertyDescriptor = {
+                configurable: true,
+                enumerable: true,
+                get: () => {
+                    return self['_' + propKey];
+                },
+                set: (newValue: number) => {
+                    const oldValue = self['_' + propKey];
+                    if (oldValue === newValue) return;
+                    self['_' + propKey] = newValue;
+                    if (!self.__initial) {
+                        self.__changes[propKey] = {oldValue, newValue};
+                        if (self._parent) self._parent.updatePropRenderNote();
+                    }
+                }
+            };
+            Object.defineProperty(this, propKey, descriptor);
+            const value = fnTransform[propKey](data[propKey]);
+            Reflect.set(this, propKey, value);
+        }
+        this.__initial = false;
+        return this;
+    }
+    get parent(): Base {
+        return this._parent;
+    }
+    set parent(parent: Base) {
         this._parent = parent;
     }
     /**
@@ -199,7 +237,7 @@ export class Note {
      * Met à jour l'affichage de la note
      */
     public updateStars(elt: JQuery<HTMLElement> = null): void {
-        elt = elt || jQuery('.blockInformations__metadatas .js-render-stars');
+        elt = elt || jQuery('.blockInformations__metadatas .js-render-stars', this._parent.elt);
         let color = '';
         const $stars: JQuery<HTMLElement> = elt.find('.star-svg use');
         const result = $($stars.get(0)).attr('xlink:href').match(/(grey|blue)/);

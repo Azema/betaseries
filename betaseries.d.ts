@@ -75,7 +75,9 @@ declare module 'Cache' {
 }
 declare module 'Note' {
 	/// <reference types="jquery" />
-	import { Base, Obj, Callback } from 'Base';
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
+	import { Base, Obj, Callback, Changes } from 'Base';
 	export interface implAddNote {
 	    addVote(note: number): Promise<boolean>;
 	}
@@ -100,7 +102,12 @@ declare module 'Note' {
 	     * @type {Base}
 	     */
 	    _parent: Base;
-	    constructor(data: Obj, parent: Base);
+	    private __initial;
+	    protected __changes: Record<string, Changes>;
+	    constructor(data: Obj, parent?: Base);
+	    fill(data: Obj): Note;
+	    get parent(): Base;
+	    set parent(parent: Base);
 	    /**
 	     * Retourne la note moyenne sous forme de pourcentage
 	     * @returns {number} La note sous forme de pourcentage
@@ -217,9 +224,43 @@ declare module 'Subtitle' {
 	}
 
 }
+declare module 'User' {
+	import { Obj } from 'Base';
+	import { WatchedBy } from 'Episode';
+	export class Next {
+	    id: number;
+	    code: string;
+	    date: Date;
+	    title: string;
+	    image: string;
+	    constructor(data: Obj);
+	}
+	export class User {
+	    archived: boolean;
+	    downloaded: boolean;
+	    favorited: boolean;
+	    friends_want_to_watch: Array<string>;
+	    friends_watched: Array<WatchedBy>;
+	    hidden: boolean;
+	    last: string;
+	    mail: boolean;
+	    next: Next;
+	    profile: string;
+	    remaining: number;
+	    seen: boolean;
+	    status: number;
+	    tags: string;
+	    twitter: boolean;
+	    constructor(data: Obj);
+	    compare(data: Obj): boolean;
+	}
+
+}
 declare module 'Episode' {
 	/// <reference types="jquery" />
-	import { Base, Obj, HTTP_VERBS } from 'Base';
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
+	import { Base, Obj, HTTP_VERBS, RelatedProp } from 'Base';
 	import { implAddNote } from 'Note';
 	import { Season } from 'Season';
 	import { Subtitles } from 'Subtitle';
@@ -228,6 +269,7 @@ declare module 'Episode' {
 	     * @type {number} Identifiant de l'épisode sur la plateforme
 	     */
 	    id: number;
+	    platform_id?: number;
 	    /**
 	     * @type {string} Lien vers l'épisode sur la plateforme
 	     */
@@ -236,6 +278,9 @@ declare module 'Episode' {
 	     * @type {string} Le nom de la plateforme
 	     */
 	    platform: string;
+	    color?: string;
+	    type?: string;
+	    logo?: string;
 	};
 	export type ReleasesSvod = {
 	    displayOriginal: boolean;
@@ -256,6 +301,8 @@ declare module 'Episode' {
 	    note: number;
 	};
 	export class Episode extends Base implements implAddNote {
+	    static selectorsCSS: Record<string, string>;
+	    static relatedProps: Record<string, RelatedProp>;
 	    static fetch(epId: number): Promise<Episode>;
 	    /**
 	     * @type {Season} L'objet Season contenant l'épisode
@@ -321,6 +368,7 @@ declare module 'Episode' {
 	     * @type {string} Identifiant de la vidéo sur Youtube
 	     */
 	    youtube_id: string;
+	    private __fetches;
 	    /**
 	     * Constructeur de la classe Episode
 	     * @param   {Obj}       data    Les données provenant de l'API
@@ -328,13 +376,6 @@ declare module 'Episode' {
 	     * @returns {Episode}
 	     */
 	    constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data Les données provenant de l'API
-	     * @returns {Episode}
-	     * @override
-	     */
-	    fill(data: Obj): this;
 	    /**
 	     * Ajoute le titre de l'épisode à l'attribut Title
 	     * du DOMElement correspondant au titre de l'épisode
@@ -411,40 +452,11 @@ declare module 'Episode' {
 	}
 
 }
-declare module 'User' {
-	import { Obj } from 'Base';
-	import { WatchedBy } from 'Episode';
-	export class Next {
-	    id: number;
-	    code: string;
-	    date: Date;
-	    title: string;
-	    image: string;
-	    constructor(data: Obj);
-	}
-	export class User {
-	    archived: boolean;
-	    downloaded: boolean;
-	    favorited: boolean;
-	    friends_want_to_watch: Array<string>;
-	    friends_watched: Array<WatchedBy>;
-	    hidden: boolean;
-	    last: string;
-	    mail: boolean;
-	    next: Next;
-	    profile: string;
-	    remaining: number;
-	    seen: boolean;
-	    status: number;
-	    tags: string;
-	    twitter: boolean;
-	    constructor(data: Obj);
-	}
-
-}
 declare module 'Show' {
 	/// <reference types="jquery" />
-	import { Obj, EventTypes, Callback } from 'Base';
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
+	import { Obj, EventTypes, Callback, RelatedProp } from 'Base';
 	import { implAddNote } from 'Note';
 	import { Media } from 'Media';
 	import { Season } from 'Season';
@@ -553,6 +565,9 @@ declare module 'Show' {
 	    static EventTypes: Array<EventTypes>;
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
+	    static selectorsCSS: Record<string, string>;
+	    static relatedProps: Record<string, RelatedProp>;
+	    static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season>;
 	    /**
 	     * Méthode static servant à récupérer une série sur l'API BS
 	     * @param  {Obj} params - Critères de recherche de la série
@@ -624,6 +639,7 @@ declare module 'Show' {
 	     * @type {number} Nombre total d'épisodes dans la série
 	     */
 	    nbEpisodes: number;
+	    nbSeasons: number;
 	    /**
 	     * @type {string} Chaîne TV ayant produit la série
 	     */
@@ -673,7 +689,6 @@ declare module 'Show' {
 	     */
 	    thetvdb_id: number;
 	    _posters: object;
-	    private _fetches;
 	    /***************************************************/
 	    /***************************************************/
 	    /**
@@ -683,6 +698,12 @@ declare module 'Show' {
 	     * @returns {Media}
 	     */
 	    constructor(data: Obj, element?: JQuery<HTMLElement>);
+	    _initRender(): this;
+	    updatePropRenderFollowers(): void;
+	    updatePropRenderNbSeasons(): void;
+	    updatePropRenderNbEpisodes(): void;
+	    updatePropRenderStatus(): void;
+	    updatePropRenderDuration(): void;
 	    /**
 	     * Initialise l'objet lors de sa construction et après son remplissage
 	     * @returns {Promise<Show>}
@@ -807,6 +828,8 @@ declare module 'Show' {
 	     * @return {void}
 	     */
 	    updateProgressBar(): void;
+	    updateArchived(): void;
+	    updateNote(): void;
 	    /**
 	     * Met à jour le bloc du prochain épisode à voir
 	     * @param   {Callback} [cb=noop] Fonction de callback
@@ -911,8 +934,8 @@ declare module 'Season' {
 	    /**
 	     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
 	     */
-	    private _elt;
-	    private _fetches;
+	    private __elt;
+	    private __fetches;
 	    /**
 	     * Constructeur de la classe Season
 	     * @param   {Obj}   data    Les données provenant de l'API
@@ -995,7 +1018,9 @@ declare module 'Season' {
 }
 declare module 'Movie' {
 	/// <reference types="jquery" />
-	import { Obj } from 'Base';
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
+	import { Obj, RelatedProp } from 'Base';
 	import { implAddNote } from 'Note';
 	import { Platform_link } from 'Episode';
 	import { Media } from 'Media';
@@ -1028,6 +1053,8 @@ declare module 'Movie' {
 	    /***************************************************/
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
+	    static selectorsCSS: Record<string, string>;
+	    static relatedProps: Record<string, RelatedProp>;
 	    /**
 	     * Méthode static servant à récupérer un film sur l'API BS
 	     * @param  {Obj} params - Critères de recherche du film
@@ -1080,13 +1107,10 @@ declare module 'Movie' {
 	     * @returns {Media}
 	     */
 	    constructor(data: Obj, element?: JQuery<HTMLElement>);
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {any} data Les données provenant de l'API
-	     * @returns {Movie}
-	     * @override
-	     */
-	    fill(data: Obj): this;
+	    _initRender(): this;
+	    updatePropRenderFollowers(): void;
+	    updatePropRenderReleaseDate(): void;
+	    updatePropRenderDuration(): void;
 	    /**
 	     * Définit le film, sur le compte du membre connecté, comme "vu"
 	     * @returns {Promise<Movie>}
@@ -1140,6 +1164,7 @@ declare module 'Similar' {
 	    init: () => void;
 	}
 	export class Similar extends Media implements implShow, implMovie {
+	    static relatedProps: {};
 	    backdrop: string;
 	    director: string;
 	    original_release_date: Date;
@@ -1248,6 +1273,8 @@ declare module 'Similar' {
 }
 declare module 'Media' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Base, Obj } from 'Base';
 	import { Similar } from 'Similar';
 	export abstract class Media extends Base {
@@ -1255,6 +1282,7 @@ declare module 'Media' {
 	    /***************************************************/
 	    static propsAllowedOverride: object;
 	    static overrideType: string;
+	    static selectorsCSS: Record<string, string>;
 	    /**
 	     * Méthode static servant à récupérer un média sur l'API BS
 	     * @param  {Obj} params - Critères de recherche du média
@@ -1292,7 +1320,7 @@ declare module 'Media' {
 	    /**
 	     * @type {number} Durée du média en minutes
 	     */
-	    length: number;
+	    duration: number;
 	    /**
 	     * @type {string} Titre original du média
 	     */
@@ -1308,15 +1336,17 @@ declare module 'Media' {
 	    /**
 	     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
 	     */
-	    _in_account: boolean;
+	    in_account: boolean;
 	    /**
 	     * @type {string} slug - Identifiant du média servant pour l'URL
 	     */
 	    slug: string;
+	    protected __fetches: Record<string, Promise<any>>;
 	    /**
 	     * Constructeur de la classe Media
+	     * Le DOMElement est nécessaire que pour le média principal sur la page Web
 	     * @param   {Obj} data - Les données du média
-	     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
+	     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement de référence du média
 	     * @returns {Media}
 	     */
 	    constructor(data: Obj, element?: JQuery<HTMLElement>);
@@ -1325,23 +1355,7 @@ declare module 'Media' {
 	     * @returns {Promise<Media>}
 	     */
 	    init(): Promise<this>;
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data Les données provenant de l'API
-	     * @returns {Media}
-	     * @override
-	     */
-	    fill(data: Obj): this;
-	    /**
-	     * Indique si le média est enregistré sur le compte du membre
-	     * @returns {boolean}
-	     */
-	    get in_account(): boolean;
-	    /**
-	     * Définit si le média est enregistré sur le compte du membre
-	     * @param {boolean} i Flag
-	     */
-	    set in_account(i: boolean);
+	    updatePropRenderGenres(): void;
 	    /**
 	     * Retourne les similars associés au media
 	     * @return {Promise<Media>}
@@ -1481,6 +1495,8 @@ declare module 'Character' {
 }
 declare module 'Comment' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Obj, EventTypes, Callback } from 'Base';
 	import { CommentsBS, OrderComments } from 'Comments';
 	export interface implRepliesComment {
@@ -1733,6 +1749,8 @@ declare module 'Comment' {
 }
 declare module 'Comments' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { Base, Obj, EventTypes, Callback } from 'Base';
 	import { CommentBS, implRepliesComment } from 'Comment';
 	export enum OrderComments {
@@ -1978,6 +1996,8 @@ declare module 'Comments' {
 }
 declare module 'Base' {
 	/// <reference types="jquery" />
+	/// <reference types="jquery" />
+	/// <reference types="bootstrap" />
 	import { CacheUS } from 'Cache';
 	import { Character } from 'Character';
 	import { CommentsBS } from 'Comments';
@@ -2024,17 +2044,17 @@ declare module 'Base' {
 	    [key: string]: any;
 	};
 	export type Callback = () => void;
-	export type QueueItem = {
-	    promise: Promise<Obj>;
-	    cancel: Callback;
+	export type Changes = {
+	    oldValue: any;
+	    newValue: any;
 	};
-	export type Queue = {
-	    [key: string]: QueueItem;
+	export type RelatedProp = {
+	    key: string;
+	    type: any;
+	    default?: any;
+	    transform?: (obj: Base, data: Obj) => any;
 	};
-	export enum NetworkState {
-	    OFFLINE = "offline",
-	    ONLINE = "online"
-	}
+	export function objToArr(obj: Base, data: Obj): Array<any>;
 	export abstract class Base implements implAddNote {
 	    /**
 	     * Flag de debug pour le dev
@@ -2123,9 +2143,6 @@ declare module 'Base' {
 	        getValue: (key: string, defaultValue: Obj | Array<Obj> | Array<string> | Array<number>) => any;
 	        setValue: (key: string, val: Obj | Array<Obj> | Array<string> | Array<number>) => void;
 	    };
-	    static networkState: NetworkState;
-	    static networkQueue: Queue;
-	    static changeNetworkState(state: NetworkState): void;
 	    /**
 	     * Types d'évenements gérés par cette classe
 	     * @type {Array}
@@ -2167,19 +2184,29 @@ declare module 'Base' {
 	     * @returns {string}
 	     */
 	    static replaceParams(path: string, params: object, data: object): string;
+	    static relatedProps: Record<string, RelatedProp>;
+	    static selectorsCSS: Record<string, string>;
 	    description: string;
-	    characters: Array<Character>;
-	    comments: CommentsBS;
 	    nbComments: number;
 	    id: number;
 	    objNote: Note;
 	    resource_url: string;
 	    title: string;
 	    user: User;
+	    characters: Array<Character>;
+	    comments: CommentsBS;
 	    mediaType: MediaTypes;
-	    private _elt;
-	    private _listeners;
+	    protected __initial: boolean;
+	    protected __changes: Record<string, Changes>;
+	    protected __props: Array<string>;
+	    private __elt;
+	    private __listeners;
 	    constructor(data: Obj);
+	    /**
+	     * Symbol.Iterator - Methode Iterator pour les boucles for..of
+	     * @returns {object}
+	     */
+	    [Symbol.iterator](): object;
 	    /**
 	     * Remplit l'objet avec les données fournit en paramètre
 	     * @param  {Obj} data - Les données provenant de l'API
@@ -2187,6 +2214,17 @@ declare module 'Base' {
 	     * @virtual
 	     */
 	    fill(data: Obj): this;
+	    _initRender(): void;
+	    /**
+	     * Met à jour le rendu HTML des propriétés de l'objet
+	     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
+	     * Méthode appelée automatiquement par le setter de la propriété
+	     * @see Show.selectorsCSS
+	     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+	     * @returns {void}
+	     */
+	    updatePropRender(propKey: string): void;
+	    updatePropRenderNote(): void;
 	    /**
 	     * Initialize le tableau des écouteurs d'évènements
 	     * @returns {Base}
@@ -2223,15 +2261,17 @@ declare module 'Base' {
 	     */
 	    save(): this;
 	    /**
-	     * Retourne le DOMElement correspondant au média
-	     * @returns {JQuery} Le DOMElement jQuery
+	     * Retourne le DOMElement de référence du média
+	     * @returns {JQuery<HTMLElement>} Le DOMElement jQuery
 	     */
-	    get elt(): JQuery;
+	    get elt(): JQuery<HTMLElement>;
 	    /**
-	     * Définit le DOMElement de référence pour ce média
-	     * @param  {JQuery} elt - DOMElement auquel est rattaché le média
+	     * Définit le DOMElement de référence du média
+	     * Nécessaire <b>uniquement</b> pour le média principal de la page Web
+	     * Il sert à mettre à jour les données du média sur la page Web
+	     * @param  {JQuery<HTMLElement>} elt - DOMElement auquel est rattaché le média
 	     */
-	    set elt(elt: JQuery);
+	    set elt(elt: JQuery<HTMLElement>);
 	    /**
 	     * Retourne le nombre d'acteurs référencés dans ce média
 	     * @returns {number}
@@ -2246,15 +2286,10 @@ declare module 'Base' {
 	     * Ajoute le nombre de votes à la note dans l'attribut title de la balise
 	     * contenant la représentation de la note de la ressource
 	     *
-	     * @param  {Boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
-	     * @return {String} Le titre modifié de la note
+	     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
+	     * @return {string} Le titre modifié de la note
 	     */
 	    changeTitleNote(change?: boolean): string;
-	    /**
-	     * Ajoute le nombre de votes à la note de la ressource
-	     * @return {Base} L'instance du média
-	     */
-	    addNumberVoters(): Base;
 	    /**
 	     * Ajoute une note au média
 	     * @param   {number} note - Note du membre connecté pour le média
@@ -2581,6 +2616,95 @@ declare module 'Member' {
 	    renderNotifications(): void;
 	}
 	export {};
+
+}
+declare module 'Search' {
+	export interface ShowSearch {
+	    id: number;
+	    following: number;
+	    release_date: Date;
+	    poster: string;
+	    svods: Array<Record<string, string | number>>;
+	    slug: string;
+	    title: string;
+	}
+	export interface MovieSearch {
+	    id: number;
+	    slug: string;
+	    release_date: Date;
+	    poster: string;
+	    svods: Array<Record<string, string | number>>;
+	    title: string;
+	}
+	export type ResultSearch = {
+	    shows?: Array<ShowSearch>;
+	    movies?: Array<MovieSearch>;
+	    total: number;
+	    locale: string;
+	    limit: number;
+	    page: number;
+	};
+	export abstract class ParamsSearchAbstract {
+	    static valuesAllowed: Record<string, Array<string>>;
+	    static valuesDefault: {
+	        limit: 20;
+	        offset: 0;
+	        tri: 'popularite';
+	    };
+	    static separator: string;
+	    text: string;
+	    _limit: number;
+	    _offset: number;
+	    genres: Array<string>;
+	    _diffusions: Array<string>;
+	    svods: Array<number>;
+	    _tri: string;
+	    _autres: string;
+	    _fields: Array<string>;
+	    constructor();
+	    get limit(): number;
+	    set limit(limit: number);
+	    get offset(): number;
+	    set offset(offset: number);
+	    get diffusions(): Array<string>;
+	    set diffusions(diff: Array<string>);
+	    get tri(): string;
+	    set tri(val: string);
+	    get fields(): Array<string>;
+	    set fields(values: Array<string>);
+	    get autres(): string;
+	    set autres(value: string);
+	    abstract toRequest(): Record<string, any>;
+	}
+	export class ParamsSearchShows extends ParamsSearchAbstract {
+	    static valuesAllowed: Record<string, Array<string>>;
+	    _duration: string;
+	    _creations: Array<number>;
+	    _pays: Array<string>;
+	    chaines: Array<string>;
+	    constructor();
+	    get duration(): string;
+	    set duration(val: string);
+	    get creations(): Array<number>;
+	    set creations(values: Array<number>);
+	    get pays(): Array<string>;
+	    set pays(values: Array<string>);
+	    toRequest(): Record<string, string | number>;
+	}
+	export class ParamsSearchMovies extends ParamsSearchAbstract {
+	    static valuesAllowed: Record<string, Array<string>>;
+	    _releases: Array<number>;
+	    casting: string;
+	    constructor();
+	    get releases(): Array<number>;
+	    set releases(values: Array<number>);
+	    toRequest(): Record<string, string | number>;
+	}
+	export class Search {
+	    static searchShows(params: ParamsSearchShows): Promise<ResultSearch>;
+	    static getShowIds(params: ParamsSearchShows): Promise<Array<number>>;
+	    static searchMovies(params: ParamsSearchMovies): Promise<ResultSearch>;
+	}
 
 }
 declare module 'UpdateAuto' {

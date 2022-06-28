@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // declare const getScrollbarWidth, subscribeToggle;
 
 import { DataTypesCache, CacheUS } from "./Cache";
@@ -53,23 +54,43 @@ export type Obj = {
     [key: string]: any;
 };
 export type Callback = () => void;
-
+export type Changes = {
+    oldValue: any;
+    newValue: any;
+}
+export type RelatedProp = {
+    key: string;
+    type: any;
+    default?: any;
+    transform?: (obj: Base, data: Obj) => any;
+}
+export function objToArr(obj: Base, data: Obj): Array<any> {
+    if (data instanceof Array) return data;
+    const values = [];
+    for (const key in data) {
+         values.push(data[key]);
+    }
+    return values;
+}
 export abstract class Base implements implAddNote {
     /*
                     STATIC
     */
     /**
      * Flag de debug pour le dev
+     * @static
      * @type {boolean}
      */
     static debug = false;
     /**
      * L'objet cache du script pour stocker les données
+     * @static
      * @type {CacheUS}
      */
     static cache: CacheUS = null;
     /**
      * Objet contenant les informations de l'API
+     * @static
      * @type {Obj}
      */
     static api: Obj = {
@@ -89,7 +110,7 @@ export abstract class Base implements implAddNote {
                 "shows"   : ['display', 'episodes', 'list', 'member', 'search', 'similars']
             },
             "notDisplay": ['membersnotifications'],
-            "tokenRequired": {
+            "tokenRequired": { // Endpoints nécessitant un token
                 "comments": {
                     "close": ['POST'],
                     "comment": ['POST', 'DELETE'],
@@ -153,42 +174,52 @@ export abstract class Base implements implAddNote {
             }
     };
     /**
-     * Le token d'authentification de l'API
+     * Le token d'authentification de l'API BetaSeries
+     * @static
      * @type {String}
      */
     static token: string = null;
     /**
-     * La clé d'utilisation de l'API
+     * La clé d'utilisation de l'API BetaSeries
+     * @static
      * @type {String}
      */
     static userKey: string = null;
     /**
      * L'identifiant du membre connecté
+     * @static
      * @type {Number}
      */
     static userId: number = null;
     /**
-     * Clé pour l'API TheMovieDB
+     * Clé d'authentification pour l'API TheMovieDB
+     * @static
      * @type {string}
      */
     static themoviedb_api_user_key: string = null;
     /**
-     * Le nombre d'appels à l'API
+     * Compteur d'appels à l'API
+     * @static
      * @type {Number}
      */
     static counter = 0;
     /**
      * L'URL de base du serveur contenant les ressources statiques
+     * et les proxy
+     * @static
      * @type {String}
      */
     static serverBaseUrl = '';
     /**
-     * L'URL de base du serveur servant pour l'authentification
+     * L'URL de base du serveur pour l'authentification
+     * @static
+     * @see Base.authenticate
      * @type {String}
      */
     static serverOauthUrl = '';
     /**
      * Indique le theme d'affichage du site Web (light or dark)
+     * @static
      * @type {string}
      */
     static theme = 'light';
@@ -237,15 +268,23 @@ export abstract class Base implements implAddNote {
         EventTypes.SAVE,
         EventTypes.NOTE
     ];
+    /**
+     * Méthode servant à afficher le loader sur la page Web
+     * @static
+     */
     static showLoader() {
         jQuery('#loader-bg').show();
     }
+    /**
+     * Méthode servant à masque le loader sur la page Web
+     * @static
+     */
     static hideLoader() {
         jQuery('#loader-bg').hide();
     }
     /**
-     * Fonction d'authentification sur l'API BetaSeries
-     *
+     * Fonction d'authentification à l'API BetaSeries
+     * @static
      * @return {Promise}
      */
     static authenticate(): Promise<string> {
@@ -290,12 +329,13 @@ export abstract class Base implements implAddNote {
     }
     /**
      * Fonction servant à appeler l'API de BetaSeries
-     *
+     * @static
      * @param  {String}   type - Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
      * @param  {String}   resource - La ressource de l'API (ex: shows, seasons, episodes...)
      * @param  {String}   action - L'action à appliquer sur la ressource (ex: search, list...)
      * @param  {Obj}      args - Un objet (clef, valeur) à transmettre dans la requête
-     * @param  {bool}     [force=false] - Indique si on doit utiliser le cache ou non (Par défaut: false)
+     * @param  {bool}     [force=false] - Indique si on doit forcer l'appel à l'API ou
+     * si on peut utiliser le cache (Par défaut: false)
      * @return {Promise<Obj>} Les données provenant de l'API
      * @throws Error
      */
@@ -461,7 +501,7 @@ export abstract class Base implements implAddNote {
         });
     }
     /**
-     * setPropValue - Permet de modifier la valeur d'une propriété dans un objet,
+     * *setPropValue* - Permet de modifier la valeur d'une propriété dans un objet,
      * ou dans un sous objet de manière dynamique
      * @param obj - Objet à modifier
      * @param key - chemin d'accès à la propriété à modifier
@@ -498,10 +538,10 @@ export abstract class Base implements implAddNote {
         }
     }
     /**
-     * replaceParams - Permet de remplacer des paramètres par des valeurs dans une chaîne de caractères
-     * @param   {string} path - Chaine à modifier avec les valeurs
+     * *replaceParams* - Permet de remplacer des paramètres par des valeurs dans une chaîne de caractères
+     * @param   {string} path -   Chaine à modifier avec les valeurs
      * @param   {object} params - Objet contenant les paramètres autorisés et leur type
-     * @param   {object} data - Objet contenant les valeurs des paramètres
+     * @param   {object} data -   Objet contenant les valeurs des paramètres
      * @returns {string}
      */
     static replaceParams(path: string, params: object, data: object): string {
@@ -521,22 +561,53 @@ export abstract class Base implements implAddNote {
         }
         return path;
     }
+    static relatedProps: Record<string, RelatedProp> = {};
+    static selectorsCSS: Record<string, string> = {};
 
     /*
                     PROPERTIES
     */
+    /** @type {string} */
     description: string;
-    characters: Array<Character>;
-    comments: CommentsBS;
+    /** @type {number} */
     nbComments: number;
+    /** @type {number} */
     id: number;
+    /** @type {Note} */
     objNote: Note;
+    /** @type {string} */
     resource_url: string;
+    /** @type {string} */
     title: string;
+    /** @type {User} */
     user: User;
+    /** @type {Array<Character>} */
+    characters: Array<Character>;
+    /** @type {CommentsBS} */
+    comments: CommentsBS;
+    /** @type {MediaTypes} */
     mediaType: MediaTypes;
-    private _elt: JQuery;
-    private _listeners: object;
+
+    /**
+     * @type {boolean} Flag d'initialisation de l'objet, nécessaire pour les methodes fill and compare
+     */
+    protected __initial: boolean;
+    /**
+     * @type {Record<string, Changes} Stocke les changements des propriétés de l'objet
+     */
+    protected __changes: Record<string, Changes>;
+    /**
+     * @type {Array<string>} Tableau des propriétés énumerables de l'objet
+     */
+    protected __props: Array<string>;
+    /**
+     * @type {JQuery<HTMLElement>} Element HTML de référence du média
+     */
+    private __elt: JQuery<HTMLElement>;
+    /**
+     * @type {object} Contient les écouteurs d'évènements de l'objet
+     */
+    private __listeners: object;
 
     /*
                     METHODS
@@ -545,9 +616,37 @@ export abstract class Base implements implAddNote {
         if (!(data instanceof Object)) {
             throw new Error("data is not an object");
         }
+        this.__initial = true;
+        this.__changes = {};
+        this.characters = [];
+        this.__elt = null;
+        this.__props = ['characters', 'comments', 'mediaType'];
         this._initListeners();
         return this;
     }
+
+    /**
+     * Symbol.Iterator - Methode Iterator pour les boucles for..of
+     * @returns {object}
+     */
+    [Symbol.iterator](): object {
+        const self = this;
+        return {
+            pos: 0,
+            props: self.__props,
+            next(): IteratorResult<any> {
+                if (this.pos < this.props.length) {
+                    const item = {value: this.props[this.pos], done: false};
+                    this.pos++;
+                    return item;
+                } else {
+                    this.pos = 0;
+                    return {value: null, done: true};
+                }
+            }
+        }
+    }
+
     /**
      * Remplit l'objet avec les données fournit en paramètre
      * @param  {Obj} data - Les données provenant de l'API
@@ -555,23 +654,150 @@ export abstract class Base implements implAddNote {
      * @virtual
      */
     fill(data: Obj): this {
-        this.id = parseInt(data.id, 10);
-        this.characters = [];
-        if (data.characters && data.characters instanceof Array) {
-            for (let c = 0; c < data.characters.length; c++) {
-                this.characters.push(new Character(data.characters[c]));
+        const self = this;
+        for (const propKey in (this.constructor as typeof Base).relatedProps) {
+            if (!Reflect.has(data, propKey)) continue;
+            const relatedProp = (this.constructor as typeof Base).relatedProps[propKey];
+            const dataProp = data[propKey];
+            let descriptor: PropertyDescriptor;
+            if (this.__initial) {
+                descriptor = {
+                    configurable: true,
+                    enumerable: true,
+                    get: () => {
+                        return self['_' + relatedProp.key];
+                    },
+                    set: (newValue: any) => {
+                        const oldValue = self['_' + relatedProp.key];
+                        if (Array.isArray(oldValue) && oldValue.length === newValue.length) {
+                            let diff = false;
+                            for (let i = 0, _len = oldValue.length; i < _len; i++) {
+                                if (oldValue[i] !== newValue[i]) {
+                                    diff = true;
+                                    break;
+                                }
+                            }
+                            if (!diff) return;
+                        }
+                        else if (typeof oldValue === 'object') {
+                            let changed = false;
+                            const keysNew = Reflect.ownKeys(newValue)
+                                .filter((key:string) => !key.startsWith('_'));
+                            for (let k = 0, _len = keysNew.length; k < _len; k++) {
+                                if (oldValue[keysNew[k]] !== newValue[keysNew[k]]) {
+                                    changed = true;
+                                    break;
+                                }
+                            }
+                            if (!changed) return;
+                        } else if (oldValue === newValue) return;
+                        self['_' + relatedProp.key] = newValue;
+                        if (!self.__initial) {
+                            self.__changes[relatedProp.key] = {oldValue, newValue};
+                            self.updatePropRender(relatedProp.key);
+                        }
+                    }
+                };
+            }
+            let setValue = false,
+                value = undefined;
+            switch (relatedProp.type) {
+                case 'string':
+                    value = String(dataProp);
+                    setValue = true;
+                    break;
+                case 'number':
+                    value = parseInt(dataProp, 10);
+                    setValue = true;
+                    break;
+                case 'boolean':
+                case 'bool':
+                    value = !!dataProp;
+                    setValue = true;
+                    break;
+                case 'date':
+                    value = new Date(dataProp);
+                    setValue = true;
+                    break;
+                case 'object':
+                    value = Object.assign({}, dataProp);
+                    setValue = true;
+                    break;
+                case 'array': {
+                    value = dataProp;
+                    setValue = true;
+                    break;
+                }
+                default: {
+                    if (typeof relatedProp.type === 'function' && dataProp) {
+                        // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
+                        value = Reflect.construct(relatedProp.type, [dataProp]);
+                        if (value && Reflect.has(value, 'parent')) {
+                            value.parent = self;
+                        }
+                        setValue = true;
+                    }
+                    break;
+                }
+            }
+            if (!setValue && value == undefined && Reflect.has(relatedProp, 'default')) {
+                value = relatedProp.default;
+                setValue = true;
+            }
+            if (setValue) {
+                if (typeof relatedProp.transform === 'function') {
+                    const dataToTransform = (dataProp != undefined) ? dataProp : data;
+                    value = relatedProp.transform(this, dataToTransform);
+                }
+                // if (Base.debug) console.log('Base.fill descriptor[%s]', propKey, relatedProp, value);
+                if (this.__initial) {
+                    Object.defineProperty(this, relatedProp.key, descriptor);
+                    Reflect.set(this, relatedProp.key, value);
+                    this.__props.push(relatedProp.key);
+                } else {
+                    this[relatedProp.key] = value;
+                }
             }
         }
-        this.nbComments = data.comments ? parseInt(data.comments, 10) : 0;
-        if (!(this.comments instanceof CommentsBS)) {
-            this.comments = new CommentsBS(this.nbComments, this);
+        if (this.__initial) {
+            this.__props.sort();
+            this.__initial = false;
         }
-        this.objNote = (data.note) ? new Note(data.note, this) : (data.notes) ? new Note(data.notes, this) : null;
-        this.resource_url = data.resource_url;
-        this.title = data.title;
-        this.user = (data.user !== undefined) ? new User(data.user) : null;
-        this.description = data.description;
-        return this;
+        return this.save();
+    }
+    _initRender(): void {
+        if (!this.elt) return;
+        this.changeTitleNote(true);
+        this.decodeTitle();
+        this.objNote.updateStars();
+    }
+    /**
+     * Met à jour le rendu HTML des propriétés de l'objet
+     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
+     * Méthode appelée automatiquement par le setter de la propriété
+     * @see Show.selectorsCSS
+     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+     * @returns {void}
+     */
+    updatePropRender(propKey: string): void {
+        if (!this.elt) return;
+        const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
+        // if (Base.debug) console.log('updatePropRender', propKey, fnPropKey);
+        if (Reflect.has(this, fnPropKey)) {
+            // if (Base.debug) console.log('updatePropRender Reflect has method');
+            this[fnPropKey]();
+        } else if (Reflect.has((this.constructor as typeof Base).selectorsCSS, propKey)) {
+            // if (Base.debug) console.log('updatePropRender default');
+            const selectorCSS = (this.constructor as typeof Base).selectorsCSS[propKey];
+            jQuery(selectorCSS).text(this[propKey].toString());
+            delete this.__changes[propKey];
+        }
+    }
+    updatePropRenderNote(): void {
+        if (Base.debug) console.log('updatePropRenderNote');
+        this.objNote.updateStars();
+        this.changeTitleNote(true);
+        this._callListeners(EventTypes.NOTE);
     }
     /**
      * Initialize le tableau des écouteurs d'évènements
@@ -579,10 +805,10 @@ export abstract class Base implements implAddNote {
      * @sealed
      */
     private _initListeners(): this {
-        this._listeners = {};
+        this.__listeners = {};
         const EvtTypes = (this.constructor as typeof Base).EventTypes;
         for (let e = 0; e < EvtTypes.length; e++) {
-            this._listeners[EvtTypes[e]] = [];
+            this.__listeners[EvtTypes[e]] = [];
         }
         return this;
     }
@@ -599,18 +825,18 @@ export abstract class Base implements implAddNote {
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
         }
-        if (this._listeners[name] === undefined) {
-            this._listeners[name] = [];
+        if (this.__listeners[name] === undefined) {
+            this.__listeners[name] = [];
         }
-        for (const func in this._listeners[name]) {
+        for (const func in this.__listeners[name]) {
             if (func.toString() == fn.toString()) return;
         }
         if (args.length > 0) {
-            this._listeners[name].push({fn: fn, args: args});
+            this.__listeners[name].push({fn: fn, args: args});
         } else {
-            this._listeners[name].push(fn);
+            this.__listeners[name].push(fn);
         }
-        if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name, this._listeners[name]);
+        if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name, this.__listeners[name]);
         return this;
     }
     /**
@@ -621,12 +847,12 @@ export abstract class Base implements implAddNote {
      * @sealed
      */
     public removeListener(name: EventTypes, fn: Callback): this {
-        if (this._listeners[name] !== undefined) {
-            for (let l = 0; l < this._listeners[name].length; l++) {
-                if ((typeof this._listeners[name][l] === 'function' && this._listeners[name][l].toString() === fn.toString()) ||
-                    this._listeners[name][l].fn.toString() == fn.toString())
+        if (this.__listeners[name] !== undefined) {
+            for (let l = 0; l < this.__listeners[name].length; l++) {
+                if ((typeof this.__listeners[name][l] === 'function' && this.__listeners[name][l].toString() === fn.toString()) ||
+                    this.__listeners[name][l].fn.toString() == fn.toString())
                 {
-                    this._listeners[name].splice(l, 1);
+                    this.__listeners[name].splice(l, 1);
                 }
             }
         }
@@ -639,20 +865,29 @@ export abstract class Base implements implAddNote {
      * @sealed
      */
     public _callListeners(name: EventTypes): this {
-        if ((this.constructor as typeof Base).EventTypes.indexOf(name) >= 0 && this._listeners[name].length > 0) {
-            if (Base.debug) console.log('Base[%s] call %d Listeners on event %s', this.constructor.name, this._listeners[name].length, name, this._listeners);
+        // if (Base.debug) console.log('Base[%s] call Listeners of event %s', this.constructor.name, name, this.__listeners);
+        if ((this.constructor as typeof Base).EventTypes.indexOf(name) >= 0 && this.__listeners[name].length > 0)
+        {
+            if (Base.debug) console.log('Base[%s] call %d Listeners on event %s', this.constructor.name, this.__listeners[name].length, name, this.__listeners);
             const event = new CustomEvent('betaseries', {detail: {name: name}});
-            for (let l = 0; l < this._listeners[name].length; l++) {
-                if (typeof this._listeners[name][l] === 'function') {
-                    this._listeners[name][l].call(this, event, this);
+            for (let l = 0; l < this.__listeners[name].length; l++) {
+                if (typeof this.__listeners[name][l] === 'function') {
+                    this.__listeners[name][l].call(this, event, this);
                 } else {
-                    this._listeners[name][l].fn.apply(this, this._listeners[name][l].args);
+                    this.__listeners[name][l].fn.apply(this, this.__listeners[name][l].args);
                 }
             }
         }
         return this;
     }
+    /**
+     * Méthode d'initialisation de l'objet
+     * @returns {Promise<Base>}
+     */
     public init(): Promise<this> {
+        if (this.elt) {
+            this.comments = new CommentsBS(this.nbComments, this);
+        }
         return new Promise(resolve => resolve(this));
     }
     /**
@@ -666,22 +901,22 @@ export abstract class Base implements implAddNote {
         }
         return this;
     }
-
     /**
-     * Retourne le DOMElement correspondant au média
-     * @returns {JQuery} Le DOMElement jQuery
+     * Retourne le DOMElement de référence du média
+     * @returns {JQuery<HTMLElement>} Le DOMElement jQuery
      */
-    get elt(): JQuery {
-        return this._elt;
+    get elt(): JQuery<HTMLElement> {
+        return this.__elt;
     }
     /**
-     * Définit le DOMElement de référence pour ce média
-     * @param  {JQuery} elt - DOMElement auquel est rattaché le média
+     * Définit le DOMElement de référence du média\
+     * Nécessaire **uniquement** pour le média principal de la page Web\
+     * Il sert à mettre à jour les données du média sur la page Web
+     * @param  {JQuery<HTMLElement>} elt - DOMElement auquel est rattaché le média
      */
-    set elt(elt: JQuery) {
-        this._elt = elt;
+    set elt(elt: JQuery<HTMLElement>) {
+        this.__elt = elt;
     }
-
     /**
      * Retourne le nombre d'acteurs référencés dans ce média
      * @returns {number}
@@ -703,11 +938,11 @@ export abstract class Base implements implAddNote {
         return this;
     }
     /**
-     * Ajoute le nombre de votes à la note dans l'attribut title de la balise
-     * contenant la représentation de la note de la ressource
+     * Ajoute le nombre de votes, à la note, dans l'attribut title de la balise
+     * contenant la représentation de la note du média
      *
-     * @param  {Boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
-     * @return {String} Le titre modifié de la note
+     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
+     * @return {string} Le titre modifié de la note
      */
     changeTitleNote(change = true): string {
         const $elt = this.elt.find('.js-render-stars');
@@ -723,46 +958,7 @@ export abstract class Base implements implAddNote {
         return title;
     }
     /**
-     * Ajoute le nombre de votes à la note de la ressource
-     * @return {Base} L'instance du média
-     */
-    addNumberVoters(): Base {
-        const self = this;
-        const votes = $('.stars.js-render-stars'); // ElementHTML ayant pour attribut le titre avec la note de la série
-
-        let title = this.changeTitleNote(true);
-        // if (Base.debug) console.log('addNumberVoters - title: %s', title);
-        // On ajoute un observer sur l'attribut title de la note, en cas de changement lors d'un vote
-        new MutationObserver((mutationsList) => {
-            const changeTitleMutation = () => {
-                // On met à jour le nombre de votants, ainsi que la note du membre connecté
-                const upTitle = self.changeTitleNote(false);
-                // if (Base.debug) console.log('Observer upTitle: %s', upTitle);
-                // On évite une boucle infinie
-                if (upTitle !== title) {
-                    votes.attr('title', upTitle);
-                    title = upTitle;
-                }
-            };
-            let mutation: MutationRecord;
-            for (mutation of mutationsList) {
-                // On vérifie si le titre a été modifié
-                // @TODO: A tester
-                if (! /vote/.test(mutation.target.nodeValue) && mutation.target.nodeValue != title) {
-                    changeTitleMutation();
-                }
-            }
-        }).observe(votes.get(0), {
-            attributes: true,
-            childList: false,
-            characterData: false,
-            subtree: false,
-            attributeFilter: ['title']
-        });
-        return this;
-    }
-    /**
-     * Ajoute une note au média
+     * Ajoute le vote du membre connecté pour le média
      * @param   {number} note - Note du membre connecté pour le média
      * @returns {Promise<boolean>}
      */
@@ -781,7 +977,7 @@ export abstract class Base implements implAddNote {
         });
     }
     /**
-     * fetchCharacters - Récupère les acteurs du média
+     * *fetchCharacters* - Récupère les acteurs du média
      * @abstract
      * @returns {Promise<this>}
      */
@@ -789,7 +985,7 @@ export abstract class Base implements implAddNote {
         throw new Error('Method abstract');
     }
     /**
-     * getCharacter - Retourne un personnage à partir de son identifiant
+     * *getCharacter* - Retourne un personnage à partir de son identifiant
      * @param   {number} id - Identifiant du personnage
      * @returns {Character | null}
      */
@@ -955,7 +1151,7 @@ const calculDuration = function() {
 }();
 const upperFirst = function() {
     return function(word: string): string {
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        return word.charAt(0).toUpperCase() + word.slice(1);
     }
 }();
 const camelCase = function() {

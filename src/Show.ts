@@ -1,18 +1,31 @@
-import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback} from "./Base";
-import { implAddNote } from "./Note";
+import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, MediaType, RelatedProp} from "./Base";
+import { implAddNote, Note } from "./Note";
 import {Media} from "./Media";
 import {Season} from "./Season";
 import { Character, Person } from "./Character";
-import {Next} from "./User";
+import {Next, User} from "./User";
 
 declare const PopupAlert;
 
+/**
+ * Classe représentant les différentes images d'une série
+ * @class
+ */
 export class Images {
+    /**
+     * Les formats des images
+     * @static
+     * @type {object}
+     */
     static formats = {
         poster: 'poster',
         wide: 'wide'
     }
 
+    /**
+     * Contructeur
+     * @param {Obj} data - Les données de l'objet
+     */
     constructor(data: Obj) {
         this.show = data.show;
         this.banner = data.banner;
@@ -25,19 +38,35 @@ export class Images {
             poster: this.poster
         };
     }
-
+    /** @type {string} */
     show: string;
+    /** @type {string} */
     banner: string;
+    /** @type {string} */
     box: string;
+    /** @type {string} */
     poster: string;
+    /** @type {object} */
     _local: {show: string, banner: string, box: string, poster: string};
 }
+/**
+ * Enumérateur Picked
+ * @enum
+ */
 export enum Picked {
     none,
     banner,
     show
 }
+/**
+ * Classe représentant une image
+ * @class
+ */
 export class Picture {
+    /**
+     * Contructeur
+     * @param {Obj} data - Les données de l'objet
+     */
     constructor(data: Obj) {
         this.id = parseInt(data.id, 10);
         this.show_id = parseInt(data.show_id, 10);
@@ -48,16 +77,32 @@ export class Picture {
         this.date = new Date(data.date);
         this.picked = data.picked;
     }
+    /** @type {number} */
     id: number;
+    /** @type {number} */
     show_id: number;
+    /** @type {number} */
     login_id: number;
+    /** @type {string} */
     url: string;
+    /** @type {number} */
     width: number;
+    /** @type {number} */
     height: number;
+    /** @type {Date} */
     date: Date;
+    /** @type {Picked} */
     picked: Picked;
 }
+/**
+ * Classe représentant une plateforme de diffusion
+ * @class
+ */
 export class Platform {
+    /**
+     * Contructeur
+     * @param {Obj} data - Les données de l'objet
+     */
     constructor(data: Obj) {
         this.id = parseInt(data.id, 10);
         this.name = data.name;
@@ -67,20 +112,54 @@ export class Platform {
         this.logo = data.logo;
         this.partner = !data.partner || false;
     }
-
+    /**
+     * Identifiant de la plateforme
+     * @type {number}
+     */
     id: number;
+    /**
+     * Nom de la plateforme
+     * @type {string}
+     */
     name: string;
+    /** @type {string} */
     tag: string;
+    /**
+     * Lien URL d'accès au média sur la plateforme
+     * @type {string}
+     */
     link_url: string;
+    /** @type {object} */
     available: object;
+    /**
+     * URL du logo de la plateforme
+     * @type {string}
+     */
     logo: string;
+    /**
+     * Flag de partenariat avec la plateforme
+     * @type {boolean}
+     */
     partner: boolean;
 }
+/**
+ * Classe représentant les différentes plateformes de diffusion
+ * sous deux types de plateformes
+ * @class
+ */
 export class PlatformList {
+    /** @type {Array<Platform>} */
     svod: Array<Platform>;
+    /** @type {Array<Platform>} */
     vod: Array<Platform>;
+    /** @type {string} */
     country: string;
 
+    /**
+     * Les types de plateformes
+     * @type {Obj}
+     * @static
+     */
     static types: Obj = {
         svod: 'svod',
         vod: 'vod'
@@ -88,8 +167,9 @@ export class PlatformList {
 
     /**
      * fetchPlatforms - Récupère la liste des plateformes sur l'API
-     * @param  {string}                [country = 'us'] Le pays concerné par les plateformes
-     * @return {Promise<PlatformList>}                  L'objet contenant les différentes plateformes
+     * @static
+     * @param  {string}                [country = 'us'] - Le pays concerné par les plateformes
+     * @return {Promise<PlatformList>}                    L'objet contenant les différentes plateformes
      */
     static fetchPlatforms(country = 'us'): Promise<PlatformList> {
         return new Promise((resolve, reject) => {
@@ -100,7 +180,11 @@ export class PlatformList {
             .catch(err => reject(err));
         });
     }
-
+    /**
+     * Contructeur
+     * @param {Obj}     data -      Les données de l'objet
+     * @param {string}  country -   Le pays correspondant aux plateformes
+     */
     constructor(data: Obj, country = 'fr') {
         if (data.svod) {
             this.svod = [];
@@ -128,9 +212,9 @@ export class PlatformList {
     }
     /**
      * Retourne les plateformes sous forme d'éléments HTML Option
-     * @param  {string}           [type = 'svod']  Le type de plateformes souhaité
-     * @param  {Array<number>}    [exclude = null] Les identifiants des plateformes à exclure
-     * @return {string}                            Les options sous forme de chaîne
+     * @param  {string}           [type = 'svod'] -     Le type de plateformes souhaité
+     * @param  {Array<number>}    [exclude = null] -    Les identifiants des plateformes à exclure
+     * @return {string}                                 Les options sous forme de chaîne
      */
     renderHtmlOptions(type = 'svod', exclude: Array<number> = null): string {
         let options = '';
@@ -152,7 +236,15 @@ export class PlatformList {
         return options;
     }
 }
+/**
+ * Classe représentant les différentes plateformes de diffusion d'un média
+ * @class
+ */
 export class Platforms {
+    /**
+     * Contructeur
+     * @param {Obj} data - Les données de l'objet
+     */
     constructor(data: Obj) {
         this.svods = [];
         if (data?.svods && data?.svods instanceof Array) {
@@ -170,21 +262,38 @@ export class Platforms {
             }
         }
     }
-
+    /** @type {Array<Platform>} */
     svods: Array<Platform>;
+    /** @type {Platform} */
     svod: Platform;
+    /** @type {Array<Platform>} */
     vod: Array<Platform>;
 }
+/**
+ * Class représentant un ShowRunner
+ * @class
+ */
 export class Showrunner {
+    /**
+     * Contructeur
+     * @param {Obj} data - Les données de l'objet
+     */
     constructor(data: Obj) {
         this.id = data.id ? parseInt(data.id, 10) : null;
         this.name = data.name;
         this.picture = data.picture;
     }
+    /** @type {number} */
     id: number;
+    /** @type {string} */
     name: string;
+    /** @type {string} */
     picture: string;
 }
+/**
+ * Interface de la classe Show
+ * @interface
+ */
 export interface implShow {
     aliases: object;
     creation: string;
@@ -204,6 +313,12 @@ export interface implShow {
     thetvdb_id: number;
     persons: Array<Person>;
 }
+/**
+ * Class representing a Show
+ * @class
+ * @extends Media
+ * @implements {implShow, implAddNote}
+ */
 export class Show extends Media implements implShow, implAddNote {
     /***************************************************/
     /*                      STATIC                     */
@@ -212,6 +327,7 @@ export class Show extends Media implements implShow, implAddNote {
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}
+     * @static
      */
     static EventTypes: Array<EventTypes> = [
         EventTypes.UPDATE,
@@ -223,18 +339,112 @@ export class Show extends Media implements implShow, implAddNote {
         EventTypes.ARCHIVE,
         EventTypes.UNARCHIVE
     ];
+    /**
+     * Propriétés pouvant être surchargées
+     * @type {object}
+     */
     static propsAllowedOverride: object = {
         poster: { path: 'images.poster' },
         season: { path: 'seasons[#season#].image', params: {season: 'number'} }
     };
+    /**
+     * Type de surcharge
+     * Nécessaire pour la classe parente
+     * @static
+     * @type {string}
+     */
     static overrideType = 'shows';
+    /**
+     * Les différents sélecteurs CSS des propriétés de l'objet
+     * @static
+     * @type {Record<string, string>}
+     */
+    static selectorsCSS: Record<string, string> = {
+        title: '.blockInformations h1.blockInformations__title',
+        description: '.blockInformations p.blockInformations__synopsis',
+        creation: '.blockInformations .blockInformations__metadatas time',
+        followers: '.blockInformations .blockInformations__metadatas span.u-colorWhiteOpacity05.textAlignCenter:nth-of-type(2)',
+        nbSeasons: '.blockInformations .blockInformations__metadatas span.u-colorWhiteOpacity05.textAlignCenter:nth-of-type(3)',
+        nbEpisodes: '.blockInformations .blockInformations__metadatas span.u-colorWhiteOpacity05.textAlignCenter:nth-of-type(4)',
+        country: '.blockInformations .blockInformations__details li:nth-child(#n#) a',
+        genres: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        duration: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        status: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        network: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        showrunner: '.blockInformations .blockInformations__details li:nth-child(#n#) span',
+        /*rating: '#rating',
+        seasons: '#seasons',
+        episodes: '#episodes',
+        comments: '#comments',
+        characters: '#actors',
+        similars: '#similars'*/
+    };
+    /**
+     * Objet contenant les informations de relations entre les propriétés des objets de l'API
+     * et les proriétés de cette classe.
+     * Sert à la construction de l'objet
+     * @static
+     * @type {Record<string, RelatedProp>}
+     */
+    static relatedProps: Record<string, RelatedProp> = {
+        // data: Obj => object: Show
+        aliases: {key: "aliases", type: 'object', default: {}},
+        comments: {key: "nbComments", type: 'number', default: 0},
+        country: {key: "country", type: 'string', default: ''},
+        creation: {key: "creation", type: 'number', default: 0},
+        description: {key: "description", type: 'string', default: ''},
+        episodes: {key: "nbEpisodes", type: 'number', default: 0},
+        followers: {key: "followers", type: 'number', default: 0},
+        genres: {key: "genres", type: 'array', transform: objToArr, default: []},
+        id: {key: "id", type: 'number'},
+        images: {key: "images", type: Images},
+        imdb_id: {key: "imdb_id", type: 'string', default: ''},
+        in_account: {key: "in_account", type: 'boolean', default: false},
+        language: {key: "language", type: 'string', default: ''},
+        length: {key: "duration", type: 'number', default: 0},
+        network: {key: "network", type: 'string', default: ''},
+        next_trailer: {key: "next_trailer", type: 'string', default: ''},
+        next_trailer_host: {key: "next_trailer_host", type: 'string', default: ''},
+        notes: {key: "objNote", type: Note},
+        original_title: {key: "original_title", type: 'string', default: ''},
+        platforms: {key: "platforms", type: Platforms},
+        rating: {key: "rating", type: 'string', default: ''},
+        resource_url: {key: "resource_url", type: 'string', default: ''},
+        seasons: {key: "nbSeasons", type: 'number', default: 0},
+        seasons_details: {key: "seasons", type: "array", transform: Show.seasonsDetailsToSeasons},
+        showrunner: {key: "showrunner", type: Showrunner},
+        similars: {key: "nbSimilars", type: 'number', default: 0},
+        slug: {key: 'slug', type: 'string', default: ''},
+        social_links: {key: "social_links", type: 'array', default: []},
+        status: {key: "status", type: "string", default: ''},
+        thetvdb_id: {key: "thetvdb_id", type: 'number', default: 0},
+        themoviedb_id: {key: "tmdb_id", type: 'number', default: 0},
+        title: {key: "title", type: 'string', default: ''},
+        user: {key: "user", type: User}
+    };
+    /**
+     * Fonction statique servant à construire un tableau d'objets Season
+     * à partir des données de l'API
+     * @static
+     * @param   {Show} obj - L'objet Show
+     * @param   {Obj} data - Les données provenant de l'API
+     * @returns {Array<Season>}
+     */
+    static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season> {
+        const seasons = [];
+        for (let s = 0; s < data.length; s++) {
+            seasons.push(new Season(data[s], obj));
+        }
+        return seasons;
+    }
 
     /**
      * Méthode static servant à récupérer une série sur l'API BS
+     * @static
+     * @private
      * @param  {Obj} params - Critères de recherche de la série
      * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
      * @return {Promise<Show>}
-     * @private
      */
     protected static _fetch(params: Obj, force = false): Promise<Show> {
         return new Promise((resolve, reject) => {
@@ -246,6 +456,7 @@ export class Show extends Media implements implShow, implAddNote {
 
     /**
      * fetchLastSeen - Méthode static retournant les 10 dernières séries vues par le membre
+     * @static
      * @param  {number}  [limit = 10]  Le nombre limite de séries retournées
      * @return {Promise<Show>}         Une promesse avec les séries
      */
@@ -255,7 +466,7 @@ export class Show extends Media implements implShow, implAddNote {
             .then((data: Obj) => {
                 const shows: Array<Show> = [];
                 for (let s = 0; s < data.shows.length; s++) {
-                    shows.push(new Show(data.shows[s], jQuery('body')));
+                    shows.push(new Show(data.shows[s]));
                 }
                 resolve(shows);
             })
@@ -265,6 +476,7 @@ export class Show extends Media implements implShow, implAddNote {
 
     /**
      * Méthode static servant à récupérer plusieurs séries sur l'API BS
+     * @static
      * @param  {Array<number>} ids - Les identifiants des séries recherchées
      * @return {Promise<Array<Show>>}
      */
@@ -275,10 +487,10 @@ export class Show extends Media implements implShow, implAddNote {
                 const shows: Array<Show> = [];
                 if (ids.length > 1) {
                     for (let s = 0; s < data.shows.length; s++) {
-                        shows.push(new Show(data.shows[s], jQuery('.blockInformations')));
+                        shows.push(new Show(data.shows[s]));
                     }
                 } else {
-                    shows.push(new Show(data.show, jQuery('.blockInformations')));
+                    shows.push(new Show(data.show));
                 }
                 resolve(shows);
             })
@@ -288,6 +500,7 @@ export class Show extends Media implements implShow, implAddNote {
 
     /**
      * Methode static servant à récupérer une série par son identifiant BS
+     * @static
      * @param  {number} id - L'identifiant de la série
      * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
      * @return {Promise<Show>}
@@ -298,6 +511,7 @@ export class Show extends Media implements implShow, implAddNote {
 
     /**
      * Methode static servant à récupérer une série par son identifiant TheTVDB
+     * @static
      * @param  {number} id - L'identifiant TheTVDB de la série
      * @param  {boolean} [force=false] - Indique si on utilise le cache ou non
      * @return {Promise<Show>}
@@ -308,6 +522,7 @@ export class Show extends Media implements implShow, implAddNote {
 
     /**
      * Méthode static servant à récupérer une série par son identifiant URL
+     * @static
      * @param   {string} url - Identifiant URL (slug) de la série recherchée
      * @param   {boolean} force - Indique si on doit ignorer les données dans le cache
      * @returns {Promise<Show>}
@@ -348,6 +563,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @type {number} Nombre total d'épisodes dans la série
      */
     nbEpisodes: number;
+    nbSeasons: number;
     /**
      * @type {string} Chaîne TV ayant produit la série
      */
@@ -396,8 +612,10 @@ export class Show extends Media implements implShow, implAddNote {
      * @type {number} Identifiant TheTVDB de la série
      */
     thetvdb_id: number;
+    /**
+     * @type {object} Contient les URLs des posters disponibles pour la série
+     */
     _posters: object;
-    private _fetches: Record<string, Promise<Show|this|Obj>>;
 
     /***************************************************/
     /*                      METHODS                    */
@@ -411,24 +629,150 @@ export class Show extends Media implements implShow, implAddNote {
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data, element);
-        this._fetches = {};
-        return this.fill(data);
+        this.__fetches = {};
+        this._posters = null;
+        this.persons = [];
+        this.seasons = [];
+        this.mediaType = {singular: MediaType.show, plural: 'shows', className: Show};
+        return this.fill(data)._initRender();
     }
     /**
-     * Initialise l'objet lors de sa construction et après son remplissage
+     * Initialisation du rendu HTML
+     * Sert à définir les sélecteurs CSS et ajouter, si nécessaire, des balises HTML supplémentaires
+     * Seulement si la propriété {@link Show.elt} est définie
+     * @returns {Show}
+     */
+    _initRender(): this {
+        if (!this.elt) {
+            return;
+        }
+        super._initRender();
+        // title
+        const $title = jQuery(Show.selectorsCSS.title);
+        if ($title.length > 0) {
+            const title = $title.text();
+            $title.empty().append(`<span class="title">${title}</span>`);
+            Show.selectorsCSS.title += ' span.title';
+        }
+        const $details = jQuery('.blockInformations__details li', this.elt);
+        for (let d = 0, _len = $details.length; d < _len; d++) {
+            const $li = jQuery($details.get(d));
+            if ($li.get(0).classList.length <= 0) {
+                const title = $li.find('strong').text().trim().toLowerCase();
+                switch (title) {
+                    case 'pays':
+                        Show.selectorsCSS.country = Show.selectorsCSS.country.replace('#n#', (d+1).toString());
+                        break;
+                    case 'genres':
+                        Media.selectorsCSS.genres = Media.selectorsCSS.genres.replace('#n#', (d+1).toString());
+                        Show.selectorsCSS.genres = Show.selectorsCSS.genres.replace('#n#', (d+1).toString());
+                        break;
+                    case 'durée d’un épisode': {
+                        Show.selectorsCSS.duration = Show.selectorsCSS.duration.replace('#n#', (d+1).toString());
+                        const $span = jQuery(Show.selectorsCSS.duration);
+                        const value = $span.text().trim();
+                        const minutes = value.substring(0, value.indexOf(' '));
+                        const text = value.substring(value.indexOf(' '));
+                        $span.empty().append(`<span class="time">${minutes}</span>${text}`);
+                        Show.selectorsCSS.duration += ' span.time';
+                        Media.selectorsCSS.duration = Show.selectorsCSS.duration;
+                        break;
+                    }
+                    case 'statut':
+                        Show.selectorsCSS.status = Show.selectorsCSS.status.replace('#n#', (d+1).toString());
+                        break;
+                    case 'chaîne':
+                        Show.selectorsCSS.network = Show.selectorsCSS.network.replace('#n#', (d+1).toString());
+                        break;
+                    case 'showrunner':
+                        Show.selectorsCSS.showrunner = Show.selectorsCSS.showrunner.replace('#n#', (d+1).toString());
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        return this;
+    }
+    /**
+     * Met à jour le nombre de followers sur la page Web
+     */
+    updatePropRenderFollowers(): void {
+        const $followers = jQuery(Show.selectorsCSS.followers);
+        if ($followers.length > 0) {
+            let text = `${this.followers.toString()} membre${this.followers > 1 ? 's' : ''}`;
+            $followers.attr('title', text);
+            if (this.followers >= 1000) {
+                const thousand = Math.round(this.followers / 1000);
+                text = `${thousand.toString()}K membres`;
+            }
+            $followers.text(text);
+        }
+        delete this.__changes.followers;
+    }
+    /**
+     * Met à jour le nombre de saisons sur la page Web
+     */
+    updatePropRenderNbSeasons(): void {
+        const $seasons = jQuery(Show.selectorsCSS.nbSeasons);
+        if ($seasons.length > 0) {
+            $seasons.text(`${this.nbSeasons.toString()} saison${this.nbSeasons > 1 ? 's' : ''}`);
+        }
+        delete this.__changes.nbSeasons;
+    }
+    /**
+     * Met à jour le nombre d'épisodes sur la page Web
+     */
+    updatePropRenderNbEpisodes(): void {
+        const $episodes = jQuery(Show.selectorsCSS.nbEpisodes);
+        if ($episodes.length > 0) {
+            $episodes.text(`${this.nbEpisodes.toString()} épisode${this.nbEpisodes > 1 ? 's' : ''}`);
+        }
+        delete this.__changes.nbEpisodes;
+    }
+    /**
+     * Met à jour le statut de la série sur la page Web
+     */
+    updatePropRenderStatus(): void {
+        const $status = jQuery(Show.selectorsCSS.status);
+        if ($status.length > 0) {
+            let text = 'Terminée';
+            if (this.status.toLowerCase() === 'continuing') {
+                text = 'En cours';
+            }
+            $status.text(text);
+        }
+        delete this.__changes.status;
+    }
+    /**
+     * Met à jour la durée d'un épisode sur la page Web
+     */
+    updatePropRenderDuration(): void {
+        const $duration = jQuery(Show.selectorsCSS.duration);
+        if ($duration.length > 0) {
+            $duration.text(this.duration.toString());
+        }
+    }
+    /**
+     * Initialise l'objet après sa construction et son remplissage
      * @returns {Promise<Show>}
      */
     public init(): Promise<this> {
-        return this.fetchSeasons().then(() => {
-            // On gère l'ajout et la suppression de la série dans le compte utilisateur
-            if (this.in_account) {
-                this.deleteShowClick();
-            } else {
-                this.addShowClick();
-            }
-            this._overrideProps();
-            return this;
-        });
+        if (this.elt) {
+            const promises = [];
+            promises.push(this.fetchSeasons().then(() => {
+                // On gère l'ajout et la suppression de la série dans le compte utilisateur
+                if (this.in_account) {
+                    this.deleteShowClick();
+                } else {
+                    this.addShowClick();
+                }
+                return this;
+            }));
+            promises.push(super.init());
+            return Promise.all(promises).then(() => this);
+        }
+        return super.init();
     }
     /**
      * Récupère les données de la série sur l'API
@@ -437,13 +781,12 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetch(force = true): Promise<Obj> {
         const self = this;
-        if (this._fetches.show) return this._fetches.show;
-        this._fetches.show = Base.callApi('GET', 'shows', 'display', {id: this.id}, force)
+        if (this.__fetches.show) return this.__fetches.show;
+        this.__fetches.show = Base.callApi('GET', 'shows', 'display', {id: this.id}, force)
         .then((data) => {
-            delete self._fetches.show;
             return data;
-        });
-        return this._fetches.show;
+        }).finally(() => delete self.__fetches.show);
+        return this.__fetches.show;
     }
     /**
      * Récupère les saisons de la série
@@ -451,7 +794,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetchSeasons(): Promise<Show> {
         const self = this;
-        if (this._fetches.seasons) return this._fetches.seasons as Promise<Show>;
+        if (this.__fetches.seasons) return this.__fetches.seasons as Promise<Show>;
         const params: Obj = {thetvdb_id: this.thetvdb_id};
         let force = false;
         if (this.thetvdb_id <= 0) {
@@ -459,7 +802,7 @@ export class Show extends Media implements implShow, implAddNote {
             params.id = this.id;
             force = true;
         }
-        this._fetches.seasons = Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
+        this.__fetches.seasons = Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
         .then((data: Obj) => {
             self.seasons = [];
             if (data?.seasons?.length <= 0) {
@@ -470,10 +813,9 @@ export class Show extends Media implements implShow, implAddNote {
                 seasonNumber = parseInt(data.seasons[s].number, 10);
                 self.seasons[seasonNumber - 1] = new Season(data.seasons[s], this);
             }
-            delete self._fetches.seasons;
             return self;
-        });
-        return this._fetches.seasons as Promise<Show>;
+        }).finally(() => delete self.__fetches.seasons);
+        return this.__fetches.seasons as Promise<Show>;
     }
     /**
      * Récupère les personnages de la série
@@ -482,8 +824,8 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetchCharacters(): Promise<this> {
         const self = this;
-        if (this._fetches.characters) return this._fetches.characters as Promise<this>;
-        this._fetches.characters = Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
+        if (this.__fetches.characters) return this.__fetches.characters as Promise<this>;
+        this.__fetches.characters = Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
         .then((data: Obj) => {
             self.characters = [];
             if (data?.characters?.length <= 0) {
@@ -492,10 +834,9 @@ export class Show extends Media implements implShow, implAddNote {
             for (let c = 0; c < data.characters.length; c++) {
                 self.characters.push(new Character(data.characters[c]));
             }
-            delete self._fetches.characters;
             return self;
-        });
-        return this._fetches.characters as Promise<this>;
+        }).finally(() => delete self.__fetches.characters);
+        return this.__fetches.characters as Promise<this>;
     }
     /**
      * Retourne le personnage associé au nom d'acteur de la série
@@ -515,8 +856,8 @@ export class Show extends Media implements implShow, implAddNote {
      */
     fetchPersons(): Promise<Show> {
         const self = this;
-        if (this._fetches.persons) return this._fetches.persons as Promise<Show>;
-        this._fetches.persons = Base.callApi(HTTP_VERBS.GET, 'persons', 'show', {id: this.id})
+        if (this.__fetches.persons) return this.__fetches.persons as Promise<Show>;
+        this.__fetches.persons = Base.callApi(HTTP_VERBS.GET, 'persons', 'show', {id: this.id})
         .then(data => {
             this.persons = [];
             if (data.persons) {
@@ -524,10 +865,9 @@ export class Show extends Media implements implShow, implAddNote {
                     self.persons.push(new Person(data.persons[p]));
                 }
             }
-            delete self._fetches.persons;
             return self;
-        });
-        return this._fetches.persons as Promise<Show>;
+        }).finally(() => delete self.__fetches.persons);
+        return this.__fetches.persons as Promise<Show>;
     }
     /**
      * Récupère les acteurs sur l'API BetaSeries à partir
@@ -557,9 +897,9 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {Person | null}
      */
     getPersonByName(name: string): Person | null {
-        const comp = name.toLocaleLowerCase();
+        const comp = name.toLowerCase();
         for (const actor of this.persons) {
-            if (actor.name.toLocaleLowerCase() === comp) return actor;
+            if (actor.name.toLowerCase() === comp) return actor;
         }
         return null;
     }
@@ -600,6 +940,7 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * isMarkToSee - Indique si la série se trouve dans les séries à voir
+     * @async
      * @returns {boolean}
      */
     async isMarkedToSee(): Promise<boolean> {
@@ -838,6 +1179,9 @@ export class Show extends Media implements implShow, implAddNote {
         // On met à jour la barre de progression
         jQuery('.progressBarShow').css('width', this.user.status.toFixed(1) + '%');
     }
+    /**
+     * Simule un clic sur le bouton d'archivage de la série sur la page Web
+     */
     updateArchived(): void {
         if (Base.debug) console.log('Show updateArchived');
         const $btnArchive = jQuery('#reactjs-show-actions button.btn-archive');
@@ -1107,7 +1451,7 @@ export class Show extends Media implements implShow, implAddNote {
                 >
                     ${Base.trans("popup.suggest_show.title", {'%title%': "une série"})}</button>`;
                 jQuery('#similars h2.blockTitle').after(btnAddSimilars);
-                self.addNumberVoters();
+                // self.addNumberVoters();
                 // On supprime le btn ToSeeLater
                 self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
                 self.elt.find('.blockInformations__title .fa-clock-o').remove();
@@ -1194,7 +1538,7 @@ export class Show extends Media implements implShow, implAddNote {
                             </span>`
                         );
                         self.elt = $('.blockInformations');
-                        self.addNumberVoters();
+                        // self.addNumberVoters();
                         self.addBtnToSee();
                         self.addShowClick();
                         self.updateProgressBar();
@@ -1233,6 +1577,7 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Ajoute le bouton toSee dans les actions de la série
+     * @sync
      */
     async addBtnToSee(): Promise<void> {
         if (this.elt.find('.btnMarkToSee').length > 0) return;
@@ -1259,7 +1604,7 @@ export class Show extends Media implements implShow, implAddNote {
         };
         this.elt.find('.blockInformations__actions').last().append(btnHTML);
         const $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
-        $btn.click((e: JQuery.ClickEvent) => {
+        $btn.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             const $btn = jQuery(e.currentTarget);

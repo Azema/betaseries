@@ -1,8 +1,8 @@
 import {Base, Obj, MediaType, MediaTypes, HTTP_VERBS} from "./Base";
 import {Media} from "./Media";
 import { Season } from "./Season";
-import {implShow, Showrunner, Platforms, Images, Picture} from "./Show";
-import {implMovie, OtherTitle} from "./Movie";
+import {implShow, Showrunner, Platforms, Images, Picture, Show} from "./Show";
+import {implMovie, Movie, OtherTitle} from "./Movie";
 import {Platform_link} from "./Episode";
 import { Person } from "./Character";
 
@@ -17,6 +17,8 @@ interface implDialog {
     init: () => void
 }
 export class Similar extends Media implements implShow, implMovie {
+    static relatedProps = {};
+
     /* Interface implMovie */
     backdrop: string;
     director: string;
@@ -71,58 +73,12 @@ export class Similar extends Media implements implShow, implMovie {
      */
     fill(data: Obj): this {
         if (this.mediaType.singular === MediaType.show) {
-            this.aliases = data.aliases;
-            this.creation = data.creation;
-            this.country = data.country;
-            this.images = null;
-            if (data.images !== undefined && data.images !== null) {
-                this.images = new Images(data.images);
-            }
-            this.nbEpisodes = parseInt(data.episodes, 10);
-            this.network = data.network;
-            this.next_trailer = data.next_trailer;
-            this.next_trailer_host = data.next_trailer_host;
-            this.rating = data.rating;
-            this.platforms = null;
-            if (data.platforms !== undefined && data.platforms !== null) {
-                this.platforms = new Platforms(data.platforms);
-            }
+            Similar.relatedProps = Show.relatedProps;
             this.seasons = [];
-            this.nbSeasons = parseInt(data.seasons, 10);
-            this.showrunner = null;
-            if (data.showrunner !== undefined && data.showrunner !== null) {
-                this.showrunner = new Showrunner(data.showrunner);
-            }
-            this.social_links = data.social_links;
-            this.status = data.status;
-            this.thetvdb_id = parseInt(data.thetvdb_id, 10);
-            this.pictures = [];
             this.persons = [];
         } else if (this.mediaType.singular === MediaType.movie) {
-            if (data.user.in_account !== undefined) {
-                data.in_account = data.user.in_account;
-                delete data.user.in_account;
-            }
-            if (data.synopsis !== undefined) {
-                data.description = data.synopsis;
-                delete data.synopsis;
-            }
-            if (data.url !== undefined) {
-                data.slug = data.url;
-                delete data.url;
-            }
-            this.backdrop = data.backdrop;
-            this.director = data.director;
-            this.original_release_date = new Date(data.original_release_date);
-            this.other_title = data.other_title;
-            this.platform_links = data.platform_links;
-            this.poster = data.poster;
-            this.production_year = parseInt(data.production_year);
-            this.release_date = new Date(data.release_date);
-            this.sale_date = new Date(data.sale_date);
-            this.tagline = data.tagline;
-            this.tmdb_id = parseInt(data.tmdb_id);
-            this.trailer = data.trailer;
+            Similar.relatedProps = Movie.relatedProps;
+            this.platform_links = [];
         }
         super.fill(data);
         return this;

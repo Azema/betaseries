@@ -1,8 +1,9 @@
-import {Base, Obj, HTTP_VERBS, MediaType, EventTypes} from "./Base";
+import {Base, Obj, HTTP_VERBS, MediaType, EventTypes, RelatedProp} from "./Base";
 import { Character } from "./Character";
-import { implAddNote } from "./Note";
+import { implAddNote, Note } from "./Note";
 import { Season } from "./Season";
 import { Subtitles } from "./Subtitle";
+import { User } from "./User";
 
 declare const PopupAlert;
 
@@ -11,6 +12,7 @@ export type Platform_link = {
      * @type {number} Identifiant de l'épisode sur la plateforme
      */
     id: number;
+    platform_id?: number;
     /**
      * @type {string} Lien vers l'épisode sur la plateforme
      */
@@ -19,6 +21,9 @@ export type Platform_link = {
      * @type {string} Le nom de la plateforme
      */
     platform: string;
+    color?: string;
+    type?: string;
+    logo?: string;
 };
 export type ReleasesSvod = {
     displayOriginal: boolean;
@@ -40,6 +45,29 @@ export type WatchedBy = {
 };
 
 export class Episode extends Base implements implAddNote {
+    static selectorsCSS: Record<string, string> = {};
+    static relatedProps: Record<string, RelatedProp> = {
+        // data: Obj => object: Show
+        characters: {key: "characters", type: 'array', default: []},
+        code: {key: "code", type: 'string', default: ''},
+        comments: {key: "nbComments", type: 'number', default: 0},
+        date: {key: "date", type: 'date', default: null},
+        description: {key: "description", type: 'string', default: ''},
+        episode: {key: "episode", type: 'number', default: 0},
+        global: {key: "global", type: 'number', default: 0},
+        id: {key: "id", type: 'number'},
+        note: {key: "objNote", type: Note},
+        platform_links: {key: "platform_links", type: 'array', default: []},
+        resource_url: {key: "resource_url", type: 'string', default: ''},
+        season: {key: "numSeason", type: 'number', default: 0},
+        seen_total: {key: "seen_total", type: 'number', default: 0},
+        special: {key: "special", type: 'boolean', default: false},
+        subtitles: {key: "subtitles", type: 'array', default: []},
+        thetvdb_id: {key: "thetvdb_id", type: 'number', default: 0},
+        title: {key: "title", type: 'string', default: ''},
+        user: {key: "user", type: User},
+        youtube_id: {key: "youtube_id", type: 'string', default: ''}
+    };
     public static fetch(epId: number): Promise<Episode> {
         return Base.callApi(HTTP_VERBS.GET, 'episodes', 'display', {id: epId})
         .then((data: Obj) => {
@@ -110,6 +138,7 @@ export class Episode extends Base implements implAddNote {
      * @type {string} Identifiant de la vidéo sur Youtube
      */
     youtube_id: string;
+    private __fetches: Record<string, Promise<this>>;
 
     /**
      * Constructeur de la classe Episode
@@ -119,37 +148,13 @@ export class Episode extends Base implements implAddNote {
      */
     constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>) {
         super(data);
+        this.__fetches = {};
         this._season = season;
+        this.mediaType = {singular: MediaType.episode, plural: 'episodes', className: Episode};
         if (elt) {
             this.elt = elt;
         }
         return this.fill(data);
-    }
-    /**
-     * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data Les données provenant de l'API
-     * @returns {Episode}
-     * @override
-     */
-    fill(data: Obj): this {
-        this.code = data.code;
-        this.date = new Date(data.date);
-        this.director = data.director;
-        this.episode = parseInt(data.episode, 10);
-        this.global = parseInt(data.global, 10);
-        this.numSeason = parseInt(data.season, 10);
-        this.platform_links = data.platform_links;
-        this.releasesSvod = data.releasesSvod;
-        this.seen_total = (data.seen_total !== null) ? parseInt(data.seen_total, 10) : 0;
-        this.special = data.special === 1 ? true : false;
-        this.subtitles = new Subtitles(data.subtitles || []);
-        this.thetvdb_id = parseInt(data.thetvdb_id, 10);
-        this.watched_by = data.watched_by;
-        this.writers = data.writers;
-        this.youtube_id = data.youtube_id;
-        this.mediaType = {singular: MediaType.episode, plural: 'episodes', className: Episode};
-        super.fill(data);
-        return this.save();
     }
     /**
      * Ajoute le titre de l'épisode à l'attribut Title
@@ -316,8 +321,8 @@ export class Episode extends Base implements implAddNote {
                 args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
             }
 
-            Base.callApi(method, 'episodes', 'watched', args).then((data: Obj) =>
-            {
+            Base.callApi(method, 'episodes', 'watched', args)
+            .then((data: Obj) => {
                 if (Base.debug) console.log('updateStatus %s episodes/watched', method, data);
                 // Si un épisode est vu et que la série n'a pas été ajoutée
                 // au compte du membre connecté
@@ -478,7 +483,8 @@ export class Episode extends Base implements implAddNote {
      */
     fetchCharacters(): Promise<this> {
         const self = this;
-        return Base.callApi(HTTP_VERBS.GET, 'episodes', 'characters', {id: this.id}, true)
+        if (this.__fetches.characters) return this.__fetches.characters;
+        this.__fetches.characters = Base.callApi(HTTP_VERBS.GET, 'episodes', 'characters', {id: this.id}, true)
         .then((data: Obj) => {
             self.characters = [];
             if (data?.characters?.length <= 0) {
@@ -488,6 +494,7 @@ export class Episode extends Base implements implAddNote {
                 self.characters.push(new Character(data.characters[c]));
             }
             return self;
-        });
+        }).finally(() => delete self.__fetches.characters);
+        return this.__fetches.characters;
     }
 }
