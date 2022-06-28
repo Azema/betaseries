@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {Base, Obj} from "./Base";
 import {Similar} from "./Similar";
 
@@ -76,22 +77,26 @@ export abstract class Media extends Base {
     /**
      * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
      */
-    _in_account: boolean;
+    in_account: boolean;
     /**
      * @type {string} slug - Identifiant du média servant pour l'URL
      */
     slug: string;
 
+    protected __fetches: Record<string, Promise<any>>;
+
     /**
      * Constructeur de la classe Media
+     * Le DOMElement est nécessaire que pour le média principal sur la page Web
      * @param   {Obj} data - Les données du média
-     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
+     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement de référence du média
      * @returns {Media}
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data);
         if (element)
             this.elt = element;
+        this.__fetches = {};
         this.similars = [];
         this.genres = [];
         return this;
@@ -109,37 +114,12 @@ export abstract class Media extends Base {
         }
         return super.init();
     }
-
-    /**
-     * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data Les données provenant de l'API
-     * @returns {Media}
-     * @override
-     */
-    fill(data: Obj): this {
-        return super.fill(data);
-    }
     updatePropRenderGenres(): void {
         const $genres = jQuery(Media.selectorsCSS.genres);
         if ($genres.length > 0) {
             $genres.text(this.genres.join(', '));
         }
         delete this.__changes.genres;
-    }
-    /**
-     * Indique si le média est enregistré sur le compte du membre
-     * @returns {boolean}
-     */
-    public get in_account(): boolean {
-        return this._in_account;
-    }
-    /**
-     * Définit si le média est enregistré sur le compte du membre
-     * @param {boolean} i Flag
-     */
-    public set in_account(i: boolean) {
-        this._in_account = !!i;
-        this.save();
     }
 
     /**

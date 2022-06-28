@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {Base, Obj, MediaType, HTTP_VERBS, RelatedProp} from "./Base";
 import { implAddNote, Note } from "./Note";
 import {Platform_link} from "./Episode";
@@ -62,7 +63,7 @@ export class Movie extends Media implements implAddNote {
         genres: {key: "genres", type: 'array', default: []},
         id: {key: "id", type: 'number'},
         imdb_id: {key: "imdb_id", type: 'string', default: ''},
-        in_account: {key: "in_account", type: 'boolean', transform: Movie._getInAccount, default: false},
+        in_account: {key: "in_account", type: 'boolean', default: false},
         language: {key: "language", type: 'string', default: ''},
         length: {key: "duration", type: 'number', default: 0},
         notes: {key: "objNote", type: Note},
@@ -84,9 +85,6 @@ export class Movie extends Media implements implAddNote {
         url: {key: 'slug', type: 'string', default: ''},
         user: {key: "user", type: User}
     };
-    static _getInAccount(obj: Movie, data: Obj): boolean {
-        return (data.user?.in_account) ? data.user.in_account : false;
-    }
 
     /**
      * Méthode static servant à récupérer un film sur l'API BS
@@ -163,6 +161,7 @@ export class Movie extends Media implements implAddNote {
      * @returns {Media}
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
+        data.in_account = data.user?.in_account;
         super(data, element);
         this._local = {poster: null};
         this.platform_links = [];
@@ -338,7 +337,8 @@ export class Movie extends Media implements implAddNote {
      */
     fetchCharacters(): Promise<this> {
         const self = this;
-        return Base.callApi(HTTP_VERBS.GET, 'movies', 'characters', {id: this.id}, true)
+        if (this.__fetches.characters) return this.__fetches.characters;
+        this.__fetches.characters = Base.callApi(HTTP_VERBS.GET, 'movies', 'characters', {id: this.id}, true)
         .then((data: Obj) => {
             self.characters = [];
             if (data?.characters?.length <= 0) {
@@ -348,7 +348,8 @@ export class Movie extends Media implements implAddNote {
                 self.characters.push(new Character(data.characters[c]));
             }
             return self;
-        });
+        }).finally(() => delete this.__fetches.characters);
+        return this.__fetches.characters;
     }
     getAllPosters(): Promise<object> {
         if (this._posters) {

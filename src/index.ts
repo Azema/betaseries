@@ -10,8 +10,9 @@ import { Similar } from "./Similar";
  */
 Media.prototype.fetchSimilars = function(): Promise<Media> {
     const self = this;
+    if (this.__fetches.similars) return this.__fetches.similars;
     this.similars = [];
-    return new Promise((resolve, reject) => {
+    this.__fetches.similars = new Promise((resolve, reject) => {
         Base.callApi('GET', this.mediaType.plural, 'similars', {id: this.id, details: true}, true)
         .then(data => {
             if (data.similars) {
@@ -21,8 +22,11 @@ Media.prototype.fetchSimilars = function(): Promise<Media> {
             }
             self.save();
             resolve(self);
+            delete self.__fetches.similars;
         }, err => {
             reject(err);
+            delete self.__fetches.similars;
         });
     });
+    return this.__fetches.similars;
 };

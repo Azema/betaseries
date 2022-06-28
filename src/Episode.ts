@@ -138,6 +138,7 @@ export class Episode extends Base implements implAddNote {
      * @type {string} Identifiant de la vidéo sur Youtube
      */
     youtube_id: string;
+    private __fetches: Record<string, Promise<this>>;
 
     /**
      * Constructeur de la classe Episode
@@ -147,6 +148,7 @@ export class Episode extends Base implements implAddNote {
      */
     constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>) {
         super(data);
+        this.__fetches = {};
         this._season = season;
         this.mediaType = {singular: MediaType.episode, plural: 'episodes', className: Episode};
         if (elt) {
@@ -481,7 +483,8 @@ export class Episode extends Base implements implAddNote {
      */
     fetchCharacters(): Promise<this> {
         const self = this;
-        return Base.callApi(HTTP_VERBS.GET, 'episodes', 'characters', {id: this.id}, true)
+        if (this.__fetches.characters) return this.__fetches.characters;
+        this.__fetches.characters = Base.callApi(HTTP_VERBS.GET, 'episodes', 'characters', {id: this.id}, true)
         .then((data: Obj) => {
             self.characters = [];
             if (data?.characters?.length <= 0) {
@@ -491,6 +494,7 @@ export class Episode extends Base implements implAddNote {
                 self.characters.push(new Character(data.characters[c]));
             }
             return self;
-        });
+        }).finally(() => delete self.__fetches.characters);
+        return this.__fetches.characters;
     }
 }
