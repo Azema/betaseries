@@ -368,6 +368,7 @@ declare module 'Episode' {
 	     * @type {string} Identifiant de la vidéo sur Youtube
 	     */
 	    youtube_id: string;
+	    private __fetches;
 	    /**
 	     * Constructeur de la classe Episode
 	     * @param   {Obj}       data    Les données provenant de l'API
@@ -688,7 +689,6 @@ declare module 'Show' {
 	     */
 	    thetvdb_id: number;
 	    _posters: object;
-	    private _fetches;
 	    /***************************************************/
 	    /***************************************************/
 	    /**
@@ -934,8 +934,8 @@ declare module 'Season' {
 	    /**
 	     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
 	     */
-	    private _elt;
-	    private _fetches;
+	    private __elt;
+	    private __fetches;
 	    /**
 	     * Constructeur de la classe Season
 	     * @param   {Obj}   data    Les données provenant de l'API
@@ -1055,7 +1055,6 @@ declare module 'Movie' {
 	    static overrideType: string;
 	    static selectorsCSS: Record<string, string>;
 	    static relatedProps: Record<string, RelatedProp>;
-	    static _getInAccount(obj: Movie, data: Obj): boolean;
 	    /**
 	     * Méthode static servant à récupérer un film sur l'API BS
 	     * @param  {Obj} params - Critères de recherche du film
@@ -1337,15 +1336,17 @@ declare module 'Media' {
 	    /**
 	     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
 	     */
-	    _in_account: boolean;
+	    in_account: boolean;
 	    /**
 	     * @type {string} slug - Identifiant du média servant pour l'URL
 	     */
 	    slug: string;
+	    protected __fetches: Record<string, Promise<any>>;
 	    /**
 	     * Constructeur de la classe Media
+	     * Le DOMElement est nécessaire que pour le média principal sur la page Web
 	     * @param   {Obj} data - Les données du média
-	     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
+	     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement de référence du média
 	     * @returns {Media}
 	     */
 	    constructor(data: Obj, element?: JQuery<HTMLElement>);
@@ -1354,24 +1355,7 @@ declare module 'Media' {
 	     * @returns {Promise<Media>}
 	     */
 	    init(): Promise<this>;
-	    /**
-	     * Remplit l'objet avec les données fournit en paramètre
-	     * @param  {Obj} data Les données provenant de l'API
-	     * @returns {Media}
-	     * @override
-	     */
-	    fill(data: Obj): this;
 	    updatePropRenderGenres(): void;
-	    /**
-	     * Indique si le média est enregistré sur le compte du membre
-	     * @returns {boolean}
-	     */
-	    get in_account(): boolean;
-	    /**
-	     * Définit si le média est enregistré sur le compte du membre
-	     * @param {boolean} i Flag
-	     */
-	    set in_account(i: boolean);
 	    /**
 	     * Retourne les similars associés au media
 	     * @return {Promise<Media>}
@@ -2277,12 +2261,14 @@ declare module 'Base' {
 	     */
 	    save(): this;
 	    /**
-	     * Retourne le DOMElement correspondant au média
+	     * Retourne le DOMElement de référence du média
 	     * @returns {JQuery<HTMLElement>} Le DOMElement jQuery
 	     */
 	    get elt(): JQuery<HTMLElement>;
 	    /**
-	     * Définit le DOMElement de référence pour ce média
+	     * Définit le DOMElement de référence du média
+	     * Nécessaire <b>uniquement</b> pour le média principal de la page Web
+	     * Il sert à mettre à jour les données du média sur la page Web
 	     * @param  {JQuery<HTMLElement>} elt - DOMElement auquel est rattaché le média
 	     */
 	    set elt(elt: JQuery<HTMLElement>);
