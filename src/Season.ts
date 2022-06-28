@@ -41,8 +41,8 @@ export class Season {
     /**
      * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
      */
-    private _elt: JQuery<HTMLElement>;
-    private _fetches: Record<string, Promise<Season>>;
+    private __elt: JQuery<HTMLElement>;
+    private __fetches: Record<string, Promise<Season>>;
 
     /**
      * Constructeur de la classe Season
@@ -51,7 +51,7 @@ export class Season {
      * @returns {Season}
      */
     constructor(data: Obj, show: Show) {
-        this._fetches = {};
+        this.__fetches = {};
         this.number = parseInt(data.number, 10);
         this._show = show;
         this.episodes = [];
@@ -60,7 +60,7 @@ export class Season {
         this.seen = !!data.seen || false;
         this.image = data.image || null;
         // document.querySelector("#seasons > div > div.positionRelative > div > div:nth-child(2)")
-        this._elt = jQuery(`#seasons .slides_flex .slide_flex:nth-child(${this.number.toString()})`);
+        this.__elt = jQuery(`#seasons .slides_flex .slide_flex:nth-child(${this.number.toString()})`);
         if (data.episodes && data.episodes instanceof Array && data.episodes[0] instanceof Episode) {
             this.episodes = data.episodes;
         } else if (data.episodes && typeof data.episodes === 'number') {
@@ -100,22 +100,22 @@ export class Season {
         if (!this.number || this.number <= 0) {
             throw new Error('season number incorrect');
         }
-        if (this._fetches.episodes) return this._fetches.episodes;
+        if (this.__fetches.episodes) return this.__fetches.episodes;
         const self = this;
-        this._fetches.episodes = new Promise((resolve, reject) => {
+        this.__fetches.episodes = new Promise((resolve, reject) => {
             Base.callApi('GET', 'shows', 'episodes', {id: self._show.id, season: self.number}, true)
             .then(data => {
                 self.episodes = [];
                 for (let e = 0; e < data.episodes.length; e++) {
                     self.episodes.push(new Episode(data.episodes[e], self));
                 }
-                delete self._fetches.episodes;
+                delete self.__fetches.episodes;
                 resolve(self);
             }, err => {
                 reject(err);
-            });
+            }).finally(() => delete self.__fetches.episodes);
         });
-        return this._fetches.episodes;
+        return this.__fetches.episodes;
     }
 
     watched(): Promise<Season> {
@@ -228,15 +228,15 @@ export class Season {
          */
         const seasonViewed = function(): void {
             // On check la saison
-            self._elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
-            if (Base.debug) console.log('Tous les épisodes de la saison ont été vus', self._elt, self._elt.next());
+            self.__elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
+            if (Base.debug) console.log('Tous les épisodes de la saison ont été vus', self.__elt, self.__elt.next());
             // Si il y a une saison suivante, on la sélectionne
-            if (self._elt.next().length > 0) {
+            if (self.__elt.next().length > 0) {
                 if (Base.debug) console.log('Il y a une autre saison');
-                self._elt.removeClass('slide--current');
-                self._elt.next('.slide_flex').find('.slide__image').trigger('click');
+                self.__elt.removeClass('slide--current');
+                self.__elt.next('.slide_flex').find('.slide__image').trigger('click');
             }
-            self._elt
+            self.__elt
                 .removeClass('slide--notSeen')
                 .addClass('slide--seen');
             self.seen = true;
@@ -259,11 +259,11 @@ export class Season {
                 }
             });
         } else {
-            const $checkSeen: JQuery<HTMLElement> = this._elt.find('.checkSeen');
+            const $checkSeen: JQuery<HTMLElement> = this.__elt.find('.checkSeen');
             if ($checkSeen.length > 0) {
                 $checkSeen.remove();
-                if (!self._elt.hasClass('slide--notSeen')) {
-                    self._elt
+                if (!self.__elt.hasClass('slide--notSeen')) {
+                    self.__elt
                         .addClass('slide--notSeen')
                         .removeClass('slide--seen');
                 }
