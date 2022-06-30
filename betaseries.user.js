@@ -22,23 +22,33 @@
 // @grant        GM_notification
 // ==/UserScript==
 
-/* globals Base:false, CacheUS: false, Episode: false, Media: false, Movie: false, Show: false,
-   UpdateAuto: false, EventTypes: false, HTTP_VERBS: false, MediaType: false, CommentBS: false,
-   MovieStatus: false, Member: false, DataTypesCache: false, Note: false, PlatformList: false,
+'use strict';
+
+/* eslint-disable */
+if (!navigator) {
+    const { Base, EventTypes, HTTP_VERBS, NetworkState } = require("./types/Base");
+    const { CacheUS, DataTypesCache } = require("./types/Cache");
+    const { CommentBS } = require("./types/Comment");
+    const { Episode } = require("./types/Episode");
+    const { Media, MediaType } = require("./types/Media");
+    const { Show, PlatformList } = require("./types/Show");
+    const { Movie, MovieStatus } = require("./types/Movie");
+    const { Member } = require("./types/Member");
+    const { UpdateAuto } = require('./types/UpdateAuto');
+}
+/* eslint-enable */
+
+/* eslint-disable no-undef */
+/* globals
 
    betaseries_api_user_token:  true, betaseries_user_id: false, trans: false,
    deleteFilterOthersCountries: false, generate_route: false,
    CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false, markAllNotificationsAsSeen: false,
    viewMoreFriends: false, PopupAlert: false, faceboxDisplay: false
  */
-/* jslint unparam: true, eqnull:true, unused:true */
-
-'use strict';
-
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
 /************************************************************************************************/
-
 /* Ajouter ici votre clé d'API BetaSeries (Demande de clé API: https://www.betaseries.com/api/) */
 const betaseries_api_user_key = '';
 /* Ajouter ici votre clé d'API V3 à themoviedb */
