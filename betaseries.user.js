@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.4.0
+// @version      1.4.1
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -219,8 +219,10 @@ const launchScript = function($) {
     const debug = false,
           origin = window.location.origin,
           url = window.location.pathname,
-          noop = function () {},
+          domain = window.location.hostname.substring(window.location.hostname.indexOf('.')+1),
+          regDomain = new RegExp(domain, 'i'),
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
+          noop = function () {},
     // URI des images et description des classifications TV et films
     ratings = {
         'D-10': {
@@ -372,7 +374,7 @@ const launchScript = function($) {
             type: 'script',
             id: 'lazyload',
             src: `${serverBaseUrl}/js/lazyload.min.js`,
-            integrity: 'sha384-8gXW/wktVOP4rpxLl4HiT2HgQ3hXR5ZKKGLEUafE8nZJUV//CkBmec2tlAMaSj4Y',
+            integrity: 'sha384-ZjtdUVt9uqIO0cVuZ4zQ5r/1QqXlGIct+PFRAMtAlSz3F4apy925Pn5Tm3hnczMg',
             called: false,
             loaded: false
         },
@@ -404,12 +406,10 @@ const launchScript = function($) {
     let timer,
     /** @type {Member} */ 
         currentUser, 
+        /**@type {Member} */
+        user,
         fnLazy, 
         state = {};
-    /**
-     * @type {Member}
-     */
-    let user;
 
     const system = {
         /**
@@ -497,8 +497,10 @@ const launchScript = function($) {
                      */
                     forceNotScrolled = true;
                     $nav.removeClass('scrolled');
+                    $nav.addClass('search');
                     system.waitDomPresent('#reactjs-header-search .menu-item form', () => {
-                        $('#reactjs-header-search .menu-item form button:last-child').click(() => {
+                        $('#reactjs-header-search .menu-item form button:last-child').on('click', () => {
+                            $nav.removeClass('search');
                             forceNotScrolled = false;
                             boundHandleScroll();
                         });
@@ -961,7 +963,8 @@ const launchScript = function($) {
             const options = {
                 counter: Base.counter.toString.bind(Base.counter)
             };
-            return new Dialog(options)._init();
+            const dialog = new Dialog(options);
+            return dialog._init();
         },
         /**
          * Fonction d'ajout d'un paginateur en haut de liste des séries
@@ -1119,8 +1122,12 @@ const launchScript = function($) {
                         {
                             check = '<i class="fa fa-check-circle fa-3x" aria-hidden="true"></i>';
                         }
+                        let cross = '';
+                        if (!regDomain.test(posters[title][p])) {
+                            cross = ' crossorigin="anonymous"';
+                        }
                         template += `<div class="poster" title="Sélectionnez ce poster">
-                                        <img class="js-lazy-image img-thumbnail" data-src="${posters[title][p]}" alt="Affiche" width="150">${check}</div>`;
+                                        <img class="js-lazy-image img-thumbnail" data-src="${posters[title][p]}" alt="Affiche" width="150"${cross}>${check}</div>`;
                     }
                     template += '</div>';
                 }
@@ -1186,9 +1193,8 @@ const launchScript = function($) {
                     /*
                     <img class="displayBlock objectFitCover" src="" width="300" height="450" alt="">
                      */
-                    const reg = new RegExp(window.location.hostname, 'i');
                     let cross = '';
-                    if (!reg.test(img)) {
+                    if (!regDomain.test(img)) {
                         cross = 'crossorigin="Anonymous"';
                     }
                     res.elt.find('div.block404').replaceWith(`
@@ -1391,7 +1397,7 @@ const launchScript = function($) {
                     $('#updateEpisodeList .updateElement').on('inserted.bs.popover', function () {
                         $('#updateEpisodeList .popover-header').html(titlePopup(objUpAuto));
                         $('#updateEpisodeList .popover-body').html(contentUp(objUpAuto));
-                        $('.optionsUpAuto .badge').click(e => {
+                        $('.optionsUpAuto .badge').on('click', e => {
                             e.stopPropagation();
                             e.preventDefault();
                             const $badge = $(e.currentTarget);
@@ -1441,9 +1447,11 @@ const launchScript = function($) {
                             e.stopPropagation();
                             e.preventDefault();
                             let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
-                                intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10);
-                            if (objUpAuto.auto !== checkAuto) objUpAuto.auto = checkAuto;
-                            if (objUpAuto.interval != intervalAuto) objUpAuto.interval = intervalAuto;
+                                intervalAuto = parseInt($('#updateEpisodeListTime').val(), 10),
+                                changed = false;
+                            if (objUpAuto.auto !== checkAuto) { objUpAuto._auto = checkAuto; changed = true; }
+                            if (objUpAuto.interval != intervalAuto) { objUpAuto._interval = intervalAuto; changed = true; }
+                            if (changed) objUpAuto._save();
                             if (Base.debug) console.log('updateEpisodeList submit', objUpAuto);
                             objUpAuto.launch();
                             $('#updateEpisodeList .updateElement').popover('hide');
@@ -1588,6 +1596,10 @@ const launchScript = function($) {
                         $('#episodes .checkSeen').on('click', async (e) => {
                             e.stopPropagation();
                             e.preventDefault();
+                            if (res.currentSeason.episodes.length <= 0) {
+                                await res.currentSeason.fetchEpisodes();
+                            }
+                            /** @type {JQuery<HTMLElement>} */
                             const $elt = $(e.currentTarget),
                                 episodeId = parseInt($elt.data('id'), 10),
                                 episode = res.currentSeason.getEpisode(episodeId);
@@ -1999,6 +2011,12 @@ const launchScript = function($) {
             }
             let objSimilars = [];
             res.fetchSimilars().then(function (res) {
+                const $similarsLength = $('.similarsLength');
+                if ($similarsLength.length <= 0) {
+                    $('a[href="#similars"]').append(`<span class="unread-count similarsLength">${res.similars.length}</span>`);
+                } else {
+                    $similarsLength.text(res.similars.length);
+                }
                 system.addScriptAndLink(['popover', 'bootstrap'], () => {
                     /**
                      * Retourne la position de la popup par rapport à l'image du similar
@@ -2721,7 +2739,7 @@ const launchScript = function($) {
                         showClose: true,
                         callback: function() {
                             // console.log('callback PopupAlert');
-                            $('#platform_type').change(() => {
+                            $('#platform_type').on('change', () => {
                                 // console.log('platform_type change', e);
                                 let type = $('#platform_type option:selected').val();
                                 const $platforms = $('#platform');
@@ -2761,11 +2779,10 @@ const launchScript = function($) {
                     let onerror = null;
                     if (defImgShow != null) {
                         onerror = (err, elt, url, attr) => {
-                            const reg = new RegExp(window.location.hostname, 'i');
                             // console.log('checkNextEpisode lazyLoad error URL: ', defImgShow, url);
                             elt.classList.add("js-lazy-image-handled");
-                            if (!reg.test(defImgShow)) {
-                                elt.crossOrigin = 'Anonymous';
+                            if (!regDomain.test(defImgShow)) {
+                                elt.crossOrigin = 'anonymous';
                             }
                             elt[attr] = defImgShow;
                             elt.classList.add("fade-in");
@@ -3056,7 +3073,7 @@ const launchScript = function($) {
                 </div>
             `;
             $title.append(templateListSort);
-            $('.selectSort').change((e) => {
+            $('.selectSort').on('change', (e) => {
                 const value = $(e.currentTarget).find('option:selected').val();
                 if (value == '') return;
                 const sortName = value.split('-')[0];
@@ -3291,6 +3308,64 @@ const launchScript = function($) {
                     });
                 }
             }
+        },
+        addBtnToSee: async function() {
+            const toggleToSeeShow = async (showId) => {
+                const storeToSee = await Base.gm_funcs.getValue('toSee', {});
+                let toSee;
+                if (storeToSee[showId] === undefined) {
+                    storeToSee[showId] = true;
+                    toSee = true;
+                } else {
+                    delete storeToSee[showId];
+                    toSee = false;
+                }
+                Base.gm_funcs.setValue('toSee', storeToSee);
+                return toSee;
+            };
+            /** @type {JQuery<HTMLElement>} */
+            const $bottomActions = $('#annuaire-list .bottomActionMovie');
+            $bottomActions.each(
+                /**
+                 * Iterator
+                 * @param {number} _ - Index de boucle
+                 * @param {HTMLElement} elt - Container des boutons d'action
+                 */
+                async (_, elt) =>
+            {
+                console.log('bottomActionMovie elt', elt);
+                const showId = elt.dataset.sid;
+                const btnHTML = `
+                        <button class="btn-reset btnMarkToSee" type="button" title="Ajouter la série aux séries à voir">
+                            <i class="fa fa-clock-o" aria-hidden="true"></i>
+                        </button>`;
+                const iconTitleHTML = '<i class="fa fa-clock-o" aria-hidden="true" title="Série à voir plus tard"></i>';
+                $(elt).prepend(btnHTML);
+                /** @type {JQuery<HTMLButtonElement} */
+                const $btn = $('.btnMarkToSee', elt);
+                const $title = $btn.parents('.media-body').find('.thumbnailSearchTitle');
+                $btn.on('click', async (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    // const $btn = jQuery(e.currentTarget);
+                    const toSee = await toggleToSeeShow(showId);
+                    if (toSee) {
+                        $btn.addClass('marked');
+                        $btn.attr('title', 'Retirer la série des séries à voir');
+                        $title.append(iconTitleHTML);
+                    } else {
+                        $btn.removeClass('marked');
+                        $btn.attr('title', 'Ajouter la série aux séries à voir');
+                        $('.fa', $title).remove();
+                    }
+                });
+                const toSee = await dbGetValue('toSee', {});
+                if (toSee[showId] !== undefined && toSee[showId]) {
+                    $btn.addClass('marked');
+                    $btn.attr('title', 'Retirer la série des séries à voir');
+                    $title.append(iconTitleHTML);
+                }
+            });
         },
         /**
          * Permet de mettre à jour la liste des épisodes à voir
@@ -3696,7 +3771,7 @@ const launchScript = function($) {
                 $('.remove-input').on('click', (e) => {
                     $(e.currentTarget).parent('.api-params').remove();
                 });
-                $('.lock-param', elts).click((e) => {
+                $('.lock-param', elts).on('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     let self = $(e.currentTarget);
@@ -4114,6 +4189,9 @@ const launchScript = function($) {
         constructor(options) {
             this.settings = Object.assign({}, options);
             this._html = document.documentElement;
+            if (this.settings.template) {
+                this.template = this.settings.template;
+            }
         }
         /**
          * Fonction de callback après ouverture de la popup
@@ -4415,7 +4493,7 @@ const launchScript = function($) {
         if (/agenda/.test(url)) {
             system.waitDomPresent('#reactjs-episodes-to-watch .ComponentEpisodeContainer', series.updateAgenda, 50, 1000);
         }
-        medias.addBtnToSee();
+        series.addBtnToSee();
         members.lastSeen();
     }
     // Fonctions appeler sur la page de recherche des films
