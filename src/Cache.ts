@@ -6,7 +6,8 @@ export enum DataTypesCache {
     episodes = 'episodes',
     movies = 'movies',
     members = 'members',
-    updates = 'updateAuto'
+    updates = 'updateAuto',
+    db = 'db'
 }
 /**
  * @class Gestion du Cache pour le script
@@ -20,7 +21,7 @@ export class CacheUS {
 
     /**
      * Initialize le cache pour chaque type
-     * @returns this
+     * @returns {CacheUS}
      */
     private _init(): this {
         this._data = {} as ObjHome;
@@ -28,6 +29,7 @@ export class CacheUS {
         this._data[DataTypesCache.episodes] = {};
         this._data[DataTypesCache.movies] = {};
         this._data[DataTypesCache.members] = {};
+        this._data[DataTypesCache.db] = {};
         return this;
     }
 
@@ -53,7 +55,7 @@ export class CacheUS {
     /**
      * Clears all cache entries.
      * @param   {DataTypesCache} [type=null] Le type de ressource à nettoyer
-     * @returns this
+     * @returns {CacheUS}
      */
     clear(type: DataTypesCache = null): this {
         // On nettoie juste un type de ressource
@@ -98,9 +100,9 @@ export class CacheUS {
      * @param {DataTypesCache}  type  Le type de ressource
      * @param {String|number}   key   the key to set
      * @param {*}               value the value to set
-     * @returns this
+     * @returns {CacheUS}
      */
-    set(type: string, key: string|number, value: any): this {
+    set(type: DataTypesCache, key: string|number, value: any): this {
         if (this._data[type] !== undefined) {
             this._data[type][key] = value;
         }
@@ -111,7 +113,7 @@ export class CacheUS {
      * Removes the cache entry for the given key.
      * @param {DataTypesCache}  type  Le type de ressource
      * @param {String|number}   key the key to remove
-     * @returns this
+     * @returns {CacheUS}
      */
     remove(type: DataTypesCache, key: string|number): this {
         if (this.has(type, key)) {
