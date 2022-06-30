@@ -49,10 +49,7 @@ export class Images {
     /** @type {object} */
     _local: {show: string, banner: string, box: string, poster: string};
 }
-/**
- * Enumérateur Picked
- * @enum
- */
+/** @enum {number} */
 export enum Picked {
     none,
     banner,
