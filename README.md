@@ -20,7 +20,7 @@ UserScript pour le site [BetaSeries](https://www.betaseries.com/) testé avec Ta
 5. [Futures améliorations possibles](#futures-améliorations-possibles)
 6. [Développement](#développement)
 7. [Ressources](#ressources)
-
+8. [Données partagées](#données-partagées)
 
 
 ## Description
@@ -56,6 +56,7 @@ tmdb: 634649
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource !["Bouton Dev"](./screenshots/btnDev.jpg "Bouton Dev")
 * Ajout de la gestion du synopsis (description), pour l'afficher au complet et pour revenir à un synopsis tronqué, autant de fois que nécessaire.
 * Modification de l'affichage pour noter le média. Je l'ai modifié pour les mêmes raisons que les commentaires (cf. ci-dessous).
+* Ajout du nombre de médias similaires, dans la barre de navigation du média, à côté de lien **SIMILAIRES**.
 
 #### Commentaires
 
@@ -161,6 +162,7 @@ tmdb: 634649
 
 * ~~Ajout d'un paginateur en haut de la liste des séries~~ Plutôt qu'un nouveau paginateur, j'ai préféré remonter en haut de page automatiquement.
 * Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays __(Seul un pays ajouté sera retenu, si vous rafraîchissez la page)__.
+* Ajout d'un bouton **A voir** dans les actions des fiches des séries, pour indiquer les séries à voir plus tard. Un logo, sous forme de montre, est affiché à côté du titre, si la série est taguée à voir plus tard.
 
 -------
 
@@ -217,6 +219,7 @@ tmdb: 634649
 * Les classes sont développées en TypeScript et sont stockées dans ce repository.
 * Utilisation de Grunt pour l'automatisation des tâches de build.
 * Utilisation de `grunt connect` comme serveur local pour le développement, n'oubliez pas de modifier la variable `serverBaseUrl`, en début de script, pour pointer sur le serveur local `http://localhost:9001`.
+* Utilisation du serveur pour stocker les [données partagées](#données-partagées), plutôt que le stockage de **Tampermonkey**.
 
 ## Ressources
 
@@ -229,3 +232,17 @@ const serverBaseUrl = 'https://betaseries.example.org';
 ```
 
 :warning: N'oubliez pas que votre serveur doit être sécurisé, sinon les appels ne passeront pas entre le site [betaseries](https://www.betaseries.com) et votre serveur. :warning:
+
+## Données partagées
+
+Les données partagées correspondent aux données, initialement stockées avec **Tampermonkey**, qui permettent de personnaliser l'affichage des pages du site Web [BetaSeries.com](https://www.betaseries.com).
+J'ai décidé de déplacer les données sur le serveur pour pouvoir utiliser le userscript sur différents navigateurs et systèmes d'exploitation.
+
+### Types de données partagées
+* <u>*objUpAuto*</u>: Contient les infos de mise à jour automatique des épisodes des séries.
+* <u>*override*</u>: Contient les infos de surcharges de certaines propriétés des médias (pour le moment, les affiches des médias et des saisons).
+* <u>*toSee*</u>: Contient les identifiants des séries à voir plus tard.
+
+### Evolutions liés aux données partagées
+- [X] Identifier l'utilisateur par les en-têtes HTTP
+- [X] stocker et servir les données partagées par utilisateur identifié.

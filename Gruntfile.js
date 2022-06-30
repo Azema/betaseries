@@ -1,11 +1,13 @@
 /* eslint-disable no-undef */
 'use strict';
 const fs = require('fs');
+// eslint-disable-next-line no-unused-vars
+const { IncomingMessage, OutgoingMessage } = require('http');
 var path = require('path');
 //const exit = require('process');
 // var util = require('util');
 
-const storageFile = './db/betaseries.json';
+const storageFile = './db/betaseries-#userId#.json';
 
 /**
  *
@@ -211,7 +213,7 @@ module.exports = function(grunt) {
                      */
                     // eslint-disable-next-line no-unused-vars
                     onCreateServer: function(server, connect) {
-                        connect.storageFile = false;
+                        connect.storageFile = {};
                     },
                     // remove next from params
                     middleware: function(connect, _options, middlewares) {
@@ -267,7 +269,6 @@ module.exports = function(grunt) {
                             res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
                             res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, Authorization, X-Mindflash-SessionID');
                             res.setHeader('Access-Control-Allow-Private-Network', 'true');
-                            // res.setHeader('Access-Control-Allow-Credentials', 'true');
                             // res.setHeader('pragma', 'public');
                             res.setHeader('vary', 'Accept-Encoding');
                             if (/(.js|.css)$/.test(req.url)) {
@@ -288,35 +289,48 @@ module.exports = function(grunt) {
                          */
                         middlewares.unshift(
                             /**
-                             * @param {Request} req - La requête HTTP
-                             * @param {Response} res - La réponse HTTP
+                             * @param {IncomingMessage} req - La requête HTTP
+                             * @param {OutgoingMessage} res - La réponse HTTP
                              * @param {function} next - Fonction de callback
                              */
                             async function(req, res, next) {
                                 if (!/^\/db\/(get|save)\//.test(req.url)) {
                                     return next();
                                 }
-                                res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type');
+                                res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Accept, Origin, Referer, User-Agent, Content-Type, x-betaseries-user');
                                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
                                 res.setHeader('Access-Control-Allow-Origin', 'https://www.betaseries.com');
                                 res.setHeader('Access-Control-Max-Age', 0);
                                 res.setHeader('Cache-Control', 'no-cache, private');
+                                res.setHeader('Access-Control-Allow-Credentials', 'true');
                                 if (req.method.toUpperCase() === 'OPTIONS') {
                                     res.statusCode = 204;
                                     return res.end();
                                 }
-                                if (connect.storageFile) {
+
+                                // Identifier l'utilisateur
+                                if (req.headers['x-betaseries-user'] === undefined ||
+                                    req.headers['x-betaseries-user'].length <= 0)
+                                {
+                                    res.statusCode = 401;
+                                    return res.end();
+                                }
+                                const userId = req.headers['x-betaseries-user'];
+
+                                // Récupération du fichier de stockage des données partagées
+                                const filename = storageFile.replace('#userId#', userId);
+                                if (connect.storageFile[userId]) {
                                     return setTimeout(() => {this(req, res, next)}, 50);
                                 }
                                 const releaseFile = function() {
-                                    connect.storageFile = false;
+                                    if (connect.storageFile[userId]) connect.storageFile[userId] = false;
                                 }
-                                connect.storageFile = true;
+                                connect.storageFile[userId] = true;
                                 res.setHeader('Content-Type', 'application/json');
                                 try {
-                                    fs.accessSync(storageFile, fs.constants.R_OK | fs.constants.W_OK);
+                                    fs.accessSync(filename, fs.constants.R_OK | fs.constants.W_OK);
                                 } catch (error) {
-                                    fs.writeFileSync(storageFile, JSON.stringify({
+                                    fs.writeFileSync(filename, JSON.stringify({
                                         objUpAuto: {},
                                         toSee: {},
                                         override: {}
@@ -334,7 +348,7 @@ module.exports = function(grunt) {
                                 if (resultReq.length >= 3) {
                                     let dataFile = null;
                                     try {
-                                        dataFile = JSON.parse(fs.readFileSync(storageFile));
+                                        dataFile = JSON.parse(fs.readFileSync(filename));
                                     } catch (err) {
                                         return res.end(JSON.stringify({error: 'Error from get data: ' + err.toString()}));
                                     }
@@ -359,9 +373,10 @@ module.exports = function(grunt) {
                                         data = JSON.parse(data);
                                         dataFile[key] = data;
                                         try {
-                                            fs.writeFileSync(storageFile, JSON.stringify(dataFile));
+                                            fs.writeFileSync(filename, JSON.stringify(dataFile));
                                         } catch(err) {
                                             console.error('data are not saved', err);
+                                            releaseFile();
                                             return res.end(JSON.stringify({error: 'Data are not saved: '+ err.toString(), save: false}));
                                         }
                                         releaseFile();

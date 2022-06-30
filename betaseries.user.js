@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.4.1
+// @version      1.4.2
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -4080,7 +4080,7 @@ const launchScript = function($) {
         if (!key) {
             throw new Error('dbGetValue - key are missing');
         }
-        if (Base.networkState === NetworkState.offline) {
+        if (Base.networkState === NetworkState.offline || !system.userIdentified()) {
             if (cache.has(DataTypesCache.db, key)) {
                 return cache.get(DataTypesCache.db, key);
             }
@@ -4092,7 +4092,8 @@ const launchScript = function($) {
             mode: 'cors',
             cache: 'no-cache',
             headers: {
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'x-betaseries-user': betaseries_user_id
             }
         };
 
@@ -4124,6 +4125,7 @@ const launchScript = function($) {
             throw new Error('dbSetValue - key or data are missing');
         }
         cache.set(DataTypesCache.db, key, data);
+        if (!system.userIdentified()) return true;
         if (Base.networkState === NetworkState.offline) {
             dbPendingRequests[key] = data;
             return true;
@@ -4135,7 +4137,8 @@ const launchScript = function($) {
             cache: 'no-cache',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'x-betaseries-user': betaseries_user_id
             },
             body: JSON.stringify(data)
         };
