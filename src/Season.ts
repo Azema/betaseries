@@ -102,20 +102,21 @@ export class Season {
         }
         if (this.__fetches.episodes) return this.__fetches.episodes;
         const self = this;
-        this.__fetches.episodes = new Promise((resolve, reject) => {
-            Base.callApi('GET', 'shows', 'episodes', {id: self._show.id, season: self.number}, true)
-            .then(data => {
+        const params = {
+            id: self._show.id,
+            season: self.number
+        };
+        this.__fetches.episodes = Base.callApi('GET', 'shows', 'episodes', params, true)
+            .then((data: Obj) => {
                 self.episodes = [];
                 for (let e = 0; e < data.episodes.length; e++) {
                     self.episodes.push(new Episode(data.episodes[e], self));
                 }
-                delete self.__fetches.episodes;
-                resolve(self);
-            }, err => {
-                reject(err);
-            }).finally(() => delete self.__fetches.episodes);
-        });
-        return this.__fetches.episodes;
+                return self;
+            })
+            .finally(() => delete self.__fetches.episodes);
+
+        return this.__fetches.episodes as Promise<Season>;
     }
 
     watched(): Promise<Season> {
