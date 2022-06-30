@@ -201,6 +201,10 @@ const loadJS = function( src, attributes = {}, callback, onerror ) {
     }
     return ss;
 };
+/**
+ *
+ * @param {JQueryStatic} $ - Library JQuery
+ */
 const launchScript = function($) {
     const debug = false,
           origin = window.location.origin,
@@ -387,7 +391,11 @@ const launchScript = function($) {
         }
     };
     // let indexCallLoad = 0;
-    let timer, currentUser, fnLazy, state = {};
+    let timer,
+    /** @type {Member} */ 
+        currentUser, 
+        fnLazy, 
+        state = {};
     /**
      * @type {Member}
      */
@@ -426,7 +434,7 @@ const launchScript = function($) {
                     // On désactive les fonctions de notifications originales
                     unsafeWindow.notificationChecker = () => {};
                     unsafeWindow.growlNotificationChecker = () => {};
-                    $('.js-iconNotifications').off('click').click((e) => {
+                    $('.js-iconNotifications').off('click').on('click', (e) => {
                         e.stopPropagation();
                         $("body").toggleClass("menu-open").toggleClass("menu-open--notifications");
                         const $growl = $("#growl");
@@ -472,7 +480,7 @@ const launchScript = function($) {
                 };
                 boundHandleScroll('call initial');
                 window.addEventListener("scroll", boundHandleScroll);
-                $('#reactjs-header-search .menu-item > button').click(() => {
+                $('#reactjs-header-search .menu-item > button').on('click', () => {
                     /*
                      * Force la taille du bandeau de navigation à sa taille initiale,
                      * lors d'une recherche de média
@@ -828,7 +836,7 @@ const launchScript = function($) {
             if ($('.userscript-notifications').length <= 0) {
                 $('#fb-root').after('<div class="userscript-notifications"><h3><span class="title"></span><i class="fa fa-times" aria-hidden="true"></i></h3><p class="text"></p></div>');
                 notifContainer = $('.userscript-notifications');
-                $('.userscript-notifications .fa-times').click(() => {
+                $('.userscript-notifications .fa-times').on('click', () => {
                     $('.userscript-notifications').slideUp();
                 });
             }
@@ -1146,7 +1154,7 @@ const launchScript = function($) {
 
                     .show(() => {
                         Base.hideLoader();
-                        $('.posters img').click((e) => {
+                        $('.posters img').on('click', (e) => {
                             e.stopPropagation();
                             cb(e.target.src);
                             dialog.close();
@@ -1188,7 +1196,7 @@ const launchScript = function($) {
                 $poster.attr('src', res.poster);
             }
             $('.blockInformations__poster').append('<i class="fa fa-camera fa-2x selectPoster" aria-hidden="true" style="position:absolute;top:5px;right:5px;padding:5px;cursor:pointer;z-index:5;"></i>');
-            $('.blockInformations__poster .selectPoster').click((e) => {
+            $('.blockInformations__poster .selectPoster').on('click', (e) => {
                 e.stopPropagation();
                 medias.choiceImage(res, (src) => {
                     res.override('poster', src);
@@ -1226,7 +1234,7 @@ const launchScript = function($) {
         },
         /**
          * Gère la mise à jour auto des épisodes de la saison courante
-         * @param  {Show} show L'objet de type Show
+         * @param  {Show} show - L'objet de type Show
          * @return {void}
          */
         updateAutoEpisodeList: function(show) {
@@ -1340,20 +1348,17 @@ const launchScript = function($) {
                     });
                     let timeoutHover = null,
                         timerRemaining = null;
-                    $('#updateEpisodeList .updateElement').hover(
-                        // In
-                        function (e) {
+                    $('#updateEpisodeList .updateElement')
+                        .on('mouseenter', (e) => {
                             e.stopPropagation();
                             timeoutHover = setTimeout(function () {
                                 $('#updateEpisodeList .updateElement').popover('show');
                             }, 500);
-                        },
-                        // Out
-                        function (e) {
+                        })
+                        .on('mouseleave', (e) => {
                             e.stopPropagation();
                             clearTimeout(timeoutHover);
-                        }
-                    );
+                        });
                     // On ferme et désactive les autres popups lorsque celle des options est ouverte
                     $('#updateEpisodeList .updateElement').on('show.bs.popover', function () {
                         const $updateElement = $('#episodes .slide__image');
@@ -1412,17 +1417,17 @@ const launchScript = function($) {
                                     .attr('title', 'Arrêter la tâche en cours');
                             }
                         });
-                        $('#updateEpisodeList button.close').click((e) => {
+                        $('#updateEpisodeList button.close').on('click', (e) => {
                             e.stopPropagation();
                             e.preventDefault();
                             $('#updateEpisodeList .updateElement').popover('hide');
                         });
-                        $('#updateEpisodeList button.relaunch').click((e) => {
+                        $('#updateEpisodeList button.relaunch').on('click', (e) => {
                             e.stopPropagation();
                             e.preventDefault();
                             objUpAuto.stop().launch();
                         });
-                        $('#optionsUpdateEpisodeList button.btn-primary').click((e) => {
+                        $('#optionsUpdateEpisodeList button.btn-primary').on('click', (e) => {
                             e.stopPropagation();
                             e.preventDefault();
                             let checkAuto = $('#updateEpisodeListAuto').is(':checked'),
@@ -1434,7 +1439,7 @@ const launchScript = function($) {
                             $('#updateEpisodeList .updateElement').popover('hide');
                         });
                         if ($('#propNumber').length > 0) {
-                            $('#updateEpisodeListAuto').change((e) => {
+                            $('#updateEpisodeListAuto').on('change', (e) => {
                                 e.stopPropagation();
                                 const $auto = $(e.currentTarget);
                                 $('#updateEpisodeListTime').children().each((_, elt) => {
@@ -1465,9 +1470,11 @@ const launchScript = function($) {
             const seasons = $('#seasons .slide_flex .slide__image');
             let vignettes = getVignettes();
             if (Base.debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
-            /*
+            /**
             * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE, ARCHIVE et UNARCHIVE
             * pour mettre à jour l'update auto des épisodes
+            * @param {Event} event -    L'évènement déclencheur
+            * @param {Show} show -      La série associée à l'évènement
             */
             const updateAuto = function(event, show) {
                 if (Base.debug) console.log('Listener called');
@@ -1524,16 +1531,21 @@ const launchScript = function($) {
                         if (Base.debug) console.log('Add synopsis episode');
                         /**
                          * Retourne la position de la popup par rapport à l'image du similar
-                         * @param  {Object} _tip Unknown
-                         * @param  {Object} elt Le DOM Element du lien du similar
-                         * @return {String}     La position de la popup
+                         * @param  {Object} _tip -  Unknown
+                         * @param  {Object} elt -   Le DOM Element du lien du similar
+                         * @return {String}         La position de la popup
                          */
                         let funcPlacement = (_tip, elt) => {
                             //if (Base.debug) console.log('funcPlacement', tip, $(tip).width());
                             let rect = elt.getBoundingClientRect(), width = $(window).width(), sizePopover = 320;
                             return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right';
                         };
-                        let $vignette, objEpisode, description;
+                        /** @type {JQuery<HTMLElement>} */
+                        let $vignette,
+                        /** @type {Episode} */
+                            objEpisode,
+                        /** @type {string} */
+                            description;
                         for (let v = 0; v < vignettes.length; v++) {
                             $vignette = $(vignettes.get(v));
                             objEpisode = res.currentSeason.episodes[v];
@@ -1563,7 +1575,7 @@ const launchScript = function($) {
                             });
                         }
                         // On ajoute un event click sur la case 'checkSeen'
-                        $('#episodes .checkSeen').click(function (e) {
+                        $('#episodes .checkSeen').on('click', async (e) => {
                             e.stopPropagation();
                             e.preventDefault();
                             const $elt = $(e.currentTarget),
@@ -1581,9 +1593,8 @@ const launchScript = function($) {
                             }
                         });
                         // On ajoute un effet au survol de la case 'checkSeen'
-                        $('#episodes .checkSeen').hover(
-                            // IN
-                            (e) => {
+                        $('#episodes .checkSeen')
+                            .on("mouseenter", (e) => {
                                 $(e.currentTarget)
                                     .siblings('.overflowHidden')
                                     .find('img.js-lazy-image')
@@ -1591,9 +1602,8 @@ const launchScript = function($) {
                                 $(e.currentTarget)
                                     .parent('.slide__image')
                                     .popover('hide');
-                            },
-                            // OUT
-                            (e) => {
+                            })
+                            .on("mouseleave", (e) => {
                                 $(e.currentTarget)
                                     .siblings('.overflowHidden')
                                     .find('img.js-lazy-image')
@@ -1601,8 +1611,7 @@ const launchScript = function($) {
                                 $(e.currentTarget)
                                     .parent('.slide__image')
                                     .popover('show');
-                            }
-                        );
+                            });
                         res.getDefaultImage('wide').then(defImgShow => {
                             let onerror = null;
                             if (defImgShow != null) {
@@ -1630,7 +1639,7 @@ const launchScript = function($) {
                     // On ajoute l'update auto des épisodes de la saison courante
                     medias.updateAutoEpisodeList(res);
                     // On ajoute la gestion de l'event click sur le bouton
-                    $('#episodes .updateEpisodes').click((e) => {
+                    $('#episodes .updateEpisodes').on('click', (e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         if (Base.debug) console.groupCollapsed('updateEpisodes');
@@ -1642,7 +1651,11 @@ const launchScript = function($) {
                             // if (Base.debug) console.log('after fetchEpisodes', Object.assign({}, objShow));
                             vignettes = getVignettes();
                             // len = getNbVignettes();
-                            let $vignette, objEpisode, changed = false;
+                            /** @type {JQuery<HTMLElement>} */
+                            let $vignette,
+                            /** @type {Episode} */
+                                objEpisode,
+                                changed = false;
                             for (let v = 0; v < vignettes.length; v++) {
                                 $vignette = $(vignettes.get(v)); // DOMElement jQuery de l'image de l'épisode
                                 objEpisode = res.currentSeason.episodes[v];
@@ -1655,12 +1668,6 @@ const launchScript = function($) {
                             // On met à jour les éléments, seulement si il y a eu des modifications
                             if (changed) {
                                 if (Base.debug) console.log('updateEpisodes changed true', res);
-                                // Si il reste des épisodes à voir, on scroll
-                                /* const $epNotSeen = $('#episodes .slide_flex.slide--notSeen');
-                                if ($epNotSeen.length > 0) {
-                                    $('#episodes .slides_flex').get(0).scrollLeft =
-                                        $epNotSeen.get(0).offsetLeft - 69;
-                                } */
                                 res.currentSeason.updateRender();
                                 res.update(true).then(() => {
                                     self.addClass('finish');
@@ -1687,7 +1694,7 @@ const launchScript = function($) {
                 }
             }
             // On ajoute un event sur le changement de saison
-            seasons.click(() => {
+            seasons.on('click', () => {
                 if (Base.debug) console.groupCollapsed('season click');
                 $('#episodes .checkSeen').off('click');
                 $('#episodes .slide__image').off('inserted.bs.popover');
@@ -1704,6 +1711,10 @@ const launchScript = function($) {
             // On active les menus dropdown
             $('.blockInformations .dropdown-toggle').dropdown();
             // On récupère les vignettes des épisodes
+            /**
+             * Retourne les éléments HTML associés aux épisodes de la série
+             * @returns {JQuery<HTMLElement>}
+             */
             function getVignettes() {
                 return $('#episodes .slide__image');
             }
@@ -1713,7 +1724,7 @@ const launchScript = function($) {
          * @param {Show} res - L'objet Show
          */
         upgradeSeasonsActions: function(res) {
-            $('#seasons .slide_flex .dropdown-menu button').off('click').click(e => {
+            $('#seasons .slide_flex .dropdown-menu button').off('click').on('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 const $btn = $(e.currentTarget);
@@ -1728,7 +1739,7 @@ const launchScript = function($) {
                 });
             });
             $('#seasons .slide_flex .slide__image').prepend('<div class="fa fa-camera fa-2x selectPoster" aria-hidden="true" style="position:absolute;top:5px;left:5px;padding:5px;cursor:pointer;z-index:5;" title="Choisir une affiche"></div>');
-            $('#seasons .slide_flex .slide__image .selectPoster').click((e) => {
+            $('#seasons .slide_flex .slide__image .selectPoster').on('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 const $target = $(e.target);
@@ -1757,7 +1768,7 @@ const launchScript = function($) {
             const type = medias.getApiResource(url.split('/')[1]), // Le type de ressource
             resId = medias.getResourceId(); // Identifiant de la ressource
             // Gestion d'ajout d'un similar
-            $elt.removeAttr('onclick').click(() => {
+            $elt.removeAttr('onclick').on('click', () => {
                 new PopupAlert({
                     showClose: true,
                     type: 'popin-suggestshow',
@@ -1784,7 +1795,7 @@ const launchScript = function($) {
                                             <p><span data-id="${media.id}" style="cursor:pointer;">${media.title}</span></p>
                                             </div>`);
                                     }
-                                    $('#search_results .item span').click((e) => {
+                                    $('#search_results .item span').on('click', (e) => {
                                         autocompleteSimilar(e.currentTarget);
                                     });
                                 }, (err) => {
@@ -1959,7 +1970,7 @@ const launchScript = function($) {
                                 </button>`);
                 }
                 // On ajoute la gestion de l'event click sur le bouton d'update des similars
-                $('.updateSimilars').click(function (e) {
+                $('.updateSimilars').on('click', function (e) {
                     e.stopPropagation();
                     e.preventDefault();
                     $(this).removeClass('finish');
@@ -2035,7 +2046,7 @@ const launchScript = function($) {
                             objSimilar = res.getSimilar(resId);
                         // On gère les modifs sur les cases à cocher de l'état d'un film similar
                         if (type === MediaType.movie) {
-                            $('.popover button.reset').click(e => {
+                            $('.popover button.reset').on('click', e => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 let promise = Promise.resolve(true);
@@ -2068,7 +2079,7 @@ const launchScript = function($) {
                                     });
                                 });
                             });
-                            $('.popover input.movie').click((e) => {
+                            $('.popover input.movie').on('click', (e) => {
                                 e.stopPropagation();
                                 // e.preventDefault();
                                 const $elt = $(e.currentTarget).parent().children('input:checked');
@@ -2095,7 +2106,7 @@ const launchScript = function($) {
                         }
                         // On gère le click sur le lien d'ajout de la série similar sur le compte de l'utilisateur
                         else if (type === MediaType.show) {
-                            $('.popover .addShow').click((e) => {
+                            $('.popover .addShow').on('click', (e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 objSimilar.addToAccount().then(() => {
@@ -2119,7 +2130,7 @@ const launchScript = function($) {
                                 await dbSetValue('toSee', showsToSee);
                                 return toSee;
                             };
-                            $('.popover .toSeeShow').click(e => {
+                            $('.popover .toSeeShow').on('click', e => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 const $link = $(e.currentTarget);
@@ -2183,7 +2194,7 @@ const launchScript = function($) {
                  */
                 const $comments = $('#comments .slide__comment .js-popup-comments');
                 if (debug) console.log('eventComments');
-                $comments.off('click').click(e => {
+                $comments.off('click').on('click', e => {
                     e.stopPropagation();
                     e.preventDefault();
                     if (debug) console.log('eventComments click');
@@ -2228,14 +2239,14 @@ const launchScript = function($) {
                     });
                 });
                 const $btnModal = $('#js-open-comments-modal');
-                $btnModal.removeAttr('onclick').off('click').click(e => {
+                $btnModal.removeAttr('onclick').off('click').on('click', e => {
                     if (debug) console.log('Event click on comments');
                     e.stopPropagation();
                     e.preventDefault();
                     res.comments.render();
                 });
                 if ($comments.length <= 0 && $btnModal.length <= 0) {
-                    $('#comments .slide_flex button.actorEmpty').removeAttr('onclick').off('click').click(e => {
+                    $('#comments .slide_flex button.actorEmpty').removeAttr('onclick').off('click').on('click', e => {
                         if (debug) console.log('Event zero comments');
                         e.stopPropagation();
                         e.preventDefault();
@@ -2347,7 +2358,7 @@ const launchScript = function($) {
                     });
                 });
             };
-            $btnVote.removeAttr('onclick').click(e => {
+            $btnVote.removeAttr('onclick').on('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 res.objNote.createPopupForVote((note) => {
@@ -2377,7 +2388,7 @@ const launchScript = function($) {
                 };
                 $btnVu.children('span').empty().append(Svgs[state]);
             }
-            $btnVu.off('click').click(e => {
+            $btnVu.off('click').on('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 if (Base.debug) console.log('observeBtnVu click');
@@ -2411,7 +2422,7 @@ const launchScript = function($) {
              * @type {Dialog}
              */
             const dialog = system.getDialog();
-            $('.blockInformations__actions .fa-wrench').parent().click((e) => {
+            $('.blockInformations__actions .fa-wrench').parent().on('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 let type = medias.getApiResource(location.pathname.split('/')[1]); // Indique de quel type de ressource il s'agit
@@ -2430,7 +2441,7 @@ const launchScript = function($) {
              */
             const btnId = '<div id="btnCopyId" class="unread-count copy-id" title="Copy ID">ID</div>';
             $('.blockInformations__title').append(btnId);
-            $('.blockInformations__title .copy-id').click((e) => {
+            $('.blockInformations__title .copy-id').on('click', (e) => {
                 e.stopPropagation();
                 const $btn = $(e.target);
                 const type = medias.getApiResource(location.pathname.split('/')[1]);
@@ -2471,13 +2482,13 @@ const launchScript = function($) {
             };
             const $navSeries = $('#js-menu-aim > div.menu-item:nth-child(3) > div.header-navigation');
             $navSeries.append(`<a href="#" class="seriesToSee">Séries à voir</a>`);
-            /**
-             * @type {Dialog}
-             */
-            const dialog = system.getDialog();
-            $('#js-menu-aim a.seriesToSee').click(async(e) => {
+            $('#js-menu-aim a.seriesToSee').on('click', async(e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                /**
+                 * @type {Dialog}
+                 */
+                const dialog = system.getDialog();
                 let toSee = await dbGetValue('toSee', {});
                 Show.fetchMulti(Object.keys(toSee)).then(shows => {
                     let template = '<div id="annuaire-list" class="gridSeries">';
@@ -2544,7 +2555,7 @@ const launchScript = function($) {
                             margin-left: 5px;
                         }
                     `);
-                    $('#annuaire-list .blockSearch .media .remove').click(e => {
+                    $('#annuaire-list .blockSearch .media .remove').on('click', e => {
                         e.stopPropagation();
                         e.preventDefault();
                         const $btn = $(e.currentTarget);
@@ -2553,7 +2564,7 @@ const launchScript = function($) {
                         $btn.off('click');
                         $btn.parents('.show-link').remove();
                     });
-                    $('#annuaire-list .fa-clipboard').click(e => {
+                    $('#annuaire-list .fa-clipboard').on('click', e => {
                         e.stopPropagation();
                         e.preventDefault();
                         const $clip = $(e.currentTarget);
@@ -2690,7 +2701,7 @@ const launchScript = function($) {
                         $platforms.iconselectmenu( 'refresh' );
                     }
                 };
-                $('#proposePlatform').click((e) => {
+                $('#proposePlatform').on('click', (e) => {
                     e.stopPropagation();
                     const popup = new PopupAlert({
                         title: `Proposer une plateforme pour la série`,
@@ -2719,7 +2730,7 @@ const launchScript = function($) {
                                 console.log( $( this ).serializeArray() );
                                 popup.closePopin();
                             });
-                            $('button.js-close-popupalert[type="button"]').click(popup.closePopin);
+                            $('button.js-close-popupalert[type="button"]').on('click', popup.closePopin);
                         }
                     });
                     popup.yes.style.display = 'none';
@@ -2906,7 +2917,7 @@ const launchScript = function($) {
                 $('#stats_container h1')
                     .css('display', 'inline-block')
                     .after('<button type="button" class="button blue" data-a11y-dialog-show="dialog-compare">Se comparer à ce membre</button>');
-                $('button.button.blue').click(function (e) {
+                $('button.button.blue').on('click', function (e) {
                     e.stopPropagation();
                     e.preventDefault();
                     dialog.show();
@@ -2915,7 +2926,7 @@ const launchScript = function($) {
                     .on('show', function () {
                     html.style.overflowY = 'hidden';
                     $('#dialog-compare').css('z-index', '1005').css('overflow', 'scroll');
-                    $('.dialog-close').click(function (e) {
+                    $('.dialog-close').on('click', function (e) {
                         e.stopPropagation();
                         e.preventDefault();
                         dialog.hide();
@@ -2974,7 +2985,7 @@ const launchScript = function($) {
                 if (Base.debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
                 $('.timeline-item .infos a[href="' + objFriends[val].link + '"]').parents('.timeline-item').show();
             });
-            $('.clearSearch').click(() => {
+            $('.clearSearch').on('click', () => {
                 $('#searchFriends').val('');
                 $('.timeline-item').show();
                 $('.clearSearch').hide();
@@ -3096,7 +3107,7 @@ const launchScript = function($) {
              * @type {Dialog}
              */
             const dialog = system.getDialog();
-            $('#js-menu-aim a.lastSeen').click(e => {
+            $('#js-menu-aim a.lastSeen').on('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 dialog
@@ -3169,7 +3180,7 @@ const launchScript = function($) {
                             aspect-ratio: auto 119 / 174;
                         }
                     `);
-                    $('#annuaire-list .fa-clipboard').click(e => {
+                    $('#annuaire-list .fa-clipboard').on('click', e => {
                         e.stopPropagation();
                         e.preventDefault();
                         const $clip = $(e.currentTarget);
@@ -3312,7 +3323,7 @@ const launchScript = function($) {
                       <img src="${serverBaseUrl}/img/update.png" width="20" class="updateEpisodes updateElement finish" title="Mise à jour des similaires vus"/>
                     </div>
                 `);
-                $('.updateEpisodes').click((e) => {
+                $('.updateEpisodes').on('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     if (Base.debug) console.groupCollapsed('Agenda updateEpisodes');
@@ -3626,7 +3637,7 @@ const launchScript = function($) {
          */
         updateApiConsole: function() {
             // Listener sur le btn nouveau paramètre
-            $('div.form-group button.btn-btn.btn--blue').prop('onclick', null).off('click').click((e, key) => {
+            $('div.form-group button.btn-btn.btn--blue').prop('onclick', null).off('click').on('click', (e, key) => {
                 e.stopPropagation();
                 e.preventDefault();
                 if (Base.debug) console.log('nouveau parametre handler', key);
@@ -3672,7 +3683,7 @@ const launchScript = function($) {
                     .append('<i class="remove-input fa fa-minus-circle fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
                     .append('<i class="lock-param fa fa-unlock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
                     .addClass('remove');
-                $('.remove-input').click((e) => {
+                $('.remove-input').on('click', (e) => {
                     $(e.currentTarget).parent('.api-params').remove();
                 });
                 $('.lock-param', elts).click((e) => {
@@ -3694,7 +3705,7 @@ const launchScript = function($) {
                 let $result = $('#result');
                 // On ajoute un titre pour la section de résultat de la requête
                 $result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa fa-chevron-circle-down" aria-hidden="true"></i></span></h2>');
-                $('.toggle').click(() => {
+                $('.toggle').on('click', () => {
                     // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
                     $result.toggle(400, () => {
                         if ($result.is(':hidden')) {
@@ -3706,7 +3717,7 @@ const launchScript = function($) {
                     });
                 });
                 // On modifie le sens du chevron lors du lancement d'une requête
-                $('button.is-full').click(() => {
+                $('button.is-full').on('click', () => {
                     $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
                 });
             }
@@ -3794,17 +3805,17 @@ const launchScript = function($) {
             //if (Base.debug) console.log('methods', methods);
             $('.maincontent h1').after(buildTable());
             $('#sommaire').slideDown();
-            $('.linkSommaire').click((e) => {
+            $('.linkSommaire').on('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 $('#' + $(e.currentTarget).data('id')).get(0).scrollIntoView(true);
             });
-            $('h2 .fa-chevron-circle-up').click(function (e) {
+            $('h2 .fa-chevron-circle-up').on('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
                 document.getElementById('sommaire').scrollIntoView(true);
             });
-            $('#sommaire .fa-chevron-circle-up').click(e => {
+            $('#sommaire .fa-chevron-circle-up').on('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 const $tbody = $('#sommaire table tbody');
@@ -3825,7 +3836,7 @@ const launchScript = function($) {
          * Ajoute l'event click sur les liens d'une page article
          */
         checkArticle: function() {
-            $('a').click(() => {
+            $('a').on('click', () => {
                 $('a').off('click');
                 console.log('Event click', origin, url, window.location.pathname);
                 if (window.history.state != state) {
@@ -4085,7 +4096,10 @@ const launchScript = function($) {
 
         /**
          * Constructeur de la classe Dialog
-         * @param {object} options - Options à fournir à la popup
+         * @param {object}          options -          Options à fournir à la popup
+         * @param {function|number} options.counter -  Le compteur d'appels à l'API
+         * @param {string}          options.dialog -   Le sélecteur CSS de la boîte de dialogue
+         * @param {string}          options.template - La template de la boîte de dialogue
          */
         constructor(options) {
             this.settings = Object.assign({}, options);
@@ -4104,8 +4118,8 @@ const launchScript = function($) {
             this._dialog
                 .css('z-index', '1005')
                 .css('overflow', 'scroll');
-            this._$btnClose.click(this.close.bind(this));
-            this._$overlay.click(this.close.bind(this));
+            this._$btnClose.on('click', this.close.bind(this));
+            this._$overlay.on('click', this.close.bind(this));
             document.addEventListener("keydown", this._bindKeypress);
             $('.js-lazy-image', this._dialog).lazyload(optionsLazyload);
             if (typeof this._callbacks.onShow === 'function') this._callbacks.onShow();
