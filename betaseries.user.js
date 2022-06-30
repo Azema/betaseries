@@ -4080,7 +4080,10 @@ const launchScript = function($) {
         if (!key) {
             throw new Error('dbGetValue - key are missing');
         }
-        if (Base.networkState === NetworkState.offline || !system.userIdentified()) {
+        if (!system.userIdentified()) {
+            return GM_getValue(key, defaults);
+        }
+        if (Base.networkState === NetworkState.offline) {
             if (cache.has(DataTypesCache.db, key)) {
                 return cache.get(DataTypesCache.db, key);
             }
@@ -4124,8 +4127,11 @@ const launchScript = function($) {
         if (!key || !data) {
             throw new Error('dbSetValue - key or data are missing');
         }
+        if (!system.userIdentified()) {
+            GM_setValue(key, data);
+            return true;
+        }
         cache.set(DataTypesCache.db, key, data);
-        if (!system.userIdentified()) return true;
         if (Base.networkState === NetworkState.offline) {
             dbPendingRequests[key] = data;
             return true;
