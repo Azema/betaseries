@@ -16,11 +16,11 @@ module.exports = function(grunt) {
     grunt.util.linefeed = '\n';
 
     grunt.registerTask('dev', [
-        'clean', 'ts', 'dtsGenerator', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
+        'clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
         'copy:dist', 'sri:dist', 'version']
     );
     grunt.registerTask('prod', [
-        'clean', 'ts', 'dtsGenerator', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
+        'clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
         'copy:dist', 'sri:dist', 'replace_sri:dist', 'version', 'deploy']
     );
     grunt.registerTask('deploy', ['gitadd:oauth', 'gitcommit:oauth', 'gitpush:oauth']);
@@ -180,16 +180,6 @@ module.exports = function(grunt) {
                     all: true,
                     force: true
                 }
-            }
-        },
-        dtsGenerator: {
-            options: {
-                project: path.resolve('.'),
-                out: 'betaseries.d.ts',
-                types: ['jquery']
-            },
-            default: {
-                src: ['./src/*.ts']
             }
         },
         connect: {
@@ -398,7 +388,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-ts");
     grunt.loadNpmTasks('grunt-lineending');
     grunt.loadNpmTasks('grunt-git');
-    grunt.loadNpmTasks('dts-generator');
     grunt.loadNpmTasks('grunt-contrib-connect');
     grunt.registerMultiTask('cleanExports', 'concatene all classes', function() {
         this.files.forEach(

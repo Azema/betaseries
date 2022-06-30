@@ -6,7 +6,10 @@
         "outDir": "./dist/tsc",
         "rootDir": "./src",
         "allowJs": true,
-        "removeComments": false
+        "removeComments": false,
+        "declaration": true,
+        "declarationDir": "./types",
+        // "declarationMap": true
       },
       "include": ["src/*.ts"]
 }
