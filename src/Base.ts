@@ -13,6 +13,10 @@ export function ExceptionIdentification(message: string) {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Class<T> = new (...args: any[]) => T;
+export enum NetworkState {
+    'offline',
+    'online'
+}
 export enum MediaType {
     show = 'show',
     movie = 'movie',
@@ -71,6 +75,144 @@ export function objToArr(obj: Base, data: Obj): Array<any> {
          values.push(data[key]);
     }
     return values;
+}
+/**
+ * FakePromise - Classe servant à simuler une promesse
+ * d'appel à l'API lorsque le réseau est offline et
+ * de réaliser le souhait lorsque le réseau est online
+ * @class
+ */
+export class FakePromise {
+    /**
+     * Permet de vérifier si la fonction se trouve déjà dans le
+     * tableau des fonctions callback
+     * @param   {any} fn - Fonction callback de référence
+     * @param   {any[]} funcs - Tableau des fonctions
+     * @returns {boolean}
+     */
+    static fnAlreadyInclude(fn: any, funcs: Array<any>): boolean {
+        const strFn = fn.toString();
+        for (let t = 0; t < funcs.length; t++) {
+            if (funcs[t].toString() === strFn) {
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * Tableau des fonctions callback de type **then**
+     * @type {Array<(data: Obj) => void>}
+     */
+    thenQueue: Array<(data:Obj)=>void>;
+    /**
+     * Tableau des fonctions callback de type **catch**
+     * @type {Array<(reason: any) => void>}
+     */
+    catchQueue: Array<(reason: any)=>void>;
+    /**
+     * Tableau des fonctions callback de type **finally**
+     * @type {Array<() => void>}
+     */
+    finallyQueue: Array<()=>void>;
+    /**
+     * Fonction qui sera executée lors de l'appel à la méthode **launch** {@see FakePromise.launch}
+     * @type {() => Promise<Obj>}
+     */
+    promiseFunc: () => Promise<Obj>;
+
+    /**
+     * Constructor
+     * @param   {() => Promise<Obj>} [func] - Fonction promise qui sera executée plus tard
+     * @returns {FakePromise}
+     */
+    constructor(func?: () => Promise<Obj>) {
+        this.thenQueue = [];
+        this.catchQueue = [];
+        this.finallyQueue = [];
+        this.promiseFunc = func;
+        return this;
+    }
+    /**
+     * Permet de définir la fonction qui retourne la vraie promesse
+     * @param   {() => Promise<Obj>} func Fonction promise qui sera executée plus tard
+     * @returns {FakePromise}
+     */
+    setFunction(func: () => Promise<Obj>): FakePromise {
+        this.promiseFunc = func;
+        return this;
+    }
+    /**
+     * Simule un objet promise et stocke les fonctions pour plus tard
+     * @param   {(data: Obj) => void} onfulfilled - Fonction appelée lorsque la promesse est tenue
+     * @param   {(reason: any) => PromiseLike<never>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
+     * @returns {FakePromise}
+     */
+    then(onfulfilled: (data: Obj) => void, onrejected?: (reason: any) => PromiseLike<never>): FakePromise {
+        if (onfulfilled && !FakePromise.fnAlreadyInclude(onfulfilled, this.thenQueue)) {
+            this.thenQueue.push(onfulfilled);
+        }
+        if (onrejected && !FakePromise.fnAlreadyInclude(onrejected, this.catchQueue)) {
+            this.catchQueue.push(onrejected);
+        }
+        return this;
+    }
+    /**
+     * Simule un objet promise et stocke les fonctions pour plus tard
+     * @param   {(reason: any) => void | PromiseLike<void>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
+     * @returns {FakePromise}
+     */
+    catch(onrejected?: (reason: any) => void | PromiseLike<void>): FakePromise {
+        if (onrejected && !FakePromise.fnAlreadyInclude(onrejected, this.catchQueue)) {
+            this.catchQueue.push(onrejected);
+        }
+        return this;
+    }
+    /**
+     * Simule un objet promise et stocke les fonctions pour plus tard
+     * @param   {() => void} [onfinally] - Fonction appelée lorsque la promesse est terminée
+     * @returns {FakePromise}
+     */
+    finally(onfinally?: () => void): FakePromise {
+        if (!onfinally && FakePromise.fnAlreadyInclude(onfinally, this.finallyQueue)) {
+            this.finallyQueue.push(onfinally);
+        }
+        return this;
+    }
+    /**
+     * Permet de lancer la fonction qui retourne la vraie promesse
+     * ainsi que d'appliquer les fonctions (then, catch et finally) précédemment stockées
+     * @returns {Promise<any>}
+     */
+    launch(): Promise<any> {
+        return this.promiseFunc()
+        .then((data: Obj) => {
+            const thens = this.thenQueue;
+            for (let t = thens.length; t >= 0; t--) {
+                if (typeof thens[t] === 'function') {
+                    thens[t](data);
+                    return;
+                }
+            }
+        })
+        .catch(err => {
+            const catchs = this.catchQueue;
+            for (let c = catchs.length; c >= 0; c--) {
+                if (typeof catchs[c] === 'function') {
+                    catchs[c](err);
+                    return;
+                }
+            }
+        })
+        .finally(() => {
+            const finallies = this.finallyQueue;
+            for (let f = finallies.length; f >= 0; f--) {
+                if (typeof finallies[f] === 'function') {
+                    finallies[f]();
+                    return;
+                }
+            }
+        });
+    }
 }
 export abstract class Base implements implAddNote {
     /*
@@ -394,6 +536,21 @@ export abstract class Base implements implAddNote {
                 Base.hideLoader();
             });
         }
+        // Vérification de l'état du réseau, doit être placé après la gestion du cache
+        if (Base.networkState === NetworkState.offline) {
+            const key = type + resource + action;
+            if (Base.__networkQueue[key]) {
+                return Base.__networkQueue[key] as unknown as Promise<Obj>;
+            } else {
+                const promise = new FakePromise(() => {
+                    return Base.callApi(type, resource, action, args, force)
+                    .then(data => data)
+                    .catch(err => err);
+                });
+                Base.__networkQueue[key] = promise;
+                return Base.__networkQueue[key] as unknown as Promise<Obj>;
+            }
+        }
 
         // On check si on doit vérifier la validité du token
         // (https://www.betaseries.com/bugs/api/461)
@@ -563,6 +720,33 @@ export abstract class Base implements implAddNote {
     }
     static relatedProps: Record<string, RelatedProp> = {};
     static selectorsCSS: Record<string, string> = {};
+    /**
+     * Etat du réseau
+     * @type {NetworkState}
+     */
+    static networkState: NetworkState = NetworkState.online;
+    /**
+     * Stockage des appels à l'API lorsque le réseau est offline
+     * @type {Record<string, FakePromise>}
+     */
+    static __networkQueue: Record<string, FakePromise> = {};
+    /**
+     * Modifie la variable de l'état du réseau
+     * Et gère les promesses d'appels à l'API lorsque le réseau est online
+     * @param {NetworkState} state - Etat du réseau
+     */
+    static changeNetworkState(state: NetworkState) {
+        this.networkState = state;
+        if (state === NetworkState.online && Object.keys(this.__networkQueue).length > 0) {
+            // TODO: Implémenter l'appel des promesses en attente
+            const keys = Reflect.ownKeys(this.__networkQueue);
+            for (const key of keys) {
+                const promise = this.__networkQueue[key as string].launch();
+                promise.finally(() => delete this.__networkQueue[key as string]);
+            }
+            this.__networkQueue = {};
+        }
+    }
 
     /*
                     PROPERTIES
@@ -896,7 +1080,7 @@ export abstract class Base implements implAddNote {
      */
     public save(): this {
         if (Base.cache instanceof CacheUS) {
-            Base.cache.set(this.mediaType.plural, this.id, this);
+            Base.cache.set(this.mediaType.plural as DataTypesCache, this.id, this);
             this._callListeners(EventTypes.SAVE);
         }
         return this;

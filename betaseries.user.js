@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.3.8
+// @version      1.4.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -47,7 +47,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-HN9V2SEfU3uVk8zDb210hiYIuPCVjOgMzrskzdUx81ym2G6NZf8+wVqG43Sa0BzR';
+const sriBundle = 'sha384-o/KNBY1r2K/5deJVty50wlOPPBNpm+1efIQ2fjG3bzHvZIOogvftFqOHqNfWVu5c';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -387,7 +387,7 @@ const launchScript = function($) {
         }
     };
     // let indexCallLoad = 0;
-    let timer, currentUser, cache, fnLazy, state = {};
+    let timer, currentUser, fnLazy, state = {};
     /**
      * @type {Member}
      */
@@ -3972,8 +3972,7 @@ const launchScript = function($) {
         }
     };
 
-    /* Initialize the cache */
-    cache = new CacheUS();
+    const cache = new CacheUS();
 
     /**
      * dbGetValue - Permet de récuperer des données partagées
@@ -3985,6 +3984,12 @@ const launchScript = function($) {
         if (!key) {
             throw new Error('dbGetValue - key are missing');
         }
+        if (Base.networkState === NetworkState.offline) {
+            if (cache.has(DataTypesCache.db, key)) {
+                return cache.get(DataTypesCache.db, key);
+            }
+            return null;
+        }
         const url = `${serverBaseUrl}/db/get/${key}`;
         const paramsReq = {
             method: 'GET',
@@ -3994,6 +3999,7 @@ const launchScript = function($) {
                 'Accept': 'application/json'
             }
         };
+
         const resp = await fetch(url, paramsReq);
         if (!resp.ok) {
             throw new Error('dbGetValue error connection server');
@@ -4004,8 +4010,13 @@ const launchScript = function($) {
         } else if (result.data === null) {
             return defaults;
         }
+        cache.set(DataTypesCache.db, key, result.data);
         return result.data;
     };
+
+    /** @type {Record<string, any>} */
+    const dbPendingRequests = {};
+
     /**
      * dbSetValue - Permet de stocker des données partagées
      * @param   {string} key - La clé d'identification des données
@@ -4015,6 +4026,11 @@ const launchScript = function($) {
     const dbSetValue = async function(key, data) {
         if (!key || !data) {
             throw new Error('dbSetValue - key or data are missing');
+        }
+        cache.set(DataTypesCache.db, key, data);
+        if (Base.networkState === NetworkState.offline) {
+            dbPendingRequests[key] = data;
+            return true;
         }
         let url = `${serverBaseUrl}/db/save/${key}`;
         const paramsReq = {
@@ -4263,8 +4279,25 @@ const launchScript = function($) {
     Base.gm_funcs.getValue = dbGetValue;
     Base.gm_funcs.setValue = dbSetValue;
 
-    unsafeWindow.addEventListener('offline', () => { Base.changeNetworkState('OFFLINE'); });
-    unsafeWindow.addEventListener('online', () => { Base.changeNetworkState('ONLINE'); });
+    unsafeWindow.addEventListener('offline', () => {
+        console.log('userscript Event Network Offline');
+        Base.changeNetworkState(NetworkState.offline);
+        UpdateAuto.getInstance().then(updateAuto => {
+            updateAuto.stop();
+        });
+    });
+    unsafeWindow.addEventListener('online', () => {
+        console.log('userscript Event Network Online');
+        Base.changeNetworkState(NetworkState.online);
+        UpdateAuto.getInstance().then(updateAuto => {
+            if (updateAuto.auto) updateAuto.launch();
+        });
+        if (dbPendingRequests.length > 0) {
+            for (const key of Object.keys(dbPendingRequests)) {
+                dbSetValue(key, dbPendingRequests[key]);
+            }
+        }
+    });
 
     /**
      * Initialization du script
