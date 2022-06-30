@@ -93,13 +93,15 @@ export class UpdateAuto {
     /**
      * Retourne l'instance de l'objet de mise à jour auto des épisodes
      * @static
-     * @param   {Show} s - L'objet de la série
+     * @param   {Show} [s] - L'objet de la série
      * @returns {UpdateAuto}
      */
-    public static getInstance(s: Show): Promise<UpdateAuto> {
-        if (! UpdateAuto.instance) {
+    public static getInstance(s?: Show): Promise<UpdateAuto> {
+        if (! UpdateAuto.instance && s) {
             UpdateAuto.instance = new UpdateAuto(s);
             return this.instance._init();
+        } else if (! UpdateAuto.instance && !s) {
+            return Promise.reject('Parameter Show required');
         }
         return Promise.resolve(UpdateAuto.instance);
     }
@@ -241,6 +243,7 @@ export class UpdateAuto {
         clearInterval(this._timer);
         this._timer = null;
         this._lastUpdate = null;
+        this.changeColorBtn();
         return this;
     }
 
