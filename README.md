@@ -238,6 +238,8 @@ const serverBaseUrl = 'https://betaseries.example.org';
 Les données partagées correspondent aux données, initialement stockées avec **Tampermonkey**, qui permettent de personnaliser l'affichage des pages du site Web [BetaSeries.com](https://www.betaseries.com).
 J'ai décidé de déplacer les données sur le serveur pour pouvoir utiliser le userscript sur différents navigateurs et systèmes d'exploitation.
 
+Si l'utilisateur n'est pas un membre connecté sur le site [BetaSeries](https://www.betaseries.com), le script va utiliser le stockage de Tampermonkey.
+
 ### Types de données partagées
 * <u>*objUpAuto*</u>: Contient les infos de mise à jour automatique des épisodes des séries.
 * <u>*override*</u>: Contient les infos de surcharges de certaines propriétés des médias (pour le moment, les affiches des médias et des saisons).
