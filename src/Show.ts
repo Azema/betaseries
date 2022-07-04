@@ -428,6 +428,9 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {Array<Season>}
      */
     static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season> {
+        if (Array.isArray(obj.seasons) && obj.seasons.length === data.length) {
+            return obj.seasons;
+        }
         const seasons = [];
         for (let s = 0; s < data.length; s++) {
             seasons.push(new Season(data[s], obj));
@@ -503,7 +506,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}
      */
     static fetch(id: number, force = false): Promise<Show> {
-        return Show._fetch({id: id}, force);
+        return Show._fetch({id}, force);
     }
 
     /**
@@ -560,6 +563,9 @@ export class Show extends Media implements implShow, implAddNote {
      * @type {number} Nombre total d'épisodes dans la série
      */
     nbEpisodes: number;
+    /**
+     * @type {number} Nombre de saisons dans la série
+     */
     nbSeasons: number;
     /**
      * @type {string} Chaîne TV ayant produit la série
@@ -641,7 +647,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     _initRender(): this {
         if (!this.elt) {
-            return;
+            return this;
         }
         super._initRender();
         // title
@@ -962,7 +968,7 @@ export class Show extends Media implements implShow, implAddNote {
             }, err => {
                 // Si la série est déjà sur le compte du membre
                 if (err.code !== undefined && err.code === 2003) {
-                    self.update(true).then((show: Show) => {
+                    self.update().then((show: Show) => {
                         return resolve(show);
                     });
                 }
@@ -988,7 +994,7 @@ export class Show extends Media implements implShow, implAddNote {
             }, err => {
                 // Si la série n'est plus sur le compte du membre
                 if (err.code !== undefined && err.code === 2004) {
-                    self.update(true).then((show: Show) => {
+                    self.update().then((show: Show) => {
                         return resolve(show);
                     });
                 }
@@ -1068,27 +1074,26 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Met à jour les données de la série
-     * @param  {Boolean}  [force=false]     Forcer la récupération des données sur l'API
      * @param  {Callback} [cb = Base.noop]  Fonction de callback
      * @return {Promise<Show>}              Promesse (Show)
      */
-    update(force = false, cb: Callback = Base.noop): Promise<Show> {
+    update(cb: Callback = Base.noop): Promise<Show> {
         const self = this;
-        return new Promise((resolve, reject) => {
-            self.fetch(force).then(data => {
-                self.fill(data.show);
+        return Base.callApi('GET', 'shows', 'display', {id: self.id}, true)
+        .then(data => {
+            if (data.show) {
+                self.fill(data.show).save();
                 self.updateRender(() => {
-                    resolve(self);
-                    cb();
+                    if (typeof cb === 'function') cb();
                     self._callListeners(EventTypes.UPDATE);
                 });
-            })
-            .catch(err => {
-                Media.notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
-                reject(err);
-                cb();
-            });
-        });
+            }
+            return self;
+        })
+        .catch(err => {
+            Base.notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
+            if (typeof cb === 'function') cb();
+        }) as Promise<Show>;
     }
     /**
      * Met à jour le rendu de la barre de progression
@@ -1097,11 +1102,13 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {void}
      */
     updateRender(cb: Callback = Base.noop): void {
+        if (!this.elt) return;
+
         const self = this;
         this.updateProgressBar();
         this.updateNextEpisode();
         this.updateArchived();
-        this.updateNote();
+        // this.updateNote();
         const note = this.objNote;
         if (Base.debug) {
             console.log('Next ID et status', {
@@ -1112,19 +1119,19 @@ export class Show extends Media implements implShow, implAddNote {
             });
         }
         // Si il n'y a plus d'épisodes à regarder
-        if (this.user.remaining === 0 && this.in_account && this.currentSeason.getNbEpisodesUnwatched() == 0) {
+        if (this.user.remaining === 0 && this.in_account && this.currentSeason.seen) {
             let promise = new Promise(resolve => { return resolve(void 0); });
             // On propose d'archiver si la série n'est plus en production
             if (this.isEnded() && ! this.isArchived())
             {
-                if (Base.debug) console.log('Série terminée, popup confirmation archivage');
+                if (Base.debug) console.log('Série terminée, popup proposition archivage');
                 promise = new Promise(resolve => {
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
                         title: 'Archivage de la série',
                         text: 'Voulez-vous archiver cette série terminée ?',
                         callback_yes: function() {
-                            jQuery('#reactjs-show-actions button.btn-archive').trigger('click');
+                            jQuery('#reactjs-show-actions button.btn-archive', this.elt).trigger('click');
                             resolve(void 0);
                         },
                         callback_no: function() {
@@ -1180,16 +1187,11 @@ export class Show extends Media implements implShow, implAddNote {
      * Simule un clic sur le bouton d'archivage de la série sur la page Web
      */
     updateArchived(): void {
+        if (!this.elt) return;
         if (Base.debug) console.log('Show updateArchived');
-        const $btnArchive = jQuery('#reactjs-show-actions button.btn-archive');
+        const $btnArchive = jQuery('#reactjs-show-actions button.btn-archive', this.elt);
         if (this.isArchived() && $btnArchive.length > 0) {
             $btnArchive.trigger('click');
-        }
-    }
-    updateNote(): void {
-        if (Base.debug) console.log('Show updateNote');
-        if (this.objNote.user) {
-            this._callListeners(EventTypes.NOTE);
         }
     }
     /**
@@ -1198,9 +1200,10 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {void}
      */
     updateNextEpisode(cb: Callback = Base.noop): void {
+        if (!this.elt) return;
         if (Base.debug) console.log('updateNextEpisode');
         const self = this;
-        const $nextEpisode = jQuery('a.blockNextEpisode');
+        const $nextEpisode = jQuery('a.blockNextEpisode', this.elt);
         /**
          * Retourne le nombre total d'épisodes non vus dans la série
          * @return {string} le nombre total d'épisodes non vus
@@ -1462,7 +1465,7 @@ export class Show extends Media implements implShow, implAddNote {
             self.deleteShowClick();
         }
         if (trigEpisode) {
-            this.update(true).then(show => {
+            this.update().then(show => {
                 changeBtnAdd(show);
             });
         }
@@ -1587,25 +1590,23 @@ export class Show extends Media implements implShow, implAddNote {
                 <div class="label">A voir</div>
             </div>`;
         const toggleToSeeShow = async (showId: number): Promise<boolean> => {
-            const storeToSee = await Base.gm_funcs.getValue('toSee', {});
-            let toSee: boolean;
-            if (storeToSee[showId] === undefined) {
-                storeToSee[showId] = true;
-                toSee = true;
+            const storeToSee: Array<number> = await Base.gm_funcs.getValue('toSee', []);
+            const toSee = storeToSee.includes(showId);
+            if (!toSee) {
+                storeToSee.push(showId);
             } else {
-                delete storeToSee[showId];
-                toSee = false;
+                storeToSee.splice(storeToSee.indexOf(showId), 1);
             }
             Base.gm_funcs.setValue('toSee', storeToSee);
             return toSee;
         };
         this.elt.find('.blockInformations__actions').last().append(btnHTML);
         const $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
-        $btn.on('click', (e: JQuery.ClickEvent) => {
+        $btn.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             const $btn = jQuery(e.currentTarget);
-            const toSee = toggleToSeeShow(self.id);
+            const toSee = await toggleToSeeShow(self.id);
             if (toSee) {
                 $btn.find('i.fa').css('color', 'var(--body_background)');
                 $btn.attr('title', 'Retirer la série des séries à voir');
@@ -1793,7 +1794,8 @@ export class Show extends Media implements implShow, implAddNote {
                             const parser = new DOMParser();
                             const doc: Document = parser.parseFromString(html, 'text/html');
                             const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_posters"]');
-                            res(link.href.replace('original', 'w500'));
+                            if (link) res(link.href.replace('original', 'w500'));
+                            rej('poster not found');
                         }).catch(err => rej(err));
                     });
                 }
@@ -1818,7 +1820,8 @@ export class Show extends Media implements implShow, implAddNote {
                             const parser = new DOMParser();
                             const doc: Document = parser.parseFromString(html, 'text/html');
                             const link: HTMLLinkElement = doc.querySelector('.container .row a[rel="artwork_backgrounds"]');
-                            res(link.href.replace('original', 'w500'));
+                            if (link) res(link.href.replace('original', 'w500'));
+                            rej('image not found');
                         }).catch(err => rej(err));
                     });
                 }
