@@ -22,7 +22,9 @@ module.exports = {
         "allowedNames": ["self"] // Allow `const self = this`; `[]` by default
       }
     ],
+    "@typescript-eslint/no-empty-function": ["error", { "allow": ["arrowFunctions"] }],
+    "@typescript-eslint/no-explicit-any": 'off',
     "no-empty-function": "off",
-    "@typescript-eslint/no-empty-function": ["error", { "allow": ["arrowFunctions"] }]
+    "no-irregular-whitespace": [ "warn", { "skipComments": true } ]
   }
 };
