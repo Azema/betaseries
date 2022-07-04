@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
 import { Obj, EventTypes, Callback, RelatedProp } from "./Base";
 import { implAddNote } from "./Note";
 import { Media } from "./Media";
@@ -337,6 +334,9 @@ export declare class Show extends Media implements implShow, implAddNote {
      * @type {number} Nombre total d'épisodes dans la série
      */
     nbEpisodes: number;
+    /**
+     * @type {number} Nombre de saisons dans la série
+     */
     nbSeasons: number;
     /**
      * @type {string} Chaîne TV ayant produit la série
@@ -534,11 +534,10 @@ export declare class Show extends Media implements implShow, implAddNote {
     unfavorite(): Promise<Show>;
     /**
      * Met à jour les données de la série
-     * @param  {Boolean}  [force=false]     Forcer la récupération des données sur l'API
      * @param  {Callback} [cb = Base.noop]  Fonction de callback
      * @return {Promise<Show>}              Promesse (Show)
      */
-    update(force?: boolean, cb?: Callback): Promise<Show>;
+    update(cb?: Callback): Promise<Show>;
     /**
      * Met à jour le rendu de la barre de progression
      * et du prochain épisode
@@ -555,7 +554,6 @@ export declare class Show extends Media implements implShow, implAddNote {
      * Simule un clic sur le bouton d'archivage de la série sur la page Web
      */
     updateArchived(): void;
-    updateNote(): void;
     /**
      * Met à jour le bloc du prochain épisode à voir
      * @param   {Callback} [cb=noop] Fonction de callback

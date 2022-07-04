@@ -1,5 +1,4 @@
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
+/// <reference types="node" />
 import { CacheUS } from "./Cache";
 import { Character } from "./Character";
 import { CommentsBS } from "./Comments";
@@ -38,7 +37,8 @@ export declare enum HTTP_VERBS {
     POST = "POST",
     PUT = "PUT",
     DELETE = "DELETE",
-    OPTIONS = "OPTIONS"
+    OPTIONS = "OPTIONS",
+    HEAD = "HEAD"
 }
 export declare type Rating = {
     img: string;
@@ -62,17 +62,78 @@ export declare type RelatedProp = {
     transform?: (obj: Base, data: Obj) => any;
 };
 export declare function objToArr(obj: Base, data: Obj): Array<any>;
-export declare class fakePromise {
+/**
+ * FakePromise - Classe servant à simuler une promesse
+ * d'appel à l'API lorsque le réseau est offline et
+ * de réaliser le souhait lorsque le réseau est online
+ * @class
+ */
+export declare class FakePromise {
+    /**
+     * Permet de vérifier si la fonction se trouve déjà dans le
+     * tableau des fonctions callback
+     * @param   {any} fn - Fonction callback de référence
+     * @param   {any[]} funcs - Tableau des fonctions
+     * @returns {boolean}
+     */
     static fnAlreadyInclude(fn: any, funcs: Array<any>): boolean;
-    thenQueue: Array<any>;
-    catchQueue: Array<any>;
-    finallyQueue: Array<any>;
+    /**
+     * Tableau des fonctions callback de type **then**
+     * @type {Array<(data: Obj) => void>}
+     */
+    thenQueue: Array<(data: Obj) => void>;
+    /**
+     * Tableau des fonctions callback de type **catch**
+     * @type {Array<(reason: any) => void>}
+     */
+    catchQueue: Array<(reason: any) => void>;
+    /**
+     * Tableau des fonctions callback de type **finally**
+     * @type {Array<() => void>}
+     */
+    finallyQueue: Array<() => void>;
+    /**
+     * Fonction qui sera executée lors de l'appel à la méthode **launch**
+     * @see FakePromise.launch
+     * @type {() => Promise<Obj>}
+     */
     promiseFunc: () => Promise<Obj>;
-    constructor(func?: () => Promise<any>);
-    setFunction(func: () => Promise<any>): fakePromise;
-    then(onfulfilled?: (data: Obj) => void, onrejected?: (reason: any) => PromiseLike<never>): fakePromise;
-    catch(onrejected?: (reason: any) => void | PromiseLike<void>): fakePromise;
-    finally(onfinally?: () => void): fakePromise;
+    /**
+     * Constructor
+     * @param   {() => Promise<Obj>} [func] - Fonction promise qui sera executée plus tard
+     * @returns {FakePromise}
+     */
+    constructor(func?: () => Promise<Obj>);
+    /**
+     * Permet de définir la fonction qui retourne la vraie promesse
+     * @param   {() => Promise<Obj>} func Fonction promise qui sera executée plus tard
+     * @returns {FakePromise}
+     */
+    setFunction(func: () => Promise<Obj>): FakePromise;
+    /**
+     * Simule un objet promise et stocke les fonctions pour plus tard
+     * @param   {(data: Obj) => void} onfulfilled - Fonction appelée lorsque la promesse est tenue
+     * @param   {(reason: any) => PromiseLike<never>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
+     * @returns {FakePromise}
+     */
+    then(onfulfilled: (data: Obj) => void, onrejected?: (reason: any) => PromiseLike<never>): FakePromise;
+    /**
+     * Simule un objet promise et stocke les fonctions pour plus tard
+     * @param   {(reason: any) => void | PromiseLike<void>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
+     * @returns {FakePromise}
+     */
+    catch(onrejected?: (reason: any) => void | PromiseLike<void>): FakePromise;
+    /**
+     * Simule un objet promise et stocke les fonctions pour plus tard
+     * @param   {() => void} [onfinally] - Fonction appelée lorsque la promesse est terminée
+     * @returns {FakePromise}
+     */
+    finally(onfinally?: () => void): FakePromise;
+    /**
+     * Permet de lancer la fonction qui retourne la vraie promesse
+     * ainsi que d'appliquer les fonctions (then, catch et finally) précédemment stockées
+     * @returns {Promise<any>}
+     */
     launch(): Promise<any>;
 }
 export declare abstract class Base implements implAddNote {
@@ -198,6 +259,22 @@ export declare abstract class Base implements implAddNote {
      */
     static authenticate(): Promise<string>;
     /**
+     * @type {boolean} Flag indiquant qu'une demande d'authentification est en cours
+     */
+    static checkAuthenticate: boolean;
+    /**
+     * Nombre de timeout consécutifs lors des appels à l'API
+     * @type {number}
+     * @private
+     * @static
+     */
+    private static __nbNetTimeout;
+    /**
+     * Durée du timeout des requêtes à l'API exprimé en secondes
+     * @type {number}
+     */
+    static timeoutRequests: number;
+    /**
      * Fonction servant à appeler l'API de BetaSeries
      * @static
      * @param  {String}   type - Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
@@ -233,12 +310,19 @@ export declare abstract class Base implements implAddNote {
      * @type {NetworkState}
      */
     static networkState: NetworkState;
-    static __networkQueue: Record<string, any>;
+    static networkTimeout: NodeJS.Timer;
+    /**
+     * Stockage des appels à l'API lorsque le réseau est offline
+     * @type {Record<string, FakePromise>}
+     */
+    static __networkQueue: Record<string, FakePromise>;
     /**
      * Modifie la variable de l'état du réseau
+     * Et gère les promesses d'appels à l'API lorsque le réseau est online
      * @param {NetworkState} state - Etat du réseau
+     * @param {boolean} testNetwork - Flag demandant de vérifier l'état du réseau régulièrement
      */
-    static changeNetworkState(state: NetworkState): void;
+    static changeNetworkState(state: NetworkState, testNetwork?: boolean): void;
     /** @type {string} */
     description: string;
     /** @type {number} */
@@ -292,6 +376,10 @@ export declare abstract class Base implements implAddNote {
      * @virtual
      */
     fill(data: Obj): this;
+    /**
+     * Initialisation du rendu HTML
+     * @returns {void}
+     */
     _initRender(): void;
     /**
      * Met à jour le rendu HTML des propriétés de l'objet
@@ -302,7 +390,36 @@ export declare abstract class Base implements implAddNote {
      * @returns {void}
      */
     updatePropRender(propKey: string): void;
-    updatePropRenderNote(): void;
+    /**
+     * Met à jour les informations de la note du média sur la page Web
+     */
+    updatePropRenderObjNote(): void;
+    /**
+     * Met à jour le titre du média sur la page Web
+     */
+    updatePropRenderTitle(): void;
+    /**
+     * Indique si cet objet a été modifié
+     * @returns {boolean}
+     */
+    isModified(): boolean;
+    /**
+     * Retourne les changements apportés à cet objet
+     * @returns {Record<string, Changes>}
+     */
+    getChanges(): Record<string, Changes>;
+    /**
+     * Indique si la propriété passée en paramètre a été modifiée
+     * @param   {string} key - La propriété ayant potentiellement été modifiée
+     * @returns {boolean}
+     */
+    hasChange(key: string): boolean;
+    /**
+     * Retourne l'objet Changes correspondant aux changements apportés à la propriété passée en paramètre
+     * @param   {string} key - La propriété ayant été modifiée
+     * @returns {Changes} L'objet Changes correspondant aux changement
+     */
+    getChange(key: string): Changes;
     /**
      * Initialize le tableau des écouteurs d'évènements
      * @returns {Base}
@@ -317,6 +434,15 @@ export declare abstract class Base implements implAddNote {
      * @sealed
      */
     addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
+    /**
+     * Permet d'ajouter un listener sur plusieurs types d'évenements
+     * @param  {EventTypes[]} names -   Le type d'évenement
+     * @param  {Function} fn -          La fonction à appeler
+     * @param  {any[]} [args] -         Paramètres optionnels
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    addListeners(names: EventTypes[], fn: Callback, ...args: any[]): this;
     /**
      * Permet de supprimer un listener sur un type d'évenement
      * @param  {string}   name - Le type d'évenement
@@ -368,7 +494,7 @@ export declare abstract class Base implements implAddNote {
      * Ajoute le nombre de votes, à la note, dans l'attribut title de la balise
      * contenant la représentation de la note du média
      *
-     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
+     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du HTMLElement
      * @return {string} Le titre modifié de la note
      */
     changeTitleNote(change?: boolean): string;

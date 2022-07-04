@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
 import { Base, Obj, EventTypes, Callback } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
 export declare enum OrderComments {

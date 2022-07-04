@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
 import { Base, Obj, HTTP_VERBS, RelatedProp } from "./Base";
 import { implAddNote } from "./Note";
 import { Season } from "./Season";
@@ -117,6 +114,22 @@ export declare class Episode extends Base implements implAddNote {
      * @returns {Episode}
      */
     constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>);
+    _initRender(): this;
+    /**
+     * Mise à jour de l'information du statut de visionnage de l'épisode
+     * @returns {void}
+     */
+    updatePropRenderUser(): void;
+    /**
+     * Retourne l'objet Season associé à l'épisode
+     * @returns {Season | null}
+     */
+    get season(): Season;
+    /**
+     * Associe l'objet Season à l'épisode
+     * @param {Season} saison - L'objet Season à associer à l'objet épisode
+     */
+    set season(saison: Season);
     /**
      * Ajoute le titre de l'épisode à l'attribut Title
      * du DOMElement correspondant au titre de l'épisode
@@ -125,6 +138,12 @@ export declare class Episode extends Base implements implAddNote {
      * @return {Episode} L'épisode
      */
     addAttrTitle(): Episode;
+    /**
+     * Ajoute la popup de description sur la vignette de l'épisode\
+     * Ne fonctionne que si l'épisode fait partit d'une saison, sur la page d'une série
+     * @returns {Episode}
+     */
+    addPopup(): Episode;
     /**
      * Met à jour le DOMElement .checkSeen avec les
      * données de l'épisode (id, pos, special)
@@ -144,12 +163,6 @@ export declare class Episode extends Base implements implAddNote {
      */
     updateTitle(): void;
     /**
-     * Retourne le code HTML du titre de la popup
-     * pour l'affichage de la description
-     * @return {string}
-     */
-    getTitlePopup(): string;
-    /**
      * Définit le film, sur le compte du membre connecté, comme "vu"
      * @returns {void}
      */
@@ -168,7 +181,7 @@ export declare class Episode extends Base implements implAddNote {
     updateStatus(status: string, method: HTTP_VERBS): void;
     /**
      * Change le statut visuel de la vignette sur le site
-     * @param  {String} newStatus     Le nouveau statut de l'épisode
+     * @param  {String} newStatus     Le nouveau statut de l'épisode (seen, notSeen, hidden)
      * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
      * @return {Episode}
      */

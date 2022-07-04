@@ -1,4 +1,4 @@
-import { Callback, Obj } from "./Base";
+import { Obj } from "./Base";
 import { Episode } from "./Episode";
 import { Show } from "./Show";
 export declare class Season {
@@ -39,6 +39,10 @@ export declare class Season {
      * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
      */
     private __elt;
+    /**
+     * Objet contenant les promesses en attente des méthodes fetchXXX
+     * @type {Record<string, Promise<Season>>}
+     */
     private __fetches;
     /**
      * Constructeur de la classe Season
@@ -47,6 +51,15 @@ export declare class Season {
      * @returns {Season}
      */
     constructor(data: Obj, show: Show);
+    /**
+     * Initialise le rendu HTML de la saison
+     * @returns {Seasons}
+     */
+    _initRender(): Season;
+    /**
+     * Retourne le nombre d'épisodes dans la saison
+     * @returns {number}
+     */
     get length(): number;
     /**
      * Setter pour l'attribut image
@@ -55,6 +68,7 @@ export declare class Season {
     set image(src: string);
     /**
      * Getter pour l'attribut image
+     * @returns {string}
      */
     get image(): string;
     /**
@@ -62,7 +76,16 @@ export declare class Season {
      * @returns {Promise<Season>}
      */
     fetchEpisodes(): Promise<Season>;
+    checkEpisodes(): Promise<Season>;
+    /**
+     * Cette méthode permet de passer tous les épisodes de la saison en statut **seen**
+     * @returns {Promise<Season>}
+     */
     watched(): Promise<Season>;
+    /**
+     * Cette méthode permet de passer tous les épisodes de la saison en statut **hidden**
+     * @returns {Promise<Season>}
+     */
     hide(): Promise<Season>;
     /**
      * Retourne l'épisode correspondant à l'identifiant fournit
@@ -87,10 +110,14 @@ export declare class Season {
     getNbEpisodesSpecial(): number;
     /**
      * Met à jour l'objet Show
-     * @param {Function} cb Function de callback
-     * @returns {Season}
+     * @returns {Promise<Show>}
      */
-    updateShow(cb?: Callback): Season;
+    updateShow(): Promise<Show>;
+    /**
+     * Vérifie la modification des épisodes et met à jour le rendu HTML, ainsi que la série
+     * @returns {Promise<Season>}
+     */
+    update(): Promise<Season>;
     /**
      * Change le statut visuel de la saison sur le site
      * @return {Season}

@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
 import { Base, Obj, Callback, Changes } from "./Base";
 export interface implAddNote {
     addVote(note: number): Promise<boolean>;
@@ -56,8 +53,16 @@ export declare class Note {
     static getTypeSvg(note: number, indice: number): string;
     /**
      * Met à jour l'affichage de la note
+     * @param   {JQuery<HTMLElement>} [$elt] - Element HTML contenant les étoiles représentant la note
+     * @returns {Note}
      */
-    updateStars(elt?: JQuery<HTMLElement>): void;
+    updateStars($elt?: JQuery<HTMLElement>): Note;
+    /**
+     * Met à jour l'attribut title de l'élément HTML représentant la note
+     * @param   {JQuery<HTMLElement>} [$elt] - Element HTML contenant les étoiles représentant la note
+     * @returns {Note}
+     */
+    updateAttrTitle($elt?: JQuery<HTMLElement>): Note;
     /**
      * Retourne la template pour l'affichage d'une note sous forme d'étoiles
      * @param   {number} [note=0] - La note à afficher

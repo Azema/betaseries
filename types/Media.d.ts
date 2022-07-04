@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
 import { Base, Obj } from "./Base";
 import { Similar } from "./Similar";
 export declare abstract class Media extends Base {

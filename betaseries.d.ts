@@ -11,22 +11,39 @@
  *~ Otherwise, delete this declaration.
  */
 /// <reference types="jquery" />
+/// <reference types="bootstrap" />
 
-/// <reference path="types/Base.d.ts" />
-/// <reference path="types/Cache.d.ts" />
-/// <reference path="types/Character.d.ts" />
-/// <reference path="types/Comment.d.ts" />
-/// <reference path="types/Comments.d.ts" />
-/// <reference path="types/Episode.d.ts" />
-/// <reference path="types/Media.d.ts" />
-/// <reference path="types/Member.d.ts" />
-/// <reference path="types/Movie.d.ts" />
-/// <reference path="types/Note.d.ts" />
-/// <reference path="types/Notification.d.ts" />
-/// <reference path="types/Search.d.ts" />
-/// <reference path="types/Season.d.ts" />
-/// <reference path="types/Show.d.ts" />
-/// <reference path="types/Similar.d.ts" />
-/// <reference path="types/Subtitle.d.ts" />
-/// <reference path="types/UpdateAuto.d.ts" />
-/// <reference path="types/User.d.ts" />
+export interface TooltipOption {
+    /**
+     * How to position the tooltip or popover - auto | top | bottom | left | right.
+     * When "auto" is specified, it will dynamically reorient the tooltip or popover.
+     *
+     * When a function is used to determine the placement, it is called with
+     * the tooltip or popover DOM node as its first argument and the triggering element DOM node as its second.
+     * The `this` context is set to the tooltip or popover instance.
+     *
+     * @default tooltip: "top", popover: "right"
+     */
+    placement?: Placement | ((tip: HTMLElement, elt: Element) => Placement) | undefined;
+}
+
+import Base from "./types/Base";
+import CacheUS from "./types/Cache";
+import Character from "./types/Character";
+import CommentBS from "./types/Comment";
+import CommentsBS from "./types/Comments";
+import Episode from "./types/Episode";
+import Media from "./types/Media";
+import Member from "./types/Member";
+import Movie from "./types/Movie";
+import Note from "./types/Note";
+import NotificationBS from "./types/Notification";
+import Search from "./types/Search";
+import Season from "./types/Season";
+import Show from "./types/Show";
+import Similar from "./types/Similar";
+import Subtitle from "./types/Subtitle";
+import UpdateAuto from "./types/UpdateAuto";
+import User from "./types/User";
+
+export {Base, CacheUS, Character, CommentBS, CommentsBS, Episode, Media, Member, Movie, Note, NotificationBS, Search, Season, Show, Similar, Subtitle, UpdateAuto, User, Tooltip};

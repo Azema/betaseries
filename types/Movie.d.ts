@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
 import { Obj, RelatedProp } from "./Base";
 import { implAddNote } from "./Note";
 import { Platform_link } from "./Episode";

@@ -1,6 +1,3 @@
-/// <reference types="jquery" />
-/// <reference types="jquery" />
-/// <reference types="bootstrap" />
 import { Obj, EventTypes, Callback } from './Base';
 import { CommentsBS, OrderComments } from './Comments';
 export interface implRepliesComment {

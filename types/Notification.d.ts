@@ -71,7 +71,6 @@ export declare class NotificationList {
      * Retourne les notifications du membre
      * @param   {number} [nb = 10] Nombre de notifications à récupérer
      * @returns {Promise<NotificationList>}
-     * @throws  {Error}
      */
     static fetch(nb?: number): Promise<NotificationList>;
     old: Array<NotificationBS>;
