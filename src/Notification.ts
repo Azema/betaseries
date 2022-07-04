@@ -110,7 +110,6 @@ export class NotificationList {
      * Retourne les notifications du membre
      * @param   {number} [nb = 10] Nombre de notifications à récupérer
      * @returns {Promise<NotificationList>}
-     * @throws  {Error}
      */
     public static fetch(nb = 20): Promise<NotificationList> {
         const params: Obj = {
@@ -125,11 +124,11 @@ export class NotificationList {
                 notifications.add(new NotificationBS(data.notifications[n]));
             }
             return notifications;
-        })
+        })/*
         .catch(err => {
             console.warn('Erreur de récupération des notifications du membre', err);
-            throw new Error('Erreur de récupération des notifications');
-        });
+            return new NotificationList();
+        }) */;
     }
 
     old: Array<NotificationBS>;
