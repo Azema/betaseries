@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// declare const getScrollbarWidth, subscribeToggle;
-
 import { DataTypesCache, CacheUS } from "./Cache";
 import { Character } from "./Character";
 import { CommentsBS } from "./Comments";
@@ -11,7 +8,6 @@ export function ExceptionIdentification(message: string) {
     this.message = message;
     this.name = "ExceptionIdentification";
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Class<T> = new (...args: any[]) => T;
 export enum NetworkState {
     'offline',
@@ -44,7 +40,8 @@ export enum HTTP_VERBS {
     POST = 'POST',
     PUT = 'PUT',
     DELETE = 'DELETE',
-    OPTIONS = 'OPTIONS'
+    OPTIONS = 'OPTIONS',
+    HEAD = 'HEAD'
 }
 export type Rating = {
     img: string;
@@ -54,7 +51,6 @@ export type Ratings = {
     [key: string]: Rating;
 };
 export type Obj = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 };
 export type Callback = () => void;
@@ -75,6 +71,61 @@ export function objToArr(obj: Base, data: Obj): Array<any> {
          values.push(data[key]);
     }
     return values;
+}
+function isNull(val: any): boolean {
+    return val === null || val === undefined;
+}
+interface FetchTimeout {
+    abort: () => void;
+    ready: () => Promise<Response>;
+}
+/**
+ * Fonction pour les requêtes fetch avec un timeout
+ * @param request - URL à appeler
+ * @param opts - Options de la requête
+ * @param timeout - Durée en secondes du timeout de la requête
+ * @returns {FetchTimeout}
+ */
+function fetchTimeout(request: URL | RequestInfo, opts: RequestInit = {}, timeout = 30): FetchTimeout {
+    const controller = new AbortController();
+    opts.signal = controller.signal;
+
+    return {
+        abort: (): void => controller.abort(),
+        ready: (): Promise<Response> => {
+            const timer: NodeJS.Timer = setTimeout(() => controller.abort(), timeout * 1000);
+            return fetch(request, opts).then((resp) => {
+                if (timer) clearTimeout(timer);
+                return resp;
+            });
+        }
+    };
+}
+function checkNetwork() {
+    const request = `${Base.serverOauthUrl}/index.html`;
+    const init: RequestInit = {
+        method: HTTP_VERBS.HEAD,
+        mode: 'cors',
+        cache: 'no-cache',
+    };
+    fetchTimeout(request, init, 5).ready()
+    .then((response: Response) => {
+        if (response.ok) {
+            Base.changeNetworkState(NetworkState.online);
+            console.log('Network is come back');
+        }
+    }).catch(err => {
+        if (err.name === 'AbortError') {
+            console.log('checkNetwork: Fetch aborted');
+        }
+        else if (err.message.toLowerCase() !== 'failed to fetch') {
+            console.error('checkNetwork catch: ', err);
+        }
+    }).finally(() => {
+        if (Base.networkState === NetworkState.offline) {
+            Base.networkTimeout = setTimeout(checkNetwork, 1000);
+        }
+    });
 }
 /**
  * FakePromise - Classe servant à simuler une promesse
@@ -115,7 +166,8 @@ export class FakePromise {
      */
     finallyQueue: Array<()=>void>;
     /**
-     * Fonction qui sera executée lors de l'appel à la méthode **launch** {@see FakePromise.launch}
+     * Fonction qui sera executée lors de l'appel à la méthode **launch**
+     * @see FakePromise.launch
      * @type {() => Promise<Obj>}
      */
     promiseFunc: () => Promise<Obj>;
@@ -208,12 +260,13 @@ export class FakePromise {
             for (let f = finallies.length; f >= 0; f--) {
                 if (typeof finallies[f] === 'function') {
                     finallies[f]();
-                    return;
+                    // return;
                 }
             }
         });
     }
 }
+
 export abstract class Base implements implAddNote {
     /*
                     STATIC
@@ -470,6 +523,22 @@ export abstract class Base implements implAddNote {
         });
     }
     /**
+     * @type {boolean} Flag indiquant qu'une demande d'authentification est en cours
+     */
+    static checkAuthenticate = false;
+    /**
+     * Nombre de timeout consécutifs lors des appels à l'API
+     * @type {number}
+     * @private
+     * @static
+     */
+    private static __nbNetTimeout = 0;
+    /**
+     * Durée du timeout des requêtes à l'API exprimé en secondes
+     * @type {number}
+     */
+    static timeoutRequests = 30;
+    /**
      * Fonction servant à appeler l'API de BetaSeries
      * @static
      * @param  {String}   type - Type de methode d'appel Ajax (GET, POST, PUT, DELETE)
@@ -558,9 +627,24 @@ export abstract class Base implements implAddNote {
             Base.api.check[resource].indexOf(action) !== -1)
         {
             check = true;
+            if (Base.checkAuthenticate) {
+                if (Base.debug) console.log('Base::callApi authenticate in progress');
+                return new Promise((res, rej) => {
+                    setTimeout(() => {
+                        Base.callApi(type, resource, action, args, force)
+                        .then(data => res(data))
+                        .catch(err => rej(err));
+                    }, 500);
+                });
+            }
         }
 
-        function fetchUri(resolve, reject) {
+        /**
+         * Appel à l'API
+         * @param {function} resolve - Fonction appelée en cas de succès
+         * @param {function} reject - Fonction appelée en cas d'échec
+         */
+        function fetchUri(resolve: (data: Obj) => void, reject: (reason?: any) => void) {
             const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
                 method: type,
                 headers: myHeaders,
@@ -579,8 +663,9 @@ export abstract class Base implements implAddNote {
             } else if (keys.length > 0) {
                 initFetch.body = new URLSearchParams(args);
             }
-
-            fetch(uri, initFetch).then(response => {
+            fetchTimeout(uri, initFetch, Base.timeoutRequests).ready()
+            .then(response => {
+                Base.__nbNetTimeout = 0;
                 Base.counter++; // Incrément du compteur de requêtes à l'API
                 if (Base.debug && (display || response.status !== 200)) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
                 // On récupère les données et les transforme en objet
@@ -620,37 +705,69 @@ export abstract class Base implements implAddNote {
                     Base.hideLoader();
                 });
             }).catch(error => {
-                if (Base.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                console.warn('Base::callApi fetchUri catch (%s: %s/%s)', type, resource, action);
+                if (error.name === 'AbortError') {
+                    if (Base.debug) console.log('Base::callApi AbortError Timeout fetchUri');
+                    if (++Base.__nbNetTimeout > 5) {
+                        if (Base.debug) console.log('5 timeout consecutifs, Network state to offline');
+                        Base.changeNetworkState(NetworkState.offline, true);
+                    }
+                    return;
+                }
+                console.warn('Base::callApi fetchUri error: ' + error.message);
                 console.error(error);
-                reject(error.message);
+                reject(error);
+            }).finally(() => {
                 Base.hideLoader();
             });
         }
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve: (value:Obj | PromiseLike<Obj>) => void, reject: (reason?: any) => void) => {
             if (check) {
+                Base.checkAuthenticate = true;
                 const paramsFetch: RequestInit = {
-                    method: 'GET',
+                    method: HTTP_VERBS.GET,
                     headers: myHeaders,
                     mode: 'cors',
                     cache: 'no-cache'
                 };
                 if (Base.debug && display) console.info('%ccall /members/is_active', 'color:#1d6fb2');
-                fetch(`${Base.api.url}/members/is_active`, paramsFetch).then(resp => {
+                fetchTimeout(`${Base.api.url}/members/is_active`, paramsFetch, Base.timeoutRequests).ready()
+                .then((resp: Response) => {
+                    Base.__nbNetTimeout = 0;
                     Base.counter++; // Incrément du compteur de requêtes à l'API
-                    if ( ! resp.ok) {
+                    if ( ! resp.ok && resp.status === 400) {
+                        if (Base.debug) console.log('authenticate for %s: %s/%s', type, resource, action);
                         // Appel de l'authentification pour obtenir un token valide
                         Base.authenticate().then(() => {
                             // On met à jour le token pour le prochain appel à l'API
                             myHeaders['X-BetaSeries-Token'] = Base.token;
+                            Base.checkAuthenticate = false;
                             fetchUri(resolve, reject);
-                        }).catch(err => reject(err) );
+                        }).catch(err => reject(err));
                         return;
                     }
+                    Base.checkAuthenticate = false;
                     fetchUri(resolve, reject);
                 }).catch(error => {
-                    if (Base.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                    Base.checkAuthenticate = false;
+                    console.warn('Base::callApi fetch members/is_active catch');
+                    if (error.name === 'AbortError') {
+                        if (Base.debug) console.log('Base::callApi AbortError Timeout members/is_active');
+                        if (++Base.__nbNetTimeout > 5) {
+                            if (Base.debug) console.log('5 timeout consecutifs, Network state to offline');
+                            Base.changeNetworkState(NetworkState.offline, true);
+                        }
+                        return;
+                    }
+                    else if (error.message.toLowerCase() === 'failed to fetch') {
+                        if (Base.debug) console.log('Réseau hors ligne');
+                        Base.changeNetworkState(NetworkState.offline, true);
+                    }
+                    else {
+                        if (Base.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                    }
                     console.error(error);
-                    reject(error.message);
+                    reject(error);
                 });
             } else {
                 fetchUri(resolve, reject);
@@ -725,6 +842,7 @@ export abstract class Base implements implAddNote {
      * @type {NetworkState}
      */
     static networkState: NetworkState = NetworkState.online;
+    static networkTimeout: NodeJS.Timer;
     /**
      * Stockage des appels à l'API lorsque le réseau est offline
      * @type {Record<string, FakePromise>}
@@ -734,17 +852,22 @@ export abstract class Base implements implAddNote {
      * Modifie la variable de l'état du réseau
      * Et gère les promesses d'appels à l'API lorsque le réseau est online
      * @param {NetworkState} state - Etat du réseau
+     * @param {boolean} testNetwork - Flag demandant de vérifier l'état du réseau régulièrement
      */
-    static changeNetworkState(state: NetworkState) {
+    static changeNetworkState(state: NetworkState, testNetwork = false) {
         this.networkState = state;
         if (state === NetworkState.online && Object.keys(this.__networkQueue).length > 0) {
-            // TODO: Implémenter l'appel des promesses en attente
             const keys = Reflect.ownKeys(this.__networkQueue);
             for (const key of keys) {
                 const promise = this.__networkQueue[key as string].launch();
                 promise.finally(() => delete this.__networkQueue[key as string]);
             }
             this.__networkQueue = {};
+        } else if (state === NetworkState.offline) {
+            this.__networkQueue = {};
+            if (testNetwork) {
+                Base.networkTimeout = setTimeout(checkNetwork, 1000);
+            }
         }
     }
 
@@ -839,6 +962,11 @@ export abstract class Base implements implAddNote {
      */
     fill(data: Obj): this {
         const self = this;
+        if (typeof data !== 'object') {
+            const err = new Error('Base.fill data is not an object: ' + typeof data);
+            console.error(err);
+            throw err;
+        }
         for (const propKey in (this.constructor as typeof Base).relatedProps) {
             if (!Reflect.has(data, propKey)) continue;
             const relatedProp = (this.constructor as typeof Base).relatedProps[propKey];
@@ -852,8 +980,16 @@ export abstract class Base implements implAddNote {
                         return self['_' + relatedProp.key];
                     },
                     set: (newValue: any) => {
+                        if (self.__initial) {
+                            self['_' + relatedProp.key] = newValue;
+                            return;
+                        }
                         const oldValue = self['_' + relatedProp.key];
-                        if (Array.isArray(oldValue) && oldValue.length === newValue.length) {
+                        if (['string', 'number', 'boolean'].includes(relatedProp.type)) {
+                            if (oldValue === newValue)
+                                return;
+                        }
+                        else if (Array.isArray(oldValue) && oldValue.length === newValue.length) {
                             let diff = false;
                             for (let i = 0, _len = oldValue.length; i < _len; i++) {
                                 if (oldValue[i] !== newValue[i]) {
@@ -863,18 +999,29 @@ export abstract class Base implements implAddNote {
                             }
                             if (!diff) return;
                         }
-                        else if (typeof oldValue === 'object') {
-                            let changed = false;
-                            const keysNew = Reflect.ownKeys(newValue)
-                                .filter((key:string) => !key.startsWith('_'));
-                            for (let k = 0, _len = keysNew.length; k < _len; k++) {
-                                if (oldValue[keysNew[k]] !== newValue[keysNew[k]]) {
-                                    changed = true;
-                                    break;
-                                }
+                        else if (newValue instanceof Date) {
+                            if (oldValue instanceof Date && newValue.getTime() === oldValue.getTime()) {
+                                return;
                             }
-                            if (!changed) return;
-                        } else if (oldValue === newValue) return;
+                        }
+                        else if (typeof newValue === 'object') {
+                            // console.log('fill setter[%s]', relatedProp.key, {oldValue, newValue});
+                            let changed = false;
+                            try {
+                                const keysNew = Reflect.ownKeys(newValue)
+                                    .filter((key:string) => !key.startsWith('_'));
+                                for (let k = 0, _len = keysNew.length; k < _len; k++) {
+                                    if (oldValue[keysNew[k]] !== newValue[keysNew[k]]) {
+                                        changed = true;
+                                        break;
+                                    }
+                                }
+                                if (!changed) return;
+                            } catch (err) {
+                                console.warn('Base fill error setter[%s.%s]', this.constructor.name, relatedProp.key, {oldValue, newValue});
+                            }
+                        }
+
                         self['_' + relatedProp.key] = newValue;
                         if (!self.__initial) {
                             self.__changes[relatedProp.key] = {oldValue, newValue};
@@ -891,7 +1038,7 @@ export abstract class Base implements implAddNote {
                     setValue = true;
                     break;
                 case 'number':
-                    value = parseInt(dataProp, 10);
+                    value = (! isNull(dataProp)) ? parseInt(dataProp, 10) : null;
                     setValue = true;
                     break;
                 case 'boolean':
@@ -916,7 +1063,7 @@ export abstract class Base implements implAddNote {
                     if (typeof relatedProp.type === 'function' && dataProp) {
                         // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
                         value = Reflect.construct(relatedProp.type, [dataProp]);
-                        if (value && Reflect.has(value, 'parent')) {
+                        if (typeof value === 'object' && Reflect.has(value, 'parent')) {
                             value.parent = self;
                         }
                         setValue = true;
@@ -924,7 +1071,7 @@ export abstract class Base implements implAddNote {
                     break;
                 }
             }
-            if (!setValue && value == undefined && Reflect.has(relatedProp, 'default')) {
+            if (!setValue && value == undefined && relatedProp.default) {
                 value = relatedProp.default;
                 setValue = true;
             }
@@ -949,11 +1096,16 @@ export abstract class Base implements implAddNote {
         }
         return this.save();
     }
+    /**
+     * Initialisation du rendu HTML
+     * @returns {void}
+     */
     _initRender(): void {
         if (!this.elt) return;
-        this.changeTitleNote(true);
+        this.objNote
+            .updateAttrTitle()
+            .updateStars();
         this.decodeTitle();
-        this.objNote.updateStars();
     }
     /**
      * Met à jour le rendu HTML des propriétés de l'objet
@@ -970,18 +1122,73 @@ export abstract class Base implements implAddNote {
         if (Reflect.has(this, fnPropKey)) {
             // if (Base.debug) console.log('updatePropRender Reflect has method');
             this[fnPropKey]();
-        } else if (Reflect.has((this.constructor as typeof Base).selectorsCSS, propKey)) {
+        } else if ((this.constructor as typeof Base).selectorsCSS &&
+            (this.constructor as typeof Base).selectorsCSS[propKey])
+        {
             // if (Base.debug) console.log('updatePropRender default');
             const selectorCSS = (this.constructor as typeof Base).selectorsCSS[propKey];
             jQuery(selectorCSS).text(this[propKey].toString());
             delete this.__changes[propKey];
         }
     }
-    updatePropRenderNote(): void {
-        if (Base.debug) console.log('updatePropRenderNote');
-        this.objNote.updateStars();
-        this.changeTitleNote(true);
+    /**
+     * Met à jour les informations de la note du média sur la page Web
+     */
+    updatePropRenderObjNote(): void {
+        if (Base.debug) console.log('updatePropRenderObjNote');
+        this.objNote
+            .updateStars()
+            .updateAttrTitle();
         this._callListeners(EventTypes.NOTE);
+        delete this.__changes.objNote;
+    }
+    /**
+     * Met à jour le titre du média sur la page Web
+     */
+    updatePropRenderTitle(): void {
+        const $title = jQuery((this.constructor as typeof Base).selectorsCSS.title);
+        if (/&#/.test(this.title)) {
+            $title.text($('<textarea />').html(this.title).text());
+        } else {
+            $title.text(this.title);
+        }
+        delete this.__changes.title;
+    }
+    /**
+     * Indique si cet objet a été modifié
+     * @returns {boolean}
+     */
+    isModified(): boolean {
+        return Object.keys(this.__changes).length > 0;
+    }
+    /**
+     * Retourne les changements apportés à cet objet
+     * @returns {Record<string, Changes>}
+     */
+    getChanges(): Record<string, Changes> {
+        return this.__changes;
+    }
+    /**
+     * Indique si la propriété passée en paramètre a été modifiée
+     * @param   {string} key - La propriété ayant potentiellement été modifiée
+     * @returns {boolean}
+     */
+    hasChange(key: string): boolean {
+        if (this.__props.includes(key)) {
+            throw new Error(`Property[${key}] not exists in this object(${this.constructor.name})`);
+        }
+        return Reflect.has(this.__changes, key);
+    }
+    /**
+     * Retourne l'objet Changes correspondant aux changements apportés à la propriété passée en paramètre
+     * @param   {string} key - La propriété ayant été modifiée
+     * @returns {Changes} L'objet Changes correspondant aux changement
+     */
+    getChange(key: string): Changes {
+        if (this.__props.includes(key)) {
+            throw new Error(`Property[${key}] not exists in this object(${this.constructor.name})`);
+        }
+        return this.__changes[key];
     }
     /**
      * Initialize le tableau des écouteurs d'évènements
@@ -1003,7 +1210,7 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      * @sealed
      */
-    public addListener(name: EventTypes, fn: Callback, ...args): this {
+    public addListener(name: EventTypes, fn: Callback, ...args: any[]): this {
         //if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name);
         // On vérifie que le type d'event est pris en charge
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
@@ -1012,8 +1219,8 @@ export abstract class Base implements implAddNote {
         if (this.__listeners[name] === undefined) {
             this.__listeners[name] = [];
         }
-        for (const func in this.__listeners[name]) {
-            if (func.toString() == fn.toString()) return;
+        for (const func of this.__listeners[name]) {
+            if (typeof func === 'function' && func.toString() == fn.toString()) return;
         }
         if (args.length > 0) {
             this.__listeners[name].push({fn: fn, args: args});
@@ -1021,6 +1228,24 @@ export abstract class Base implements implAddNote {
             this.__listeners[name].push(fn);
         }
         if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name, this.__listeners[name]);
+        return this;
+    }
+    /**
+     * Permet d'ajouter un listener sur plusieurs types d'évenements
+     * @param  {EventTypes[]} names -   Le type d'évenement
+     * @param  {Function} fn -          La fonction à appeler
+     * @param  {any[]} [args] -         Paramètres optionnels
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    public addListeners(names: EventTypes[], fn: Callback, ...args: any[]): this {
+        try {
+            for (const name of names) {
+                this.addListener(name, fn, args);
+            }
+        } catch (err) {
+            console.warn('Base.addListeners error', err);
+        }
         return this;
     }
     /**
@@ -1053,12 +1278,13 @@ export abstract class Base implements implAddNote {
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) >= 0 && this.__listeners[name].length > 0)
         {
             if (Base.debug) console.log('Base[%s] call %d Listeners on event %s', this.constructor.name, this.__listeners[name].length, name, this.__listeners);
-            const event = new CustomEvent('betaseries', {detail: {name: name}});
+            const event = new CustomEvent('betaseries', {detail: {name}});
             for (let l = 0; l < this.__listeners[name].length; l++) {
                 if (typeof this.__listeners[name][l] === 'function') {
                     this.__listeners[name][l].call(this, event, this);
                 } else {
-                    this.__listeners[name][l].fn.apply(this, this.__listeners[name][l].args);
+                    const args: any[] = this.__listeners[name][l].args;
+                    this.__listeners[name][l].fn.apply(this, [event, this].concat(args));
                 }
             }
         }
@@ -1113,8 +1339,13 @@ export abstract class Base implements implAddNote {
      * @return {Base} L'instance du média
      */
     decodeTitle(): Base {
-        const $elt = this.elt.find('.blockInformations__title'),
-              title = $elt.text();
+        if (!this.elt) return this;
+
+        let $elt = jQuery('.blockInformations__title', this.elt);
+        if ((this.constructor as typeof Base).selectorsCSS.title) {
+            $elt = jQuery((this.constructor as typeof Base).selectorsCSS.title);
+        }
+        const title = $elt.text();
 
         if (/&#/.test(title)) {
             $elt.text($('<textarea />').html(title).text());
@@ -1125,11 +1356,11 @@ export abstract class Base implements implAddNote {
      * Ajoute le nombre de votes, à la note, dans l'attribut title de la balise
      * contenant la représentation de la note du média
      *
-     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du DOMElement
+     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du HTMLElement
      * @return {string} Le titre modifié de la note
      */
     changeTitleNote(change = true): string {
-        const $elt = this.elt.find('.js-render-stars');
+        const $elt = jQuery('.js-render-stars', this.elt);
         if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
             if (change) $elt.attr('title', 'Aucun vote');
             return;
@@ -1148,17 +1379,17 @@ export abstract class Base implements implAddNote {
      */
     addVote(note: number): Promise<boolean> {
         const self = this;
-        return new Promise((resolve, reject) => {
-            Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
+        // return new Promise((resolve, reject) => {
+        return Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
             .then((data: Obj) => {
-                self.fill(data[this.mediaType.singular])._callListeners(EventTypes.NOTE);
-                resolve(true);
+                self.fill(data[this.mediaType.singular]);
+                return this.objNote.user == note;
             })
             .catch(err => {
                 Base.notification('Erreur de vote', 'Une erreur s\'est produite lors de l\'envoi de la note: ' + err);
-                reject(err);
-            })
-        });
+                return false;
+            }) as Promise<boolean>;
+        // });
     }
     /**
      * *fetchCharacters* - Récupère les acteurs du média
