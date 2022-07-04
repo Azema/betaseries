@@ -58,7 +58,7 @@ export class Note {
                     self['_' + propKey] = newValue;
                     if (!self.__initial) {
                         self.__changes[propKey] = {oldValue, newValue};
-                        if (self._parent) self._parent.updatePropRenderNote();
+                        if (self._parent) self._parent.updatePropRenderObjNote();
                     }
                 }
             };
@@ -235,21 +235,40 @@ export class Note {
     }
     /**
      * Met à jour l'affichage de la note
+     * @param   {JQuery<HTMLElement>} [$elt] - Element HTML contenant les étoiles représentant la note
+     * @returns {Note}
      */
-    public updateStars(elt: JQuery<HTMLElement> = null): void {
-        elt = elt || jQuery('.blockInformations__metadatas .js-render-stars', this._parent.elt);
+    public updateStars($elt?: JQuery<HTMLElement>): Note {
+        $elt = $elt || jQuery('.blockInformations__metadatas .js-render-stars', this._parent.elt);
+        if (!$elt || $elt.length <= 0) return this;
+
         let color = '';
-        const $stars: JQuery<HTMLElement> = elt.find('.star-svg use');
+        const $stars: JQuery<HTMLElement> = jQuery('.star-svg use', $elt);
         const result = $($stars.get(0)).attr('xlink:href').match(/(grey|blue)/);
         if (result) {
             color = result[0];
         }
-        let className: string;
         for (let s = 0; s < 5; s++) {
-            className = Note.getTypeSvg(this.mean, s);
-            // className = (this.mean <= s) ? StarTypes.EMPTY : (this.mean < s + 1) ? (this.mean >= s + 0.5) ? StarTypes.HALF : StarTypes.EMPTY : StarTypes.FULL;
+            const className = Note.getTypeSvg(this.mean, s);
             $($stars.get(s)).attr('xlink:href', `#icon-star${color}-${className}`);
         }
+        return this;
+    }
+    /**
+     * Met à jour l'attribut title de l'élément HTML représentant la note
+     * @param   {JQuery<HTMLElement>} [$elt] - Element HTML contenant les étoiles représentant la note
+     * @returns {Note}
+     */
+    public updateAttrTitle($elt?: JQuery<HTMLElement>): Note {
+        $elt = $elt || jQuery('.blockInformations__metadatas .js-render-stars', this._parent.elt);
+        if (!$elt || $elt.length <= 0) return this;
+
+        if (this.mean <= 0 || this.total <= 0) {
+            $elt.attr('title', 'Aucun vote');
+            return this;
+        }
+        $elt.attr('title', this.toString());
+        return this;
     }
     /**
      * Retourne la template pour l'affichage d'une note sous forme d'étoiles
