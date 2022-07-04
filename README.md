@@ -163,6 +163,7 @@ tmdb: 634649
 * ~~Ajout d'un paginateur en haut de la liste des séries~~ Plutôt qu'un nouveau paginateur, j'ai préféré remonter en haut de page automatiquement.
 * Modification du fonctionnement du filtre **pays**, sur la page des séries, pour permettre d'ajouter plusieurs pays __(Seul un pays ajouté sera retenu, si vous rafraîchissez la page)__.
 * Ajout d'un bouton **A voir** dans les actions des fiches des séries, pour indiquer les séries à voir plus tard. Un logo, sous forme de montre, est affiché à côté du titre, si la série est taguée à voir plus tard.
+* Ajout du détail de la note, survol des étoiles, sur chaque fiche des séries.
 
 -------
 
