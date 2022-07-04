@@ -141,6 +141,14 @@
         },
         "youtube_id": null
     },
+    "seasons": {
+        "number": 1,
+        "episodes": 18,
+        "seen": false,
+        "hidden": false,
+        "image": "https:\/\/pictures.betaseries.com\/fonds\/seasons\/11661\/298515-1.jpg",
+        "has_subtitles": false
+    },
     "show": { // extends Media
         "aliases": {
             "57884": "O Rei Eterno",
