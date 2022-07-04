@@ -54,6 +54,7 @@ tmdb: 634649
 ![Notes du média](./screenshots/popupNotes.jpg "Notes du média")
 
 * En mode DEV, ajout d'un bouton pour visualiser les infos de la ressource !["Bouton Dev"](./screenshots/btnDev.jpg "Bouton Dev")
+* En mode DEV, ajout d'un bouton, à côté du titre du média principal, permettant de copier l'identifiant du média.
 * Ajout de la gestion du synopsis (description), pour l'afficher au complet et pour revenir à un synopsis tronqué, autant de fois que nécessaire.
 * Modification de l'affichage pour noter le média. Je l'ai modifié pour les mêmes raisons que les commentaires (cf. ci-dessous).
 * Ajout du nombre de médias similaires, dans la barre de navigation du média, à côté de lien **SIMILAIRES**.
