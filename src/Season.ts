@@ -1,4 +1,4 @@
-import { Base, Callback, HTTP_VERBS, Obj } from "./Base";
+import { Base, HTTP_VERBS, Obj } from "./Base";
 import { Episode } from "./Episode";
 import { Show } from "./Show";
 
@@ -42,6 +42,10 @@ export class Season {
      * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
      */
     private __elt: JQuery<HTMLElement>;
+    /**
+     * Objet contenant les promesses en attente des méthodes fetchXXX
+     * @type {Record<string, Promise<Season>>}
+     */
     private __fetches: Record<string, Promise<Season>>;
 
     /**
@@ -66,9 +70,29 @@ export class Season {
         } else if (data.episodes && typeof data.episodes === 'number') {
             this.nbEpisodes = data.episodes;
         }
-        return this;
+        return this._initRender();
     }
 
+    /**
+     * Initialise le rendu HTML de la saison
+     * @returns {Seasons}
+     */
+    _initRender(): Season {
+        if (!this.__elt) {
+            return this;
+        }
+        if (this.seen && jQuery('.checkSeen', this.__elt).length <= 0) {
+            jQuery('.slide__image img', this.__elt).before('<div class="checkSeen"></div>');
+        }
+        else if (this.hidden && jQuery('.hideIcon', this.__elt).length <= 0) {
+            jQuery('.slide__image img', this.__elt).before('<div class="hideIcon"></div>');
+        }
+    }
+
+    /**
+     * Retourne le nombre d'épisodes dans la saison
+     * @returns {number}
+     */
     get length(): number {
         return this.episodes.length;
     }
@@ -87,6 +111,7 @@ export class Season {
     }
     /**
      * Getter pour l'attribut image
+     * @returns {string}
      */
     get image(): string {
         return this._image;
@@ -110,7 +135,8 @@ export class Season {
             .then((data: Obj) => {
                 self.episodes = [];
                 for (let e = 0; e < data.episodes.length; e++) {
-                    self.episodes.push(new Episode(data.episodes[e], self));
+                    const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
+                    self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
                 }
                 return self;
             })
@@ -119,6 +145,37 @@ export class Season {
         return this.__fetches.episodes as Promise<Season>;
     }
 
+    checkEpisodes(): Promise<Season> {
+        if (!this.number || this.number <= 0) {
+            throw new Error('season number incorrect');
+        }
+        if (this.__fetches.episodes) return this.__fetches.episodes;
+        const self = this;
+        const params = {
+            id: self._show.id,
+            season: self.number
+        };
+        this.__fetches.episodes = Base.callApi('GET', 'shows', 'episodes', params, true)
+            .then((data: Obj) => {
+                for (let e = 0; e < data.episodes.length; e++) {
+                    if (self.episodes.length <= e) {
+                        const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
+                        self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
+                    } else {
+                        self.episodes[e].fill(data.episodes[e]);
+                    }
+                }
+                return self;
+            })
+            .finally(() => delete self.__fetches.episodes);
+
+        return this.__fetches.episodes as Promise<Season>;
+    }
+
+    /**
+     * Cette méthode permet de passer tous les épisodes de la saison en statut **seen**
+     * @returns {Promise<Season>}
+     */
     watched(): Promise<Season> {
         const self = this;
         const params = {id: this.episodes[this.length - 1].id, bulk: true};
@@ -133,7 +190,10 @@ export class Season {
             return self;
         });
     }
-
+    /**
+     * Cette méthode permet de passer tous les épisodes de la saison en statut **hidden**
+     * @returns {Promise<Season>}
+     */
     hide(): Promise<Season> {
         const self = this;
         const params = {id: this._show.id, season: this.number};
@@ -204,12 +264,30 @@ export class Season {
 
     /**
      * Met à jour l'objet Show
-     * @param {Function} cb Function de callback
-     * @returns {Season}
+     * @returns {Promise<Show>}
      */
-    updateShow(cb: Callback = Base.noop): Season {
-        this._show.update(true).then(cb as unknown as (value: Show) => Show);
-        return this;
+    updateShow(): Promise<Show> {
+        return this._show.update();
+    }
+    /**
+     * Vérifie la modification des épisodes et met à jour le rendu HTML, ainsi que la série
+     * @returns {Promise<Season>}
+     */
+    update(): Promise<Season> {
+        const self = this;
+        return this.checkEpisodes().then(() => {
+            for (const episode of self.episodes) {
+                if (episode.isModified()) {
+                    if (Base.debug) console.log('updateEpisodes changed true', self);
+                    return self.updateRender()
+                               .updateShow().then(() => self);
+                }
+            }
+            if (Base.debug) console.log('updateEpisodes no changes');
+            return self;
+        }).catch(err => {
+            Base.notification('Erreur de mise à jour des épisodes', 'Seasons update: ' + err);
+        }) as Promise<Season>;
     }
 
     /**
@@ -232,7 +310,7 @@ export class Season {
             self.__elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
             if (Base.debug) console.log('Tous les épisodes de la saison ont été vus', self.__elt, self.__elt.next());
             // Si il y a une saison suivante, on la sélectionne
-            if (self.__elt.next().length > 0) {
+            if (self.__elt.next('.slide_flex').length > 0) {
                 if (Base.debug) console.log('Il y a une autre saison');
                 self.__elt.removeClass('slide--current');
                 self.__elt.next('.slide_flex').find('.slide__image').trigger('click');
