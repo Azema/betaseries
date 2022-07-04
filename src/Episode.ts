@@ -4,6 +4,7 @@ import { implAddNote, Note } from "./Note";
 import { Season } from "./Season";
 import { Subtitles } from "./Subtitle";
 import { User } from "./User";
+import { Placement } from "bootstrap";
 
 declare const PopupAlert;
 
@@ -154,8 +155,52 @@ export class Episode extends Base implements implAddNote {
         if (elt) {
             this.elt = elt;
         }
-        return this.fill(data);
+        return this.fill(data)._initRender();
     }
+    _initRender(): this {
+        if (!this.elt) {
+            return this;
+        }
+        if (this._season) {
+            this.initCheckSeen(this.episode - 1);
+            this.addAttrTitle().addPopup();
+        } else {
+            super._initRender();
+        }
+    }
+    /**
+     * Mise à jour de l'information du statut de visionnage de l'épisode
+     * @returns {void}
+     */
+    updatePropRenderUser(): void {
+        if (!this.elt) return;
+        const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
+        if (this.user.seen && !$elt.hasClass('seen')) {
+            this.updateRender('seen');
+        } else if (!this.user.seen && $elt.hasClass('seen')) {
+            this.updateRender('notSeen');
+        } else if (this.user.hidden && jQuery('.hideIcon', this.elt).length <= 0) {
+            this.updateRender('hidden');
+        }
+        delete this.__changes.user;
+    }
+
+    /**
+     * Retourne l'objet Season associé à l'épisode
+     * @returns {Season | null}
+     */
+    get season(): Season {
+        return this._season;
+    }
+
+    /**
+     * Associe l'objet Season à l'épisode
+     * @param {Season} saison - L'objet Season à associer à l'objet épisode
+     */
+    set season(saison: Season) {
+        this._season = this.season;
+    }
+
     /**
      * Ajoute le titre de l'épisode à l'attribut Title
      * du DOMElement correspondant au titre de l'épisode
@@ -170,13 +215,46 @@ export class Episode extends Base implements implAddNote {
         return this;
     }
     /**
+     * Ajoute la popup de description sur la vignette de l'épisode\
+     * Ne fonctionne que si l'épisode fait partit d'une saison, sur la page d'une série
+     * @returns {Episode}
+     */
+    addPopup(): Episode {
+        if (!this.elt || !this._season) {
+            return this;
+        }
+        const funcPlacement = (_tip: HTMLElement, elt: Element): Placement => {
+            const rect = elt.getBoundingClientRect(),
+                  width = jQuery(window).width(),
+                  sizePopover = 320;
+            return ((rect.left + rect.width + sizePopover) > width) ? 'left' : 'right' as Placement;
+        };
+        const $vignette = jQuery('.slide__image', this.elt);
+        if ($vignette.length > 0) {
+            const description = (this.description.length > 350) ?
+                this.description.substring(0, 350) + '…' :
+                (this.description.length <= 0) ? 'Aucune description' : this.description;
+            $vignette.popover({
+                container: $vignette.get(0),
+                delay: { "show": 500, "hide": 100 },
+                html: true,
+                content: `<p>${description}</p>`,
+                placement: funcPlacement,
+                title: `<div><span style="color: var(--link_color);">Episode ${this.code}</span><div class="stars-outer note"><div class="stars-inner" style="width:${this.objNote.getPercentage()}%;" title="${this.objNote.toString()}"></div></div></div>`,
+                trigger: 'hover',
+                boundary: 'window'
+            });
+        }
+        return this;
+    }
+    /**
      * Met à jour le DOMElement .checkSeen avec les
      * données de l'épisode (id, pos, special)
      * @param  {number} pos  La position de l'épisode dans la liste
      * @return {Episode}
      */
     initCheckSeen(pos: number): Episode {
-        const $checkbox = this.elt.find('.checkSeen');
+        const $checkbox = jQuery('.checkSeen', this.elt);
         if ($checkbox.length > 0 && this.user.seen) {
             // On ajoute l'attribut ID et la classe 'seen' à la case 'checkSeen' de l'épisode déjà vu
             $checkbox.attr('id', 'episode-' + this.id);
@@ -234,6 +312,7 @@ export class Episode extends Base implements implAddNote {
         }
         else if (this.user.hidden && $checkSeen.length > 0) {
             $checkSeen.remove();
+            this.updateRender('hidden', false);
             changed = true;
         }
         this.updateTitle();
@@ -248,14 +327,6 @@ export class Episode extends Base implements implAddNote {
         if (`${this.code.toUpperCase()} - ${this.title}` !== $title.text().trim()) {
             $title.text(`${this.code.toUpperCase()} - ${this.title}`);
         }
-    }
-    /**
-     * Retourne le code HTML du titre de la popup
-     * pour l'affichage de la description
-     * @return {string}
-     */
-    getTitlePopup(): string {
-        return `<span style="color: var(--link_color);">Synopsis épisode ${this.code}</span>`;
     }
     /**
      * Définit le film, sur le compte du membre connecté, comme "vu"
@@ -326,11 +397,11 @@ export class Episode extends Base implements implAddNote {
                 if (Base.debug) console.log('updateStatus %s episodes/watched', method, data);
                 // Si un épisode est vu et que la série n'a pas été ajoutée
                 // au compte du membre connecté
-                if (! self._season.showInAccount() && data.episode.show.in_account) {
+                if (self._season && ! self._season.showInAccount() && data.episode.show.in_account) {
                     self._season.addShowToAccount();
                 }
                 // On met à jour l'objet Episode
-                if (method === HTTP_VERBS.POST && response && pos) {
+                if (self._season && method === HTTP_VERBS.POST && response && pos) {
                     const $vignettes = jQuery('#episodes .slide_flex');
                     let episode: Episode = null;
                     for (let e = 0; e < pos; e++) {
@@ -348,30 +419,39 @@ export class Episode extends Base implements implAddNote {
                 }
                 self
                     .fill(data.episode)
-                    .updateRender(status, true)
-                    ._callListeners(EventTypes.UPDATE)
-                    ._season
-                        .updateRender()
-                        .updateShow(() => {
+                    /**
+                     * L'update du rendu HTML se fait automatiquement avec les setter
+                     * définient dans la méthode Base.fill, via les méthodes **updatePropRenderXXX**
+                     * @see Base.fill
+                     * @see Base.updatePropRender
+                     */
+                    ._callListeners(EventTypes.UPDATE);
+                if (self.season) {
+                    self.season.updateRender()
+                        .updateShow().then(() => {
                             // Si il reste des épisodes à voir, on scroll
-                            if (jQuery('#episodes .slide_flex.slide--notSeen').length > 0) {
+                            const $notSeen = jQuery('#episodes .slide_flex.slide--notSeen');
+                            if ($notSeen.length > 0) {
                                 jQuery('#episodes .slides_flex').get(0).scrollLeft =
-                                    jQuery('#episodes .slide_flex.slide--notSeen').get(0).offsetLeft - 69;
+                                    $notSeen.get(0).offsetLeft - 69;
                             }
                             self.toggleSpinner(false);
                         });
+                }
             })
             .catch(err => {
                 if (Base.debug) console.error('updateStatus error %s', err);
                 if (err && err == 'changeStatus') {
                     if (Base.debug) console.log('updateStatus error %s changeStatus', method);
                     self.user.seen = (status === 'seen') ? true : false;
-                    self.updateRender(status)
-                        ._season
+                    self.updateRender(status);
+                    if (self.season) {
+                        self._season
                             .updateRender()
-                            .updateShow(() => {
+                            .updateShow().then(() => {
                                 self.toggleSpinner(false);
                             });
+                    }
                 } else {
                     self.toggleSpinner(false);
                     Base.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
@@ -381,7 +461,7 @@ export class Episode extends Base implements implAddNote {
     }
     /**
      * Change le statut visuel de la vignette sur le site
-     * @param  {String} newStatus     Le nouveau statut de l'épisode
+     * @param  {String} newStatus     Le nouveau statut de l'épisode (seen, notSeen, hidden)
      * @param  {bool}   [update=true] Mise à jour de la ressource en cache et des éléments d'affichage
      * @return {Episode}
      */
@@ -445,7 +525,7 @@ export class Episode extends Base implements implAddNote {
      * Retourne une image, si disponible, en fonction du format désiré
      * @return {Promise<string>}                         L'URL de l'image
      */
-     getDefaultImage(): Promise<string> {
+    getDefaultImage(): Promise<string> {
         /*const proxy = Base.serverBaseUrl + '/proxy/';
         const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
             method: 'GET',
