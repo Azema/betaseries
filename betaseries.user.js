@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.4.3
+// @version      1.4.4
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -24,21 +24,25 @@
 
 'use strict';
 
-/* eslint-disable */
-if (!navigator) {
-    const { Base, EventTypes, HTTP_VERBS, NetworkState, CacheUS, DataTypesCache, CommentBS,
-    Episode, Media, MediaType, Show, PlatformList, Movie, MovieStatus, Member, UpdateAuto } = require("./betaseries");
-    // const { Base, EventTypes, HTTP_VERBS, NetworkState } = require("./types/Base");
-    // const { CacheUS, DataTypesCache } = require("./types/Cache");
-    // const { CommentBS } = require("./types/Comment");
-    // const { Episode } = require("./types/Episode");
-    // const { Media, MediaType } = require("./types/Media");
-    // const { Show, PlatformList } = require("./types/Show");
-    // const { Movie, MovieStatus } = require("./types/Movie");
-    // const { Member } = require("./types/Member");
-    // const { UpdateAuto } = require('./types/UpdateAuto');
-}
-/* eslint-enable */
+/**
+ * @typedef { import('./types/Base').Base } Base
+ * @typedef { import('./types/Base').EventTypes } EventTypes
+ * @typedef { import('./types/Base').HTTP_VERBS } HTTP_VERBS
+ * @typedef { import('./types/Base').MediaType } MediaType
+ * @typedef { import('./types/Base').NetworkState } NetworkState
+ * @typedef { import('./types/Cache').CacheUS } CacheUS
+ * @typedef { import('./types/Cache').DataTypesCache } DataTypesCache
+ * @typedef { import('./types/Comment').CommentBS } CommentBS
+ * @typedef { import('./types/Comments').CommentsBS } CommentsBS
+ * @typedef { import('./types/Episode').Episode } Episode
+ * @typedef { import('./types/Media').Media } Media
+ * @typedef { import('./types/Show').Show } Show
+ * @typedef { import('./types/Show').PlatformList } PlatformList
+ * @typedef { import('./types/Movie').Movie } Movie
+ * @typedef { import('./types/Movie').MovieStatus } MovieStatus
+ * @typedef { import('./types/Member').Member } Member
+ * @typedef { import('./types/UpdateAuto').UpdateAuto } UpdateAuto
+ */
 
 /* eslint-disable no-undef */
 /* globals
@@ -59,7 +63,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-bLKMtbKs7DlB0OzPt7fpPJfT2N+kc0CXDfUNVtL7OEnlEiBYnTj1ttFdarBH0f28';
+const sriBundle = 'sha384-wERQJA2Cc5XUbvsMGspHwXOvW/konXPMfp4y7bEVYb8jZFH7MOYhgf9EFLwQaI/W';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -442,7 +446,11 @@ const launchScript = function($) {
                     /** @type {Member} */
                     user = unsafeWindow.user = member;
                     // On affiche la version du script
+                    if (typeof GM_info !== 'undefined') {
                     if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
+                    } else {
+                        if (Base.debug) console.log('%cUserScript BetaSeries%c - Membre: %c%s', 'color:#e7711b', 'color:inherit', 'color:#00979c', user.login);
+                    }
                     // On désactive les fonctions de notifications originales
                     unsafeWindow.notificationChecker = () => {};
                     unsafeWindow.growlNotificationChecker = () => {};
@@ -857,7 +865,7 @@ const launchScript = function($) {
             notifContainer.hide();
             $('.userscript-notifications .title').html(title);
             $('.userscript-notifications .text').html(text);
-            notifContainer.slideDown().delay(5000).slideUp();
+            notifContainer.slideDown().delay(10000).slideUp();
             console.warn(text);
             console.trace('Notification');
         },
@@ -1418,7 +1426,7 @@ const launchScript = function($) {
                     objUpAuto.stop();
                 }
                 system.addScriptAndLink(['popover', 'bootstrap'], function() {
-                    if (Base.debug) console.log('Loaded popover updateEpisodes');
+                    // if (Base.debug) console.log('updateAutoEpisodeList: Loading popover');
                     $('#updateEpisodeList .updateElement').popover({
                         container: $('#updateEpisodeList'),
                         // delay: { "show": 500, "hide": 100 },
@@ -1520,7 +1528,7 @@ const launchScript = function($) {
                             if (objUpAuto.auto !== checkAuto) { objUpAuto._auto = checkAuto; changed = true; }
                             if (objUpAuto.interval != intervalAuto) { objUpAuto._interval = intervalAuto; changed = true; }
                             if (changed) objUpAuto._save();
-                            if (Base.debug) console.log('updateEpisodeList submit', objUpAuto);
+                            if (Base.debug) console.log('optionsUpdateEpisodeList submit', objUpAuto);
                             objUpAuto.launch();
                             $('#updateEpisodeList .updateElement').popover('hide');
                         });
@@ -1561,9 +1569,11 @@ const launchScript = function($) {
             * pour mettre à jour l'update auto des épisodes
              * @param {CustomEvent} event -  L'évènement déclencheur
              * @param {Show} show -          La série associée à l'évènement
+             * @this Show
             */
-            function updateAuto(event, show) {
-                if (Base.debug) console.log('upgradeEpisodes > updateAuto: Listener called by ', event.detail?.name, {"this": this, show});
+            function updateAuto(event) {
+                const show = this;
+                if (Base.debug) console.log('upgradeEpisodes > updateAuto: Listener called by ', event.detail?.name, {"this": this});
                 UpdateAuto.getInstance(show).then(objUpAuto => {
                     // Si il n'y a plus d'épisodes à regarder sur la série
                     if (event.detail.name === EventTypes.UPDATE && show.user.remaining <= 0) {
@@ -1665,6 +1675,7 @@ const launchScript = function($) {
                         }).catch(() => {});
                 })
                 .finally(() => {
+                    console.log('userscript.medias.upgradeEpisodes fetchEpisodes finally');
                     console.groupEnd('upgradeEpisodes');
                     });
                 // Ajouter un bouton de mise à jour des épisodes de la saison courante
@@ -1691,8 +1702,11 @@ const launchScript = function($) {
                         res.currentSeason.update().then(() => {
                                     fnLazy(); // On affiche les images lazyload
                         }).finally(() => {
-                                    self.addClass('finish');
-                            if (Base.debug) console.groupEnd();
+                            self.addClass('finish');
+                            if (Base.debug) {
+                                console.log('userscript.medias.upgradeEpisodes checkEpisodes finally');
+                                console.groupEnd('updateEpisodes');
+                            }
                         });
                     });
                 }
@@ -2473,13 +2487,13 @@ const launchScript = function($) {
             $('#js-menu-aim a.seriesToSee').on('click', async(e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                const toSee = await dbGetValue('toSee', []);
+                const override = await dbGetValue('override', {shows: {}, movies: {}});
+                Show.fetchMulti(toSee).then(shows => {
                 /**
                  * @type {Dialog}
                  */
                 const dialog = system.getDialog();
-                let toSee = await dbGetValue('toSee', {});
-                const override = await dbGetValue('override', {shows: {}, movies: {}});
-                Show.fetchMulti(Object.keys(toSee)).then(shows => {
                     let template = '<div id="annuaire-list" class="gridSeries">';
                     for (let s = 0; s < shows.length; s++) {
                         const show = shows[s];
@@ -2496,7 +2510,7 @@ const launchScript = function($) {
                                         <img class="js-lazy-image" data-src="${img}" alt="Affiche de la série ${show.title}" width="119" height="174">
                                     </div>
                                     <div class="media-body" style="height:174px;position:relative;">
-                                        <div class="remove" style="">
+                                        <div class="remove" title="Supprimer la série de la liste à voir plus tard">
                                             <span aria-hidden="true">&times;</span>
                                         </div>
                                         <div class="thumbnailSearchTitle mainLink"><span class="showTitle">${show.title}</span>
@@ -3105,7 +3119,7 @@ const launchScript = function($) {
                 const dialog = system.getDialog();
                 dialog
                     .setContent('<div style="text-align:center;"><i class="fa fa-spinner fa-3x" aria-hidden="true"></i></div>')
-                    .setTitle('10 dernières séries vues');
+                    .setTitle('10 dernières séries vues').show();
                 Show.fetchLastSeen().then(async (shows) => {
                     const override = await dbGetValue('override', {shows:{},movies:{}});
                     let template = '<div id="annuaire-list" class="gridSeries">',
@@ -3322,8 +3336,8 @@ const launchScript = function($) {
                     e.stopPropagation();
                     e.preventDefault();
                     // const $btn = jQuery(e.currentTarget);
-                    const toSee = await system.toggleToSeeShow(showId);
-                    if (toSee) {
+                    const toSeeShow = await system.toggleToSeeShow(showId);
+                    if (toSeeShow) {
                         $btn.addClass('marked');
                         $btn.attr('title', 'Retirer la série des séries à voir');
                         $title.append(iconTitleHTML);
@@ -4388,6 +4402,8 @@ const launchScript = function($) {
      * Initialization du script
      */
     system.init();
+    medias.addBtnToSee();
+    members.lastSeen();
 
     // Fonctions appeler pour les pages des series, des films et des episodes
     if (/^\/(serie|film|episode)\/.*/.test(url)) {
@@ -4402,8 +4418,6 @@ const launchScript = function($) {
             medias.similarsViewed(objRes); // On s'occupe des ressources similaires
             medias.upgradeSynopsis(); // On améliore le fonctionnement de l'affichage du synopsis
             medias.comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
-            medias.addBtnToSee();
-            members.lastSeen();
             medias.replaceVoteFn(objRes);
             medias.checkPoster(objRes);
             if (/^\/serie\//.test(url)) {
@@ -4429,8 +4443,6 @@ const launchScript = function($) {
             Base.shows = shows;
             members.sortGestionSeries();
         });
-        medias.addBtnToSee();
-        members.lastSeen();
     }
     // Fonctions appeler sur les pages des membres
     else if (system.userIdentified() && (regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url))) {
@@ -4453,8 +4465,6 @@ const launchScript = function($) {
                 members.searchFriends();
             }
         });
-        medias.addBtnToSee();
-        members.lastSeen();
     }
     // Fonctions appeler sur les pages de documentation de l'API
     else if (/^\/api/.test(url)) {
@@ -4473,15 +4483,11 @@ const launchScript = function($) {
         if (/agenda/.test(url)) {
             system.waitDomPresent('#reactjs-episodes-to-watch .ComponentEpisodeContainer', series.updateAgenda, 50, 1000);
         }
-        series.addBtnToSee();
-        members.lastSeen();
     }
     // Fonctions appeler sur la page de recherche des films
     else if (/^\/films\//.test(url)) {
         if (debug) console.log('Pages des films');
         system.waitPagination();
-        medias.addBtnToSee();
-        members.lastSeen();
         if (/agenda/.test(url)) {
             system.waitDomPresent('#reactjs-movies-to-watch .ComponentEpisodeContainer', movies.updateAgenda, 50, 1000);
         }
@@ -4491,8 +4497,6 @@ const launchScript = function($) {
         if (Base.debug) console.log('Page d\'un article');
         articles.checkArticle();
         articles.addPopupOnLinks();
-        medias.addBtnToSee();
-        members.lastSeen();
     }
 };
 /*
