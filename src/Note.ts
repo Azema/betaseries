@@ -100,6 +100,18 @@ export class Note {
         return toString;
     }
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    public toJSON(): object {
+        return {
+            total: this.total,
+            mean: this.mean,
+            user: this.user
+        };
+    }
+    /**
      * Crée une popup avec 5 étoiles pour noter le média
      */
     public createPopupForVote(cb: Callback = Base.noop): void {

@@ -135,6 +135,20 @@ export class CommentsBS implements implRepliesComment {
         }
     }
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object {
+        const obj: object = {};
+        const keys = Reflect.ownKeys(this)
+            .filter((key:string) => !key.startsWith('_'));
+        for (const key of keys) {
+            obj[key] = this[key];
+        }
+        return obj;
+    }
+    /**
      * Initialize le tableau des écouteurs d'évènements
      * @returns {Base}
      * @private
