@@ -59,9 +59,10 @@ export declare type RelatedProp = {
     key: string;
     type: any;
     default?: any;
-    transform?: (obj: Base, data: Obj) => any;
+    transform?: (obj: object, data: Obj) => any;
 };
 export declare function objToArr(obj: Base, data: Obj): Array<any>;
+export declare function isNull(val: any): boolean;
 /**
  * FakePromise - Classe servant à simuler une promesse
  * d'appel à l'API lorsque le réseau est offline et
@@ -97,38 +98,44 @@ export declare class FakePromise {
      * @see FakePromise.launch
      * @type {() => Promise<Obj>}
      */
-    promiseFunc: () => Promise<Obj>;
+    promiseFunc: (reason?: string) => Promise<Obj>;
     /**
      * Constructor
-     * @param   {() => Promise<Obj>} [func] - Fonction promise qui sera executée plus tard
+     * @param   {(reason?: string) => Promise<Obj>} [func] - Fonction promise qui sera executée plus tard
      * @returns {FakePromise}
      */
-    constructor(func?: () => Promise<Obj>);
+    constructor(func?: (reason?: string) => Promise<Obj>);
     /**
      * Permet de définir la fonction qui retourne la vraie promesse
      * @param   {() => Promise<Obj>} func Fonction promise qui sera executée plus tard
      * @returns {FakePromise}
      */
-    setFunction(func: () => Promise<Obj>): FakePromise;
+    setFunction(func: (reason?: string) => Promise<Obj>): FakePromise;
     /**
      * Simule un objet promise et stocke les fonctions pour plus tard
      * @param   {(data: Obj) => void} onfulfilled - Fonction appelée lorsque la promesse est tenue
      * @param   {(reason: any) => PromiseLike<never>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
      * @returns {FakePromise}
      */
-    then(onfulfilled: (data: Obj) => void, onrejected?: (reason: any) => PromiseLike<never>): FakePromise;
+    then(onfulfilled?: (data: Obj) => void, onrejected?: (reason: any) => void | PromiseLike<never>): FakePromise;
     /**
      * Simule un objet promise et stocke les fonctions pour plus tard
      * @param   {(reason: any) => void | PromiseLike<void>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
      * @returns {FakePromise}
      */
-    catch(onrejected?: (reason: any) => void | PromiseLike<void>): FakePromise;
+    catch(onrejected?: (reason: any) => void | PromiseLike<never>): FakePromise;
     /**
      * Simule un objet promise et stocke les fonctions pour plus tard
      * @param   {() => void} [onfinally] - Fonction appelée lorsque la promesse est terminée
      * @returns {FakePromise}
      */
     finally(onfinally?: () => void): FakePromise;
+    /**
+     * Rejet de la promise
+     * @param reason - Le raison du rejet de la promise
+     * @returns {Promise<void | Obj>}
+     */
+    reject(reason: string): Promise<void | Obj>;
     /**
      * Permet de lancer la fonction qui retourne la vraie promesse
      * ainsi que d'appliquer les fonctions (then, catch et finally) précédemment stockées
@@ -261,7 +268,7 @@ export declare abstract class Base implements implAddNote {
     /**
      * @type {boolean} Flag indiquant qu'une demande d'authentification est en cours
      */
-    static checkAuthenticate: boolean;
+    static __checkAuthenticate: boolean;
     /**
      * Nombre de timeout consécutifs lors des appels à l'API
      * @type {number}
@@ -269,6 +276,7 @@ export declare abstract class Base implements implAddNote {
      * @static
      */
     private static __nbNetTimeout;
+    private static __maxTimeout;
     /**
      * Durée du timeout des requêtes à l'API exprimé en secondes
      * @type {number}
@@ -370,6 +378,12 @@ export declare abstract class Base implements implAddNote {
      */
     [Symbol.iterator](): object;
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object;
+    /**
      * Remplit l'objet avec les données fournit en paramètre
      * @param  {Obj} data - Les données provenant de l'API
      * @returns {Base}
@@ -382,9 +396,9 @@ export declare abstract class Base implements implAddNote {
      */
     _initRender(): void;
     /**
-     * Met à jour le rendu HTML des propriétés de l'objet
-     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
-     * Méthode appelée automatiquement par le setter de la propriété
+     * Met à jour le rendu HTML des propriétés de l'objet,
+     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
+     * **Méthode appelée automatiquement par le setter de la propriété**
      * @see Show.selectorsCSS
      * @param   {string} propKey - La propriété de l'objet à mettre à jour
      * @returns {void}
@@ -410,16 +424,16 @@ export declare abstract class Base implements implAddNote {
     getChanges(): Record<string, Changes>;
     /**
      * Indique si la propriété passée en paramètre a été modifiée
-     * @param   {string} key - La propriété ayant potentiellement été modifiée
+     * @param   {string} propKey - La propriété ayant potentiellement été modifiée
      * @returns {boolean}
      */
-    hasChange(key: string): boolean;
+    hasChange(propKey: string): boolean;
     /**
      * Retourne l'objet Changes correspondant aux changements apportés à la propriété passée en paramètre
-     * @param   {string} key - La propriété ayant été modifiée
+     * @param   {string} propKey - La propriété ayant été modifiée
      * @returns {Changes} L'objet Changes correspondant aux changement
      */
-    getChange(key: string): Changes;
+    getChange(propKey: string): Changes;
     /**
      * Initialize le tableau des écouteurs d'évènements
      * @returns {Base}

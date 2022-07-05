@@ -62,6 +62,7 @@ export declare class ParamsSearchShows extends ParamsSearchAbstract {
     _pays: Array<string>;
     chaines: Array<string>;
     constructor();
+    getDurationAllowed(): string[];
     get duration(): string;
     set duration(val: string);
     get creations(): Array<number>;

@@ -72,6 +72,12 @@ export declare class CommentsBS implements implRepliesComment {
      */
     init(): void;
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object;
+    /**
      * Initialize le tableau des écouteurs d'évènements
      * @returns {Base}
      * @private

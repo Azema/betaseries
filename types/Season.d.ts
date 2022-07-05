@@ -1,7 +1,21 @@
-import { Obj } from "./Base";
+import { Obj, RelatedProp } from "./Base";
 import { Episode } from "./Episode";
 import { Show } from "./Show";
 export declare class Season {
+    /**
+     * Les différents sélecteurs CSS des propriétés de l'objet
+     * @static
+     * @type {Record<string, string>}
+     */
+    static selectorsCSS: Record<string, string>;
+    /**
+     * Objet contenant les informations de relations entre les propriétés des objets de l'API
+     * et les proriétés de cette classe.
+     * Sert à la construction de l'objet
+     * @static
+     * @type {Record<string, RelatedProp>}
+     */
+    static relatedProps: Record<string, RelatedProp>;
     /**
      * @type {number} Numéro de la saison dans la série
      */
@@ -26,7 +40,7 @@ export declare class Season {
     /**
      * @type {string} URL de l'image
      */
-    _image: string;
+    image: string;
     /**
      * @type {boolean} Saison vu
      */
@@ -44,6 +58,9 @@ export declare class Season {
      * @type {Record<string, Promise<Season>>}
      */
     private __fetches;
+    private __initial;
+    private __changes;
+    private __props;
     /**
      * Constructeur de la classe Season
      * @param   {Obj}   data    Les données provenant de l'API
@@ -51,31 +68,46 @@ export declare class Season {
      * @returns {Season}
      */
     constructor(data: Obj, show: Show);
+    fill(data: Obj): Season;
     /**
      * Initialise le rendu HTML de la saison
      * @returns {Seasons}
      */
     _initRender(): Season;
+    toJSON(): object;
+    /**
+     * Met à jour le rendu HTML des propriétés de l'objet
+     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
+     * Méthode appelée automatiquement par le setter de la propriété
+     * @see Show.selectorsCSS
+     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+     * @returns {void}
+     */
+    updatePropRender(propKey: string): void;
+    /**
+     * Mise à jour du nombre d'épisodes de la saison sur la page Web
+     * @returns {void}
+     */
+    updatePropRenderNbEpisodes(): void;
+    /**
+     * Mise à jour de l'image de la saison sur la page Web
+     * @returns {void}
+     */
+    updatePropRenderImage(): void;
     /**
      * Retourne le nombre d'épisodes dans la saison
      * @returns {number}
      */
     get length(): number;
     /**
-     * Setter pour l'attribut image
-     * @param {string} src - L'URL d'accès à l'image
-     */
-    set image(src: string);
-    /**
-     * Getter pour l'attribut image
-     * @returns {string}
-     */
-    get image(): string;
-    /**
      * Récupère les épisodes de la saison sur l'API
      * @returns {Promise<Season>}
      */
     fetchEpisodes(): Promise<Season>;
+    /**
+     * Vérifie et met à jour les épisodes de la saison
+     * @returns {Promise<Season>}
+     */
     checkEpisodes(): Promise<Season>;
     /**
      * Cette méthode permet de passer tous les épisodes de la saison en statut **seen**
@@ -90,7 +122,7 @@ export declare class Season {
     /**
      * Retourne l'épisode correspondant à l'identifiant fournit
      * @param  {number} id
-     * @returns {Episode}
+     * @returns {Episode | null}
      */
     getEpisode(id: number): Episode;
     /**

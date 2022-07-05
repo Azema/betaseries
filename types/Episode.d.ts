@@ -61,7 +61,7 @@ export declare class Episode extends Base implements implAddNote {
     /**
      * @type {number} Le numéro de l'épisode dans la saison
      */
-    episode: number;
+    number: number;
     /**
      * @type {number} Le numéro de l'épisode dans la série
      */

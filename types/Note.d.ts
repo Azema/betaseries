@@ -40,6 +40,12 @@ export declare class Note {
      */
     toString(): string;
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object;
+    /**
      * Crée une popup avec 5 étoiles pour noter le média
      */
     createPopupForVote(cb?: Callback): void;
