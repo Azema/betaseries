@@ -182,9 +182,9 @@ export abstract class Media extends Base {
         const type = (this.constructor as typeof Media);
         const overrideType = type.overrideType;
         const override = await Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
-        console.log('_overrideProps override', override);
-        if (override[overrideType][this.id]) {
-            console.log('_overrideProps override found', override[overrideType][this.id]);
+        if (Base.debug) console.log('_overrideProps override', override);
+        if (Reflect.has(override[overrideType], this.id)) {
+            if (Base.debug) console.log('_overrideProps override found', override[overrideType][this.id]);
             for (const prop in override[overrideType][this.id]) {
                 let path = type.propsAllowedOverride[prop].path;
                 let value = override[overrideType][this.id][prop];
@@ -193,7 +193,7 @@ export abstract class Media extends Base {
                     const params = override[overrideType][this.id][prop].params;
                     path = Base.replaceParams(path, type.propsAllowedOverride[prop].params, params);
                 }
-                console.log('_overrideProps prop[%s]', prop, {path, value});
+                if (Base.debug) console.log('_overrideProps prop[%s]', prop, {path, value});
                 Base.setPropValue(this, path, value);
             }
         }
