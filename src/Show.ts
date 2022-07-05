@@ -428,12 +428,13 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {Array<Season>}
      */
     static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season> {
+        if (!obj.elt) return [];
         if (Array.isArray(obj.seasons) && obj.seasons.length === data.length) {
             return obj.seasons;
         }
-        const seasons = [];
+        const seasons = new Array(data.length);
         for (let s = 0; s < data.length; s++) {
-            seasons.push(new Season(data[s], obj));
+            seasons[data[s].number - 1] = new Season(data[s], obj);
         }
         return seasons;
     }
@@ -447,11 +448,17 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}
      */
     protected static _fetch(params: Obj, force = false): Promise<Show> {
-        return new Promise((resolve, reject) => {
-            Base.callApi('GET', 'shows', 'display', params, force)
-            .then(data => resolve(new Show(data.show, jQuery('.blockInformations'))) )
-            .catch(err => reject(err) );
-        });
+        return Base.callApi('GET', 'shows', 'display', params, force)
+            .then(data => {
+                try {
+                    const show = new Show(data.show, jQuery('.blockInformations'));
+                    // console.log('Show::_fetch', show);
+                    return show;
+                } catch (err) {
+                    console.error('Show::_fetch', err);
+                    throw err;
+                }
+            });
     }
 
     /**
@@ -461,17 +468,14 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}         Une promesse avec les séries
      */
     static fetchLastSeen(limit = 10): Promise<Array<Show>> {
-        return new Promise((resolve, reject) => {
-            Base.callApi(HTTP_VERBS.GET, 'shows', 'member', {order: 'last_seen', limit})
+        return Base.callApi(HTTP_VERBS.GET, 'shows', 'member', {order: 'last_seen', limit})
             .then((data: Obj) => {
                 const shows: Array<Show> = [];
                 for (let s = 0; s < data.shows.length; s++) {
                     shows.push(new Show(data.shows[s]));
                 }
-                resolve(shows);
-            })
-            .catch(err => reject(err));
-        });
+                return shows;
+            });
     }
 
     /**
@@ -481,8 +485,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Array<Show>>}
      */
     static fetchMulti(ids: Array<number>): Promise<Array<Show>> {
-        return new Promise((resolve, reject) => {
-            Base.callApi(HTTP_VERBS.GET, 'shows', 'display', {id: ids.join(',')})
+        return Base.callApi(HTTP_VERBS.GET, 'shows', 'display', {id: ids.join(',')})
             .then((data: Obj) => {
                 const shows: Array<Show> = [];
                 if (ids.length > 1) {
@@ -492,10 +495,8 @@ export class Show extends Media implements implShow, implAddNote {
                 } else {
                     shows.push(new Show(data.show));
                 }
-                resolve(shows);
-            })
-            .catch(err => reject(err));
-        });
+                return shows;
+            });
     }
 
     /**
@@ -807,17 +808,31 @@ export class Show extends Media implements implShow, implAddNote {
         }
         this.__fetches.seasons = Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
         .then((data: Obj) => {
-            self.seasons = [];
             if (data?.seasons?.length <= 0) {
+                delete self.__fetches.seasons;
                 return self;
             }
-            let seasonNumber: number;
-            for (let s = 0; s < data.seasons.length; s++) {
-                seasonNumber = parseInt(data.seasons[s].number, 10);
-                self.seasons[seasonNumber - 1] = new Season(data.seasons[s], this);
+            if (Array.isArray(self.seasons)) {
+                for (let s = 0; s < data.seasons.length; s++) {
+                    const seasonNumber = parseInt(data.seasons[s].number, 10);
+                    const season = self.seasons[seasonNumber - 1];
+                    season.fill(data.seasons[s]);
+                }
+            } else {
+                self.seasons = new Array(data.seasons.length);
+                for (let s = 0; s < data.seasons.length; s++) {
+                    const seasonNumber = parseInt(data.seasons[s].number, 10);
+                    self.seasons[seasonNumber - 1] = new Season(data.seasons[s], this);
+                }
             }
+            delete self.__fetches.seasons;
             return self;
-        }).finally(() => delete self.__fetches.seasons);
+        })
+        .catch(err => {
+            delete self.__fetches.seasons;
+            console.warn('Show.fetchSeasons catch', err);
+        })
+        .finally(() => delete self.__fetches.seasons);
         return this.__fetches.seasons as Promise<Show>;
     }
     /**
@@ -838,7 +853,11 @@ export class Show extends Media implements implShow, implAddNote {
                 self.characters.push(new Character(data.characters[c]));
             }
             return self;
-        }).finally(() => delete self.__fetches.characters);
+        })
+        .catch(err => {
+            console.warn('Show.fetchCharacters catch', err);
+        })
+        .finally(() => delete self.__fetches.characters);
         return this.__fetches.characters as Promise<this>;
     }
     /**
@@ -868,8 +887,14 @@ export class Show extends Media implements implShow, implAddNote {
                     self.persons.push(new Person(data.persons[p]));
                 }
             }
+            delete self.__fetches.persons;
             return self;
-        }).finally(() => delete self.__fetches.persons);
+        })
+        .catch(err => {
+            delete self.__fetches.persons;
+            console.warn('Show.fetchPersons catch', err);
+        })
+        .finally(() => delete self.__fetches.persons);
         return this.__fetches.persons as Promise<Show>;
     }
     /**
@@ -1731,7 +1756,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     setCurrentSeason(seasonNumber: number): Show {
         if (seasonNumber <= 0 || seasonNumber > this.seasons.length) {
-            throw new Error("seasonNumber is out of range of seasons");
+            throw new RangeError(`seasonNumber[${seasonNumber}] is out of range of seasons(length: ${this.seasons.length})`);
         }
         this._currentSeason = seasonNumber - 1;
         return this;
@@ -1741,6 +1766,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Season}
      */
     public get currentSeason() : Season {
+        if (!this._currentSeason) this._currentSeason = 0;
         return this.seasons[this._currentSeason];
     }
     /**
@@ -1749,13 +1775,11 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {Season}
      */
     getSeason(seasonNumber: number): Season {
-        if (Base.debug) console.log('getSeason: ', seasonNumber);
-        for (let s = 0; s < this.seasons.length; s++) {
-            if (this.seasons[s].number == seasonNumber) {
-                return this.seasons[s];
-            }
+        if (Base.debug) console.log('Show.getSeason: seasonNumber(%d)', seasonNumber);
+        if (seasonNumber <= 0 || seasonNumber > this.seasons.length) {
+            throw new RangeError(`seasonNumber[${seasonNumber}] is out of range of seasons(length: ${this.seasons.length})`);
         }
-        return null;
+        return this.seasons[seasonNumber - 1];
     }
     /**
      * Retourne une image, si disponible, en fonction du format désiré
@@ -1775,7 +1799,7 @@ export class Show extends Media implements implShow, implAddNote {
         };
         return new Promise((res, rej) => {
             if (format === Images.formats.poster) {
-                if (Base.debug) console.log('getDefaultImage poster', this.images.poster);
+                if (Base.debug) console.log('Show.getDefaultImage poster', this.images.poster);
                 if (this.images.poster) res(this.images.poster);
                 else {
                     this._getTvdbUrl(this.thetvdb_id).then(url => {
