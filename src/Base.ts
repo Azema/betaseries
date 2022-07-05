@@ -59,10 +59,10 @@ export type Changes = {
     newValue: any;
 }
 export type RelatedProp = {
-    key: string;
-    type: any;
-    default?: any;
-    transform?: (obj: Base, data: Obj) => any;
+    key: string; // Nom de la propriété dans l'objet
+    type: any; // type de donnée
+    default?: any; // valeur par défaut
+    transform?: (obj: object, data: Obj) => any; // Fonction de transformation de la donnée
 }
 export function objToArr(obj: Base, data: Obj): Array<any> {
     if (data instanceof Array) return data;
@@ -72,7 +72,7 @@ export function objToArr(obj: Base, data: Obj): Array<any> {
     }
     return values;
 }
-function isNull(val: any): boolean {
+export function isNull(val: any): boolean {
     return val === null || val === undefined;
 }
 interface FetchTimeout {
@@ -101,30 +101,48 @@ function fetchTimeout(request: URL | RequestInfo, opts: RequestInit = {}, timeou
         }
     };
 }
-function checkNetwork() {
+function checkNetwork(milliseconds = 0) {
     const request = `${Base.serverOauthUrl}/index.html`;
     const init: RequestInit = {
         method: HTTP_VERBS.HEAD,
         mode: 'cors',
         cache: 'no-cache',
     };
-    fetchTimeout(request, init, 5).ready()
+    const timeout = 5;
+    const duration = function(seconds: number): string {
+        if (seconds < 60) {
+            return `${seconds.toString()} secondes`;
+        }
+        let minutes = Math.round(seconds / 60);
+        const hours = Math.round(minutes / 60);
+        let duration = '';
+        if (hours > 0) {
+            minutes -= hours * 60;
+            duration += `${hours.toString()} heure${hours > 1 ? 's' : ''} `;
+        }
+        seconds -= minutes * 60;
+        duration += `${minutes.toString()} min. ${seconds.toString()} sec.`;
+        return duration;
+    }
+    fetchTimeout(request, init, timeout).ready()
     .then((response: Response) => {
         if (response.ok) {
+            if (Base.networkTimeout) {
+                clearTimeout(Base.networkTimeout);
+                Base.networkTimeout = null;
+            }
             Base.changeNetworkState(NetworkState.online);
             console.log('Network is come back');
         }
     }).catch(err => {
         if (err.name === 'AbortError') {
-            console.log('checkNetwork: Fetch aborted');
+            milliseconds += (milliseconds === 0) ? 1000 : 10000;
+            console.log('checkNetwork: Fetch aborted (next check in: %s)', duration(milliseconds/1000));
         }
         else if (err.message.toLowerCase() !== 'failed to fetch') {
             console.error('checkNetwork catch: ', err);
         }
-    }).finally(() => {
-        if (Base.networkState === NetworkState.offline) {
-            Base.networkTimeout = setTimeout(checkNetwork, 1000);
-        }
+        Base.networkTimeout = setTimeout(checkNetwork, milliseconds, milliseconds);
     });
 }
 /**
@@ -170,14 +188,14 @@ export class FakePromise {
      * @see FakePromise.launch
      * @type {() => Promise<Obj>}
      */
-    promiseFunc: () => Promise<Obj>;
+    promiseFunc: (reason?: string) => Promise<Obj>;
 
     /**
      * Constructor
-     * @param   {() => Promise<Obj>} [func] - Fonction promise qui sera executée plus tard
+     * @param   {(reason?: string) => Promise<Obj>} [func] - Fonction promise qui sera executée plus tard
      * @returns {FakePromise}
      */
-    constructor(func?: () => Promise<Obj>) {
+    constructor(func?: (reason?: string) => Promise<Obj>) {
         this.thenQueue = [];
         this.catchQueue = [];
         this.finallyQueue = [];
@@ -189,7 +207,7 @@ export class FakePromise {
      * @param   {() => Promise<Obj>} func Fonction promise qui sera executée plus tard
      * @returns {FakePromise}
      */
-    setFunction(func: () => Promise<Obj>): FakePromise {
+    setFunction(func: (reason?: string) => Promise<Obj>): FakePromise {
         this.promiseFunc = func;
         return this;
     }
@@ -199,11 +217,11 @@ export class FakePromise {
      * @param   {(reason: any) => PromiseLike<never>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
      * @returns {FakePromise}
      */
-    then(onfulfilled: (data: Obj) => void, onrejected?: (reason: any) => PromiseLike<never>): FakePromise {
-        if (onfulfilled && !FakePromise.fnAlreadyInclude(onfulfilled, this.thenQueue)) {
+    then(onfulfilled?: (data: Obj) => void, onrejected?: (reason: any) => void | PromiseLike<never>): FakePromise {
+        if (onfulfilled/*  && !FakePromise.fnAlreadyInclude(onfulfilled, this.thenQueue) */) {
             this.thenQueue.push(onfulfilled);
         }
-        if (onrejected && !FakePromise.fnAlreadyInclude(onrejected, this.catchQueue)) {
+        if (onrejected/*  && !FakePromise.fnAlreadyInclude(onrejected, this.catchQueue) */) {
             this.catchQueue.push(onrejected);
         }
         return this;
@@ -213,11 +231,8 @@ export class FakePromise {
      * @param   {(reason: any) => void | PromiseLike<void>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
      * @returns {FakePromise}
      */
-    catch(onrejected?: (reason: any) => void | PromiseLike<void>): FakePromise {
-        if (onrejected && !FakePromise.fnAlreadyInclude(onrejected, this.catchQueue)) {
-            this.catchQueue.push(onrejected);
-        }
-        return this;
+    catch(onrejected?: (reason: any) => void | PromiseLike<never>): FakePromise {
+        return this.then(null, onrejected);
     }
     /**
      * Simule un objet promise et stocke les fonctions pour plus tard
@@ -225,10 +240,36 @@ export class FakePromise {
      * @returns {FakePromise}
      */
     finally(onfinally?: () => void): FakePromise {
-        if (!onfinally && FakePromise.fnAlreadyInclude(onfinally, this.finallyQueue)) {
+        if (onfinally/*  && FakePromise.fnAlreadyInclude(onfinally, this.finallyQueue) */) {
             this.finallyQueue.push(onfinally);
         }
         return this;
+    }
+    /**
+     * Rejet de la promise
+     * @param reason - Le raison du rejet de la promise
+     * @returns {Promise<void | Obj>}
+     */
+    reject(reason: string): Promise<void | Obj> {
+        return this.promiseFunc(reason)
+            .catch(() => {
+                const catchs = this.catchQueue;
+                for (let c = catchs.length; c >= 0; c--) {
+                    if (typeof catchs[c] === 'function') {
+                        catchs[c](reason);
+                        // return;
+                    }
+                }
+            })
+            .finally(() => {
+                const finallies = this.finallyQueue;
+                for (let f = finallies.length; f >= 0; f--) {
+                    if (typeof finallies[f] === 'function') {
+                        finallies[f]();
+                        // return;
+                    }
+                }
+            });
     }
     /**
      * Permet de lancer la fonction qui retourne la vraie promesse
@@ -242,7 +283,7 @@ export class FakePromise {
             for (let t = thens.length; t >= 0; t--) {
                 if (typeof thens[t] === 'function') {
                     thens[t](data);
-                    return;
+                    // return;
                 }
             }
         })
@@ -251,7 +292,7 @@ export class FakePromise {
             for (let c = catchs.length; c >= 0; c--) {
                 if (typeof catchs[c] === 'function') {
                     catchs[c](err);
-                    return;
+                    // return;
                 }
             }
         })
@@ -525,7 +566,7 @@ export abstract class Base implements implAddNote {
     /**
      * @type {boolean} Flag indiquant qu'une demande d'authentification est en cours
      */
-    static checkAuthenticate = false;
+    static __checkAuthenticate = false;
     /**
      * Nombre de timeout consécutifs lors des appels à l'API
      * @type {number}
@@ -533,6 +574,7 @@ export abstract class Base implements implAddNote {
      * @static
      */
     private static __nbNetTimeout = 0;
+    private static __maxTimeout = 2;
     /**
      * Durée du timeout des requêtes à l'API exprimé en secondes
      * @type {number}
@@ -586,7 +628,7 @@ export abstract class Base implements implAddNote {
             checkKeys = Object.keys(Base.api.check);
 
         if (Base.debug && display) {
-            console.log('Base.callApi', {
+            console.log('Base::callApi', {
                 type: type,
                 resource: resource,
                 action: action,
@@ -608,17 +650,19 @@ export abstract class Base implements implAddNote {
         // Vérification de l'état du réseau, doit être placé après la gestion du cache
         if (Base.networkState === NetworkState.offline) {
             const key = type + resource + action;
-            if (Base.__networkQueue[key]) {
-                return Base.__networkQueue[key] as unknown as Promise<Obj>;
-            } else {
-                const promise = new FakePromise(() => {
-                    return Base.callApi(type, resource, action, args, force)
-                    .then(data => data)
-                    .catch(err => err);
-                });
-                Base.__networkQueue[key] = promise;
-                return Base.__networkQueue[key] as unknown as Promise<Obj>;
+            if (!isNull(Base.__networkQueue[key])) {
+                Base.__networkQueue[key].reject('another request called');
             }
+            const promise = new FakePromise((reason?: string) => {
+                if (reason && reason.length > 0) {
+                    return Promise.reject(reason);
+                }
+                return Base.callApi(type, resource, action, args, force)
+                .then(data => data)
+                .catch(err => err);
+            });
+            Base.__networkQueue[key] = promise;
+            return promise as unknown as Promise<Obj>;
         }
 
         // On check si on doit vérifier la validité du token
@@ -627,14 +671,27 @@ export abstract class Base implements implAddNote {
             Base.api.check[resource].indexOf(action) !== -1)
         {
             check = true;
-            if (Base.checkAuthenticate) {
+            if (Base.__checkAuthenticate) {
                 if (Base.debug) console.log('Base::callApi authenticate in progress');
                 return new Promise((res, rej) => {
-                    setTimeout(() => {
-                        Base.callApi(type, resource, action, args, force)
-                        .then(data => res(data))
-                        .catch(err => rej(err));
-                    }, 500);
+                    let loop = 0;
+                    const checkAuthenticate = function checkAuthenticate(): void {
+                        if (Base.debug) console.log('checkAuthenticate(%d) for %s %s/%s', ++loop, type, resource, action);
+                        if (Base.__checkAuthenticate && Base.networkState === NetworkState.online) {
+                            setTimeout(checkAuthenticate, 1000);
+                        } else if (Base.networkState === NetworkState.offline) {
+                            Base.__checkAuthenticate = false;
+                            rej('network offline');
+                        } else if (Base.networkState === NetworkState.online) {
+                            Base.callApi(type, resource, action, args, force)
+                            .then(data => res(data))
+                            .catch(err => rej(err));
+                        } else {
+                            if (Base.debug)
+                                console.log('Base::callApi checkAuthenticate - condition unknown', {checkAuthenticate: Base.__checkAuthenticate});
+                        }
+                    };
+                    checkAuthenticate();
                 });
             }
         }
@@ -667,10 +724,12 @@ export abstract class Base implements implAddNote {
             .then(response => {
                 Base.__nbNetTimeout = 0;
                 Base.counter++; // Incrément du compteur de requêtes à l'API
-                if (Base.debug && (display || response.status !== 200)) console.log('fetch (%s %s) response status: %d', type, uri, response.status);
+                if (Base.debug && (display || response.status !== 200))
+                    console.log('Base::callApi fetchUri (%s %s) response status: %d', type, uri, response.status);
                 // On récupère les données et les transforme en objet
                 response.json().then((data) => {
-                    if (Base.debug && (display || response.status !== 200)) console.log('fetch (%s %s) data', type, uri, data);
+                    if (Base.debug && (display || response.status !== 200))
+                        console.log('Base::callApi fetchUri (%s %s) data', type, uri, data);
                     // On gère le retour d'erreurs de l'API
                     if (data.errors !== undefined && data.errors.length > 0) {
                         const code = data.errors[0].code,
@@ -696,7 +755,7 @@ export abstract class Base implements implAddNote {
                     }
                     // On gère les erreurs réseau
                     if (!response.ok) {
-                        console.error('Fetch erreur network', response);
+                        console.error('Base::callApi Fetch erreur network', response);
                         reject(response);
                         Base.hideLoader();
                         return;
@@ -707,11 +766,13 @@ export abstract class Base implements implAddNote {
             }).catch(error => {
                 console.warn('Base::callApi fetchUri catch (%s: %s/%s)', type, resource, action);
                 if (error.name === 'AbortError') {
-                    if (Base.debug) console.log('Base::callApi AbortError Timeout fetchUri');
-                    if (++Base.__nbNetTimeout > 5) {
-                        if (Base.debug) console.log('5 timeout consecutifs, Network state to offline');
+                    if (++Base.__nbNetTimeout > Base.__maxTimeout) {
+                        if (Base.debug)
+                            console.log('%d timeout consecutifs, Network state to offline', Base.__nbNetTimeout);
                         Base.changeNetworkState(NetworkState.offline, true);
                     }
+                    if (Base.debug)
+                        console.log('Base::callApi AbortError Timeout(nb retry: %d) fetchUri', Base.__nbNetTimeout);
                     return;
                 }
                 console.warn('Base::callApi fetchUri error: ' + error.message);
@@ -723,7 +784,7 @@ export abstract class Base implements implAddNote {
         }
         return new Promise((resolve: (value:Obj | PromiseLike<Obj>) => void, reject: (reason?: any) => void) => {
             if (check) {
-                Base.checkAuthenticate = true;
+                Base.__checkAuthenticate = true;
                 const paramsFetch: RequestInit = {
                     method: HTTP_VERBS.GET,
                     headers: myHeaders,
@@ -741,26 +802,28 @@ export abstract class Base implements implAddNote {
                         Base.authenticate().then(() => {
                             // On met à jour le token pour le prochain appel à l'API
                             myHeaders['X-BetaSeries-Token'] = Base.token;
-                            Base.checkAuthenticate = false;
+                            Base.__checkAuthenticate = false;
                             fetchUri(resolve, reject);
                         }).catch(err => reject(err));
                         return;
                     }
-                    Base.checkAuthenticate = false;
+                    Base.__checkAuthenticate = false;
                     fetchUri(resolve, reject);
                 }).catch(error => {
-                    Base.checkAuthenticate = false;
+                    Base.__checkAuthenticate = false;
                     console.warn('Base::callApi fetch members/is_active catch');
                     if (error.name === 'AbortError') {
-                        if (Base.debug) console.log('Base::callApi AbortError Timeout members/is_active');
-                        if (++Base.__nbNetTimeout > 5) {
-                            if (Base.debug) console.log('5 timeout consecutifs, Network state to offline');
+                        if (++Base.__nbNetTimeout > Base.__maxTimeout) {
+                            if (Base.debug)
+                                console.log('%d timeout consecutifs, Network state to offline', Base.__nbNetTimeout);
                             Base.changeNetworkState(NetworkState.offline, true);
                         }
+                        if (Base.debug)
+                            console.log('Base::callApi AbortError Timeout(nb retry: %d) members/is_active', Base.__nbNetTimeout);
                         return;
                     }
                     else if (error.message.toLowerCase() === 'failed to fetch') {
-                        if (Base.debug) console.log('Réseau hors ligne');
+                        if (Base.debug) console.log('On déclare le réseau hors ligne. Le retour du réseau sera testé régulièrement.');
                         Base.changeNetworkState(NetworkState.offline, true);
                     }
                     else {
@@ -768,6 +831,9 @@ export abstract class Base implements implAddNote {
                     }
                     console.error(error);
                     reject(error);
+                })
+                .finally(() => {
+                    Base.__checkAuthenticate = false;
                 });
             } else {
                 fetchUri(resolve, reject);
@@ -859,14 +925,13 @@ export abstract class Base implements implAddNote {
         if (state === NetworkState.online && Object.keys(this.__networkQueue).length > 0) {
             const keys = Reflect.ownKeys(this.__networkQueue);
             for (const key of keys) {
-                const promise = this.__networkQueue[key as string].launch();
-                promise.finally(() => delete this.__networkQueue[key as string]);
+                this.__networkQueue[key as string].launch();
+                // promise.finally(() => delete this.__networkQueue[key as string]);
             }
-            this.__networkQueue = {};
         } else if (state === NetworkState.offline) {
             this.__networkQueue = {};
             if (testNetwork) {
-                Base.networkTimeout = setTimeout(checkNetwork, 1000);
+                checkNetwork();
             }
         }
     }
@@ -955,6 +1020,21 @@ export abstract class Base implements implAddNote {
     }
 
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object {
+        const obj: object = {};
+        const keys = Reflect.ownKeys(this)
+            .filter((key:string) => !key.startsWith('_'));
+        for (const key of keys) {
+            obj[key] = this[key];
+        }
+        return obj;
+    }
+
+    /**
      * Remplit l'objet avec les données fournit en paramètre
      * @param  {Obj} data - Les données provenant de l'API
      * @returns {Base}
@@ -963,14 +1043,177 @@ export abstract class Base implements implAddNote {
     fill(data: Obj): this {
         const self = this;
         if (typeof data !== 'object') {
-            const err = new Error('Base.fill data is not an object: ' + typeof data);
+            const err = new TypeError('Base.fill data is not an object: ' + typeof data);
             console.error(err);
             throw err;
         }
+        const checkTypeValue = (target: any, key: string, type: any, value: any, relatedProp: RelatedProp): any => {
+            const typeNV = typeof value;
+            const oldValue = target['_' + key];
+            const hasDefault = Reflect.has(relatedProp, 'default');
+            const hasTransform = Reflect.has(relatedProp, 'transform');
+            if (!isNull(value) && hasTransform && typeof relatedProp.transform === 'function') {
+                value = relatedProp.transform(target, value);
+            }
+            if (isNull(oldValue) && isNull(value)) return undefined;
+            switch(type) {
+                case 'string':
+                    value = (! isNull(value)) ? String(value) : hasDefault ? relatedProp.default : null;
+                    if (oldValue === value) return undefined;
+                    break;
+                case 'number':
+                    if (!isNull(value) && !hasTransform && typeNV === 'string') {
+                        value = parseInt(value, 10);
+                    }
+                    else if (isNull(value) && hasDefault) {
+                        value = relatedProp.default;
+                    }
+                    if (oldValue === value) return undefined;
+                    break;
+                case 'boolean':
+                    value = (typeNV === 'boolean') ? value : hasDefault ? relatedProp.default : null;
+                    if (oldValue === value) return undefined;
+                    break;
+                case 'array': {
+                    if (this.__initial || !Array.isArray(oldValue)) return value;
+                    let diff = false;
+                    for (let i = 0, _len = oldValue.length; i < _len; i++) {
+                        if (oldValue[i] !== value[i]) {
+                            diff = true;
+                            break;
+                        }
+                    }
+                    if (!diff) return undefined;
+                    break;
+                }
+                case 'date': {
+                    if (typeNV !== 'number' && !(value instanceof Date) &&
+                        (typeNV === 'string' && Number.isNaN(Date.parse(value))))
+                    {
+                        throw new TypeError(`Invalid value for key "${key}". Expected type (Date | Number | string) but got ${JSON.stringify(value)}`);
+                    }
+                    if (typeNV === 'number' || typeNV === 'string')
+                        value = new Date(value);
+                    if (oldValue instanceof Date && value.getTime() === oldValue.getTime()) {
+                        return undefined;
+                    }
+                    break;
+                }
+                case 'object':
+                default: {
+                    if (typeNV === 'object' && type === 'object') {
+                        value = (! isNull(value)) ? Object.assign({}, value) : hasDefault ? relatedProp.default : null;
+                    }
+                    else if (typeof type === 'function' && !isNull(value)) {
+                        // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
+                        value = Reflect.construct(type, [value]);
+                        if (typeof value === 'object' && Reflect.has(value, 'parent')) {
+                            value.parent = target;
+                        }
+                    }
+                    if (this.__initial || isNull(oldValue)) return value;
+                    let changed = false;
+                    try {
+                        /* const debug = false;
+                        const compareObj = function compareObj(oldObj: object, newObj: object) {
+                            const keysNew = Reflect.ownKeys(newObj)
+                            .filter((key:string) => !key.startsWith('_'));
+                            for (let k = 0, _len = keysNew.length; k < _len; k++) {
+                                const key = keysNew[k];
+                                if (isNull(oldObj[key]) && isNull(newObj[key])) {
+                                    continue;
+                                }
+                                else if (
+                                    (isNull(oldObj[key]) && !isNull(newObj[key])) ||
+                                    (!isNull(oldObj[key]) && isNull(newObj[key]))
+                                ) {
+                                    if (debug) console.log('compareObj objects changed isNull', {oldObj: oldObj[key], newObj: newObj[key], key: key});
+                                    return true;
+                                }
+                                else if (Array.isArray(oldObj[key])) {
+                                    // Compare array
+                                    if (oldObj[key].length !== newObj[key].length) {
+                                        if (debug) console.log('compareObj objects changed array length', {oldObj: oldObj[key], newObj: newObj[key], key: key});
+                                        return true;
+                                    }
+                                    for (let a = 0, _len = oldObj[key].length; a < _len; a++) {
+                                        if (typeof newObj[key][a] === 'object' && !isNull(newObj[key][a])) {
+                                            if (compareObj(oldObj[key][a], newObj[key][a])) {
+                                                if (debug) console.log('compareObj objects changed array key object', {oldObj: oldObj[key][a], newObj: newObj[key][a], key: key, arrayKey: a});
+                                                return true;
+                                            }
+                                        }
+                                        else if (oldObj[key][a] !== newObj[key][a]) {
+                                            if (debug) console.log('compareObj objects changed array key', {oldObj: oldObj[key], newObj: newObj[key], key: key, arrayKey: a});
+                                            return true;
+                                        }
+                                    }
+                                }
+                                else if (oldObj[key] instanceof Date) {
+                                    // Compare date
+                                    if (oldObj[key].getTime() !== newObj[key].getTime()) {
+                                        if (debug) console.log('compareObj objects changed Date', {oldObj: oldObj[key], newObj: newObj[key], key: key});
+                                        return true;
+                                    }
+                                }
+                                else if (typeof newObj[key] === 'object' && !isNull(newObj[key])) {
+                                    if (compareObj(oldObj[key], newObj[key])) {
+                                        if (debug) console.log('compareObj objects changed object', {oldObj: oldObj[key], newObj: newObj[key], key: key});
+                                        return true;
+                                    }
+                                }
+                                else if (typeof oldObj[key] === typeof newObj[key] &&
+                                    ['string', 'number', 'boolean'].includes(typeof oldObj[key]))
+                                {
+                                    if (oldObj[key] !== newObj[key]) {
+                                        if (debug) console.log('compareObj objects changed primitive', {oldObj: oldObj[key], newObj: newObj[key], key: key});
+                                        return true;
+                                    }
+                                } else {
+                                    if (debug) console.log('comparaison unknown', {key, old: oldObj[key], new: newObj[key]});
+                                }
+                            }
+                            return false;
+                        } */
+                        if (
+                            (isNull(oldValue) && !isNull(value)) ||
+                            (!isNull(oldValue) && isNull(value))
+                        ) {
+                            changed = true;
+                        }
+                        else if (typeof value === 'object' && !isNull(value)) {
+                            if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
+                                console.log('compare objects with JSON.stringify and are differents', {oldValue, value});
+                                changed = true;
+                            }
+                            // changed = compareObj(oldValue, value);
+                        }
+                        if (!changed) return undefined;
+                    } catch (err) {
+                        console.warn('Base.fill => checkTypeValue: error setter[%s.%s]', target.constructor.name, key, {oldValue, value});
+                        throw err;
+                    }
+                }
+            }
+            if (type === 'date') {
+                type = Date;
+            }
+            if ((typeof type === 'string' && typeof value !== type) ||
+                (typeof type === 'function' && !(value instanceof type)))
+            {
+                throw new TypeError(`Invalid value for key "${target.constructor.name}.${key}". Expected type "${(typeof type === 'string') ? type : JSON.stringify(type)}" but got "${typeof value}"`);
+            }
+            return value;
+        }
+        // On reinitialise les changements de l'objet
+        this.__changes = {};
         for (const propKey in (this.constructor as typeof Base).relatedProps) {
             if (!Reflect.has(data, propKey)) continue;
+            /** relatedProp contient les infos de la propriété @see RelatedProp */
             const relatedProp = (this.constructor as typeof Base).relatedProps[propKey];
+            // dataProp contient les données provenant de l'API
             const dataProp = data[propKey];
+            // Le descripteur de la propriété, utilisé lors de l'initialisation de l'objet
             let descriptor: PropertyDescriptor;
             if (this.__initial) {
                 descriptor = {
@@ -980,143 +1223,72 @@ export abstract class Base implements implAddNote {
                         return self['_' + relatedProp.key];
                     },
                     set: (newValue: any) => {
+                        // On vérifie le type et on modifie, si nécessaire, la valeur
+                        // pour la rendre conforme au type définit (ex: number => Date or object => Note)
+                        const value = checkTypeValue(self, relatedProp.key, relatedProp.type, newValue, relatedProp);
+                        // Lors de l'initialisation, on set directement la valeur
                         if (self.__initial) {
-                            self['_' + relatedProp.key] = newValue;
+                            self['_' + relatedProp.key] = value;
                             return;
                         }
+                        // On récupère l'ancienne valeur pour identifier le changement
                         const oldValue = self['_' + relatedProp.key];
-                        if (['string', 'number', 'boolean'].includes(relatedProp.type)) {
-                            if (oldValue === newValue)
-                                return;
+                        // Si value est undefined, alors pas de modification de valeur
+                        if (value === undefined) {
+                            // console.log('Base.fill setter[%s.%s] not changed', self.constructor.name, relatedProp.key, relatedProp.type, {newValue, oldValue, relatedProp});
+                            return;
                         }
-                        else if (Array.isArray(oldValue) && oldValue.length === newValue.length) {
-                            let diff = false;
-                            for (let i = 0, _len = oldValue.length; i < _len; i++) {
-                                if (oldValue[i] !== newValue[i]) {
-                                    diff = true;
-                                    break;
-                                }
-                            }
-                            if (!diff) return;
-                        }
-                        else if (newValue instanceof Date) {
-                            if (oldValue instanceof Date && newValue.getTime() === oldValue.getTime()) {
-                                return;
-                            }
-                        }
-                        else if (typeof newValue === 'object') {
-                            // console.log('fill setter[%s]', relatedProp.key, {oldValue, newValue});
-                            let changed = false;
-                            try {
-                                const keysNew = Reflect.ownKeys(newValue)
-                                    .filter((key:string) => !key.startsWith('_'));
-                                for (let k = 0, _len = keysNew.length; k < _len; k++) {
-                                    if (oldValue[keysNew[k]] !== newValue[keysNew[k]]) {
-                                        changed = true;
-                                        break;
-                                    }
-                                }
-                                if (!changed) return;
-                            } catch (err) {
-                                console.warn('Base fill error setter[%s.%s]', this.constructor.name, relatedProp.key, {oldValue, newValue});
-                            }
-                        }
-
-                        self['_' + relatedProp.key] = newValue;
-                        if (!self.__initial) {
-                            self.__changes[relatedProp.key] = {oldValue, newValue};
-                            self.updatePropRender(relatedProp.key);
-                        }
+                        if (Base.debug) console.log('Base.fill setter[%s.%s] value changed', self.constructor.name, relatedProp.key, {type: relatedProp.type, newValue, oldValue, value, relatedProp});
+                        // On set la nouvelle valeur
+                        self['_' + relatedProp.key] = value;
+                        // On stocke le changement de valeurs
+                        self.__changes[relatedProp.key] = {oldValue, newValue};
+                        // On appelle la methode de mise à jour du rendu HTML pour la propriété
+                        self.updatePropRender(relatedProp.key);
                     }
                 };
             }
-            let setValue = false,
-                value = undefined;
-            switch (relatedProp.type) {
-                case 'string':
-                    value = String(dataProp);
-                    setValue = true;
-                    break;
-                case 'number':
-                    value = (! isNull(dataProp)) ? parseInt(dataProp, 10) : null;
-                    setValue = true;
-                    break;
-                case 'boolean':
-                case 'bool':
-                    value = !!dataProp;
-                    setValue = true;
-                    break;
-                case 'date':
-                    value = new Date(dataProp);
-                    setValue = true;
-                    break;
-                case 'object':
-                    value = Object.assign({}, dataProp);
-                    setValue = true;
-                    break;
-                case 'array': {
-                    value = dataProp;
-                    setValue = true;
-                    break;
-                }
-                default: {
-                    if (typeof relatedProp.type === 'function' && dataProp) {
-                        // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
-                        value = Reflect.construct(relatedProp.type, [dataProp]);
-                        if (typeof value === 'object' && Reflect.has(value, 'parent')) {
-                            value.parent = self;
-                        }
-                        setValue = true;
-                    }
-                    break;
-                }
+
+            // if (Base.debug) console.log('Base.fill descriptor[%s.%s]', this.constructor.name, relatedProp.key, {relatedProp, dataProp, descriptor});
+            // Lors de l'initialisation, on définit la propriété de l'objet
+            // et on ajoute le nom de la propriété dans le tableau __props
+            if (this.__initial) {
+                Object.defineProperty(this, relatedProp.key, descriptor);
+                this.__props.push(relatedProp.key);
             }
-            if (!setValue && value == undefined && relatedProp.default) {
-                value = relatedProp.default;
-                setValue = true;
-            }
-            if (setValue) {
-                if (typeof relatedProp.transform === 'function') {
-                    const dataToTransform = (dataProp != undefined) ? dataProp : data;
-                    value = relatedProp.transform(this, dataToTransform);
-                }
-                // if (Base.debug) console.log('Base.fill descriptor[%s]', propKey, relatedProp, value);
-                if (this.__initial) {
-                    Object.defineProperty(this, relatedProp.key, descriptor);
-                    Reflect.set(this, relatedProp.key, value);
-                    this.__props.push(relatedProp.key);
-                } else {
-                    this[relatedProp.key] = value;
-                }
-            }
+            // On set la valeur
+            this[relatedProp.key] = dataProp;
         }
+        // Fin de l'initialisation
         if (this.__initial) {
             this.__props.sort();
             this.__initial = false;
         }
         return this.save();
     }
+
     /**
      * Initialisation du rendu HTML
      * @returns {void}
      */
     _initRender(): void {
         if (!this.elt) return;
+        // console.log('Base._initRender', this);
         this.objNote
             .updateAttrTitle()
             .updateStars();
         this.decodeTitle();
     }
     /**
-     * Met à jour le rendu HTML des propriétés de l'objet
-     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
-     * Méthode appelée automatiquement par le setter de la propriété
+     * Met à jour le rendu HTML des propriétés de l'objet,
+     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
+     * **Méthode appelée automatiquement par le setter de la propriété**
      * @see Show.selectorsCSS
      * @param   {string} propKey - La propriété de l'objet à mettre à jour
      * @returns {void}
      */
     updatePropRender(propKey: string): void {
-        if (!this.elt) return;
+        if (! this.elt || ! this.__props.includes(propKey)) return;
         const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
         // if (Base.debug) console.log('updatePropRender', propKey, fnPropKey);
         if (Reflect.has(this, fnPropKey)) {
@@ -1135,6 +1307,7 @@ export abstract class Base implements implAddNote {
      * Met à jour les informations de la note du média sur la page Web
      */
     updatePropRenderObjNote(): void {
+        if (! this.elt) return;
         if (Base.debug) console.log('updatePropRenderObjNote');
         this.objNote
             .updateStars()
@@ -1146,6 +1319,7 @@ export abstract class Base implements implAddNote {
      * Met à jour le titre du média sur la page Web
      */
     updatePropRenderTitle(): void {
+        if (! this.elt) return;
         const $title = jQuery((this.constructor as typeof Base).selectorsCSS.title);
         if (/&#/.test(this.title)) {
             $title.text($('<textarea />').html(this.title).text());
@@ -1170,25 +1344,25 @@ export abstract class Base implements implAddNote {
     }
     /**
      * Indique si la propriété passée en paramètre a été modifiée
-     * @param   {string} key - La propriété ayant potentiellement été modifiée
+     * @param   {string} propKey - La propriété ayant potentiellement été modifiée
      * @returns {boolean}
      */
-    hasChange(key: string): boolean {
-        if (this.__props.includes(key)) {
-            throw new Error(`Property[${key}] not exists in this object(${this.constructor.name})`);
+    hasChange(propKey: string): boolean {
+        if (! this.__props.includes(propKey)) {
+            throw new Error(`Property[${propKey}] not exists in this object(${this.constructor.name})`);
         }
-        return Reflect.has(this.__changes, key);
+        return Reflect.has(this.__changes, propKey);
     }
     /**
      * Retourne l'objet Changes correspondant aux changements apportés à la propriété passée en paramètre
-     * @param   {string} key - La propriété ayant été modifiée
+     * @param   {string} propKey - La propriété ayant été modifiée
      * @returns {Changes} L'objet Changes correspondant aux changement
      */
-    getChange(key: string): Changes {
-        if (this.__props.includes(key)) {
-            throw new Error(`Property[${key}] not exists in this object(${this.constructor.name})`);
+    getChange(propKey: string): Changes {
+        if (! this.__props.includes(propKey)) {
+            throw new Error(`Property[${propKey}] not exists in this object(${this.constructor.name})`);
         }
-        return this.__changes[key];
+        return this.__changes[propKey];
     }
     /**
      * Initialize le tableau des écouteurs d'évènements
