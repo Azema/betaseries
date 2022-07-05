@@ -37,7 +37,7 @@ export abstract class ParamsSearchAbstract {
 
     text: string;
     _limit: number;
-    _offset: number;
+    _offset: number; // numero de page
     genres: Array<string>;
     _diffusions: Array<string>;
     svods: Array<number>;
@@ -59,7 +59,7 @@ export abstract class ParamsSearchAbstract {
     }
     set limit(limit: number) {
         if (limit <= 0 || limit > 100) {
-            throw new Error("Value of parameter 'limit' is out of range (1-100)");
+            throw new RangeError("Value of parameter 'limit' is out of range (1-100)");
         }
         this._limit = limit;
     }
@@ -68,7 +68,7 @@ export abstract class ParamsSearchAbstract {
     }
     set offset(offset: number) {
         if (offset <= 0 || offset > 100) {
-            throw new Error("Value of parameter 'offset' is out of range (1-100)");
+            throw new RangeError("Value of parameter 'offset' is out of range (1-100)");
         }
         this._offset = offset;
     }
@@ -144,6 +144,9 @@ export class ParamsSearchShows extends ParamsSearchAbstract {
         super();
         this._creations = [];
         this._pays = [];
+    }
+    getDurationAllowed(): string[] {
+        return ParamsSearchShows.valuesAllowed.duration;
     }
     get duration(): string {
         return this._duration;
