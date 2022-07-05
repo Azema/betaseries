@@ -54,7 +54,7 @@ export class Episode extends Base implements implAddNote {
         comments: {key: "nbComments", type: 'number', default: 0},
         date: {key: "date", type: 'date', default: null},
         description: {key: "description", type: 'string', default: ''},
-        episode: {key: "episode", type: 'number', default: 0},
+        episode: {key: "number", type: 'number', default: 0},
         global: {key: "global", type: 'number', default: 0},
         id: {key: "id", type: 'number'},
         note: {key: "objNote", type: Note},
@@ -94,7 +94,7 @@ export class Episode extends Base implements implAddNote {
     /**
      * @type {number} Le numéro de l'épisode dans la saison
      */
-    episode: number;
+    number: number;
     /**
      * @type {number} Le numéro de l'épisode dans la série
      */
@@ -162,7 +162,7 @@ export class Episode extends Base implements implAddNote {
             return this;
         }
         if (this._season) {
-            this.initCheckSeen(this.episode - 1);
+            this.initCheckSeen(this.number - 1);
             this.addAttrTitle().addPopup();
         } else {
             super._initRender();
@@ -467,7 +467,7 @@ export class Episode extends Base implements implAddNote {
      */
     updateRender(newStatus: string, update = true): Episode {
         const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
-        if (Base.debug) console.log('changeStatus', {elt: $elt, status: newStatus, update: update});
+        if (Base.debug) console.log('Episode.changeStatus (season: %d, episode: %d, statut: %s)', this.season.number, this.number, newStatus, {elt: $elt, update: update});
         if (newStatus === 'seen') {
             $elt.css('background', ''); // On ajoute le check dans la case à cocher
             $elt.addClass('seen'); // On ajoute la classe 'seen'
