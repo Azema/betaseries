@@ -68,12 +68,23 @@ export declare class Season {
      * @returns {Season}
      */
     constructor(data: Obj, show: Show);
-    fill(data: Obj): Season;
+    /**
+     * Remplit l'objet avec les données fournit en paramètre
+     * @param  {Obj} data - Les données provenant de l'API
+     * @returns {Season}
+     * @virtual
+     */
+    fill(data: Obj): this;
     /**
      * Initialise le rendu HTML de la saison
      * @returns {Seasons}
      */
     _initRender(): Season;
+    /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
     toJSON(): object;
     /**
      * Met à jour le rendu HTML des propriétés de l'objet

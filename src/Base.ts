@@ -1114,67 +1114,6 @@ export abstract class Base implements implAddNote {
                     if (this.__initial || isNull(oldValue)) return value;
                     let changed = false;
                     try {
-                        /* const debug = false;
-                        const compareObj = function compareObj(oldObj: object, newObj: object) {
-                            const keysNew = Reflect.ownKeys(newObj)
-                            .filter((key:string) => !key.startsWith('_'));
-                            for (let k = 0, _len = keysNew.length; k < _len; k++) {
-                                const key = keysNew[k];
-                                if (isNull(oldObj[key]) && isNull(newObj[key])) {
-                                    continue;
-                                }
-                                else if (
-                                    (isNull(oldObj[key]) && !isNull(newObj[key])) ||
-                                    (!isNull(oldObj[key]) && isNull(newObj[key]))
-                                ) {
-                                    if (debug) console.log('compareObj objects changed isNull', {oldObj: oldObj[key], newObj: newObj[key], key: key});
-                                    return true;
-                                }
-                                else if (Array.isArray(oldObj[key])) {
-                                    // Compare array
-                                    if (oldObj[key].length !== newObj[key].length) {
-                                        if (debug) console.log('compareObj objects changed array length', {oldObj: oldObj[key], newObj: newObj[key], key: key});
-                                        return true;
-                                    }
-                                    for (let a = 0, _len = oldObj[key].length; a < _len; a++) {
-                                        if (typeof newObj[key][a] === 'object' && !isNull(newObj[key][a])) {
-                                            if (compareObj(oldObj[key][a], newObj[key][a])) {
-                                                if (debug) console.log('compareObj objects changed array key object', {oldObj: oldObj[key][a], newObj: newObj[key][a], key: key, arrayKey: a});
-                                                return true;
-                                            }
-                                        }
-                                        else if (oldObj[key][a] !== newObj[key][a]) {
-                                            if (debug) console.log('compareObj objects changed array key', {oldObj: oldObj[key], newObj: newObj[key], key: key, arrayKey: a});
-                                            return true;
-                                        }
-                                    }
-                                }
-                                else if (oldObj[key] instanceof Date) {
-                                    // Compare date
-                                    if (oldObj[key].getTime() !== newObj[key].getTime()) {
-                                        if (debug) console.log('compareObj objects changed Date', {oldObj: oldObj[key], newObj: newObj[key], key: key});
-                                        return true;
-                                    }
-                                }
-                                else if (typeof newObj[key] === 'object' && !isNull(newObj[key])) {
-                                    if (compareObj(oldObj[key], newObj[key])) {
-                                        if (debug) console.log('compareObj objects changed object', {oldObj: oldObj[key], newObj: newObj[key], key: key});
-                                        return true;
-                                    }
-                                }
-                                else if (typeof oldObj[key] === typeof newObj[key] &&
-                                    ['string', 'number', 'boolean'].includes(typeof oldObj[key]))
-                                {
-                                    if (oldObj[key] !== newObj[key]) {
-                                        if (debug) console.log('compareObj objects changed primitive', {oldObj: oldObj[key], newObj: newObj[key], key: key});
-                                        return true;
-                                    }
-                                } else {
-                                    if (debug) console.log('comparaison unknown', {key, old: oldObj[key], new: newObj[key]});
-                                }
-                            }
-                            return false;
-                        } */
                         if (
                             (isNull(oldValue) && !isNull(value)) ||
                             (!isNull(oldValue) && isNull(value))
