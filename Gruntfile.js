@@ -42,6 +42,7 @@ module.exports = function(grunt) {
         },
         src: {
             tsc: [
+                '<%= distdir %>/tsc/Decorators.js',
                 '<%= distdir %>/tsc/Cache.js',
                 '<%= distdir %>/tsc/Character.js',
                 '<%= distdir %>/tsc/Comments.js',
@@ -63,6 +64,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/tsc/index.js'
             ],
             js: [
+                '<%= distdir %>/js/Decorators.js',
                 '<%= distdir %>/js/Cache.js',
                 '<%= distdir %>/js/Character.js',
                 '<%= distdir %>/js/Comments.js',
@@ -330,11 +332,8 @@ module.exports = function(grunt) {
                                 try {
                                     fs.accessSync(filename, fs.constants.R_OK | fs.constants.W_OK);
                                 } catch (error) {
-                                    fs.writeFileSync(filename, JSON.stringify({
-                                        objUpAuto: {},
-                                        toSee: {},
-                                        override: {}
-                                    }));
+                                    const dataFile = './db/data.json';
+                                    fs.copyFileSync(path.resolve(dataFile), filename);
                                 }
                                 // console.log('db tested ok');
                                 /*

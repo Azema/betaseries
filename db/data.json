@@ -1,5 +1,8 @@
 {
     "objUpAuto": {},
     "toSee": [],
-    "override": {}
+    "override": {
+        "shows": {},
+        "movies": {}
+    }
 }
