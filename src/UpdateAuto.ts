@@ -1,6 +1,6 @@
 import { Base, Obj } from "./Base";
 import { Show } from "./Show";
-// eslint-disable-next-line no-unused-vars
+
 export class UpdateAuto {
     private static instance: UpdateAuto;
 
@@ -152,6 +152,9 @@ export class UpdateAuto {
      * @param  {boolean} status Le statut de la tâche
      */
     set status(status: boolean) {
+        if (typeof status !== 'boolean') {
+            throw new TypeError(`UpdateAuto.set status: Parameter type error. Required type: boolean`);
+        }
         this._status = status;
         this._save();
     }
@@ -173,6 +176,9 @@ export class UpdateAuto {
      * @param  {boolean} auto Le flag
      */
     set auto(auto: boolean) {
+        if (typeof auto !== 'boolean') {
+            throw new TypeError(`UpdateAuto.set auto: Parameter type error. Required type: boolean`);
+        }
         this._auto = auto;
     }
 
@@ -193,6 +199,9 @@ export class UpdateAuto {
      * @param  {number} val L'intervalle de temps en minutes
      */
     set interval(val: number) {
+        if (typeof val !== 'number') {
+            throw new TypeError(`UpdateAuto.set interval: Parameter type error. Required type: number`);
+        }
         this._interval = val;
     }
 
@@ -233,6 +242,7 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     stop(): UpdateAuto {
+        if (Base.debug) console.log('%cUpdateAuto%c: task stop', 'color:#fd7e14', 'color:inherit');
         if (this._show.user.remaining <= 0 && this._show.isEnded()) {
             this._auto = false;
             this._interval = 0;
@@ -254,6 +264,7 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     async delete(): Promise<UpdateAuto> {
+        if (Base.debug) console.log('%cUpdateAuto%c: task delete', 'color:#dc3545', 'color:inherit');
         this.stop();
         const objUpAuto = await Base.gm_funcs.getValue('objUpAuto', {});
         if (objUpAuto[this._showId] !== undefined) {
@@ -296,6 +307,7 @@ export class UpdateAuto {
                 if (Base.debug) console.log('close old interval timer');
                 clearInterval(this._timer);
             }
+            if (Base.debug) console.log('%cUpdateAuto%c: task launch', 'color:#28a745', 'color:inherit');
             if (! this.status) this.status = true;
             this._tick();
             this._timer = setInterval(this._tick.bind(this), (this.interval * 60) * 1000);
@@ -310,10 +322,9 @@ export class UpdateAuto {
      * @returns {void}
      */
     private _tick(): void {
-        const now = new Date();
         this._lastUpdate = Date.now();
         if (Base.debug) {
-            console.log('%s update episode list', `[${now.format('datetime')}]`);
+            console.log('[%s] UpdateAuto tick', (new Date).format('datetime'));
         }
         jQuery('#episodes .updateEpisodes').trigger('click');
         if ( ! this.status) {
