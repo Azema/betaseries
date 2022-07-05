@@ -1,14 +1,16 @@
 {
     "compilerOptions": {
-        "module": "CommonJS",
-        "target": "ESNext",
-        "sourceMap": false,
-        "outDir": "./dist/tsc",
-        "rootDir": "./src",
-        "allowJs": true,
-        "removeComments": false,
-        "declaration": true,
-        "declarationDir": "./types"
+      "module": "CommonJS",
+      "target": "ESNext",
+      "sourceMap": false,
+      "outDir": "./dist/tsc",
+      "rootDir": "./src",
+      "allowJs": true,
+      "removeComments": false,
+      "declaration": true,
+      "declarationDir": "./types",
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true
       },
       "include": ["src/*.ts"]
 }
