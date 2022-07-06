@@ -150,13 +150,10 @@ export class Episode extends MediaBase implements implAddNote {
      * @returns {Episode}
      */
     constructor(data: Obj, season?: Season, elt?: JQuery<HTMLElement>) {
-        super(data);
+        super(data, elt);
         this.__fetches = {};
         this._season = season;
         this.mediaType = {singular: MediaType.episode, plural: 'episodes', className: Episode};
-        if (elt) {
-            this.elt = elt;
-        }
         return this.fill(data)._initRender();
     }
     _initRender(): this {
@@ -176,15 +173,43 @@ export class Episode extends MediaBase implements implAddNote {
      */
     updatePropRenderUser(): void {
         if (!this.elt) return;
-        const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
-        if (this.user.seen && !$elt.hasClass('seen')) {
-            this.updateRender('seen');
-        } else if (!this.user.seen && $elt.hasClass('seen')) {
-            this.updateRender('notSeen');
-        } else if (this.user.hidden && jQuery('.hideIcon', this.elt).length <= 0) {
-            this.updateRender('hidden');
+        // TODO: comportement différent entre un épisode d'une saison et la page Episode
+        if (this.season) {
+            const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
+            if (this.user.seen && !$elt.hasClass('seen')) {
+                this.updateRender('seen');
+            } else if (!this.user.seen && $elt.hasClass('seen')) {
+                this.updateRender('notSeen');
+            } else if (this.user.hidden && jQuery('.hideIcon', this.elt).length <= 0) {
+                this.updateRender('hidden');
+            }
+        } else {
+            // Cocher/Décocher la case 'Vu'
+            const $elt: JQuery<HTMLElement> = jQuery('#reactjs-episode-actions', this.elt);
+            const dataSeen: string = $elt.data('episodeUserHasSeen');
+            if (
+                (this.user.seen && dataSeen.length <= 0) ||
+                (!this.user.seen && dataSeen === '1')
+            ) {
+                this.updateBtnSeen();
+            }
         }
         delete this.__changes.user;
+    }
+    updateBtnSeen(): void {
+        if (!this.elt || this.season) return;
+        const templatesBtnSvg = {
+            seen: `<svg fill="#54709D" width="17.6" height="13.4" viewBox="2 3 12 10" xmlns="http://www.w3.org/2000/svg"><path fill="inherit" d="M6 10.78l-2.78-2.78-.947.94 3.727 3.727 8-8-.94-.94z"></path></svg>`,
+            notSeen: `<svg fill="#FFF" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M16 2v14H2V2h14zm0-2H2C.9 0 0 .9 0 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V2c0-1.1-.9-2-2-2z" fill-rule="nonzero"></path></svg>`
+        };
+        const $elt: JQuery<HTMLElement> = jQuery('#reactjs-episode-actions');
+        const $svg: JQuery<HTMLOrSVGElement> = jQuery('button svg', $elt);
+        const dataSeen: string = $elt.data('episodeUserHasSeen');
+        if (this.user.seen && dataSeen.length <= 0) {
+            $svg.replaceWith(templatesBtnSvg.seen);
+        } else if (!this.user.seen && dataSeen === '1') {
+            $svg.replaceWith(templatesBtnSvg.notSeen);
+        }
     }
 
     /**
