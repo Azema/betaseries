@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import {Base, EventTypes, HTTP_VERBS, Obj} from "./Base";
+import { Base, EventTypes, HTTP_VERBS, Obj } from "./Base";
 import { CacheUS, DataTypesCache } from "./Cache";
 import { Character } from "./Character";
 import { CommentsBS } from "./Comments";
 import { implAddNote, Note } from "./Note";
 import { RenderHtml } from "./RenderHtml";
-import {Similar} from "./Similar";
+import { Similar } from "./Similar";
 import { User } from "./User";
 
 type Class<T> = new (...args: any[]) => T;
@@ -58,7 +57,7 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
      * @returns {MediaBase}
      */
     _initRender(): this {
-        if (!this.elt) return;
+        if (!this.elt) return this;
         // console.log('Base._initRender', this);
         this.objNote
             .updateAttrTitle()
@@ -93,17 +92,18 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
     }
     /**
      * Méthode d'initialisation de l'objet
-     * @returns {Promise<Base>}
+     * @returns {Promise<MediaBase>}
      */
     public init(): Promise<this> {
         if (this.elt) {
             this.comments = new CommentsBS(this.nbComments, this);
         }
+        this.save();
         return new Promise(resolve => resolve(this));
     }
     /**
      * Sauvegarde l'objet en cache
-     * @return {Base} L'instance du média
+     * @return {MediaBase} L'instance du média
      */
     public save(): this {
         if (Base.cache instanceof CacheUS) {
@@ -174,7 +174,7 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
     /**
      * *fetchCharacters* - Récupère les acteurs du média
      * @abstract
-     * @returns {Promise<this>}
+     * @returns {Promise<MediaBase>}
      */
     fetchCharacters(): Promise<this> {
         throw new Error('Method abstract');
