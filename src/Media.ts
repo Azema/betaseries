@@ -1,8 +1,198 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {Base, Obj} from "./Base";
+import {Base, EventTypes, HTTP_VERBS, Obj} from "./Base";
+import { CacheUS, DataTypesCache } from "./Cache";
+import { Character } from "./Character";
+import { CommentsBS } from "./Comments";
+import { implAddNote, Note } from "./Note";
+import { RenderHtml } from "./RenderHtml";
 import {Similar} from "./Similar";
+import { User } from "./User";
 
-export abstract class Media extends Base {
+type Class<T> = new (...args: any[]) => T;
+export enum MediaType {
+    show = 'show',
+    movie = 'movie',
+    episode = 'episode'
+}
+export type MediaTypes = {
+    singular: MediaType;
+    plural: string;
+    className: Class<Base>;
+};
+
+export abstract class MediaBase extends RenderHtml implements implAddNote {
+
+    /*
+                    PROPERTIES
+    */
+    /** @type {string} */
+    description: string;
+    /** @type {number} */
+    nbComments: number;
+    /** @type {number} */
+    id: number;
+    /** @type {Note} */
+    objNote: Note;
+    /** @type {string} */
+    resource_url: string;
+    /** @type {string} */
+    title: string;
+    /** @type {User} */
+    user: User;
+    /** @type {Array<Character>} */
+    characters: Array<Character>;
+    /** @type {CommentsBS} */
+    comments: CommentsBS;
+    /** @type {MediaTypes} */
+    mediaType: MediaTypes;
+
+    constructor(data: Obj, elt?: JQuery<HTMLElement>) {
+        super(data, elt);
+        this.characters = [];
+        this.__props = ['characters', 'comments', 'mediaType'];
+        return this;
+    }
+
+    /**
+     * Initialisation du rendu HTML
+     * @returns {MediaBase}
+     */
+    _initRender(): this {
+        if (!this.elt) return;
+        // console.log('Base._initRender', this);
+        this.objNote
+            .updateAttrTitle()
+            .updateStars();
+        this.decodeTitle();
+        return this;
+    }
+    /**
+     * Met à jour les informations de la note du média sur la page Web
+     */
+    updatePropRenderObjNote(): void {
+        if (! this.elt) return;
+        if (Base.debug) console.log('updatePropRenderObjNote');
+        this.objNote
+            .updateStars()
+            .updateAttrTitle();
+        this._callListeners(EventTypes.NOTE);
+        delete this.__changes.objNote;
+    }
+    /**
+     * Met à jour le titre du média sur la page Web
+     */
+    updatePropRenderTitle(): void {
+        if (! this.elt) return;
+        const $title = jQuery((this.constructor as typeof RenderHtml).selectorsCSS.title);
+        if (/&#/.test(this.title)) {
+            $title.text($('<textarea />').html(this.title).text());
+        } else {
+            $title.text(this.title);
+        }
+        delete this.__changes.title;
+    }
+    /**
+     * Méthode d'initialisation de l'objet
+     * @returns {Promise<Base>}
+     */
+    public init(): Promise<this> {
+        if (this.elt) {
+            this.comments = new CommentsBS(this.nbComments, this);
+        }
+        return new Promise(resolve => resolve(this));
+    }
+    /**
+     * Sauvegarde l'objet en cache
+     * @return {Base} L'instance du média
+     */
+    public save(): this {
+        if (Base.cache instanceof CacheUS) {
+            Base.cache.set(this.mediaType.plural as DataTypesCache, this.id, this);
+            this._callListeners(EventTypes.SAVE);
+        }
+        return this;
+    }
+    /**
+     * Retourne le nombre d'acteurs référencés dans ce média
+     * @returns {number}
+     */
+    get nbCharacters(): number {
+        return this.characters.length;
+    }
+    /**
+     * Décode le titre de la page
+     * @return {Base} L'instance du média
+     */
+    decodeTitle(): MediaBase {
+        if (!this.elt) return this;
+
+        let $elt = jQuery('.blockInformations__title', this.elt);
+        if ((this.constructor as typeof RenderHtml).selectorsCSS.title) {
+            $elt = jQuery((this.constructor as typeof RenderHtml).selectorsCSS.title);
+        }
+        const title = $elt.text();
+
+        if (/&#/.test(title)) {
+            $elt.text($('<textarea />').html(title).text());
+        }
+        return this;
+    }
+    /**
+     * Ajoute le nombre de votes, à la note du média, dans l'attribut title de la balise
+     * contenant la représentation de la note du média
+     *
+     * @return {void}
+     */
+    changeTitleNote(): void {
+        if (!this.elt) return;
+        const $elt = jQuery('.js-render-stars', this.elt);
+        if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
+            $elt.attr('title', 'Aucun vote');
+            return;
+        }
+        $elt.attr('title', this.objNote.toString());
+    }
+    /**
+     * Ajoute le vote du membre connecté pour le média
+     * @param   {number} note - Note du membre connecté pour le média
+     * @returns {Promise<boolean>}
+     */
+    addVote(note: number): Promise<boolean> {
+        const self = this;
+        // return new Promise((resolve, reject) => {
+        return Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
+            .then((data: Obj) => {
+                self.fill(data[this.mediaType.singular]);
+                return this.objNote.user == note;
+            })
+            .catch(err => {
+                Base.notification('Erreur de vote', 'Une erreur s\'est produite lors de l\'envoi de la note: ' + err);
+                return false;
+            }) as Promise<boolean>;
+        // });
+    }
+    /**
+     * *fetchCharacters* - Récupère les acteurs du média
+     * @abstract
+     * @returns {Promise<this>}
+     */
+    fetchCharacters(): Promise<this> {
+        throw new Error('Method abstract');
+    }
+    /**
+     * *getCharacter* - Retourne un personnage à partir de son identifiant
+     * @param   {number} id - Identifiant du personnage
+     * @returns {Character | null}
+     */
+    getCharacter(id: number): Character | null {
+        for (const actor of this.characters) {
+            if (actor.id === id) return actor;
+        }
+        return null;
+    }
+}
+
+export abstract class Media extends MediaBase {
 
     /***************************************************/
     /*                      STATIC                     */
