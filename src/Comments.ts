@@ -5,9 +5,6 @@ import { Note } from "./Note";
 
 declare const getScrollbarWidth, faceboxDisplay;
 
-/* interface JQuery<TElement = HTMLElement> extends Iterable<TElement> {
-    popover?(params: any): this;
-} */
 export enum OrderComments {
     DESC = 'desc',
     ASC = 'asc'
@@ -20,7 +17,7 @@ export type CustomEvent = {
     elt: JQuery<HTMLElement>;
     event: string;
 };
-export class CommentsBS implements implRepliesComment {
+export class CommentsBS extends Base implements implRepliesComment {
     /*************************************************/
     /*                  STATIC                       */
     /*************************************************/
@@ -29,13 +26,13 @@ export class CommentsBS implements implRepliesComment {
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-    static EventTypes: Array<string> = [
-        'update',
-        'save',
-        'add',
-        'added',
-        'delete',
-        'show'
+    static EventTypes: Array<EventTypes> = [
+        EventTypes.UPDATE,
+        EventTypes.SAVE,
+        EventTypes.ADD,
+        EventTypes.ADDED,
+        EventTypes.DELETE,
+        EventTypes.SHOW
     ];
 
     /**
@@ -93,11 +90,6 @@ export class CommentsBS implements implRepliesComment {
      */
     private _events: Array<CustomEvent>;
     /**
-     * @type {object} Objet contenant les fonctions à l'écoute des changements
-     * @private
-     */
-    private _listeners: object;
-    /**
      * @type {OrderComments} Ordre de tri des commentaires et des réponses
      */
     private _order: OrderComments;
@@ -106,13 +98,14 @@ export class CommentsBS implements implRepliesComment {
     /*                  METHODS                      */
     /*************************************************/
     constructor(nbComments: number, media: MediaBase) {
+        super({});
         this.comments = [];
         this._parent = media;
         this.is_subscribed = false;
         this.status = MediaStatusComments.OPEN;
         this.nbComments = nbComments;
         this._order = OrderComments.DESC;
-        this._initListeners();
+        return this;
     }
     /**
      * Initialise la collection de commentaires
@@ -149,83 +142,14 @@ export class CommentsBS implements implRepliesComment {
         }
         return obj;
     }
-    /**
-     * Initialize le tableau des écouteurs d'évènements
-     * @returns {Base}
-     * @private
-     */
-    private _initListeners(): this {
-        this._listeners = {};
-        const EvtTypes = CommentsBS.EventTypes;
-        for (let e = 0; e < EvtTypes.length; e++) {
-            this._listeners[EvtTypes[e]] = [];
-        }
-        return this;
+    public get parent(): MediaBase {
+        return this._parent;
     }
-    /**
-     * Permet d'ajouter un listener sur un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @param  {Function}   fn   - La fonction à appeler
-     * @return {Base} L'instance du média
-     */
-    public addListener(name: EventTypes, fn: Callback, ...args): this {
-        // On vérifie que le type d'event est pris en charge
-        if (CommentsBS.EventTypes.indexOf(name) < 0) {
-            throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
+    public set parent(media: MediaBase) {
+        if (!(media instanceof MediaBase)) {
+            throw new TypeError('Parameter "media" in setter parent must be an instance of MediaBase');
         }
-        if (this._listeners[name] === undefined) {
-            this._listeners[name] = [];
-        }
-        for (const func in this._listeners[name]) {
-            if (func.toString() == fn.toString()) {
-                if (Base.debug) console.warn('Cette fonction est déjà présente pour event[%s]', name);
-                return;
-            }
-        }
-        if (args.length > 0) {
-            this._listeners[name].push({fn: fn, args: args});
-        } else {
-            this._listeners[name].push(fn);
-        }
-        if (Base.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name, this._listeners[name]);
-        return this;
-    }
-    /**
-     * Permet de supprimer un listener sur un type d'évenement
-     * @param  {string}   name - Le type d'évenement
-     * @param  {Function} fn   - La fonction qui était appelée
-     * @return {Base} L'instance du média
-     */
-    public removeListener(name: EventTypes, fn: Callback): this {
-        if (this._listeners[name] !== undefined) {
-            for (let l = 0; l < this._listeners[name].length; l++) {
-                if ((typeof this._listeners[name][l] === 'function' && this._listeners[name][l].toString() === fn.toString()) ||
-                    this._listeners[name][l].fn.toString() == fn.toString())
-                {
-                    this._listeners[name].splice(l, 1);
-                }
-            }
-        }
-        return this;
-    }
-    /**
-     * Appel les listeners pour un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @return {Base} L'instance du média
-     */
-    protected _callListeners(name: EventTypes): this {
-        if (this._listeners[name] !== undefined && this._listeners[name].length > 0) {
-            const event = new CustomEvent('betaseries', {detail: {name: name}});
-            if (Base.debug) console.log('Comments call %d Listeners on event %s', this._listeners[name].length, name);
-            for (let l = 0; l < this._listeners[name].length; l++) {
-                if (typeof this._listeners[name][l] === 'function') {
-                    this._listeners[name][l].call(this, event, this);
-                } else {
-                    this._listeners[name][l].fn.apply(this, this._listeners[name][l].args);
-                }
-            }
-        }
-        return this;
+        this._parent = media;
     }
     /**
      * Retourne la taille de la collection
@@ -315,7 +239,6 @@ export class CommentsBS implements implRepliesComment {
         }
         this.nbComments++;
         this.media.nbComments++;
-        if (Base.debug) console.log('addComment listeners', this._listeners);
         this._callListeners(EventTypes.ADD);
         return this;
     }
@@ -563,14 +486,14 @@ export class CommentsBS implements implRepliesComment {
         // On ajoute les templates HTML du commentaire,
         // des réponses et du formulaire de d'écriture
         // On active le bouton de fermeture de la popup
-        $btnClose.click(() => {
+        $btnClose.on('click', () => {
             funcPopup.hidePopup();
             $popup.removeAttr('data-popin-type');
         });
         this._events.push({elt: $btnClose, event: 'click'});
 
         const $btnAllReplies = $container.find('.toggleAllReplies');
-        $btnAllReplies.click((e: JQuery.ClickEvent) => {
+        $btnAllReplies.on('click', (e: JQuery.ClickEvent) => {
             const $btn = jQuery(e.currentTarget);
             const stateReplies = $btn.attr('data-toggle'); // 0: Etat masqué, 1: Etat affiché
             const $btnReplies = $container.find(`.toggleReplies[data-toggle="${stateReplies}"]`);
@@ -615,7 +538,7 @@ export class CommentsBS implements implRepliesComment {
                 `);
             }
         }
-        $btnSubscribe.click((e: JQuery.ClickEvent) => {
+        $btnSubscribe.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -644,7 +567,7 @@ export class CommentsBS implements implRepliesComment {
         // On active le lien pour afficher le spoiler
         const $btnSpoiler = $container.find('.view-spoiler');
         if ($btnSpoiler.length > 0) {
-            $btnSpoiler.click((e:JQuery.ClickEvent) => {
+            $btnSpoiler.on('click', (e:JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
                 const $btn = jQuery(e.currentTarget);
@@ -665,7 +588,7 @@ export class CommentsBS implements implRepliesComment {
          *  - btnDownVote: Voter contre ce commentaire
          */
         const $btnThumb = $container.find('.comments .comment .btnThumb');
-        $btnThumb.click(async (e: JQuery.ClickEvent) => {
+        $btnThumb.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -720,7 +643,7 @@ export class CommentsBS implements implRepliesComment {
          * On affiche/masque les options du commentaire
          */
         const $btnOptions = $container.find('.btnToggleOptions');
-        $btnOptions.click((e: JQuery.ClickEvent) => {
+        $btnOptions.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             jQuery(e.currentTarget).parents('.actionsCmt').first()
@@ -739,7 +662,7 @@ export class CommentsBS implements implRepliesComment {
          * On envoie la réponse à ce commentaire à l'API
          */
         const $btnSend = $container.find('.sendComment');
-        $btnSend.click(async (e: JQuery.ClickEvent) => {
+        $btnSend.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -821,7 +744,7 @@ export class CommentsBS implements implRepliesComment {
          * en fonction du contenu du textarea
          */
         const $textarea = $container.find('textarea');
-        $textarea.keypress((e: JQuery.KeyPressEvent) => {
+        $textarea.on('keypress', (e: JQuery.KeyPressEvent) => {
             const $textarea = $(e.currentTarget);
             if (($textarea.val() as string).length > 0) {
                 $textarea.siblings('button').removeAttr('disabled');
@@ -838,7 +761,7 @@ export class CommentsBS implements implRepliesComment {
          * Permet d'englober le texte du commentaire en écriture
          * avec les balises [spoiler]...[/spoiler]
          */
-        $baliseSpoiler.click(() => {
+        $baliseSpoiler.on('click', () => {
             const $textarea = $popup.find('textarea');
             if (/\[spoiler\]/.test($textarea.val() as string)) {
                 return;
@@ -853,7 +776,7 @@ export class CommentsBS implements implRepliesComment {
         /**
          * Affiche/masque les réponses d'un commentaire
          */
-        $btnReplies.click((e: JQuery.ClickEvent) => {
+        $btnReplies.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             const $btn: JQuery<HTMLElement> = jQuery(e.currentTarget);
@@ -881,7 +804,7 @@ export class CommentsBS implements implRepliesComment {
         /**
          * Permet de créer une réponse à un commentaire
          */
-        $btnResponse.click(async (e: JQuery.ClickEvent) => {
+        $btnResponse.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             if (!Base.userIdentified()) {
@@ -901,7 +824,7 @@ export class CommentsBS implements implRepliesComment {
         /**
          * Permet d'afficher plus de commentaires
          */
-        $btnMore.click((e: JQuery.ClickEvent) => {
+        $btnMore.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             const $btn = jQuery(e.currentTarget);
@@ -944,7 +867,7 @@ export class CommentsBS implements implRepliesComment {
         this._events.push({elt: $btnMore, event: 'click'});
 
         const $btnEdit = $container.find('.btnEditComment');
-        $btnEdit.click(async (e: JQuery.ClickEvent) => {
+        $btnEdit.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             const $comment = jQuery(e.currentTarget).parents('.comment');
@@ -958,7 +881,7 @@ export class CommentsBS implements implRepliesComment {
         this._events.push({elt: $btnEdit, event: 'click'});
 
         const $btnDelete = $container.find('.btnDeleteComment');
-        $btnDelete.click(async (e: JQuery.ClickEvent) => {
+        $btnDelete.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
             const $comment = jQuery(e.currentTarget).parents('.comment');
@@ -974,7 +897,7 @@ export class CommentsBS implements implRepliesComment {
             const $btnYes = $comment.find('.options-delete .btnYes');
             const $btnNo = $comment.find('.options-delete .btnNo');
             const comment = await getObjComment($comment);
-            $btnYes.click((e: JQuery.ClickEvent) => {
+            $btnYes.on('click', (e: JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
                 comment.delete();
@@ -988,7 +911,7 @@ export class CommentsBS implements implRepliesComment {
                 $comment.remove();
                 self.updateCounter();
             });
-            $btnNo.click((e: JQuery.ClickEvent) => {
+            $btnNo.on('click', (e: JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
                 $comment.find('.options-delete').remove();
