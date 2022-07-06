@@ -1,4 +1,6 @@
-import { Base, EventTypes, MediaType, Obj, Callback, Changes } from "./Base";
+import { Base, EventTypes, Obj, Callback } from "./Base";
+import { MediaBase, MediaType } from "./Media";
+import { Changes } from "./RenderHtml";
 
 export interface implAddNote {
     addVote(note: number): Promise<boolean>;
@@ -29,11 +31,11 @@ export class Note {
      * Media de référence
      * @type {Base}
      */
-    _parent: Base;
+    _parent: MediaBase;
     private __initial: boolean;
     protected __changes: Record<string, Changes> = {};
 
-    constructor(data: Obj, parent?: Base) {
+    constructor(data: Obj, parent?: MediaBase) {
         this.__initial = true;
         this._parent = parent ? parent : null;
         return this.fill(data);
@@ -69,10 +71,10 @@ export class Note {
         this.__initial = false;
         return this;
     }
-    get parent(): Base {
+    get parent(): MediaBase {
         return this._parent;
     }
-    set parent(parent: Base) {
+    set parent(parent: MediaBase) {
         this._parent = parent;
     }
     /**
@@ -211,7 +213,7 @@ export class Note {
                     hidePopup();
                     if (result) {
                         // TODO: Mettre à jour la note du média
-                        self._parent.changeTitleNote(true);
+                        self._parent.changeTitleNote();
                         self._parent._callListeners(EventTypes.NOTE);
                         if (cb) cb.call(self);
                     } else {

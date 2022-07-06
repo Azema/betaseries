@@ -1,5 +1,5 @@
-import { Base, HTTP_VERBS, MediaType, Obj } from "./Base";
-import { Media } from "./Media";
+import { Base, HTTP_VERBS, Obj } from "./Base";
+import { Media, MediaType } from "./Media";
 import { Movie } from "./Movie";
 import { Show } from "./Show";
 

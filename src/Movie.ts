@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {Base, Obj, MediaType, HTTP_VERBS, RelatedProp} from "./Base";
+import { Base, Obj, HTTP_VERBS } from "./Base";
 import { implAddNote, Note } from "./Note";
 import {Platform_link} from "./Episode";
-import {Media} from "./Media";
+import {Media, MediaType} from "./Media";
 import { Character } from "./Character";
 import { User } from "./User";
+import { RelatedProp } from "./RenderHtml";
 
 export type OtherTitle = {
     language: string;

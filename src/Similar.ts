@@ -1,9 +1,9 @@
-import {Base, Obj, MediaType, MediaTypes, HTTP_VERBS} from "./Base";
-import {Media} from "./Media";
+import { Base, Obj, HTTP_VERBS } from "./Base";
+import { Media, MediaType, MediaTypes } from "./Media";
 import { Season } from "./Season";
-import {implShow, Showrunner, Platforms, Images, Picture, Show} from "./Show";
-import {implMovie, Movie, OtherTitle} from "./Movie";
-import {Platform_link} from "./Episode";
+import { implShow, Showrunner, Platforms, Images, Picture, Show } from "./Show";
+import { implMovie, Movie, OtherTitle } from "./Movie";
+import { Platform_link } from "./Episode";
 import { Person } from "./Character";
 
 declare const renderjson;

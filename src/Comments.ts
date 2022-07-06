@@ -1,5 +1,6 @@
 import { Base, Obj, HTTP_VERBS, EventTypes, Callback } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
+import { MediaBase } from "./Media";
 import { Note } from "./Note";
 
 declare const getScrollbarWidth, faceboxDisplay;
@@ -43,7 +44,7 @@ export class CommentsBS implements implRepliesComment {
      * @param   {string} text - Le texte de la réponse
      * @returns {Promise<void | CommentBS>}
      */
-    public static sendComment(media: Base, text: string): Promise<void | CommentBS> {
+    public static sendComment(media: MediaBase, text: string): Promise<void | CommentBS> {
         const params = {
             type: media.mediaType.singular,
             id: media.id,
@@ -85,7 +86,7 @@ export class CommentsBS implements implRepliesComment {
      * @type {Base} Le média auquel sont associés les commentaires
      * @private
      */
-    private _parent: Base;
+    private _parent: MediaBase;
     /**
      * @type {Array<CustomEvent>} Tableau des events déclarés par la fonction loadEvents
      * @private
@@ -104,7 +105,7 @@ export class CommentsBS implements implRepliesComment {
     /*************************************************/
     /*                  METHODS                      */
     /*************************************************/
-    constructor(nbComments: number, media: Base) {
+    constructor(nbComments: number, media: MediaBase) {
         this.comments = [];
         this._parent = media;
         this.is_subscribed = false;
@@ -237,7 +238,7 @@ export class CommentsBS implements implRepliesComment {
      * Retourne le média auxquels sont associés les commentaires
      * @readonly
      */
-    public get media(): Base {
+    public get media(): MediaBase {
         return this._parent;
     }
     /**
