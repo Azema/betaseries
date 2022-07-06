@@ -1,10 +1,12 @@
-import {Base, Obj, HTTP_VERBS, MediaType, EventTypes, RelatedProp} from "./Base";
+import { Base, Obj, HTTP_VERBS, EventTypes } from "./Base";
 import { Character } from "./Character";
 import { implAddNote, Note } from "./Note";
 import { Season } from "./Season";
 import { Subtitles } from "./Subtitle";
 import { User } from "./User";
 import { Placement } from "bootstrap";
+import { MediaBase, MediaType } from "./Media";
+import { RelatedProp } from "./RenderHtml";
 
 declare const PopupAlert;
 
@@ -45,7 +47,7 @@ export type WatchedBy = {
     note: number;
 };
 
-export class Episode extends Base implements implAddNote {
+export class Episode extends MediaBase implements implAddNote {
     static selectorsCSS: Record<string, string> = {};
     static relatedProps: Record<string, RelatedProp> = {
         // data: Obj => object: Show
