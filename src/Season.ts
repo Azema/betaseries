@@ -1,10 +1,11 @@
-import { Base, Changes, HTTP_VERBS, isNull, Obj, RelatedProp } from "./Base";
+import { Base, HTTP_VERBS, isNull, Obj } from "./Base";
 import { Episode } from "./Episode";
+import { RelatedProp, RenderHtml } from "./RenderHtml";
 import { Show } from "./Show";
 
 declare const PopupAlert;
 
-export class Season {
+export class Season extends RenderHtml {
     /**
      * Les différents sélecteurs CSS des propriétés de l'objet
      * @static
@@ -65,17 +66,10 @@ export class Season {
      */
     private _show: Show;
     /**
-     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
-     */
-    private __elt: JQuery<HTMLElement>;
-    /**
      * Objet contenant les promesses en attente des méthodes fetchXXX
      * @type {Record<string, Promise<Season>>}
      */
     private __fetches: Record<string, Promise<Season>> = {};
-    private __initial = true;
-    private __changes: Record<string, Changes> = {};
-    private __props: Array<string> = [];
 
     /**
      * Constructeur de la classe Season
@@ -84,252 +78,42 @@ export class Season {
      * @returns {Season}
      */
     constructor(data: Obj, show: Show) {
+        const number = (data.number) ? parseInt(data.number, 10) : null;
+        // Si le parent Show à son HTMLElement de déclaré, alors on déclare celui de la saison
+        const elt = (number && show.elt) ? jQuery(`#seasons .slides_flex .slide_flex:nth-child(${number.toString()})`) : null;
+        super(data, elt);
         this.__fetches = {};
-        this.__initial = true;
-        this.__changes = {};
-        this.__props = [];
         this._show = show;
         this.episodes = [];
         return this.fill(data)._initRender();
     }
 
     /**
-     * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data - Les données provenant de l'API
-     * @returns {Season}
-     * @virtual
-     */
-    fill(data: Obj): this {
-        const self = this;
-        if (typeof data !== 'object') {
-            const err = new TypeError('Base.fill data is not an object: ' + typeof data);
-            console.error(err);
-            throw err;
-        }
-        const checkTypeValue = (target: any, key: string, type: any, value: any, relatedProp: RelatedProp): any => {
-            const typeNV = typeof value;
-            const oldValue = target['_' + key];
-            const hasDefault = Reflect.has(relatedProp, 'default');
-            const hasTransform = Reflect.has(relatedProp, 'transform');
-            if (!isNull(value) && hasTransform && typeof relatedProp.transform === 'function') {
-                value = relatedProp.transform(target, value);
-            }
-            if (isNull(oldValue) && isNull(value)) return undefined;
-            switch(type) {
-                case 'string':
-                    value = (! isNull(value)) ? String(value) : hasDefault ? relatedProp.default : null;
-                    if (oldValue === value) return undefined;
-                    break;
-                case 'number':
-                    if (!isNull(value) && !hasTransform && typeNV === 'string') {
-                        value = parseInt(value, 10);
-                    }
-                    else if (isNull(value) && hasDefault) {
-                        value = relatedProp.default;
-                    }
-                    if (oldValue === value) return undefined;
-                    break;
-                case 'boolean':
-                    value = (typeNV === 'boolean') ? value : hasDefault ? relatedProp.default : null;
-                    if (oldValue === value) return undefined;
-                    break;
-                case 'array': {
-                    if (this.__initial || !Array.isArray(oldValue)) return value;
-                    let diff = false;
-                    for (let i = 0, _len = oldValue.length; i < _len; i++) {
-                        if (oldValue[i] !== value[i]) {
-                            diff = true;
-                            break;
-                        }
-                    }
-                    if (!diff) return undefined;
-                    break;
-                }
-                case 'date': {
-                    if (typeNV !== 'number' && !(value instanceof Date) &&
-                        (typeNV === 'string' && Number.isNaN(Date.parse(value))))
-                    {
-                        throw new TypeError(`Invalid value for key "${key}". Expected type (Date | Number | string) but got ${JSON.stringify(value)}`);
-                    }
-                    if (typeNV === 'number' || typeNV === 'string')
-                        value = new Date(value);
-                    if (oldValue instanceof Date && value.getTime() === oldValue.getTime()) {
-                        return undefined;
-                    }
-                    break;
-                }
-                case 'object':
-                default: {
-                    if (typeNV === 'object' && type === 'object') {
-                        value = (! isNull(value)) ? Object.assign({}, value) : hasDefault ? relatedProp.default : null;
-                    }
-                    else if (typeof type === 'function' && !isNull(value)) {
-                        // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
-                        value = Reflect.construct(type, [value]);
-                        if (typeof value === 'object' && Reflect.has(value, 'parent')) {
-                            value.parent = target;
-                        }
-                    }
-                    if (this.__initial || isNull(oldValue)) return value;
-                    let changed = false;
-                    try {
-                        if (
-                            (isNull(oldValue) && !isNull(value)) ||
-                            (!isNull(oldValue) && isNull(value))
-                        ) {
-                            changed = true;
-                        }
-                        else if (typeof value === 'object' && !isNull(value)) {
-                            if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
-                                console.log('compare objects with JSON.stringify and are differents', {oldValue, value});
-                                changed = true;
-                            }
-                            // changed = compareObj(oldValue, value);
-                        }
-                        if (!changed) return undefined;
-                    } catch (err) {
-                        console.warn('Base.fill => checkTypeValue: error setter[%s.%s]', target.constructor.name, key, {oldValue, value});
-                        throw err;
-                    }
-                }
-            }
-            if (type === 'date') {
-                type = Date;
-            }
-            if ((typeof type === 'string' && typeof value !== type) ||
-                (typeof type === 'function' && !(value instanceof type)))
-            {
-                throw new TypeError(`Invalid value for key "${target.constructor.name}.${key}". Expected type "${(typeof type === 'string') ? type : JSON.stringify(type)}" but got "${typeof value}"`);
-            }
-            return value;
-        }
-        // On reinitialise les changements de l'objet
-        this.__changes = {};
-        for (const propKey in (this.constructor as typeof Base).relatedProps) {
-            if (!Reflect.has(data, propKey)) continue;
-            /** relatedProp contient les infos de la propriété @see RelatedProp */
-            const relatedProp = (this.constructor as typeof Base).relatedProps[propKey];
-            // dataProp contient les données provenant de l'API
-            const dataProp = data[propKey];
-            // Le descripteur de la propriété, utilisé lors de l'initialisation de l'objet
-            let descriptor: PropertyDescriptor;
-            if (this.__initial) {
-                descriptor = {
-                    configurable: true,
-                    enumerable: true,
-                    get: () => {
-                        return self['_' + relatedProp.key];
-                    },
-                    set: (newValue: any) => {
-                        // On vérifie le type et on modifie, si nécessaire, la valeur
-                        // pour la rendre conforme au type définit (ex: number => Date or object => Note)
-                        const value = checkTypeValue(self, relatedProp.key, relatedProp.type, newValue, relatedProp);
-                        // Lors de l'initialisation, on set directement la valeur
-                        if (self.__initial) {
-                            self['_' + relatedProp.key] = value;
-                            return;
-                        }
-                        // On récupère l'ancienne valeur pour identifier le changement
-                        const oldValue = self['_' + relatedProp.key];
-                        // Si value est undefined, alors pas de modification de valeur
-                        if (value === undefined) {
-                            // console.log('Base.fill setter[%s.%s] not changed', self.constructor.name, relatedProp.key, relatedProp.type, {newValue, oldValue, relatedProp});
-                            return;
-                        }
-                        if (Base.debug) console.log('Base.fill setter[%s.%s] value changed', self.constructor.name, relatedProp.key, {type: relatedProp.type, newValue, oldValue, value, relatedProp});
-                        // On set la nouvelle valeur
-                        self['_' + relatedProp.key] = value;
-                        // On stocke le changement de valeurs
-                        self.__changes[relatedProp.key] = {oldValue, newValue};
-                        // On appelle la methode de mise à jour du rendu HTML pour la propriété
-                        self.updatePropRender(relatedProp.key);
-                    }
-                };
-            }
-
-            // if (Base.debug) console.log('Base.fill descriptor[%s.%s]', this.constructor.name, relatedProp.key, {relatedProp, dataProp, descriptor});
-            // Lors de l'initialisation, on définit la propriété de l'objet
-            // et on ajoute le nom de la propriété dans le tableau __props
-            if (this.__initial) {
-                Object.defineProperty(this, relatedProp.key, descriptor);
-                this.__props.push(relatedProp.key);
-            }
-            // On set la valeur
-            this[relatedProp.key] = dataProp;
-        }
-        // Fin de l'initialisation
-        if (this.__initial) {
-            this.__props.sort();
-            this.__initial = false;
-        }
-        return this;
-    }
-
-    /**
      * Initialise le rendu HTML de la saison
      * @returns {Seasons}
      */
-    _initRender(): Season {
-        this.__elt = jQuery(`#seasons .slides_flex .slide_flex:nth-child(${this.number.toString()})`);
-
-        const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes, this.__elt);
-        const $spanNbEpisodes = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.__elt);
+    _initRender(): this {
+        const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes, this.elt);
+        const $spanNbEpisodes = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.elt);
         if ($nbEpisode.length > 0 && $spanNbEpisodes.length <= 0) {
             $nbEpisode.empty().append(`<span class="nbEpisodes">${this.nbEpisodes}</span> épisodes`);
         }
-        if (this.seen && jQuery('.checkSeen', this.__elt).length <= 0) {
-            jQuery('.slide__image img', this.__elt).before('<div class="checkSeen"></div>');
+        if (this.seen && jQuery('.checkSeen', this.elt).length <= 0) {
+            jQuery('.slide__image img', this.elt).before('<div class="checkSeen"></div>');
         }
-        else if (this.hidden && jQuery('.hideIcon', this.__elt).length <= 0) {
-            jQuery('.slide__image img', this.__elt).before('<div class="hideIcon"></div>');
+        else if (this.hidden && jQuery('.hideIcon', this.elt).length <= 0) {
+            jQuery('.slide__image img', this.elt).before('<div class="hideIcon"></div>');
         }
         return this;
     }
 
-    /**
-     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
-     * pour la méthode JSON.stringify
-     * @returns {object}
-     */
-    toJSON(): object {
-        const obj: object = {};
-        const keys = Reflect.ownKeys(this)
-            .filter((key:string) => !key.startsWith('_'));
-        for (const key of keys) {
-            obj[key] = this[key];
-        }
-        return obj;
-    }
-
-    /**
-     * Met à jour le rendu HTML des propriétés de l'objet
-     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
-     * Méthode appelée automatiquement par le setter de la propriété
-     * @see Show.selectorsCSS
-     * @param   {string} propKey - La propriété de l'objet à mettre à jour
-     * @returns {void}
-     */
-    updatePropRender(propKey: string): void {
-        if (!this.__elt) return;
-        const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
-        // if (Base.debug) console.log('updatePropRender', propKey, fnPropKey);
-        if (Reflect.has(this, fnPropKey)) {
-            // if (Base.debug) console.log('updatePropRender Reflect has method');
-            this[fnPropKey]();
-        } else if (Season.selectorsCSS && Season.selectorsCSS[propKey]) {
-            // if (Base.debug) console.log('updatePropRender default');
-            const selectorCSS = Season.selectorsCSS[propKey];
-            jQuery(selectorCSS, this.__elt).text(this[propKey].toString());
-            delete this.__changes[propKey];
-        }
-    }
     /**
      * Mise à jour du nombre d'épisodes de la saison sur la page Web
      * @returns {void}
      */
     updatePropRenderNbEpisodes(): void {
-        if (!this.__elt) return;
-        const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.__elt);
+        if (!this.elt) return;
+        const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.elt);
         if ($nbEpisode.length > 0) {
             $nbEpisode.text(this.nbEpisodes);
         }
@@ -340,7 +124,7 @@ export class Season {
      * @returns {void}
      */
     updatePropRenderImage(): void {
-        if (!this.__elt) return;
+        if (!this.elt) return;
         // Si image est null, on récupère celle de la série
         if (isNull(this.image) && !isNull(this._show.images.poster)) {
             this.image = this._show.images.poster;
@@ -350,7 +134,7 @@ export class Season {
         else if (isNull(this.image)) {
             return;
         }
-        const $img = jQuery(Season.selectorsCSS.image, this.__elt);
+        const $img = jQuery(Season.selectorsCSS.image, this.elt);
         if ($img.length > 0 && $img.attr('src') != this.image) {
             $img.attr('src', this.image);
         }
@@ -568,15 +352,15 @@ export class Season {
          */
         const seasonViewed = function(): void {
             // On check la saison
-            self.__elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
-            if (Base.debug) console.log('Season.updateRender: Tous les épisodes de la saison ont été vus', self.__elt, self.__elt.next());
+            self.elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
+            if (Base.debug) console.log('Season.updateRender: Tous les épisodes de la saison ont été vus', self.elt, self.elt.next());
             // Si il y a une saison suivante, on la sélectionne
-            if (self.__elt.next('.slide_flex').length > 0) {
+            if (self.elt.next('.slide_flex').length > 0) {
                 if (Base.debug) console.log('Season.updateRender: Il y a une autre saison');
-                self.__elt.removeClass('slide--current');
-                self.__elt.next('.slide_flex').find('.slide__image').trigger('click');
+                self.elt.removeClass('slide--current');
+                self.elt.next('.slide_flex').find('.slide__image').trigger('click');
             }
-            self.__elt
+            self.elt
                 .removeClass('slide--notSeen')
                 .addClass('slide--seen');
             self.seen = true;
@@ -599,11 +383,11 @@ export class Season {
                 }
             });
         } else {
-            const $checkSeen: JQuery<HTMLElement> = this.__elt.find('.checkSeen');
+            const $checkSeen: JQuery<HTMLElement> = this.elt.find('.checkSeen');
             if ($checkSeen.length > 0) {
                 $checkSeen.remove();
-                if (!self.__elt.hasClass('slide--notSeen')) {
-                    self.__elt
+                if (!self.elt.hasClass('slide--notSeen')) {
+                    self.elt
                         .addClass('slide--notSeen')
                         .removeClass('slide--seen');
                 }
