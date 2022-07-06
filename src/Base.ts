@@ -109,18 +109,23 @@ function checkNetwork(milliseconds = 0) {
         cache: 'no-cache',
     };
     const timeout = 5;
+    /**
+     * Transforme des secondes en durée heures, minutes, secondes
+     * @param seconds - La durée en secondes
+     * @returns {string}
+     */
     const duration = function(seconds: number): string {
         if (seconds < 60) {
             return `${seconds.toString()} secondes`;
         }
-        let minutes = Math.round(seconds / 60);
-        const hours = Math.round(minutes / 60);
+        let minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        seconds -= (minutes * 60);
         let duration = '';
         if (hours > 0) {
-            minutes -= hours * 60;
+            minutes -= (hours * 60);
             duration += `${hours.toString()} heure${hours > 1 ? 's' : ''} `;
         }
-        seconds -= minutes * 60;
         duration += `${minutes.toString()} min. ${seconds.toString()} sec.`;
         return duration;
     }
