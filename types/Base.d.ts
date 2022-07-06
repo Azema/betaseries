@@ -1,25 +1,10 @@
 /// <reference types="node" />
 import { CacheUS } from "./Cache";
-import { Character } from "./Character";
-import { CommentsBS } from "./Comments";
-import { implAddNote, Note } from "./Note";
-import { User } from "./User";
 export declare function ExceptionIdentification(message: string): void;
-declare type Class<T> = new (...args: any[]) => T;
 export declare enum NetworkState {
     'offline' = 0,
     'online' = 1
 }
-export declare enum MediaType {
-    show = "show",
-    movie = "movie",
-    episode = "episode"
-}
-export declare type MediaTypes = {
-    singular: MediaType;
-    plural: string;
-    className: Class<Base>;
-};
 export declare enum EventTypes {
     UPDATE = "update",
     SAVE = "save",
@@ -51,16 +36,6 @@ export declare type Obj = {
     [key: string]: any;
 };
 export declare type Callback = () => void;
-export declare type Changes = {
-    oldValue: any;
-    newValue: any;
-};
-export declare type RelatedProp = {
-    key: string;
-    type: any;
-    default?: any;
-    transform?: (obj: object, data: Obj) => any;
-};
 export declare function objToArr(obj: Base, data: Obj): Array<any>;
 export declare function isNull(val: any): boolean;
 /**
@@ -143,7 +118,7 @@ export declare class FakePromise {
      */
     launch(): Promise<any>;
 }
-export declare abstract class Base implements implAddNote {
+export declare abstract class Base {
     /**
      * Flag de debug pour le dev
      * @static
@@ -311,8 +286,6 @@ export declare abstract class Base implements implAddNote {
      * @returns {string}
      */
     static replaceParams(path: string, params: object, data: object): string;
-    static relatedProps: Record<string, RelatedProp>;
-    static selectorsCSS: Record<string, string>;
     /**
      * Etat du réseau
      * @type {NetworkState}
@@ -331,109 +304,11 @@ export declare abstract class Base implements implAddNote {
      * @param {boolean} testNetwork - Flag demandant de vérifier l'état du réseau régulièrement
      */
     static changeNetworkState(state: NetworkState, testNetwork?: boolean): void;
-    /** @type {string} */
-    description: string;
-    /** @type {number} */
-    nbComments: number;
-    /** @type {number} */
-    id: number;
-    /** @type {Note} */
-    objNote: Note;
-    /** @type {string} */
-    resource_url: string;
-    /** @type {string} */
-    title: string;
-    /** @type {User} */
-    user: User;
-    /** @type {Array<Character>} */
-    characters: Array<Character>;
-    /** @type {CommentsBS} */
-    comments: CommentsBS;
-    /** @type {MediaTypes} */
-    mediaType: MediaTypes;
-    /**
-     * @type {boolean} Flag d'initialisation de l'objet, nécessaire pour les methodes fill and compare
-     */
-    protected __initial: boolean;
-    /**
-     * @type {Record<string, Changes} Stocke les changements des propriétés de l'objet
-     */
-    protected __changes: Record<string, Changes>;
-    /**
-     * @type {Array<string>} Tableau des propriétés énumerables de l'objet
-     */
-    protected __props: Array<string>;
-    /**
-     * @type {JQuery<HTMLElement>} Element HTML de référence du média
-     */
-    private __elt;
     /**
      * @type {object} Contient les écouteurs d'évènements de l'objet
      */
     private __listeners;
     constructor(data: Obj);
-    /**
-     * Symbol.Iterator - Methode Iterator pour les boucles for..of
-     * @returns {object}
-     */
-    [Symbol.iterator](): object;
-    /**
-     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
-     * pour la méthode JSON.stringify
-     * @returns {object}
-     */
-    toJSON(): object;
-    /**
-     * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data - Les données provenant de l'API
-     * @returns {Base}
-     * @virtual
-     */
-    fill(data: Obj): this;
-    /**
-     * Initialisation du rendu HTML
-     * @returns {void}
-     */
-    _initRender(): void;
-    /**
-     * Met à jour le rendu HTML des propriétés de l'objet,
-     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
-     * **Méthode appelée automatiquement par le setter de la propriété**
-     * @see Show.selectorsCSS
-     * @param   {string} propKey - La propriété de l'objet à mettre à jour
-     * @returns {void}
-     */
-    updatePropRender(propKey: string): void;
-    /**
-     * Met à jour les informations de la note du média sur la page Web
-     */
-    updatePropRenderObjNote(): void;
-    /**
-     * Met à jour le titre du média sur la page Web
-     */
-    updatePropRenderTitle(): void;
-    /**
-     * Indique si cet objet a été modifié
-     * @returns {boolean}
-     */
-    isModified(): boolean;
-    /**
-     * Retourne les changements apportés à cet objet
-     * @returns {Record<string, Changes>}
-     */
-    getChanges(): Record<string, Changes>;
-    /**
-     * Indique si la propriété passée en paramètre a été modifiée
-     * @param   {string} propKey - La propriété ayant potentiellement été modifiée
-     * @returns {boolean}
-     */
-    hasChange(propKey: string): boolean;
-    /**
-     * Retourne l'objet Changes correspondant aux changements apportés à la propriété passée en paramètre
-     * @param   {string} propKey - La propriété ayant été modifiée
-     * @returns {Changes} L'objet Changes correspondant aux changement
-     */
-    getChange(propKey: string): Changes;
     /**
      * Initialize le tableau des écouteurs d'évènements
      * @returns {Base}
@@ -472,64 +347,6 @@ export declare abstract class Base implements implAddNote {
      * @sealed
      */
     _callListeners(name: EventTypes): this;
-    /**
-     * Méthode d'initialisation de l'objet
-     * @returns {Promise<Base>}
-     */
-    init(): Promise<this>;
-    /**
-     * Sauvegarde l'objet en cache
-     * @return {Base} L'instance du média
-     */
-    save(): this;
-    /**
-     * Retourne le DOMElement de référence du média
-     * @returns {JQuery<HTMLElement>} Le DOMElement jQuery
-     */
-    get elt(): JQuery<HTMLElement>;
-    /**
-     * Définit le DOMElement de référence du média\
-     * Nécessaire **uniquement** pour le média principal de la page Web\
-     * Il sert à mettre à jour les données du média sur la page Web
-     * @param  {JQuery<HTMLElement>} elt - DOMElement auquel est rattaché le média
-     */
-    set elt(elt: JQuery<HTMLElement>);
-    /**
-     * Retourne le nombre d'acteurs référencés dans ce média
-     * @returns {number}
-     */
-    get nbCharacters(): number;
-    /**
-     * Décode le titre de la page
-     * @return {Base} L'instance du média
-     */
-    decodeTitle(): Base;
-    /**
-     * Ajoute le nombre de votes, à la note, dans l'attribut title de la balise
-     * contenant la représentation de la note du média
-     *
-     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du HTMLElement
-     * @return {string} Le titre modifié de la note
-     */
-    changeTitleNote(change?: boolean): string;
-    /**
-     * Ajoute le vote du membre connecté pour le média
-     * @param   {number} note - Note du membre connecté pour le média
-     * @returns {Promise<boolean>}
-     */
-    addVote(note: number): Promise<boolean>;
-    /**
-     * *fetchCharacters* - Récupère les acteurs du média
-     * @abstract
-     * @returns {Promise<this>}
-     */
-    fetchCharacters(): Promise<this>;
-    /**
-     * *getCharacter* - Retourne un personnage à partir de son identifiant
-     * @param   {number} id - Identifiant du personnage
-     * @returns {Character | null}
-     */
-    getCharacter(id: number): Character | null;
 }
 declare global {
     interface Date {
@@ -541,4 +358,3 @@ declare global {
         camelCase: () => string;
     }
 }
-export {};

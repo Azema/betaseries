@@ -1,7 +1,8 @@
-import { Obj, RelatedProp } from "./Base";
+import { Obj } from "./Base";
 import { implAddNote } from "./Note";
 import { Platform_link } from "./Episode";
 import { Media } from "./Media";
+import { RelatedProp } from "./RenderHtml";
 export declare type OtherTitle = {
     language: string;
     title: string;

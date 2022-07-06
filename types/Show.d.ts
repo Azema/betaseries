@@ -1,8 +1,9 @@
-import { Obj, EventTypes, Callback, RelatedProp } from "./Base";
+import { Obj, EventTypes, Callback } from "./Base";
 import { implAddNote } from "./Note";
 import { Media } from "./Media";
 import { Season } from "./Season";
 import { Character, Person } from "./Character";
+import { RelatedProp } from "./RenderHtml";
 /**
  * Classe représentant les différentes images d'une série
  * @class

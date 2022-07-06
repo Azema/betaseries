@@ -1,7 +1,9 @@
-import { Base, Obj, HTTP_VERBS, RelatedProp } from "./Base";
+import { Obj, HTTP_VERBS } from "./Base";
 import { implAddNote } from "./Note";
 import { Season } from "./Season";
 import { Subtitles } from "./Subtitle";
+import { MediaBase } from "./Media";
+import { RelatedProp } from "./RenderHtml";
 export declare type Platform_link = {
     /**
      * @type {number} Identifiant de l'épisode sur la plateforme
@@ -38,7 +40,7 @@ export declare type WatchedBy = {
      */
     note: number;
 };
-export declare class Episode extends Base implements implAddNote {
+export declare class Episode extends MediaBase implements implAddNote {
     static selectorsCSS: Record<string, string>;
     static relatedProps: Record<string, RelatedProp>;
     static fetch(epId: number): Promise<Episode>;

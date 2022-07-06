@@ -1,5 +1,5 @@
-import { Obj, MediaTypes } from "./Base";
-import { Media } from "./Media";
+import { Obj } from "./Base";
+import { Media, MediaTypes } from "./Media";
 import { Season } from "./Season";
 import { implShow, Showrunner, Platforms, Images, Picture } from "./Show";
 import { implMovie, OtherTitle } from "./Movie";

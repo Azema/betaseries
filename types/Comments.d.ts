@@ -1,5 +1,6 @@
-import { Base, Obj, EventTypes, Callback } from "./Base";
+import { Obj, EventTypes, Callback } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
+import { MediaBase } from "./Media";
 export declare enum OrderComments {
     DESC = "desc",
     ASC = "asc"
@@ -26,7 +27,7 @@ export declare class CommentsBS implements implRepliesComment {
      * @param   {string} text - Le texte de la réponse
      * @returns {Promise<void | CommentBS>}
      */
-    static sendComment(media: Base, text: string): Promise<void | CommentBS>;
+    static sendComment(media: MediaBase, text: string): Promise<void | CommentBS>;
     /*************************************************/
     /*************************************************/
     /**
@@ -66,7 +67,7 @@ export declare class CommentsBS implements implRepliesComment {
     private _order;
     /*************************************************/
     /*************************************************/
-    constructor(nbComments: number, media: Base);
+    constructor(nbComments: number, media: MediaBase);
     /**
      * Initialise la collection de commentaires
      */
@@ -112,7 +113,7 @@ export declare class CommentsBS implements implRepliesComment {
      * Retourne le média auxquels sont associés les commentaires
      * @readonly
      */
-    get media(): Base;
+    get media(): MediaBase;
     /**
      * Retourne l'ordre de tri des commentaires
      * @returns {OrderComments}

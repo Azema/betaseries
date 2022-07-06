@@ -1,7 +1,8 @@
-import { Obj, RelatedProp } from "./Base";
+import { Obj } from "./Base";
 import { Episode } from "./Episode";
+import { RelatedProp, RenderHtml } from "./RenderHtml";
 import { Show } from "./Show";
-export declare class Season {
+export declare class Season extends RenderHtml {
     /**
      * Les différents sélecteurs CSS des propriétés de l'objet
      * @static
@@ -50,17 +51,10 @@ export declare class Season {
      */
     private _show;
     /**
-     * @type {JQuery<HTMLElement>} Le DOMElement jQuery correspondant à la saison
-     */
-    private __elt;
-    /**
      * Objet contenant les promesses en attente des méthodes fetchXXX
      * @type {Record<string, Promise<Season>>}
      */
     private __fetches;
-    private __initial;
-    private __changes;
-    private __props;
     /**
      * Constructeur de la classe Season
      * @param   {Obj}   data    Les données provenant de l'API
@@ -69,32 +63,10 @@ export declare class Season {
      */
     constructor(data: Obj, show: Show);
     /**
-     * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data - Les données provenant de l'API
-     * @returns {Season}
-     * @virtual
-     */
-    fill(data: Obj): this;
-    /**
      * Initialise le rendu HTML de la saison
      * @returns {Seasons}
      */
-    _initRender(): Season;
-    /**
-     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
-     * pour la méthode JSON.stringify
-     * @returns {object}
-     */
-    toJSON(): object;
-    /**
-     * Met à jour le rendu HTML des propriétés de l'objet
-     * si un sélecteur CSS exite pour la propriété (cf. Class.selectorCSS)
-     * Méthode appelée automatiquement par le setter de la propriété
-     * @see Show.selectorsCSS
-     * @param   {string} propKey - La propriété de l'objet à mettre à jour
-     * @returns {void}
-     */
-    updatePropRender(propKey: string): void;
+    _initRender(): this;
     /**
      * Mise à jour du nombre d'épisodes de la saison sur la page Web
      * @returns {void}

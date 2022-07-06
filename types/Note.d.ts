@@ -1,4 +1,6 @@
-import { Base, Obj, Callback, Changes } from "./Base";
+import { Obj, Callback } from "./Base";
+import { MediaBase } from "./Media";
+import { Changes } from "./RenderHtml";
 export interface implAddNote {
     addVote(note: number): Promise<boolean>;
 }
@@ -22,13 +24,13 @@ export declare class Note {
      * Media de référence
      * @type {Base}
      */
-    _parent: Base;
+    _parent: MediaBase;
     private __initial;
     protected __changes: Record<string, Changes>;
-    constructor(data: Obj, parent?: Base);
+    constructor(data: Obj, parent?: MediaBase);
     fill(data: Obj): Note;
-    get parent(): Base;
-    set parent(parent: Base);
+    get parent(): MediaBase;
+    set parent(parent: MediaBase);
     /**
      * Retourne la note moyenne sous forme de pourcentage
      * @returns {number} La note sous forme de pourcentage

@@ -1,6 +1,103 @@
 import { Base, Obj } from "./Base";
+import { Character } from "./Character";
+import { CommentsBS } from "./Comments";
+import { implAddNote, Note } from "./Note";
+import { RenderHtml } from "./RenderHtml";
 import { Similar } from "./Similar";
-export declare abstract class Media extends Base {
+import { User } from "./User";
+declare type Class<T> = new (...args: any[]) => T;
+export declare enum MediaType {
+    show = "show",
+    movie = "movie",
+    episode = "episode"
+}
+export declare type MediaTypes = {
+    singular: MediaType;
+    plural: string;
+    className: Class<Base>;
+};
+export declare abstract class MediaBase extends RenderHtml implements implAddNote {
+    /** @type {string} */
+    description: string;
+    /** @type {number} */
+    nbComments: number;
+    /** @type {number} */
+    id: number;
+    /** @type {Note} */
+    objNote: Note;
+    /** @type {string} */
+    resource_url: string;
+    /** @type {string} */
+    title: string;
+    /** @type {User} */
+    user: User;
+    /** @type {Array<Character>} */
+    characters: Array<Character>;
+    /** @type {CommentsBS} */
+    comments: CommentsBS;
+    /** @type {MediaTypes} */
+    mediaType: MediaTypes;
+    constructor(data: Obj, elt?: JQuery<HTMLElement>);
+    /**
+     * Initialisation du rendu HTML
+     * @returns {MediaBase}
+     */
+    _initRender(): this;
+    /**
+     * Met à jour les informations de la note du média sur la page Web
+     */
+    updatePropRenderObjNote(): void;
+    /**
+     * Met à jour le titre du média sur la page Web
+     */
+    updatePropRenderTitle(): void;
+    /**
+     * Méthode d'initialisation de l'objet
+     * @returns {Promise<Base>}
+     */
+    init(): Promise<this>;
+    /**
+     * Sauvegarde l'objet en cache
+     * @return {Base} L'instance du média
+     */
+    save(): this;
+    /**
+     * Retourne le nombre d'acteurs référencés dans ce média
+     * @returns {number}
+     */
+    get nbCharacters(): number;
+    /**
+     * Décode le titre de la page
+     * @return {Base} L'instance du média
+     */
+    decodeTitle(): MediaBase;
+    /**
+     * Ajoute le nombre de votes, à la note du média, dans l'attribut title de la balise
+     * contenant la représentation de la note du média
+     *
+     * @return {void}
+     */
+    changeTitleNote(): void;
+    /**
+     * Ajoute le vote du membre connecté pour le média
+     * @param   {number} note - Note du membre connecté pour le média
+     * @returns {Promise<boolean>}
+     */
+    addVote(note: number): Promise<boolean>;
+    /**
+     * *fetchCharacters* - Récupère les acteurs du média
+     * @abstract
+     * @returns {Promise<this>}
+     */
+    fetchCharacters(): Promise<this>;
+    /**
+     * *getCharacter* - Retourne un personnage à partir de son identifiant
+     * @param   {number} id - Identifiant du personnage
+     * @returns {Character | null}
+     */
+    getCharacter(id: number): Character | null;
+}
+export declare abstract class Media extends MediaBase {
     /***************************************************/
     /***************************************************/
     static propsAllowedOverride: object;
@@ -115,3 +212,4 @@ export declare abstract class Media extends Base {
      */
     _getTvdbUrl(tvdb_id: number): Promise<string>;
 }
+export {};

@@ -1,5 +1,5 @@
-import { MediaType, Obj } from "./Base";
-import { Media } from "./Media";
+import { Obj } from "./Base";
+import { Media, MediaType } from "./Media";
 import { Movie } from "./Movie";
 import { Show } from "./Show";
 export declare class Character {
