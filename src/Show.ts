@@ -1,9 +1,10 @@
-import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, MediaType, RelatedProp} from "./Base";
+import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr} from "./Base";
 import { implAddNote, Note } from "./Note";
-import {Media} from "./Media";
+import {Media, MediaType} from "./Media";
 import {Season} from "./Season";
 import { Character, Person } from "./Character";
 import {Next, User} from "./User";
+import { RelatedProp } from "./RenderHtml";
 
 declare const PopupAlert;
 
