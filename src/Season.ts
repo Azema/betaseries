@@ -93,6 +93,8 @@ export class Season extends RenderHtml {
      * @returns {Seasons}
      */
     _initRender(): this {
+        if (!this.elt) return this;
+
         const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes, this.elt);
         const $spanNbEpisodes = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.elt);
         if ($nbEpisode.length > 0 && $spanNbEpisodes.length <= 0) {
