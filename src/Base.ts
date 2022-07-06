@@ -13,6 +13,7 @@ export enum EventTypes {
     UPDATE = 'update',
     SAVE = 'save',
     ADD = 'add',
+    DELETE = 'delete',
     ADDED = 'added',
     REMOVE = 'remove',
     NOTE = 'note',
