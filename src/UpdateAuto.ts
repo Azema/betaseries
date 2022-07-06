@@ -128,6 +128,19 @@ export class UpdateAuto {
     }
 
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object {
+        return {
+            status: this.status,
+            auto: this.auto,
+            interval: this.interval
+        };
+    }
+
+    /**
      * Retourne l'objet Show associé
      * @returns {Show}
      */

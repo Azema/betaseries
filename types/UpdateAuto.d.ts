@@ -68,6 +68,12 @@ export declare class UpdateAuto {
      */
     _save(): Promise<this>;
     /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object;
+    /**
      * Retourne l'objet Show associé
      * @returns {Show}
      */
