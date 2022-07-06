@@ -53,12 +53,12 @@ export declare abstract class MediaBase extends RenderHtml implements implAddNot
     updatePropRenderTitle(): void;
     /**
      * Méthode d'initialisation de l'objet
-     * @returns {Promise<Base>}
+     * @returns {Promise<MediaBase>}
      */
     init(): Promise<this>;
     /**
      * Sauvegarde l'objet en cache
-     * @return {Base} L'instance du média
+     * @return {MediaBase} L'instance du média
      */
     save(): this;
     /**
@@ -87,7 +87,7 @@ export declare abstract class MediaBase extends RenderHtml implements implAddNot
     /**
      * *fetchCharacters* - Récupère les acteurs du média
      * @abstract
-     * @returns {Promise<this>}
+     * @returns {Promise<MediaBase>}
      */
     fetchCharacters(): Promise<this>;
     /**

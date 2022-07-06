@@ -1,4 +1,4 @@
-import { Obj, EventTypes, Callback } from "./Base";
+import { Base, Obj, EventTypes, Callback } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
 import { MediaBase } from "./Media";
 export declare enum OrderComments {
@@ -13,14 +13,14 @@ export declare type CustomEvent = {
     elt: JQuery<HTMLElement>;
     event: string;
 };
-export declare class CommentsBS implements implRepliesComment {
+export declare class CommentsBS extends Base implements implRepliesComment {
     /*************************************************/
     /*************************************************/
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-    static EventTypes: Array<string>;
+    static EventTypes: Array<EventTypes>;
     /**
      * Envoie une réponse de ce commentaire à l'API
      * @param   {Base} media - Le média correspondant à la collection
@@ -57,11 +57,6 @@ export declare class CommentsBS implements implRepliesComment {
      */
     private _events;
     /**
-     * @type {object} Objet contenant les fonctions à l'écoute des changements
-     * @private
-     */
-    private _listeners;
-    /**
      * @type {OrderComments} Ordre de tri des commentaires et des réponses
      */
     private _order;
@@ -78,32 +73,8 @@ export declare class CommentsBS implements implRepliesComment {
      * @returns {object}
      */
     toJSON(): object;
-    /**
-     * Initialize le tableau des écouteurs d'évènements
-     * @returns {Base}
-     * @private
-     */
-    private _initListeners;
-    /**
-     * Permet d'ajouter un listener sur un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @param  {Function}   fn   - La fonction à appeler
-     * @return {Base} L'instance du média
-     */
-    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
-    /**
-     * Permet de supprimer un listener sur un type d'évenement
-     * @param  {string}   name - Le type d'évenement
-     * @param  {Function} fn   - La fonction qui était appelée
-     * @return {Base} L'instance du média
-     */
-    removeListener(name: EventTypes, fn: Callback): this;
-    /**
-     * Appel les listeners pour un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @return {Base} L'instance du média
-     */
-    protected _callListeners(name: EventTypes): this;
+    get parent(): MediaBase;
+    set parent(media: MediaBase);
     /**
      * Retourne la taille de la collection
      * @readonly

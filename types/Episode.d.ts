@@ -122,6 +122,7 @@ export declare class Episode extends MediaBase implements implAddNote {
      * @returns {void}
      */
     updatePropRenderUser(): void;
+    updateBtnSeen(): void;
     /**
      * Retourne l'objet Season associé à l'épisode
      * @returns {Season | null}

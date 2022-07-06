@@ -1,4 +1,4 @@
-import { Obj, EventTypes, Callback } from './Base';
+import { Base, Obj, EventTypes, Callback } from './Base';
 import { CommentsBS, OrderComments } from './Comments';
 export interface implRepliesComment {
     fetchReplies(commentId: number): Promise<Array<CommentBS>>;
@@ -8,14 +8,14 @@ export declare type implReplyUser = {
     id: number;
     login: string;
 };
-export declare class CommentBS {
+export declare class CommentBS extends Base {
     /*************************************************/
     /*************************************************/
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}
      */
-    static EventTypes: Array<string>;
+    static EventTypes: Array<EventTypes>;
     /**
      * Contient le nom des classes CSS utilisées pour le rendu du commentaire
      * @type Obj
@@ -109,12 +109,9 @@ export declare class CommentBS {
      * @type {Array<CustomEvent>} Liste des events déclarés par la fonction loadEvents
      */
     private _events;
-    /**
-     * @type {object} Objet contenant les fonctions à l'écoute des changements
-     * @private
-     */
-    private _listeners;
     constructor(data: Obj, parent: CommentsBS | CommentBS);
+    get parent(): CommentsBS | CommentBS;
+    set parent(par: CommentsBS | CommentBS);
     /**
      * Remplit l'objet CommentBS avec les données provenant de l'API
      * @param   {Obj} data - Les données provenant de l'API
@@ -127,32 +124,6 @@ export declare class CommentBS {
      * @returns {object}
      */
     toJSON(): object;
-    /**
-     * Initialize le tableau des écouteurs d'évènements
-     * @returns {Base}
-     * @private
-     */
-    private _initListeners;
-    /**
-     * Permet d'ajouter un listener sur un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @param  {Function}   fn   - La fonction à appeler
-     * @return {Base} L'instance du média
-     */
-    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
-    /**
-     * Permet de supprimer un listener sur un type d'évenement
-     * @param  {string}   name - Le type d'évenement
-     * @param  {Function} fn   - La fonction qui était appelée
-     * @return {Base} L'instance du média
-     */
-    removeListener(name: EventTypes, fn: Callback): this;
-    /**
-     * Appel les listeners pour un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @return {Base} L'instance du média
-     */
-    protected _callListeners(name: EventTypes): this;
     /**
      * Récupère les réponses du commentaire
      * @param   {OrderComments} order - Ordre de tri des réponses
