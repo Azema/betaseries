@@ -1,28 +1,14 @@
 import { DataTypesCache, CacheUS } from "./Cache";
-import { Character } from "./Character";
-import { CommentsBS } from "./Comments";
-import { implAddNote, Note } from "./Note";
-import { User } from "./User";
 
 export function ExceptionIdentification(message: string) {
     this.message = message;
     this.name = "ExceptionIdentification";
 }
-type Class<T> = new (...args: any[]) => T;
+
 export enum NetworkState {
     'offline',
     'online'
 }
-export enum MediaType {
-    show = 'show',
-    movie = 'movie',
-    episode = 'episode'
-}
-export type MediaTypes = {
-    singular: MediaType;
-    plural: string;
-    className: Class<Base>;
-};
 export enum EventTypes {
     UPDATE = 'update',
     SAVE = 'save',
@@ -54,16 +40,7 @@ export type Obj = {
     [key: string]: any;
 };
 export type Callback = () => void;
-export type Changes = {
-    oldValue: any;
-    newValue: any;
-}
-export type RelatedProp = {
-    key: string; // Nom de la propriété dans l'objet
-    type: any; // type de donnée
-    default?: any; // valeur par défaut
-    transform?: (obj: object, data: Obj) => any; // Fonction de transformation de la donnée
-}
+
 export function objToArr(obj: Base, data: Obj): Array<any> {
     if (data instanceof Array) return data;
     const values = [];
@@ -313,7 +290,7 @@ export class FakePromise {
     }
 }
 
-export abstract class Base implements implAddNote {
+export abstract class Base {
     /*
                     STATIC
     */
@@ -906,8 +883,6 @@ export abstract class Base implements implAddNote {
         }
         return path;
     }
-    static relatedProps: Record<string, RelatedProp> = {};
-    static selectorsCSS: Record<string, string> = {};
     /**
      * Etat du réseau
      * @type {NetworkState}
@@ -941,46 +916,6 @@ export abstract class Base implements implAddNote {
         }
     }
 
-    /*
-                    PROPERTIES
-    */
-    /** @type {string} */
-    description: string;
-    /** @type {number} */
-    nbComments: number;
-    /** @type {number} */
-    id: number;
-    /** @type {Note} */
-    objNote: Note;
-    /** @type {string} */
-    resource_url: string;
-    /** @type {string} */
-    title: string;
-    /** @type {User} */
-    user: User;
-    /** @type {Array<Character>} */
-    characters: Array<Character>;
-    /** @type {CommentsBS} */
-    comments: CommentsBS;
-    /** @type {MediaTypes} */
-    mediaType: MediaTypes;
-
-    /**
-     * @type {boolean} Flag d'initialisation de l'objet, nécessaire pour les methodes fill and compare
-     */
-    protected __initial: boolean;
-    /**
-     * @type {Record<string, Changes} Stocke les changements des propriétés de l'objet
-     */
-    protected __changes: Record<string, Changes>;
-    /**
-     * @type {Array<string>} Tableau des propriétés énumerables de l'objet
-     */
-    protected __props: Array<string>;
-    /**
-     * @type {JQuery<HTMLElement>} Element HTML de référence du média
-     */
-    private __elt: JQuery<HTMLElement>;
     /**
      * @type {object} Contient les écouteurs d'évènements de l'objet
      */
@@ -993,321 +928,10 @@ export abstract class Base implements implAddNote {
         if (!(data instanceof Object)) {
             throw new Error("data is not an object");
         }
-        this.__initial = true;
-        this.__changes = {};
-        this.characters = [];
-        this.__elt = null;
-        this.__props = ['characters', 'comments', 'mediaType'];
         this._initListeners();
         return this;
     }
 
-    /**
-     * Symbol.Iterator - Methode Iterator pour les boucles for..of
-     * @returns {object}
-     */
-    [Symbol.iterator](): object {
-        const self = this;
-        return {
-            pos: 0,
-            props: self.__props,
-            next(): IteratorResult<any> {
-                if (this.pos < this.props.length) {
-                    const item = {value: this.props[this.pos], done: false};
-                    this.pos++;
-                    return item;
-                } else {
-                    this.pos = 0;
-                    return {value: null, done: true};
-                }
-            }
-        }
-    }
-
-    /**
-     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
-     * pour la méthode JSON.stringify
-     * @returns {object}
-     */
-    toJSON(): object {
-        const obj: object = {};
-        const keys = Reflect.ownKeys(this)
-            .filter((key:string) => !key.startsWith('_'));
-        for (const key of keys) {
-            obj[key] = this[key];
-        }
-        return obj;
-    }
-
-    /**
-     * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data - Les données provenant de l'API
-     * @returns {Base}
-     * @virtual
-     */
-    fill(data: Obj): this {
-        const self = this;
-        if (typeof data !== 'object') {
-            const err = new TypeError('Base.fill data is not an object: ' + typeof data);
-            console.error(err);
-            throw err;
-        }
-        const checkTypeValue = (target: any, key: string, type: any, value: any, relatedProp: RelatedProp): any => {
-            const typeNV = typeof value;
-            const oldValue = target['_' + key];
-            const hasDefault = Reflect.has(relatedProp, 'default');
-            const hasTransform = Reflect.has(relatedProp, 'transform');
-            if (!isNull(value) && hasTransform && typeof relatedProp.transform === 'function') {
-                value = relatedProp.transform(target, value);
-            }
-            if (isNull(oldValue) && isNull(value)) return undefined;
-            switch(type) {
-                case 'string':
-                    value = (! isNull(value)) ? String(value) : hasDefault ? relatedProp.default : null;
-                    if (oldValue === value) return undefined;
-                    break;
-                case 'number':
-                    if (!isNull(value) && !hasTransform && typeNV === 'string') {
-                        value = parseInt(value, 10);
-                    }
-                    else if (isNull(value) && hasDefault) {
-                        value = relatedProp.default;
-                    }
-                    if (oldValue === value) return undefined;
-                    break;
-                case 'boolean':
-                    value = (typeNV === 'boolean') ? value : hasDefault ? relatedProp.default : null;
-                    if (oldValue === value) return undefined;
-                    break;
-                case 'array': {
-                    if (this.__initial || !Array.isArray(oldValue)) return value;
-                    let diff = false;
-                    for (let i = 0, _len = oldValue.length; i < _len; i++) {
-                        if (oldValue[i] !== value[i]) {
-                            diff = true;
-                            break;
-                        }
-                    }
-                    if (!diff) return undefined;
-                    break;
-                }
-                case 'date': {
-                    if (typeNV !== 'number' && !(value instanceof Date) &&
-                        (typeNV === 'string' && Number.isNaN(Date.parse(value))))
-                    {
-                        throw new TypeError(`Invalid value for key "${key}". Expected type (Date | Number | string) but got ${JSON.stringify(value)}`);
-                    }
-                    if (typeNV === 'number' || typeNV === 'string')
-                        value = new Date(value);
-                    if (oldValue instanceof Date && value.getTime() === oldValue.getTime()) {
-                        return undefined;
-                    }
-                    break;
-                }
-                case 'object':
-                default: {
-                    if (typeNV === 'object' && type === 'object') {
-                        value = (! isNull(value)) ? Object.assign({}, value) : hasDefault ? relatedProp.default : null;
-                    }
-                    else if (typeof type === 'function' && !isNull(value)) {
-                        // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
-                        value = Reflect.construct(type, [value]);
-                        if (typeof value === 'object' && Reflect.has(value, 'parent')) {
-                            value.parent = target;
-                        }
-                    }
-                    if (this.__initial || isNull(oldValue)) return value;
-                    let changed = false;
-                    try {
-                        if (
-                            (isNull(oldValue) && !isNull(value)) ||
-                            (!isNull(oldValue) && isNull(value))
-                        ) {
-                            changed = true;
-                        }
-                        else if (typeof value === 'object' && !isNull(value)) {
-                            if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
-                                console.log('compare objects with JSON.stringify and are differents', {oldValue, value});
-                                changed = true;
-                            }
-                            // changed = compareObj(oldValue, value);
-                        }
-                        if (!changed) return undefined;
-                    } catch (err) {
-                        console.warn('Base.fill => checkTypeValue: error setter[%s.%s]', target.constructor.name, key, {oldValue, value});
-                        throw err;
-                    }
-                }
-            }
-            if (type === 'date') {
-                type = Date;
-            }
-            if ((typeof type === 'string' && typeof value !== type) ||
-                (typeof type === 'function' && !(value instanceof type)))
-            {
-                throw new TypeError(`Invalid value for key "${target.constructor.name}.${key}". Expected type "${(typeof type === 'string') ? type : JSON.stringify(type)}" but got "${typeof value}"`);
-            }
-            return value;
-        }
-        // On reinitialise les changements de l'objet
-        this.__changes = {};
-        for (const propKey in (this.constructor as typeof Base).relatedProps) {
-            if (!Reflect.has(data, propKey)) continue;
-            /** relatedProp contient les infos de la propriété @see RelatedProp */
-            const relatedProp = (this.constructor as typeof Base).relatedProps[propKey];
-            // dataProp contient les données provenant de l'API
-            const dataProp = data[propKey];
-            // Le descripteur de la propriété, utilisé lors de l'initialisation de l'objet
-            let descriptor: PropertyDescriptor;
-            if (this.__initial) {
-                descriptor = {
-                    configurable: true,
-                    enumerable: true,
-                    get: () => {
-                        return self['_' + relatedProp.key];
-                    },
-                    set: (newValue: any) => {
-                        // On vérifie le type et on modifie, si nécessaire, la valeur
-                        // pour la rendre conforme au type définit (ex: number => Date or object => Note)
-                        const value = checkTypeValue(self, relatedProp.key, relatedProp.type, newValue, relatedProp);
-                        // Lors de l'initialisation, on set directement la valeur
-                        if (self.__initial) {
-                            self['_' + relatedProp.key] = value;
-                            return;
-                        }
-                        // On récupère l'ancienne valeur pour identifier le changement
-                        const oldValue = self['_' + relatedProp.key];
-                        // Si value est undefined, alors pas de modification de valeur
-                        if (value === undefined) {
-                            // console.log('Base.fill setter[%s.%s] not changed', self.constructor.name, relatedProp.key, relatedProp.type, {newValue, oldValue, relatedProp});
-                            return;
-                        }
-                        if (Base.debug) console.log('Base.fill setter[%s.%s] value changed', self.constructor.name, relatedProp.key, {type: relatedProp.type, newValue, oldValue, value, relatedProp});
-                        // On set la nouvelle valeur
-                        self['_' + relatedProp.key] = value;
-                        // On stocke le changement de valeurs
-                        self.__changes[relatedProp.key] = {oldValue, newValue};
-                        // On appelle la methode de mise à jour du rendu HTML pour la propriété
-                        self.updatePropRender(relatedProp.key);
-                    }
-                };
-            }
-
-            // if (Base.debug) console.log('Base.fill descriptor[%s.%s]', this.constructor.name, relatedProp.key, {relatedProp, dataProp, descriptor});
-            // Lors de l'initialisation, on définit la propriété de l'objet
-            // et on ajoute le nom de la propriété dans le tableau __props
-            if (this.__initial) {
-                Object.defineProperty(this, relatedProp.key, descriptor);
-                this.__props.push(relatedProp.key);
-            }
-            // On set la valeur
-            this[relatedProp.key] = dataProp;
-        }
-        // Fin de l'initialisation
-        if (this.__initial) {
-            this.__props.sort();
-            this.__initial = false;
-        }
-        return this.save();
-    }
-
-    /**
-     * Initialisation du rendu HTML
-     * @returns {void}
-     */
-    _initRender(): void {
-        if (!this.elt) return;
-        // console.log('Base._initRender', this);
-        this.objNote
-            .updateAttrTitle()
-            .updateStars();
-        this.decodeTitle();
-    }
-    /**
-     * Met à jour le rendu HTML des propriétés de l'objet,
-     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
-     * **Méthode appelée automatiquement par le setter de la propriété**
-     * @see Show.selectorsCSS
-     * @param   {string} propKey - La propriété de l'objet à mettre à jour
-     * @returns {void}
-     */
-    updatePropRender(propKey: string): void {
-        if (! this.elt || ! this.__props.includes(propKey)) return;
-        const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
-        // if (Base.debug) console.log('updatePropRender', propKey, fnPropKey);
-        if (Reflect.has(this, fnPropKey)) {
-            // if (Base.debug) console.log('updatePropRender Reflect has method');
-            this[fnPropKey]();
-        } else if ((this.constructor as typeof Base).selectorsCSS &&
-            (this.constructor as typeof Base).selectorsCSS[propKey])
-        {
-            // if (Base.debug) console.log('updatePropRender default');
-            const selectorCSS = (this.constructor as typeof Base).selectorsCSS[propKey];
-            jQuery(selectorCSS).text(this[propKey].toString());
-            delete this.__changes[propKey];
-        }
-    }
-    /**
-     * Met à jour les informations de la note du média sur la page Web
-     */
-    updatePropRenderObjNote(): void {
-        if (! this.elt) return;
-        if (Base.debug) console.log('updatePropRenderObjNote');
-        this.objNote
-            .updateStars()
-            .updateAttrTitle();
-        this._callListeners(EventTypes.NOTE);
-        delete this.__changes.objNote;
-    }
-    /**
-     * Met à jour le titre du média sur la page Web
-     */
-    updatePropRenderTitle(): void {
-        if (! this.elt) return;
-        const $title = jQuery((this.constructor as typeof Base).selectorsCSS.title);
-        if (/&#/.test(this.title)) {
-            $title.text($('<textarea />').html(this.title).text());
-        } else {
-            $title.text(this.title);
-        }
-        delete this.__changes.title;
-    }
-    /**
-     * Indique si cet objet a été modifié
-     * @returns {boolean}
-     */
-    isModified(): boolean {
-        return Object.keys(this.__changes).length > 0;
-    }
-    /**
-     * Retourne les changements apportés à cet objet
-     * @returns {Record<string, Changes>}
-     */
-    getChanges(): Record<string, Changes> {
-        return this.__changes;
-    }
-    /**
-     * Indique si la propriété passée en paramètre a été modifiée
-     * @param   {string} propKey - La propriété ayant potentiellement été modifiée
-     * @returns {boolean}
-     */
-    hasChange(propKey: string): boolean {
-        if (! this.__props.includes(propKey)) {
-            throw new Error(`Property[${propKey}] not exists in this object(${this.constructor.name})`);
-        }
-        return Reflect.has(this.__changes, propKey);
-    }
-    /**
-     * Retourne l'objet Changes correspondant aux changements apportés à la propriété passée en paramètre
-     * @param   {string} propKey - La propriété ayant été modifiée
-     * @returns {Changes} L'objet Changes correspondant aux changement
-     */
-    getChange(propKey: string): Changes {
-        if (! this.__props.includes(propKey)) {
-            throw new Error(`Property[${propKey}] not exists in this object(${this.constructor.name})`);
-        }
-        return this.__changes[propKey];
-    }
     /**
      * Initialize le tableau des écouteurs d'évènements
      * @returns {Base}
@@ -1408,126 +1032,7 @@ export abstract class Base implements implAddNote {
         }
         return this;
     }
-    /**
-     * Méthode d'initialisation de l'objet
-     * @returns {Promise<Base>}
-     */
-    public init(): Promise<this> {
-        if (this.elt) {
-            this.comments = new CommentsBS(this.nbComments, this);
-        }
-        return new Promise(resolve => resolve(this));
-    }
-    /**
-     * Sauvegarde l'objet en cache
-     * @return {Base} L'instance du média
-     */
-    public save(): this {
-        if (Base.cache instanceof CacheUS) {
-            Base.cache.set(this.mediaType.plural as DataTypesCache, this.id, this);
-            this._callListeners(EventTypes.SAVE);
-        }
-        return this;
-    }
-    /**
-     * Retourne le DOMElement de référence du média
-     * @returns {JQuery<HTMLElement>} Le DOMElement jQuery
-     */
-    get elt(): JQuery<HTMLElement> {
-        return this.__elt;
-    }
-    /**
-     * Définit le DOMElement de référence du média\
-     * Nécessaire **uniquement** pour le média principal de la page Web\
-     * Il sert à mettre à jour les données du média sur la page Web
-     * @param  {JQuery<HTMLElement>} elt - DOMElement auquel est rattaché le média
-     */
-    set elt(elt: JQuery<HTMLElement>) {
-        this.__elt = elt;
-    }
-    /**
-     * Retourne le nombre d'acteurs référencés dans ce média
-     * @returns {number}
-     */
-    get nbCharacters(): number {
-        return this.characters.length;
-    }
-    /**
-     * Décode le titre de la page
-     * @return {Base} L'instance du média
-     */
-    decodeTitle(): Base {
-        if (!this.elt) return this;
 
-        let $elt = jQuery('.blockInformations__title', this.elt);
-        if ((this.constructor as typeof Base).selectorsCSS.title) {
-            $elt = jQuery((this.constructor as typeof Base).selectorsCSS.title);
-        }
-        const title = $elt.text();
-
-        if (/&#/.test(title)) {
-            $elt.text($('<textarea />').html(title).text());
-        }
-        return this;
-    }
-    /**
-     * Ajoute le nombre de votes, à la note, dans l'attribut title de la balise
-     * contenant la représentation de la note du média
-     *
-     * @param  {boolean} [change=true] - Indique si on doit changer l'attribut title du HTMLElement
-     * @return {string} Le titre modifié de la note
-     */
-    changeTitleNote(change = true): string {
-        const $elt = jQuery('.js-render-stars', this.elt);
-        if (this.objNote.mean <= 0 || this.objNote.total <= 0) {
-            if (change) $elt.attr('title', 'Aucun vote');
-            return;
-        }
-
-        const title = this.objNote.toString();
-        if (change) {
-            $elt.attr('title', title);
-        }
-        return title;
-    }
-    /**
-     * Ajoute le vote du membre connecté pour le média
-     * @param   {number} note - Note du membre connecté pour le média
-     * @returns {Promise<boolean>}
-     */
-    addVote(note: number): Promise<boolean> {
-        const self = this;
-        // return new Promise((resolve, reject) => {
-        return Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
-            .then((data: Obj) => {
-                self.fill(data[this.mediaType.singular]);
-                return this.objNote.user == note;
-            })
-            .catch(err => {
-                Base.notification('Erreur de vote', 'Une erreur s\'est produite lors de l\'envoi de la note: ' + err);
-                return false;
-            }) as Promise<boolean>;
-        // });
-    }
-    /**
-     * *fetchCharacters* - Récupère les acteurs du média
-     * @abstract
-     * @returns {Promise<this>}
-     */
-    fetchCharacters(): Promise<this> {
-        throw new Error('Method abstract');
-    }
-    /**
-     * *getCharacter* - Retourne un personnage à partir de son identifiant
-     * @param   {number} id - Identifiant du personnage
-     * @returns {Character | null}
-     */
-    getCharacter(id: number): Character | null {
-        for (const actor of this.characters) {
-            if (actor.id === id) return actor;
-        }
-        return null;
-    }
 }
 
 /*
