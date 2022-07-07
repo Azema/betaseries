@@ -28,7 +28,6 @@
  * @typedef { import('./types/Base').Base } Base
  * @typedef { import('./types/Base').EventTypes } EventTypes
  * @typedef { import('./types/Base').HTTP_VERBS } HTTP_VERBS
- * @typedef { import('./types/Base').MediaType } MediaType
  * @typedef { import('./types/Base').NetworkState } NetworkState
  * @typedef { import('./types/Cache').CacheUS } CacheUS
  * @typedef { import('./types/Cache').DataTypesCache } DataTypesCache
@@ -36,6 +35,8 @@
  * @typedef { import('./types/Comments').CommentsBS } CommentsBS
  * @typedef { import('./types/Episode').Episode } Episode
  * @typedef { import('./types/Media').Media } Media
+ * @typedef { import('./types/Media').MediaBase } MediaBase
+ * @typedef { import('./types/Media').MediaType } MediaType
  * @typedef { import('./types/Show').Show } Show
  * @typedef { import('./types/Show').PlatformList } PlatformList
  * @typedef { import('./types/Movie').Movie } Movie
@@ -63,7 +64,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-TQ2kxkqGpz4b6DKVl7E7yB6ygNYUg0vxXwOhx5t8zl0eS65sI2fLClrAxF0+9wsu';
+const sriBundle = 'sha384-l4zh01ePWlau4IQFzFtCXbudLIWutTYSRuHPYJVMr9wyStWDdOyTSA1v0DKsiOF8';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -4377,25 +4378,34 @@ const launchScript = function($) {
     Base.gm_funcs.getValue = dbGetValue;
     Base.gm_funcs.setValue = dbSetValue;
     Base.timeoutRequests = 30;
+    Base.networkStateEventsFn.offline = () => {
+        UpdateAuto.getInstance().then(
+            /** @param {UpdateAuto} objUA */
+            (objUA) => {
+                if (objUA && objUA.status) objUA.stop();
+            }
+        );
+    };
+    Base.networkStateEventsFn.online = () => {
+        UpdateAuto.getInstance().then(
+            /** @param {UpdateAuto} objUA */
+            (objUA) => {
+                if (objUA && objUA.auto) objUA.launch();
+            }
+        );
+        for (const key of Object.keys(dbPendingRequests)) {
+            dbSetValue(key, dbPendingRequests[key]);
+            delete dbPendingRequests[key];
+        }
+    };
 
     unsafeWindow.addEventListener('offline', () => {
         console.log('userscript Event Network Offline');
         Base.changeNetworkState(NetworkState.offline);
-        UpdateAuto.getInstance().then(updateAuto => {
-            updateAuto.stop();
-        });
     });
     unsafeWindow.addEventListener('online', () => {
         console.log('userscript Event Network Online');
         Base.changeNetworkState(NetworkState.online);
-        UpdateAuto.getInstance().then(updateAuto => {
-            if (updateAuto.auto) updateAuto.launch();
-        });
-        if (dbPendingRequests.length > 0) {
-            for (const key of Object.keys(dbPendingRequests)) {
-                dbSetValue(key, dbPendingRequests[key]);
-            }
-        }
     });
 
     /**
