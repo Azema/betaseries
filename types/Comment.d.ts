@@ -152,6 +152,11 @@ export declare class CommentBS extends Base {
      */
     isLast(): boolean;
     /**
+     * Indique si le message est un spoiler
+     * @returns {boolean}
+     */
+    isSpoiler(): boolean;
+    /**
      * Renvoie la template HTML pour l'affichage d'un commentaire
      * @param   {CommentBS} comment Le commentaire à afficher
      * @returns {string}

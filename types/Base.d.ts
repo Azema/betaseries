@@ -5,6 +5,10 @@ export declare enum NetworkState {
     'offline' = 0,
     'online' = 1
 }
+export declare type NetworkStateEvents = {
+    offline: () => void;
+    online: () => void;
+};
 export declare enum EventTypes {
     UPDATE = "update",
     SAVE = "save",
@@ -291,13 +295,22 @@ export declare abstract class Base {
      * Etat du réseau
      * @type {NetworkState}
      */
-    static networkState: NetworkState;
+    static __networkState: NetworkState;
+    /**
+     * Contient l'identifiant du timer de vérification du réseau
+     * @type {NodeJS.Timer}
+     */
     static networkTimeout: NodeJS.Timer;
     /**
      * Stockage des appels à l'API lorsque le réseau est offline
      * @type {Record<string, FakePromise>}
      */
     static __networkQueue: Record<string, FakePromise>;
+    /**
+     * Objet contenant les fonctions à exécuter lors des changements de d'état du réseau
+     * @type {NetworkStateEvents}
+     */
+    static networkStateEventsFn: NetworkStateEvents;
     /**
      * Modifie la variable de l'état du réseau
      * Et gère les promesses d'appels à l'API lorsque le réseau est online
