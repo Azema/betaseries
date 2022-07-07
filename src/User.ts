@@ -1,4 +1,4 @@
-import { Obj } from "./Base";
+import { isNull, Obj } from "./Base";
 import { WatchedBy } from "./Episode";
 
 export class Next {
@@ -43,7 +43,7 @@ export class User {
         this.last = data.last || '';
         this.mail = (data.mail !== undefined) ? !!data.mail : false;
         this.next = null;
-        if (data.next !== undefined) {
+        if (!isNull(data.next)) {
             this.next = new Next(data.next);
         }
         this.profile = data.profile || '';
