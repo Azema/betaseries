@@ -1014,14 +1014,31 @@ export class CommentsBS extends Base implements implRepliesComment {
     public addToPage(cmtId: number) {
         const comment: CommentBS = this.getComment(cmtId);
         const headMsg = comment.text.substring(0, 210);
+        const isSpoiler = comment.isSpoiler();
         let hideMsg = '';
-        if (comment.text.length > 210)
+        if (comment.text.length > 210) {
             hideMsg = '<span class="u-colorWhiteOpacity05 u-show-fulltext positionRelative zIndex1"></span><span class="sr-only">' + comment.text.substring(210) + '</span>';
+        }
+        let message = `<p>${headMsg} ${hideMsg}</p>`;
+        if (isSpoiler) {
+            message = `<button class="btn-reset spoilerWrapper js-display-spoiler">
+                <span class="spoiler__inner">
+                    <span class="fake-p">
+                        Ce commentaire contient un spoiler.
+                    </span>
+                    <span class="btn-semiTransparent">
+                        ${Base.trans("show.comment.show_spoiler")}
+                    </span>
+                </span>
+            </button>
+            <p>${headMsg}</p>`;
+        }
+
         const avatar = comment.avatar || 'https://img.betaseries.com/NkUiybcFbxbsT_EnzkGza980XP0=/42x42/smart/https%3A%2F%2Fwww.betaseries.com%2Fimages%2Fsite%2Favatar-default.png';
         const template = `
             <div class="slide_flex">
                 <div class="slide__comment positionRelative u-insideBorderOpacity u-insideBorderOpacity--01" data-comment-id="${comment.id}">
-                    <p>${headMsg} ${hideMsg}</p>
+                    ${message}
                     <button type="button" class="btn-reset js-popup-comments zIndex10" data-comment-id="${comment.id}"></button>
                 </div>
                 <div class="slide__author">
