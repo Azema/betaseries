@@ -42,7 +42,6 @@ module.exports = function(grunt) {
         },
         src: {
             tsc: [
-                '<%= distdir %>/tsc/Decorators.js',
                 '<%= distdir %>/tsc/Cache.js',
                 '<%= distdir %>/tsc/Base.js',
                 '<%= distdir %>/tsc/RenderHtml.js',
@@ -62,10 +61,10 @@ module.exports = function(grunt) {
                 '<%= distdir %>/tsc/Member.js',
                 '<%= distdir %>/tsc/Notification.js',
                 '<%= distdir %>/tsc/Search.js',
+                '<%= distdir %>/tsc/Decorators.js',
                 '<%= distdir %>/tsc/index.js'
             ],
             js: [
-                '<%= distdir %>/js/Decorators.js',
                 '<%= distdir %>/js/Cache.js',
                 '<%= distdir %>/js/Base.js',
                 '<%= distdir %>/js/RenderHtml.js',
@@ -85,6 +84,7 @@ module.exports = function(grunt) {
                 '<%= distdir %>/js/Member.js',
                 '<%= distdir %>/js/Notification.js',
                 '<%= distdir %>/js/Search.js',
+                '<%= distdir %>/js/Decorators.js',
                 '<%= distdir %>/js/index.js'
             ]
         },
