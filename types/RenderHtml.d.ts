@@ -1,4 +1,5 @@
 import { Base, Obj } from "./Base";
+import { implFillDecorator } from "./Decorators";
 export declare type RelatedProp = {
     key: string;
     type: any;
@@ -10,11 +11,9 @@ export declare type Changes = {
     newValue: any;
 };
 export interface implRenderHtml {
-    fill(data: Obj): this;
     [Symbol.iterator](): object;
     toJSON(): object;
     _initRender(): this;
-    updatePropRender(propKey: string): void;
     isModified(): boolean;
     getChanges(): Record<string, Changes>;
     hasChange(propKey: string): boolean;
@@ -22,9 +21,14 @@ export interface implRenderHtml {
     get elt(): JQuery<HTMLElement>;
     set elt(jElt: JQuery<HTMLElement>);
 }
-export declare abstract class RenderHtml extends Base implements implRenderHtml {
+export declare abstract class RenderHtml extends Base implements implRenderHtml, implFillDecorator {
     static relatedProps: Record<string, RelatedProp>;
     static selectorsCSS: Record<string, string>;
+    /**
+     * Decorators de la classe
+     * @type {Record<string, AbstractDecorator>}
+     */
+    private __decorators;
     /**
      * @type {JQuery<HTMLElement>} Element HTML de référence du média
      */
@@ -32,15 +36,15 @@ export declare abstract class RenderHtml extends Base implements implRenderHtml 
     /**
      * @type {boolean} Flag d'initialisation de l'objet, nécessaire pour les methodes fill and compare
      */
-    protected __initial: boolean;
+    __initial: boolean;
     /**
      * @type {Record<string, Changes} Stocke les changements des propriétés de l'objet
      */
-    protected __changes: Record<string, Changes>;
+    __changes: Record<string, Changes>;
     /**
      * @type {Array<string>} Tableau des propriétés énumerables de l'objet
      */
-    protected __props: Array<string>;
+    __props: Array<string>;
     constructor(data: Obj, elt?: JQuery<HTMLElement>);
     /**
      * Symbol.Iterator - Methode Iterator pour les boucles for..of
@@ -48,23 +52,12 @@ export declare abstract class RenderHtml extends Base implements implRenderHtml 
      */
     [Symbol.iterator](): object;
     /**
-     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
-     * pour la méthode JSON.stringify
-     * @returns {object}
-     */
-    toJSON(): object;
-    /**
      * Remplit l'objet avec les données fournit en paramètre
      * @param  {Obj} data - Les données provenant de l'API
-     * @returns {Base}
+     * @returns {RenderHtml}
      * @virtual
      */
     fill(data: Obj): this;
-    /**
-     * Initialise le rendu HTML de la saison
-     * @returns {RenderHtml}
-     */
-    abstract _initRender(): this;
     /**
      * Met à jour le rendu HTML des propriétés de l'objet,
      * si un sélecteur CSS exite pour la propriété fournit en paramètre\
@@ -74,6 +67,17 @@ export declare abstract class RenderHtml extends Base implements implRenderHtml 
      * @returns {void}
      */
     updatePropRender(propKey: string): void;
+    /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object;
+    /**
+     * Initialise le rendu HTML de la saison
+     * @returns {RenderHtml}
+     */
+    abstract _initRender(): this;
     /**
      * Indique si cet objet a été modifié
      * @returns {boolean}

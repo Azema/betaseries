@@ -49,7 +49,7 @@ export declare function isNull(val: any): boolean;
  * de réaliser le souhait lorsque le réseau est online
  * @class
  */
-export declare class FakePromise {
+declare class FakePromise {
     /**
      * Permet de vérifier si la fonction se trouve déjà dans le
      * tableau des fonctions callback
@@ -372,3 +372,4 @@ declare global {
         camelCase: () => string;
     }
 }
+export {};

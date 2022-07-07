@@ -39,8 +39,13 @@ export declare type WatchedBy = {
      * @type {number} La note du membre
      */
     note: number;
+    /**
+     * @type {string} L'URL de l'avatar du membre
+     */
+    avatar?: string;
 };
 export declare class Episode extends MediaBase implements implAddNote {
+    [x: string]: any;
     static selectorsCSS: Record<string, string>;
     static relatedProps: Record<string, RelatedProp>;
     static fetch(epId: number): Promise<Episode>;

@@ -1,5 +1,6 @@
 import { Obj } from "./Base";
 import { WatchedBy } from "./Episode";
+import { RelatedProp, RenderHtml } from "./RenderHtml";
 export declare class Next {
     id: number;
     code: string;
@@ -8,7 +9,9 @@ export declare class Next {
     image: string;
     constructor(data: Obj);
 }
-export declare class User {
+export declare class User extends RenderHtml {
+    static relatedProps: Record<string, RelatedProp>;
+    static selectorsCSS: Record<string, string>;
     archived: boolean;
     downloaded: boolean;
     favorited: boolean;
@@ -24,6 +27,15 @@ export declare class User {
     status: number;
     tags: string;
     twitter: boolean;
+    /**
+     * Constructeur de la classe User
+     * @param   {Obj} data - Les données de l'objet
+     * @returns {User}
+     */
     constructor(data: Obj);
-    compare(data: Obj): boolean;
+    /**
+     * Initialise le rendu HTML de la saison
+     * @returns {RenderHtml}
+     */
+    _initRender(): this;
 }

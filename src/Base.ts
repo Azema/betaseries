@@ -138,7 +138,7 @@ function checkNetwork(milliseconds = 0) {
  * de réaliser le souhait lorsque le réseau est online
  * @class
  */
-export class FakePromise {
+class FakePromise {
     /**
      * Permet de vérifier si la fonction se trouve déjà dans le
      * tableau des fonctions callback
@@ -919,8 +919,8 @@ export abstract class Base {
      */
     static changeNetworkState(state: NetworkState, testNetwork = false) {
         this.__networkState = state;
-        if (typeof Base.networkStateEventsFn[state] === 'function') {
-            Base.networkStateEventsFn[state]();
+        if (typeof Base.networkStateEventsFn[NetworkState[state]] === 'function') {
+            Base.networkStateEventsFn[NetworkState[state]]();
         }
         if (state === NetworkState.online && Object.keys(this.__networkQueue).length > 0) {
             const keys = Reflect.ownKeys(this.__networkQueue);

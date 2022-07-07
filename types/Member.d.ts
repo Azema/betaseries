@@ -9,7 +9,7 @@ declare enum DaysOfWeek {
     saturday = "samedi",
     sunday = "dimanche"
 }
-declare class Stats {
+export declare class Stats {
     friends: number;
     shows: number;
     seasons: number;
@@ -40,7 +40,7 @@ declare class Stats {
     time_to_spend_movies: number;
     constructor(data: Obj);
 }
-declare class Options {
+export declare class Options {
     downloaded: boolean;
     notation: boolean;
     timelag: boolean;
