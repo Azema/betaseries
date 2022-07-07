@@ -165,7 +165,7 @@ export abstract class RenderHtml extends Base implements implRenderHtml {
                     if (typeNV === 'object' && type === 'object') {
                         value = (! isNull(value)) ? Object.assign({}, value) : hasDefault ? relatedProp.default : null;
                     }
-                    else if (typeof type === 'function' && !isNull(value)) {
+                    else if (typeof type === 'function' && !isNull(value) && !(value instanceof type)) {
                         // if (Base.debug) console.log('fill type function', {type: relatedProp.type, dataProp});
                         value = Reflect.construct(type, [value]);
                         if (typeof value === 'object' && Reflect.has(value, 'parent')) {
@@ -175,6 +175,7 @@ export abstract class RenderHtml extends Base implements implRenderHtml {
                     if (this.__initial || isNull(oldValue)) return value;
                     let changed = false;
                     try {
+                        // if (Base.debug) console.log('comparaison d\'objets', {typeOld: typeof oldValue, oldValue, typeNew: typeof value, value});
                         if (
                             (isNull(oldValue) && !isNull(value)) ||
                             (!isNull(oldValue) && isNull(value))
@@ -284,9 +285,9 @@ export abstract class RenderHtml extends Base implements implRenderHtml {
     updatePropRender(propKey: string): void {
         if (! this.elt || ! this.__props.includes(propKey)) return;
         const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
-        // if (Base.debug) console.log('updatePropRender', propKey, fnPropKey);
+        // if (Base.debug) console.log('%s.updatePropRender', this.constructor.name, propKey, fnPropKey);
         if (Reflect.has(this, fnPropKey)) {
-            // if (Base.debug) console.log('updatePropRender Reflect has method');
+            // if (Base.debug) console.log('%s.updatePropRender Reflect has method: %s', this.constructor.name, fnPropKey);
             this[fnPropKey]();
         } else if ((this.constructor as typeof RenderHtml).selectorsCSS &&
             (this.constructor as typeof RenderHtml).selectorsCSS[propKey])
