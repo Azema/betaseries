@@ -1,5 +1,6 @@
-import { isNull, Obj } from "./Base";
+import { Obj } from "./Base";
 import { WatchedBy } from "./Episode";
+import { RelatedProp, RenderHtml } from "./RenderHtml";
 
 export class Next {
     id: number;
@@ -16,7 +17,26 @@ export class Next {
         this.image = data.image;
     }
 }
-export class User {
+export class User extends RenderHtml {
+    static relatedProps: Record<string, RelatedProp> = {
+        archived: {key: "archived", type: 'boolean', default: false},
+        downloaded: {key: "downloaded", type: 'boolean', default: false},
+        favorited: {key: "favorited", type: 'boolean', default: false},
+        friends_want_to_watch: {key: "friends_want_to_watch", type: 'array', default: []},
+        friends_watching: {key: "friends_watched", type: 'array', default: []},
+        hidden: {key: "hidden", type: 'boolean', default: false},
+        last: {key: 'last', type: 'string', default: ''},
+        mail: {key: "mail", type: 'boolean', default: false},
+        next: {key: "next", type: Next},
+        profile: {key: 'profile', type: 'string', default: ''},
+        remaining: {key: "remaining", type: 'number', default: 0},
+        seen: {key: "seen", type: 'boolean', default: false},
+        status: {key: "status", type: 'number', default: 0},
+        tags: {key: 'tags', type: 'string', default: ''},
+        twitter: {key: "twitter", type: 'boolean', default: false}
+    };
+    static selectorsCSS: Record<string, string> = {};
+
     archived: boolean;
     downloaded: boolean;
     favorited: boolean;
@@ -33,33 +53,21 @@ export class User {
     tags: string;
     twitter: boolean;
 
+    /**
+     * Constructeur de la classe User
+     * @param   {Obj} data - Les données de l'objet
+     * @returns {User}
+     */
     constructor(data: Obj) {
-        this.archived = (data.archived !== undefined) ? !!data.archived : false;
-        this.downloaded = (data.downloaded !== undefined) ? !!data.downloaded : false;
-        this.favorited = (data.favorited !== undefined) ? !!data.favorited : false;
-        this.friends_want_to_watch = data.friends_want_to_watch || [];
-        this.friends_watched = data.friends_watched || [];
-        this.hidden = (data.hidden !== undefined) ? !!data.hidden : false;
-        this.last = data.last || '';
-        this.mail = (data.mail !== undefined) ? !!data.mail : false;
-        this.next = null;
-        if (!isNull(data.next)) {
-            this.next = new Next(data.next);
-        }
-        this.profile = data.profile || '';
-        this.remaining = data.remaining || 0;
-        this.seen = !!data.seen || false;
-        this.status = (data.status !== undefined) ? parseInt(data.status, 10) : 0;
-        this.tags = data.tags || '';
-        this.twitter = !!data.twitter || false;
+        super(data, null);
+        return this.fill(data)._initRender();
     }
-    compare(data: Obj): boolean {
-        const props = Object.getOwnPropertyNames(this);
-        for (const prop of props) {
-            if (typeof this[prop] !== 'object' && Object.hasOwn(data, prop) && this[prop] != data[prop]) {
-                return true;
-            }
-        }
-        return false;
+
+    /**
+     * Initialise le rendu HTML de la saison
+     * @returns {RenderHtml}
+     */
+    _initRender(): this {
+        return this;
     }
 }
