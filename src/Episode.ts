@@ -45,6 +45,10 @@ export type WatchedBy = {
      * @type {number} La note du membre
      */
     note: number;
+    /**
+     * @type {string} L'URL de l'avatar du membre
+     */
+    avatar?: string;
 };
 
 export class Episode extends MediaBase implements implAddNote {

@@ -630,7 +630,7 @@ export class Show extends Media implements implShow, implAddNote {
      * Constructeur de la classe Show
      * @param   {Obj} data - Les données du média
      * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
-     * @returns {Media}
+     * @returns {Show}
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
         super(data, element);

@@ -10,7 +10,7 @@ enum DaysOfWeek {
     saturday = 'samedi',
     sunday = 'dimanche'
 }
-class Stats {
+export class Stats {
     friends: number
     shows: number
     seasons: number
@@ -46,7 +46,7 @@ class Stats {
         }
     }
 }
-class Options {
+export class Options {
     downloaded: boolean
     notation: boolean
     timelag: boolean
