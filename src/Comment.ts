@@ -257,6 +257,13 @@ export class CommentBS extends Base {
         return this._parent.isLast(this.id);
     }
     /**
+     * Indique si le message est un spoiler
+     * @returns {boolean}
+     */
+    public isSpoiler(): boolean {
+        return /\[spoiler\]/.test(this.text);
+    }
+    /**
      * Renvoie la template HTML pour l'affichage d'un commentaire
      * @param   {CommentBS} comment Le commentaire à afficher
      * @returns {string}
@@ -266,8 +273,7 @@ export class CommentBS extends Base {
         if (/@\w+/.test(text)) {
             text = text.replace(/@(\w+)/g, '<a href="/membre/$1" class="mainLink mainLink--regular">@$1</a>');
         }
-        const spoiler = /\[spoiler\]/.test(text);
-        const btnSpoiler = spoiler ? `<button type="button" class="btn-reset mainLink view-spoiler">${Base.trans("comment.button.display_spoiler")}</button>` : '';
+        const btnSpoiler = comment.isSpoiler() ? `<button type="button" class="btn-reset mainLink view-spoiler">${Base.trans("comment.button.display_spoiler")}</button>` : '';
         text = text.replace(/\[spoiler\](.*)\[\/spoiler\]/g, '<span class="spoiler" style="display:none">$1</span>');
         // let classNames = {reply: 'iv_i5', actions: 'iv_i3', comment: 'iv_iz'};
         // const classNames = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
