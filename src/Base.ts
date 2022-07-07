@@ -9,6 +9,10 @@ export enum NetworkState {
     'offline',
     'online'
 }
+export type NetworkStateEvents = {
+    offline: () => void;
+    online: () => void;
+};
 export enum EventTypes {
     UPDATE = 'update',
     SAVE = 'save',
@@ -631,7 +635,7 @@ export abstract class Base {
             });
         }
         // Vérification de l'état du réseau, doit être placé après la gestion du cache
-        if (Base.networkState === NetworkState.offline) {
+        if (Base.__networkState === NetworkState.offline) {
             const key = type + resource + action;
             if (!isNull(Base.__networkQueue[key])) {
                 Base.__networkQueue[key].reject('another request called');
@@ -660,12 +664,12 @@ export abstract class Base {
                     let loop = 0;
                     const checkAuthenticate = function checkAuthenticate(): void {
                         if (Base.debug) console.log('checkAuthenticate(%d) for %s %s/%s', ++loop, type, resource, action);
-                        if (Base.__checkAuthenticate && Base.networkState === NetworkState.online) {
+                        if (Base.__checkAuthenticate && Base.__networkState === NetworkState.online) {
                             setTimeout(checkAuthenticate, 1000);
-                        } else if (Base.networkState === NetworkState.offline) {
+                        } else if (Base.__networkState === NetworkState.offline) {
                             Base.__checkAuthenticate = false;
                             rej('network offline');
-                        } else if (Base.networkState === NetworkState.online) {
+                        } else if (Base.__networkState === NetworkState.online) {
                             Base.callApi(type, resource, action, args, force)
                             .then(data => res(data))
                             .catch(err => rej(err));
@@ -888,7 +892,11 @@ export abstract class Base {
      * Etat du réseau
      * @type {NetworkState}
      */
-    static networkState: NetworkState = NetworkState.online;
+    static __networkState: NetworkState = NetworkState.online;
+    /**
+     * Contient l'identifiant du timer de vérification du réseau
+     * @type {NodeJS.Timer}
+     */
     static networkTimeout: NodeJS.Timer;
     /**
      * Stockage des appels à l'API lorsque le réseau est offline
@@ -896,13 +904,24 @@ export abstract class Base {
      */
     static __networkQueue: Record<string, FakePromise> = {};
     /**
+     * Objet contenant les fonctions à exécuter lors des changements de d'état du réseau
+     * @type {NetworkStateEvents}
+     */
+    static networkStateEventsFn: NetworkStateEvents = {
+        offline: () => {},
+        online: () => {}
+    };
+    /**
      * Modifie la variable de l'état du réseau
      * Et gère les promesses d'appels à l'API lorsque le réseau est online
      * @param {NetworkState} state - Etat du réseau
      * @param {boolean} testNetwork - Flag demandant de vérifier l'état du réseau régulièrement
      */
     static changeNetworkState(state: NetworkState, testNetwork = false) {
-        this.networkState = state;
+        this.__networkState = state;
+        if (typeof Base.networkStateEventsFn[state] === 'function') {
+            Base.networkStateEventsFn[state]();
+        }
         if (state === NetworkState.online && Object.keys(this.__networkQueue).length > 0) {
             const keys = Reflect.ownKeys(this.__networkQueue);
             for (const key of keys) {
