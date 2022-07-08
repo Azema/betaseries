@@ -1,6 +1,6 @@
 import { Base, UsBetaSeries } from "./Base";
 import { CacheUS } from "./Cache";
-import { Character, Person, personMedia } from "./Character";
+import { Character, Person, PersonMedias, PersonMedia } from "./Character";
 import { CommentBS } from "./Comment";
 import { CommentsBS } from "./Comments";
 import { Episode } from "./Episode";
@@ -71,7 +71,8 @@ UsBetaSeries.bsModule = {
     "NotifPayload": NotifPayload,
     "Options": OptionsMember,
     "Person": Person,
-    "PersonMedia": personMedia,
+    "PersonMedia": PersonMedia,
+    "PersonMedias": PersonMedias,
     "Picture": Picture,
     "Platform": Platform,
     "PlatformList": PlatformList,
