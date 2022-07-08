@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.4.4
+// @version      1.5.0
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -24,15 +24,29 @@
 
 'use strict';
 
+/* eslint-disable */
+if (!window) {
+    const { UsBetaSeries, EventTypes, HTTP_VERBS, NetworkState, isNull } = require('./types/Base');
+    const { CacheUS, DataTypesCache } = require('./types/Cache');
+    const { CommentBS } = require('./types/Comment');
+    const { CommentsBS } = require('./types/Comments');
+    const { Episode } = require('./types/Episode');
+    const { Media, MediaBase, MediaType } = require('./types/Media');
+    const { Show, PlatformList } = require('./types/Show');
+    const { Movie, MovieStatus } = require('./types/Movie');
+    const { Member } = require('./types/Member');
+    const { UpdateAuto } = require('./types/UpdateAuto');
+}
+/* eslint-enable */
 /**
- * @typedef { import('./types/Base').Base } Base
+ * @typedef { import('./types/Base').UsBetaSeries } UsBetaSeries
  * @typedef { import('./types/Base').EventTypes } EventTypes
  * @typedef { import('./types/Base').HTTP_VERBS } HTTP_VERBS
  * @typedef { import('./types/Base').NetworkState } NetworkState
  * @typedef { import('./types/Cache').CacheUS } CacheUS
  * @typedef { import('./types/Cache').DataTypesCache } DataTypesCache
  * @typedef { import('./types/Comment').CommentBS } CommentBS
- * @typedef { import('./types/Comments').CommentsBS } CommentsBS
+ * @typedef { import('./types/Comments').Episode } CommentsBS
  * @typedef { import('./types/Episode').Episode } Episode
  * @typedef { import('./types/Media').Media } Media
  * @typedef { import('./types/Media').MediaBase } MediaBase
@@ -44,7 +58,6 @@
  * @typedef { import('./types/Member').Member } Member
  * @typedef { import('./types/UpdateAuto').UpdateAuto } UpdateAuto
  */
-
 /* eslint-disable no-undef */
 /* globals
 
@@ -52,7 +65,7 @@
    deleteFilterOthersCountries: false, generate_route: false,
    CONSTANTE_SORT: false, CONSTANTE_FILTER: false, hideButtonReset: false, newApiParameter: false, renderjson: false, humanizeDuration: false, A11yDialog: false, markAllNotificationsAsSeen: false,
    viewMoreFriends: false, PopupAlert: false, faceboxDisplay: false
- */
+*/
 /************************************************************************************************/
 /*                               PARAMETRES A MODIFIER                                          */
 /************************************************************************************************/
@@ -64,7 +77,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-l4zh01ePWlau4IQFzFtCXbudLIWutTYSRuHPYJVMr9wyStWDdOyTSA1v0DKsiOF8';
+const sriBundle = 'sha384-1qquinERO/ef36TmH3LWpmGGh1MrYCkrRPbBiF99PqqGlFvxzOjwqRWQoMvw548n';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -411,11 +424,11 @@ const launchScript = function($) {
     };
     // let indexCallLoad = 0;
     let timer,
-    /** @type {Member} */ 
-        currentUser, 
+        /** @type {Member} */
+        currentUser,
         /**@type {Member} */
         user,
-        fnLazy, 
+        fnLazy,
         state = {};
 
     const system = {
@@ -427,8 +440,8 @@ const launchScript = function($) {
             $head.append(`<link rel="dns-prefetch" href="${new URL(serverOauthUrl).origin}">`);
             $head.append(`<link rel="dns-prefetch" href="${new URL(serverBaseUrl).origin}">`);
             $head.append(`<link rel="preconnect" href="${new URL(serverBaseUrl).origin}" crossorigin>`);
-            $head.append(`<link rel="dns-prefetch" href="${new URL(Base.api.url).origin}">`);
-            $head.append(`<link rel="preconnect" href="${new URL(Base.api.url).origin}" crossorigin>`);
+            $head.append(`<link rel="dns-prefetch" href="${new URL(UsBetaSeries.api.url).origin}">`);
+            $head.append(`<link rel="preconnect" href="${new URL(UsBetaSeries.api.url).origin}" crossorigin>`);
             system.updateResources();
             /*
                     CHARGEMENT LIBRARY SearchFriend pour la recommandation à un ami
@@ -442,15 +455,16 @@ const launchScript = function($) {
             $('#popup-bg').after('<div id="loader-bg"><i class="fa fa-spinner fa-pulse fa-4x fa-fw"></i><span class="sr-only">Loading...</span></div>');
             // Ajout des feuilles de styles pour le userscript
             system.addScriptAndLink(['awesome', 'stylehome']);
-            if (system.userIdentified()) {
+            if (UsBetaSeries.userIdentified()) {
                 Member.fetch().then(member => {
                     /** @type {Member} */
                     user = unsafeWindow.user = member;
+                    UsBetaSeries.member = member;
                     // On affiche la version du script
                     if (typeof GM_info !== 'undefined') {
-                    if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: %c%s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', user.login);
+                        if (UsBetaSeries.debug) console.log('%cUserScript BetaSeries%c: v%s - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit', user.login);
                     } else {
-                        if (Base.debug) console.log('%cUserScript BetaSeries%c - Membre: %c%s', 'color:#e7711b', 'color:inherit', 'color:#00979c', user.login);
+                        if (UsBetaSeries.debug) console.log('%cUserScript BetaSeries%c - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', 'color:#00979c', 'color:inherit', user.login);
                     }
                     // On désactive les fonctions de notifications originales
                     unsafeWindow.notificationChecker = () => {};
@@ -470,7 +484,7 @@ const launchScript = function($) {
                             member.renderNotifications();
                         }
                         $(".notification--standalone").remove();
-                });
+                    });
                     $(".js-close-elements").off('click').on("click", () => {
                         // close notifications
                         $('#growl').removeClass('visible');
@@ -482,8 +496,11 @@ const launchScript = function($) {
                     });
                 });
             } else {
-                // On affiche la version du script
-                if (Base.debug) console.log('%cUserScript BetaSeries %cv%s - Membre: Guest', 'color:#e7711b',   'color:inherit', GM_info.script.version);
+                if (typeof GM_info !== 'undefined') {
+                    // console.log('GM_info', GM_info);
+                    // On affiche la version du script
+                    if (UsBetaSeries.debug) console.log('%cUserScript BetaSeries%c: v%s - %cMembre%c: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit');
+                }
             }
             system.checkApiVersion();
             /*
@@ -519,7 +536,7 @@ const launchScript = function($) {
                 });
             })();
             /*
-                            LAZYLOAD
+                                LAZYLOAD
              */
             system.addScriptAndLink('lazyload', () => {
                 fnLazy = function() {
@@ -836,12 +853,15 @@ const launchScript = function($) {
             }).then(html => {
                 if (html && html.length > 0) {
                     // Convert the HTML string into a document object
-                    let parser = new DOMParser(), doc = parser.parseFromString(html, 'text/html');
+                    const parser = new DOMParser(),
+                          doc = parser.parseFromString(html, 'text/html');
                     // $('.maincontent > ul > li > strong').last().text().trim().split(' ')[1]
-                    const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(), lastF = parseFloat(latest);
-                    if (!Number.isNaN(lastF) && lastF > parseFloat(Media.api.versions.last)) {
+                    const latest = doc.querySelector('.maincontent > ul > li:last-child > strong').textContent.split(' ')[1].trim(),
+                          lastF = parseFloat(latest);
+                    if (!Number.isNaN(lastF) && lastF > parseFloat(UsBetaSeries.api.versions.last)) {
                         window.alert("L'API possède une nouvelle version: " + latest);
                     }
+                    console.log("%cAPI BetaSeries%c: v%s", 'color:#e7711b', 'color:inherit', latest);
                 }
             });
         },
@@ -879,7 +899,7 @@ const launchScript = function($) {
          */
         addScriptAndLink: function(name, onloadFn = noop) {
             if (name instanceof Array) {
-                // if (Base.debug) console.log('addScriptAndLink array.length = %d', name.length);
+                // if (UsBetaSeries.debug) console.log('addScriptAndLink array.length = %d', name.length);
                 if (name.length > 1) {
                     const elt = name.shift();
                     system.addScriptAndLink(elt, () => system.addScriptAndLink(name, onloadFn) );
@@ -891,7 +911,7 @@ const launchScript = function($) {
                 }
             }
             // index = index || ++indexCallLoad;
-            // if (Base.debug) console.log('[%d] addScriptAndLink: %s', index, name);
+            // if (UsBetaSeries.debug) console.log('[%d] addScriptAndLink: %s', index, name);
             // On vérifie que le nom est connu
             if (!scriptsAndStyles || !(name in scriptsAndStyles)) {
                 throw new Error(`${name} ne fait pas partit des données de scripts ou de styles`);
@@ -899,7 +919,7 @@ const launchScript = function($) {
             const data = scriptsAndStyles[name];
             // On vérifie si il est déjà chargé
             if (data.called && data.loaded) {
-                // if (Base.debug) console.log('[%d] %s(%s) déjà appelé et chargé, on renvoie direct', index, data.type, name);
+                // if (UsBetaSeries.debug) console.log('[%d] %s(%s) déjà appelé et chargé, on renvoie direct', index, data.type, name);
                 return onloadFn();
             } else if (data.called && !data.loaded) {
                 system.waitPresent(() => { return scriptsAndStyles[name].loaded; }, onloadFn, 10, 10);
@@ -908,12 +928,12 @@ const launchScript = function($) {
             scriptsAndStyles[name].called = true;
             if (data.type === 'script') {
                 const loadErrorScript = function(oError) {
-                    if (Base.debug) console.log('loadErrorScript error', oError);
+                    if (UsBetaSeries.debug) console.log('loadErrorScript error', oError);
                     console.error("The script " + oError.target.src + " didn't load correctly.");
                 }
                 let origOnLoadFunction = onloadFn;
                 onloadFn = function() {
-                    // if (Base.debug) console.log('[%d] script(%s) chargé, on renvoie le callback', index, name);
+                    // if (UsBetaSeries.debug) console.log('[%d] script(%s) chargé, on renvoie le callback', index, name);
                     scriptsAndStyles[name].loaded = true;
                     origOnLoadFunction();
                 };
@@ -926,12 +946,12 @@ const launchScript = function($) {
             }
             else if (data.type === 'style') {
                 const loadErrorStyle = function(oError) {
-                    if (Base.debug) console.log('loadErrorStyle error', oError);
+                    if (UsBetaSeries.debug) console.log('loadErrorStyle error', oError);
                     console.error("The style " + oError.target.href + " didn't load correctly.");
                 }
                 let origOnLoadFunction = onloadFn;
                 onloadFn = function() {
-                    // if (Base.debug) console.log('[%d] style(%s) chargé, on renvoie le callback', index, name);
+                    // if (UsBetaSeries.debug) console.log('[%d] style(%s) chargé, on renvoie le callback', index, name);
                     scriptsAndStyles[name].loaded = true;
                     origOnLoadFunction();
                 };
@@ -973,7 +993,7 @@ const launchScript = function($) {
          */
         getDialog: function() {
             const options = {
-                counter: Base.counter.toString.bind(Base.counter)
+                counter: UsBetaSeries.counter.toString.bind(UsBetaSeries.counter)
             };
             const dialog = new Dialog(options);
             return dialog._init();
@@ -1005,10 +1025,10 @@ const launchScript = function($) {
                                     if ($title.length > 0) {
                                         $title.get(0).scrollIntoView();
                                     }
-                if (isShows) {
-                    series.displayNotes();
+                                    if (isShows) {
+                                        series.displayNotes();
                                         series.addBtnToSee();
-                }
+                                    }
                                 }
                             }
                         }
@@ -1052,7 +1072,7 @@ const launchScript = function($) {
                                 const result = /"typesense":\{[^}]*\}/.exec(content);
                                 if (result && result.length > 0) {
                                     return res(JSON.parse(`{${result[0]}}`));
-    }
+                                }
                                 return rej('typesense not found');
                             }
                             return rej('reactjs/header-search.js content not found');
@@ -1064,14 +1084,14 @@ const launchScript = function($) {
         },
         toggleToSeeShow: async function(showId) {
             /** @type {Array<number>} */
-            const storeToSee = await Base.gm_funcs.getValue('toSee', []);
+            const storeToSee = await UsBetaSeries.gm_funcs.getValue('toSee', []);
             const toSee = storeToSee.includes(showId);
             if (!toSee) {
                 storeToSee.push(showId);
             } else {
                 storeToSee.splice(storeToSee.indexOf(showId), 1);
             }
-            Base.gm_funcs.setValue('toSee', storeToSee);
+            UsBetaSeries.gm_funcs.setValue('toSee', storeToSee);
             return toSee;
         }
     }
@@ -1086,8 +1106,9 @@ const launchScript = function($) {
             // Indique de quel type de ressource il s'agit
             const type = medias.getApiResource(location.pathname.split('/')[1]);
             id = id || medias.getResourceId();
-            if (Base.debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
+            if (UsBetaSeries.debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
             return type.class.fetch(id).then(resource => {
+                // console.log('getResource', resource);
                 return resource.init();
             }).catch(err => {
                 system.notification('fetch Resource', 'Erreur de récupération de la resource de type ' + type.singular + ', Erreur: ' + err);
@@ -1105,8 +1126,8 @@ const launchScript = function($) {
                   // Indique la fonction à appeler en fonction de la ressource
                   fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie';
             id = (id === null) ? medias.getResourceId() : id;
-            if (Base.debug) console.log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
-            return Base.callApi('GET', type.plural, fonction, { 'id': id }, nocache);
+            if (UsBetaSeries.debug) console.log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
+            return UsBetaSeries.callApi('GET', type.plural, fonction, { 'id': id }, nocache);
         },
         /**
          * Retourne la ressource associée au type de page
@@ -1177,7 +1198,7 @@ const launchScript = function($) {
                 .css('cursor', 'pointer');
         },
         choiceImage: function(res, cb) {
-            Base.showLoader();
+            UsBetaSeries.showLoader();
             const dialog = system.getDialog();
             // Créer une popup affichant les différents posters
             res.getAllPosters().then(posters => {
@@ -1244,7 +1265,7 @@ const launchScript = function($) {
                     `)
 
                     .show(() => {
-                        Base.hideLoader();
+                        UsBetaSeries.hideLoader();
                         $('.posters img').on('click', (e) => {
                             e.stopPropagation();
                             cb(e.target.src);
@@ -1300,7 +1321,7 @@ const launchScript = function($) {
          * @param  {function} [onrejected] - Fonction appelée en cas d'échec
          * @return {void}
          */
-        waitSeasonsAndEpisodesLoaded: function(onfulfilled, onrejected = Base.noop) {
+        waitSeasonsAndEpisodesLoaded: function(onfulfilled, onrejected = UsBetaSeries.noop) {
             let waitEpisodes = 0;
             // On ajoute un timer interval en attendant que les saisons et les épisodes soient chargés
             timer = setInterval(function () {
@@ -1316,10 +1337,10 @@ const launchScript = function($) {
                     $seasons = $('#seasons .slide_flex');
                 // On vérifie que les saisons et les episodes soient chargés sur la page
                 if ($episodes.length <= 0 || $seasons.length <= 0 || $episodes.length < len) {
-                    if (Base.debug) console.log('%cwaitSeasonsAndEpisodesLoaded%c: En attente du chargement des vignettes', 'color:#ffc107', 'color:inherit');
+                    if (UsBetaSeries.debug) console.log('%cwaitSeasonsAndEpisodesLoaded%c: En attente du chargement des vignettes', 'color:#ffc107', 'color:inherit');
                     return;
                 }
-                if (Base.debug) console.log('%cwaitSeasonsAndEpisodesLoaded%c: seasons and episodes are loaded', 'color: #28a745', 'color:inherit');
+                if (UsBetaSeries.debug) console.log('%cwaitSeasonsAndEpisodesLoaded%c: seasons and episodes are loaded', 'color: #28a745', 'color:inherit');
                 clearInterval(timer);
                 console.groupCollapsed('upgradeEpisodes');
                 if (typeof onfulfilled === 'function') onfulfilled();
@@ -1427,7 +1448,7 @@ const launchScript = function($) {
                     objUpAuto.stop();
                 }
                 system.addScriptAndLink(['popover', 'bootstrap'], function() {
-                    // if (Base.debug) console.log('updateAutoEpisodeList: Loading popover');
+                    // if (UsBetaSeries.debug) console.log('updateAutoEpisodeList: Loading popover');
                     $('#updateEpisodeList .updateElement').popover({
                         container: $('#updateEpisodeList'),
                         // delay: { "show": 500, "hide": 100 },
@@ -1488,10 +1509,10 @@ const launchScript = function($) {
                                     .attr('title', 'Activer la tâche de mise à jour auto');
                             } else {
                                 if (!objUpAuto.show.in_account) {
-                                    if (Base.debug) console.log('La série n\'est pas sur le compte du membre');
+                                    if (UsBetaSeries.debug) console.log('La série n\'est pas sur le compte du membre');
                                     return;
                                 } else if (objUpAuto.interval <= 0) {
-                                    if (Base.debug) console.log('Le paramètre interval est <= 0');
+                                    if (UsBetaSeries.debug) console.log('Le paramètre interval est <= 0');
                                     $('.popover button[type="submit"]').before('<div class="form-group"><p class="alert alert-warning">Veuillez renseigner les paramètres de mise à jour.</p></div>');
                                     return;
                                 } else if (objUpAuto.interval > 0) {
@@ -1529,7 +1550,7 @@ const launchScript = function($) {
                             if (objUpAuto.auto !== checkAuto) { objUpAuto._auto = checkAuto; changed = true; }
                             if (objUpAuto.interval != intervalAuto) { objUpAuto._interval = intervalAuto; changed = true; }
                             if (changed) objUpAuto._save();
-                            if (Base.debug) console.log('optionsUpdateEpisodeList submit', objUpAuto);
+                            if (UsBetaSeries.debug) console.log('optionsUpdateEpisodeList submit', objUpAuto);
                             objUpAuto.launch();
                             $('#updateEpisodeList .updateElement').popover('hide');
                         });
@@ -1557,24 +1578,24 @@ const launchScript = function($) {
          */
         upgradeEpisodes: function(res) {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-            if (!system.userIdentified() || betaseries_api_user_key === '') return;
+            if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '') return;
             if (!(res instanceof Show)) {
                 console.error("Le paramètre res n'est pas du type Show", res);
                 return;
             }
             const seasons = $('#seasons .slide_flex .slide__image');
             let vignettes = getVignettes();
-            if (Base.debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
+            if (UsBetaSeries.debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
             /**
-            * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE, ARCHIVE et UNARCHIVE
-            * pour mettre à jour l'update auto des épisodes
+             * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE, ARCHIVE et UNARCHIVE
+             * pour mettre à jour l'update auto des épisodes
              * @param {CustomEvent} event -  L'évènement déclencheur
              * @param {Show} show -          La série associée à l'évènement
              * @this Show
-            */
+             */
             function updateAuto(event) {
                 const show = this;
-                if (Base.debug) console.log('upgradeEpisodes > updateAuto: Listener called by ', event.detail?.name, {"this": this});
+                if (UsBetaSeries.debug) console.log('upgradeEpisodes > updateAuto: Listener called by ', event.detail?.name, {"this": this});
                 UpdateAuto.getInstance(show).then(objUpAuto => {
                     // Si il n'y a plus d'épisodes à regarder sur la série
                     if (event.detail.name === EventTypes.UPDATE && show.user.remaining <= 0) {
@@ -1611,11 +1632,11 @@ const launchScript = function($) {
             function addCheckSeen() {
                 vignettes = getVignettes();
                 const seasonNum = parseInt($('#seasons .slide--current').attr('href').split('/').pop(), 10);
-                if (Base.debug) console.log('season number: ', seasonNum);
+                if (UsBetaSeries.debug) console.log('season number: ', seasonNum);
                 if (res.currentSeason === undefined || res.currentSeason.number !== seasonNum) {
                     res.setCurrentSeason(seasonNum);
                 }
-                if (Base.debug) console.log('currentSeason: ', res.currentSeason);
+                if (UsBetaSeries.debug) console.log('currentSeason: ', res.currentSeason);
                 // Contient la promesse de récupérer les épisodes de la saison courante
                 res.currentSeason.fetchEpisodes()
                 // On ajoute la description des épisodes dans des Popup
@@ -1632,7 +1653,7 @@ const launchScript = function($) {
                             const $elt = $(e.currentTarget),
                                 episodeId = parseInt($elt.data('id'), 10),
                                 episode = res.currentSeason.getEpisode(episodeId);
-                            if (Base.debug) console.log('click checkSeen', episode, res);
+                            if (UsBetaSeries.debug) console.log('click checkSeen', episode, res);
                             // On vérifie si l'épisode a déjà été vu
                             if ($elt.hasClass('seen')) {
                                 // On demande à l'enlever des épisodes vus
@@ -1662,23 +1683,23 @@ const launchScript = function($) {
                                 .parent('.slide__image')
                                 .popover('show');
                         });
-                        res.getDefaultImage('wide').then(defImgShow => {
-                            let onerror = null;
-                            if (defImgShow != null) {
-                                onerror = (err, elt, url, attr) => {
-                                    elt.classList.add("js-lazy-image-handled");
-                                    elt[attr] = defImgShow;
-                                    elt.classList.add("fade-in");
-                                    // console.log('lazyload onerror show', elt, res.images.show, attr);
-                                };
-                            }
-                            $('#episodes .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
-                        }).catch(() => {});
+                    res.getDefaultImage('wide').then(defImgShow => {
+                        let onerror = null;
+                        if (defImgShow != null) {
+                            onerror = (err, elt, url, attr) => {
+                                elt.classList.add("js-lazy-image-handled");
+                                elt[attr] = defImgShow;
+                                elt.classList.add("fade-in");
+                                // console.log('lazyload onerror show', elt, res.images.show, attr);
+                            };
+                        }
+                        $('#episodes .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
+                    }).catch(() => {});
                 })
                 .finally(() => {
                     console.log('userscript.medias.upgradeEpisodes fetchEpisodes finally');
                     console.groupEnd('upgradeEpisodes');
-                    });
+                });
                 // Ajouter un bouton de mise à jour des épisodes de la saison courante
                 if ($('#updateEpisodeList').length < 1) {
                     $('#episodes .blockTitles').prepend(`
@@ -1695,16 +1716,16 @@ const launchScript = function($) {
                     $('#episodes .updateEpisodes').on('click', (e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        if (Base.debug) console.groupCollapsed('updateEpisodes');
+                        if (UsBetaSeries.debug) console.groupCollapsed('updateEpisodes');
                         // On ferme la popup des options d'update auto
                         $('#updateEpisodeList .updateElement').popover('hide');
                         const self = $(e.currentTarget);
                         self.removeClass('finish');
                         res.currentSeason.update().then(() => {
-                                    fnLazy(); // On affiche les images lazyload
+                            fnLazy(); // On affiche les images lazyload
                         }).finally(() => {
                             self.addClass('finish');
-                            if (Base.debug) {
+                            if (UsBetaSeries.debug) {
                                 console.log('userscript.medias.upgradeEpisodes checkEpisodes finally');
                                 console.groupEnd('updateEpisodes');
                             }
@@ -1717,17 +1738,17 @@ const launchScript = function($) {
 
             // On ajoute un event sur le changement de saison
             seasons.on('click', () => {
-                if (Base.debug) console.groupCollapsed('season click');
+                if (UsBetaSeries.debug) console.groupCollapsed('season click');
                 $('#episodes .checkSeen').off('click');
                 $('#episodes .slide__image').off('inserted.bs.popover');
                 $('#episodes .slide__image').popover('dispose');
                 // On attend que les vignettes de la saison choisie soient chargées
                 medias.waitSeasonsAndEpisodesLoaded(() => {
                     addCheckSeen();
-                    if (Base.debug) console.groupEnd();
+                    if (UsBetaSeries.debug) console.groupEnd();
                 }, () => {
                     console.error('Season click Timeout');
-                    if (Base.debug) console.groupEnd();
+                    if (UsBetaSeries.debug) console.groupEnd();
                 });
             });
             // On active les menus dropdown
@@ -1782,12 +1803,12 @@ const launchScript = function($) {
          * @return {void}
          */
         replaceSuggestSimilarHandler: function($elt, objSimilars = []) {
-            if (Base.debug) console.log('replaceSuggestSimilarHandler', {elt: $elt, objSimilars});
+            if (UsBetaSeries.debug) console.log('replaceSuggestSimilarHandler', {elt: $elt, objSimilars});
 
             if (typeof $elt === 'string') $elt = $($elt);
             if ($elt.hasClass('usbs')) return;
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-            if (!system.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
+            if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
             const type = medias.getApiResource(url.split('/')[1]), // Le type de ressource
             resId = medias.getResourceId(); // Identifiant de la ressource
             // Gestion d'ajout d'un similar
@@ -1802,7 +1823,7 @@ const launchScript = function($) {
                         $("#similaire_id_search").focus().on("keyup", (e) => {
                             let search = $(e.currentTarget).val().toString();
                             if (search.length > 0 && e.which != 40 && e.which != 38) {
-                                Base.callApi('GET', 'search', type.plural, { autres: 'mine', text: search })
+                                UsBetaSeries.callApi('GET', 'search', type.plural, { autres: 'mine', text: search })
                                 .then((data) => {
                                     const medias = data[type.plural];
                                     $("#search_results .title").remove();
@@ -1860,7 +1881,7 @@ const launchScript = function($) {
                                     break;
                                 /* Touche Entrée */
                                 case 13:
-                                    if (Base.debug) console.log('current_item', current_item);
+                                    if (UsBetaSeries.debug) console.log('current_item', current_item);
                                     if (current_item.length !== 0) {
                                         autocompleteSimilar(current_item.find("span"));
                                     }
@@ -1942,7 +1963,7 @@ const launchScript = function($) {
             $('#photos').after(template);
             medias.replaceSuggestSimilarHandler($('#similars div.slides_flex div.slide_flex div.slide__image > button'));
             const resId = medias.getResourceId();
-            const res = Base.cache.get(DataTypesCache.shows, resId);
+            const res = UsBetaSeries.cache.get(DataTypesCache.shows, resId);
             if (res) res.removeListener(EventTypes.ADD, medias.addSimilarsSection);
         },
         /**
@@ -1952,14 +1973,14 @@ const launchScript = function($) {
          */
         similarsViewed: function(res) {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-            if (!system.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
-            if (Base.debug) console.groupCollapsed('similarsViewed');
+            if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
+            if (UsBetaSeries.debug) console.groupCollapsed('similarsViewed');
             if (res instanceof Show && $('#similars').length <= 0) {
                 res.addListener(EventTypes.ADD, medias.addSimilarsSection);
             }
             let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = $similars.length; // Le nombre de similaires
-            if (Base.debug) console.log('nb similars: %d', len, res.nbSimilars);
+            if (UsBetaSeries.debug) console.log('nb similars: %d', len, res.nbSimilars);
             // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
             if (len <= 0 || (len === 1 && $($similars.parent().get(0)).find('button').length === 1)) {
                 $('.updateSimilars').addClass('finish');
@@ -2026,7 +2047,7 @@ const launchScript = function($) {
                      * @return {String}              La position de la popup
                      */
                     let funcPlacement = (_tip, elt) => {
-                        //if (Base.debug) console.log('funcPlacement', tip, $(tip).width());
+                        //if (UsBetaSeries.debug) console.log('funcPlacement', tip, $(tip).width());
                         let rect = elt.getBoundingClientRect(),
                             width = $(window).width(),
                             sizePopover = 320;
@@ -2043,7 +2064,7 @@ const launchScript = function($) {
                         // On décode le titre du similar
                         similar.decodeTitle();
                         // On ajoute l'icone pour visualiser les data JSON du similar
-                        if (Base.debug) {
+                        if (UsBetaSeries.debug) {
                             similar.wrench(dialog);
                         }
                         //$link.attr('data-placement', funcPlacement(null, $elt.get(0)));
@@ -2097,7 +2118,7 @@ const launchScript = function($) {
                                     }
                                     objSimilar.changeState(-1).then(() => {
                                         const checked = $(e.currentTarget).siblings('input:checked');
-                                        // if (Base.debug) console.log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
+                                        // if (UsBetaSeries.debug) console.log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
                                         checked.get(0).checked = false;
                                         checked.removeAttr('checked');
                                         // On supprime le bandeau Vu
@@ -2112,13 +2133,13 @@ const launchScript = function($) {
                                 e.stopPropagation();
                                 // e.preventDefault();
                                 const $elt = $(e.currentTarget).parent().children('input:checked');
-                                if (Base.debug) console.log('input.movie click - checked(%d)', $elt.length);
+                                if (UsBetaSeries.debug) console.log('input.movie click - checked(%d)', $elt.length);
                                 if ($elt.length <= 0) {
                                     $elt.siblings('button').hide();
                                     return;
                                 }
                                 const state = parseInt($elt.val(), 10);
-                                if (Base.debug) console.log('input.movie change: %d', state, $elt);
+                                if (UsBetaSeries.debug) console.log('input.movie change: %d', state, $elt);
                                 objSimilar.changeState(state).then(similar => {
                                     if (state === MovieStatus.SEEN) {
                                         $elt.parents('a').prepend(`<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`);
@@ -2127,7 +2148,7 @@ const launchScript = function($) {
                                         $elt.parents('a').find('.bandViewed').remove();
                                     }
                                     $elt.siblings('button').show();
-                                    if (Base.debug) console.log('movie mustSee/seen OK', similar);
+                                    if (UsBetaSeries.debug) console.log('movie mustSee/seen OK', similar);
                                 }, err => {
                                     console.warn('movie mustSee/seen KO', err);
                                 });
@@ -2202,13 +2223,15 @@ const launchScript = function($) {
             [].forEach.call(document.querySelectorAll(".js-popinalert-comments"), function(el) {
                 const cId = el.getAttribute('data-comment-id');
                 $(el).replaceWith(`<button type="button" class="btn-reset js-popup-comments zIndex10" data-comment-id="${cId}"></button>`);
-                // if (Base.debug) console.log('eventListener comment retiré');
+                // if (UsBetaSeries.debug) console.log('eventListener comment retiré');
             });
             const eventComments = () => {
                 /**
                  * @type {JQuery<HTMLElement>}
                  */
                 const $comments = $('#comments .slide__comment .js-popup-comments');
+                // TODO: Gérer les boutons d'affichage des spoilers
+                // const $btnDisplaySpoiler = $('#comments .slide__comment .js-display-spoiler');
                 if (debug) console.log('eventComments');
                 $comments.off('click').on('click', e => {
                     e.stopPropagation();
@@ -2328,7 +2351,7 @@ const launchScript = function($) {
                   $btnVote = $blockMeta.find('button');
             const displayNotesInPopup = function() {
                 system.addScriptAndLink(['popover', 'bootstrap'], () => {
-                    if (Base.debug) console.log('callback after load popover and bootstrap');
+                    if (UsBetaSeries.debug) console.log('callback after load popover and bootstrap');
                     //res.removeListener(EventTypes.NOTE, displayNotesInPopup);
                     const popupVote = function() {
                         // On met en forme le nombre de votes
@@ -2378,7 +2401,7 @@ const launchScript = function($) {
                 e.stopPropagation();
                 e.preventDefault();
                 res.objNote.createPopupForVote((note) => {
-                    if (Base.debug) console.log('createPopupForVote callback', note);
+                    if (UsBetaSeries.debug) console.log('createPopupForVote callback', note);
                 });
             });
             if (res.objNote.user > 0) {
@@ -2392,7 +2415,7 @@ const launchScript = function($) {
          */
         observeBtnVu: function(objRes) {
             const $btnVu = $(`.blockInformations__action .label:contains("${trans('film.button.watched.label')}")`).siblings('button');
-            if (Base.debug) console.log('observeBtnVu', $btnVu);
+            if (UsBetaSeries.debug) console.log('observeBtnVu', $btnVu);
             /**
              * Met à jour le bouton Vu
              * @param {number} state L'état de visionnage du film (TOSEE or SEEN)
@@ -2407,10 +2430,10 @@ const launchScript = function($) {
             $btnVu.off('click').on('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (Base.debug) console.log('observeBtnVu click');
+                if (UsBetaSeries.debug) console.log('observeBtnVu click');
 
                 // _this.markAsView.blur();
-                if (!system.userIdentified()) {
+                if (!UsBetaSeries.userIdentified()) {
                     faceboxDisplay('inscription', {}, function() {});
                     return;
                 }
@@ -2443,7 +2466,7 @@ const launchScript = function($) {
                 let type = medias.getApiResource(location.pathname.split('/')[1]); // Indique de quel type de ressource il s'agit
                 medias.getResourceData().then(function (data) {
                     const dialog = system.getDialog();
-                    // if (Base.debug) console.log('addBtnDev promise return', data);
+                    // if (UsBetaSeries.debug) console.log('addBtnDev promise return', data);
                     dialog
                         .setContent(renderjson.set_show_to_level(2)(data[type.singular]))
                         .setTitle('Données du média')
@@ -2491,10 +2514,10 @@ const launchScript = function($) {
                 const toSee = await dbGetValue('toSee', []);
                 const override = await dbGetValue('override', {shows: {}, movies: {}});
                 Show.fetchMulti(toSee).then(shows => {
-                /**
-                 * @type {Dialog}
-                 */
-                const dialog = system.getDialog();
+                    /**
+                     * @type {Dialog}
+                     */
+                    const dialog = system.getDialog();
                     let template = '<div id="annuaire-list" class="gridSeries">';
                     for (let s = 0; s < shows.length; s++) {
                         const show = shows[s];
@@ -2536,7 +2559,7 @@ const launchScript = function($) {
                         `;
                     }
                     dialog.setContent(template + '</div>');
-                    dialog.setCounter(Base.counter.toString());
+                    dialog.setCounter(UsBetaSeries.counter.toString());
                     dialog.setTitle(shows.length + ' séries à regarder plus tard');
                     dialog.addStyle(`
                         #annuaire-list .blockSearch {
@@ -2769,7 +2792,7 @@ const launchScript = function($) {
                             elt.classList.add("fade-in");
                             // console.log('lazyload onerror show', elt, res.images.show, attr);
                         };
-                    $block404.replaceWith(`<img class="js-lazy-image" data-src="${defImgShow}" width="124" height="70">`);
+                        $block404.replaceWith(`<img class="js-lazy-image" data-src="${defImgShow}" width="124" height="70">`);
                     }
                     $('.blockInformations .blockNextEpisode .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
                 });
@@ -2813,11 +2836,11 @@ const launchScript = function($) {
          */
         getMember: function(id = null) {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-            if (!system.userIdentified() || betaseries_api_user_key === '') return;
+            if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '') return;
             let args = {};
             if (id) args.id = id;
             return new Promise((resolve) => {
-                Base.callApi('GET', 'members', 'infos', args)
+                UsBetaSeries.callApi('GET', 'members', 'infos', args)
                     .then(data => {
                     // On retourne les infos du membre
                     resolve(data.member);
@@ -2905,7 +2928,7 @@ const launchScript = function($) {
                 };
                 system.addScriptAndLink('tablecss');
                 $('body').append(dialogHTML);
-                //if (Base.debug) console.log(currentUser, otherMember, trads);
+                //if (UsBetaSeries.debug) console.log(currentUser, otherMember, trads);
                 for (const [key, value] of Object.entries(trads)) {
                     if (typeof value == 'object') {
                         for (const [subkey, subvalue] of Object.entries(trads[key])) {
@@ -2980,7 +3003,7 @@ const launchScript = function($) {
             });
             $inpSearchFriends.on('input', () => {
                 let val = $inpSearchFriends.val().toString().trim().toLowerCase();
-                if (Base.debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
+                if (UsBetaSeries.debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
                 if (val === '' || idFriends.indexOf(val) === -1) {
                     $('.timeline-item').show();
                     if (val === '') {
@@ -2990,7 +3013,7 @@ const launchScript = function($) {
                 }
                 $('.clearSearch').show();
                 $('.timeline-item').hide();
-                if (Base.debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
+                if (UsBetaSeries.debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
                 $('.timeline-item .infos a[href="' + objFriends[val].link + '"]').parents('.timeline-item').show();
             });
             $('.clearSearch').on('click', () => {
@@ -3004,7 +3027,7 @@ const launchScript = function($) {
          */
         addStatusToGestionSeries: function() {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-            if (!system.userIdentified() || betaseries_api_user_key === '') return;
+            if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '') return;
             const $shows = $('#member_shows div.showItem.cf');
             if ($shows.length <= 0) return;
             let showIds = new Array();
@@ -3031,7 +3054,7 @@ const launchScript = function($) {
         },
         sortGestionSeries: function() {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
-            if (!system.userIdentified() || betaseries_api_user_key === '') return;
+            if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '') return;
 
             const $title = $('#right h1');
             let templateListSort = `
@@ -3160,7 +3183,7 @@ const launchScript = function($) {
                         `;
                     }
                     dialog.setContent(template + '</div>');
-                    dialog.setCounter(Base.counter.toString());
+                    dialog.setCounter(UsBetaSeries.counter.toString());
                     dialog.addStyle(`
                         #annuaire-list .blockSearch {
                             cursor: pointer;
@@ -3368,7 +3391,7 @@ const launchScript = function($) {
                 currentShowIds = {};
             // En attente du chargement des épisodes
             if (len <= 0) {
-                if (Base.debug) console.log('updateAgenda - nb containers: %d', len);
+                if (UsBetaSeries.debug) console.log('updateAgenda - nb containers: %d', len);
                 return;
             }
             const params = {
@@ -3379,14 +3402,14 @@ const launchScript = function($) {
                 specials: false,
                 subtitles: 'all'
             };
-            Base.callApi('GET', 'episodes', 'list', params)
+            UsBetaSeries.callApi('GET', 'episodes', 'list', params)
                 .then((data) => {
                 for (let t = 0; t < len; t++) {
                     $($containersEpisode.get(t))
                         .data('showId', data.shows[t].id)
                         .data('code', data.shows[t].unseen[0].code.toLowerCase());
                     currentShowIds[data.shows[t].id] = { code: data.shows[t].unseen[0].code.toLowerCase() };
-                    //if (Base.debug) console.log('title: %s - code: %s', title, episode);
+                    //if (UsBetaSeries.debug) console.log('title: %s - code: %s', title, episode);
                 }
             });
             if ($('.updateElements').length === 0) {
@@ -3399,7 +3422,7 @@ const launchScript = function($) {
                 $('.updateEpisodes').on('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (Base.debug) console.groupCollapsed('Agenda updateEpisodes');
+                    if (UsBetaSeries.debug) console.groupCollapsed('Agenda updateEpisodes');
                     $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer');
                     const self = $(e.currentTarget), len = $containersEpisode.length;
                     self.removeClass('finish');
@@ -3414,12 +3437,12 @@ const launchScript = function($) {
                     Media.callApi('GET', 'episodes', 'list', params)
                     .then((data) => {
                         let newShowIds = {}, show;
-                        if (Base.debug) console.log('updateAgenda updateEpisodes', data);
+                        if (UsBetaSeries.debug) console.log('updateAgenda updateEpisodes', data);
                         for (let s = 0; s < data.shows.length; s++) {
                             show = data.shows[s];
                             newShowIds[show.id] = { code: show.unseen[0].code.toLowerCase() };
                             if (currentShowIds[show.id] === undefined) {
-                                if (Base.debug) console.log('Une nouvelle série est arrivée', show);
+                                if (UsBetaSeries.debug) console.log('Une nouvelle série est arrivée', show);
                                 // Il s'agit d'une nouvelle série
                                 // TODO Ajouter un nouveau container
                                 let newContainer = $(buildContainer(show.unseen[0]));
@@ -3427,7 +3450,7 @@ const launchScript = function($) {
                                 $($containersEpisode.get(s)).parent().after(newContainer);
                             }
                         }
-                        if (Base.debug) console.log('Iteration principale');
+                        if (UsBetaSeries.debug) console.log('Iteration principale');
                         let container, unseen;
                         // Itération principale sur les containers
                         for (let e = 0; e < len; e++) {
@@ -3435,7 +3458,7 @@ const launchScript = function($) {
                             unseen = null;
                             // Si la serie n'est plus dans la liste
                             if (newShowIds[container.data('showId')] === undefined) {
-                                if (Base.debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
+                                if (UsBetaSeries.debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
                                 container.parent().remove();
                                 continue;
                             }
@@ -3451,7 +3474,7 @@ const launchScript = function($) {
                                 }
                             }
                             if (unseen && container.data('code') !== unseen.code.toLowerCase()) {
-                                if (Base.debug) console.log('Episode à mettre à jour', unseen);
+                                if (UsBetaSeries.debug) console.log('Episode à mettre à jour', unseen);
                                 // Mettre à jour l'épisode
                                 let mainLink = $('a.mainLink', container), text = unseen.code + ' - ' + unseen.title;
                                 // On met à jour le titre et le lien de l'épisode
@@ -3473,10 +3496,10 @@ const launchScript = function($) {
                         }
                         fnLazy();
                         self.addClass('finish');
-                        if (Base.debug) console.groupEnd();
+                        if (UsBetaSeries.debug) console.groupEnd();
                     }, (err) => {
                         system.notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
-                        if (Base.debug) console.groupEnd();
+                        if (UsBetaSeries.debug) console.groupEnd();
                     });
                 });
             }
@@ -3687,14 +3710,14 @@ const launchScript = function($) {
                 len = $containersMovie.length;
             // En attente du chargement des épisodes
             if (len <= 0) {
-                if (Base.debug) console.log('updateAgenda - nb containers: %d', len);
+                if (UsBetaSeries.debug) console.log('updateAgenda - nb containers: %d', len);
                 return;
             }
             const params = {
                 limit: len,
                 state: 0
             };
-            Base.callApi('GET', 'movies', 'member', params)
+            UsBetaSeries.callApi('GET', 'movies', 'member', params)
             .then((data) => {
                 for (let t = 0; t < len; t++) {
                     $($containersMovie.get(t))
@@ -3713,7 +3736,7 @@ const launchScript = function($) {
             $('div.form-group button.btn-btn.btn--blue').prop('onclick', null).off('click').on('click', (e, key) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (Base.debug) console.log('nouveau parametre handler', key);
+                if (UsBetaSeries.debug) console.log('nouveau parametre handler', key);
                 // On ajoute une nouvelle ligne de paramètre
                 newApiParameter();
                 // On insère la clé du paramètre, si elle est présente
@@ -3733,7 +3756,7 @@ const launchScript = function($) {
                 // En attente de la documentation de l'API
                 system.waitDomPresent('#doc code', () => {
                     let paramsDoc = $('#doc > ul > li > code');
-                    if (Base.debug) console.log('paramsDoc', paramsDoc);
+                    if (UsBetaSeries.debug) console.log('paramsDoc', paramsDoc);
                     paramsDoc.css('cursor', 'pointer');
                     // On ajoute la clé du paramètre dans une nouvelle ligne de paramètre
                     paramsDoc.click((e) => {
@@ -3763,7 +3786,7 @@ const launchScript = function($) {
                     e.stopPropagation();
                     e.preventDefault();
                     let self = $(e.currentTarget);
-                    if (Base.debug) console.log('lock-param', self, self.hasClass('fa-unlock'));
+                    if (UsBetaSeries.debug) console.log('lock-param', self, self.hasClass('fa-unlock'));
                     if (self.hasClass('fa-unlock')) {
                         self.removeClass('fa-unlock').addClass('fa-lock');
                         self.parent('.api-params').removeClass('remove').addClass('lock');
@@ -3800,7 +3823,7 @@ const launchScript = function($) {
          * Le sommaire est constitué des liens vers les fonctions des méthodes.
          */
         sommaireDevApi: function() {
-            if (Base.debug) console.log('build sommaire');
+            if (UsBetaSeries.debug) console.log('build sommaire');
             let titles = $('.maincontent h2'), methods = {};
             // Ajout du style CSS pour les tables
             system.addScriptAndLink('tablecss');
@@ -3875,7 +3898,7 @@ const launchScript = function($) {
                 methods[key][verb] = { id: id, title: desc };
             }
             // Construire un sommaire des fonctions
-            //if (Base.debug) console.log('methods', methods);
+            //if (UsBetaSeries.debug) console.log('methods', methods);
             $('.maincontent h1').after(buildTable());
             $('#sommaire').slideDown();
             $('.linkSommaire').on('click', (e) => {
@@ -3931,13 +3954,13 @@ const launchScript = function($) {
                 system.waitDomPresent('.blogArticleMain .blogArticleContent a', () => {
                     const $article = $('.blogArticleMain .blogArticleContent');
                     let $links = $article.find('a');
-                    if (Base.debug) console.log('links(%d) before filter', $links.length);
+                    if (UsBetaSeries.debug) console.log('links(%d) before filter', $links.length);
                     $links = $links.filter(function() {
                         // console.log('filter', this);
                         if (this.onclick !== null) return false;
                         return /^\/(serie|film)\//.test(this.pathname);
                     });
-                    if (Base.debug) console.log('links(%d) after filter', $links.length);
+                    if (UsBetaSeries.debug) console.log('links(%d) after filter', $links.length);
                     let popups = {};
                     $('head').append(`
                         <style type="text/css">
@@ -4002,12 +4025,12 @@ const launchScript = function($) {
                             }
                         });
                     }
-                    const addPopup = (anchor) => {
+                    const addPopup = (/** @type {JQuery<HTMLLinkElement>} */anchor) => {
                         let key = anchor.text().toLowerCase().trim().replace(/[^0-9a-z]/g, '');
                         if (popups[key] == undefined) {
                             popups[key] = createMedia(anchor.get(0));
                         }
-                        if (Base.debug) console.log('Popup created', anchor.text(), typeof popups[key]);
+                        if (UsBetaSeries.debug) console.log('Popup created', anchor.text());
                         if (popups[key] instanceof Promise) {
                             popups[key].then(data => {
                                 // console.log('Promise popus[%s]', key, data);
@@ -4068,10 +4091,10 @@ const launchScript = function($) {
         if (!key) {
             throw new Error('dbGetValue - key are missing');
         }
-        if (!system.userIdentified()) {
+        if (!UsBetaSeries.userIdentified()) {
             return GM_getValue(key, defaults);
         }
-        if (Base.networkState === NetworkState.offline) {
+        if (UsBetaSeries.networkState === NetworkState.offline) {
             if (cache.has(DataTypesCache.db, key)) {
                 return cache.get(DataTypesCache.db, key);
             }
@@ -4115,12 +4138,12 @@ const launchScript = function($) {
         if (!key || !data) {
             throw new Error('dbSetValue - key or data are missing');
         }
-        if (!system.userIdentified()) {
+        if (!UsBetaSeries.userIdentified()) {
             GM_setValue(key, data);
             return true;
         }
         cache.set(DataTypesCache.db, key, data);
-        if (Base.networkState === NetworkState.offline) {
+        if (UsBetaSeries.networkState === NetworkState.offline) {
             dbPendingRequests[key] = data;
             return true;
         }
@@ -4362,23 +4385,22 @@ const launchScript = function($) {
     /**
      * Paramétrage de la super classe abstraite Base et UpdateAuto
      */
-    Base.debug = debug;
-    Base.cache = cache;
-    Base.notification = system.notification;
-    Base.userIdentified = system.userIdentified;
-    Base.token = typeof betaseries_api_user_token !== 'undefined' ? betaseries_api_user_token : null;
-    Base.userKey = typeof betaseries_api_user_key !== 'undefined' ? betaseries_api_user_key : null;
-    Base.userId = typeof betaseries_user_id !== 'undefined' ? parseInt(betaseries_user_id, 10) : null;
-    Base.trans = trans;
-    Base.ratings = ratings;
-    Base.themoviedb_api_user_key = themoviedb_api_user_key;
-    Base.serverBaseUrl = serverBaseUrl;
-    Base.serverOauthUrl = serverOauthUrl;
-    Base.theme = system.checkThemeStyle();
-    Base.gm_funcs.getValue = dbGetValue;
-    Base.gm_funcs.setValue = dbSetValue;
-    Base.timeoutRequests = 30;
-    Base.networkStateEventsFn.offline = () => {
+    UsBetaSeries.debug = debug;
+    UsBetaSeries.cache = cache;
+    UsBetaSeries.notification = system.notification;
+    UsBetaSeries.token = !isNull(betaseries_api_user_token) ? betaseries_api_user_token : null;
+    UsBetaSeries.userKey = !isNull(betaseries_api_user_key) ? betaseries_api_user_key : null;
+    UsBetaSeries.userId = !isNull(betaseries_user_id) ? parseInt(betaseries_user_id, 10) : null;
+    UsBetaSeries.trans = trans;
+    UsBetaSeries.ratings = ratings;
+    UsBetaSeries.themoviedb_api_user_key = themoviedb_api_user_key;
+    UsBetaSeries.serverBaseUrl = serverBaseUrl;
+    UsBetaSeries.serverOauthUrl = serverOauthUrl;
+    UsBetaSeries.theme = system.checkThemeStyle();
+    UsBetaSeries.gm_funcs.getValue = dbGetValue;
+    UsBetaSeries.gm_funcs.setValue = dbSetValue;
+    UsBetaSeries.timeoutRequests = 30;
+    UsBetaSeries.networkStateEventsFn.offline = () => {
         UpdateAuto.getInstance().then(
             /** @param {UpdateAuto} objUA */
             (objUA) => {
@@ -4386,7 +4408,7 @@ const launchScript = function($) {
             }
         );
     };
-    Base.networkStateEventsFn.online = () => {
+    UsBetaSeries.networkStateEventsFn.online = () => {
         UpdateAuto.getInstance().then(
             /** @param {UpdateAuto} objUA */
             (objUA) => {
@@ -4401,11 +4423,11 @@ const launchScript = function($) {
 
     unsafeWindow.addEventListener('offline', () => {
         console.log('userscript Event Network Offline');
-        Base.changeNetworkState(NetworkState.offline);
+        UsBetaSeries.changeNetworkState(NetworkState.offline);
     });
     unsafeWindow.addEventListener('online', () => {
         console.log('userscript Event Network Online');
-        Base.changeNetworkState(NetworkState.online);
+        UsBetaSeries.changeNetworkState(NetworkState.online);
     });
 
     /**
@@ -4450,12 +4472,12 @@ const launchScript = function($) {
     // Fonctions appeler pour la page de gestion des series du membre
     else if (/^\/membre\/.*\/series$/.test(url)) {
         members.addStatusToGestionSeries().then((shows) => {
-            Base.shows = shows;
+            UsBetaSeries.shows = shows;
             members.sortGestionSeries();
         });
     }
     // Fonctions appeler sur les pages des membres
-    else if (system.userIdentified() && (regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url))) {
+    else if (UsBetaSeries.userIdentified() && (regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url))) {
         system.waitPresent(() => { return typeof user !== 'undefined'; }, () => {
             if (debug) console.log('regexUser OK');
 
@@ -4487,7 +4509,7 @@ const launchScript = function($) {
     }
     // Fonctions appeler sur la page de recherche des séries
     else if (/^\/series\//.test(url)) {
-        if (Base.debug) console.log('Page des séries');
+        if (UsBetaSeries.debug) console.log('Page des séries');
         system.waitPagination();
         series.seriesFilterPays();
         if (/agenda/.test(url)) {
@@ -4504,7 +4526,7 @@ const launchScript = function($) {
     }
     // Fonctions appeler sur les pages des articles
     else if (/^\/article\//.test(url)) {
-        if (Base.debug) console.log('Page d\'un article');
+        if (UsBetaSeries.debug) console.log('Page d\'un article');
         articles.checkArticle();
         articles.addPopupOnLinks();
     }

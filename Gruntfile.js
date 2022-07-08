@@ -89,7 +89,8 @@ module.exports = function(grunt) {
             ]
         },
         paths: {
-            oauth: path.resolve('../../betaseries-oauth')
+            oauth: path.resolve('../../betaseries-oauth'),
+            doc: path.resolve('./doc')
         },
         clean: ['<%= distdir %>/*'],
         lineending: {
@@ -100,6 +101,14 @@ module.exports = function(grunt) {
                 },
                 files: {
                     '': ['<%= distdir %>/bundle.js']
+                }
+            }
+        },
+        jsdoc: {
+            dist: {
+                src: ['<%= src.js %>'],
+                options: {
+                    destination: '<%= paths.doc %>'
                 }
             }
         },
@@ -403,6 +412,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks("grunt-ts");
     grunt.loadNpmTasks('grunt-lineending');
+    grunt.loadNpmTasks('grunt-jsdoc');
     grunt.loadNpmTasks('grunt-git');
     grunt.loadNpmTasks('grunt-contrib-connect');
     grunt.registerMultiTask('cleanExports', 'concatene all classes', function() {

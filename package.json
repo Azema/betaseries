@@ -1,7 +1,7 @@
 {
   "name": "betaseries_userscript",
   "description": "UserScript pour le site BetaSeries testé avec Tampermonkey sur Chrome",
-  "version": "1.4.4",
+  "version": "1.5.0",
   "author": {
     "email": "manuel.hervo@gmail.com",
     "name": "Azema"
@@ -23,6 +23,7 @@
   ],
   "browser": "./betaseries.user.js",
   "scripts": {
+    "docs": "jsdoc -c jsdoc.json",
     "postinstall": "node ./node_modules/grunt/bin/grunt build"
   },
   "types": "betaseries.d.ts",
@@ -30,17 +31,20 @@
     "@types/bootstrap": "^4.6.2",
     "@types/grunt": "^0.4.27",
     "@types/jquery": "^3.5.10",
+    "better-docs": "^2.7.2",
     "grunt": "^1.4.1",
     "grunt-contrib-clean": "^2.0.0",
     "grunt-contrib-concat": "^2.0.0",
     "grunt-contrib-connect": "^3.0.0",
     "grunt-contrib-copy": "^1.0.0",
     "grunt-git": "^1.1.1",
+    "grunt-jsdoc": "^2.4.1",
     "grunt-lineending": "^1.0.0",
     "grunt-ts": "^6.0.0-beta.22",
     "http-proxy-middleware": "^2.0.6",
     "socket.io": "^4.5.1",
     "ts-loader": "^9.2.6",
+    "typedoc": "^0.23.6",
     "typescript": "^4.5.4"
   }
 }
