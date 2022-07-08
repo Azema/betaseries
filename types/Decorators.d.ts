@@ -2,6 +2,8 @@ import "reflect-metadata";
 import { Obj } from "./Base";
 import { Changes } from "./RenderHtml";
 export declare function validateType(target: any, propertyKey: string, descriptor: PropertyDescriptor): void;
+/********************************************************************************/
+/********************************************************************************/
 /**
  * implFillDecorator
  * @interface implFillDecorator

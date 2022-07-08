@@ -92,7 +92,7 @@ export declare abstract class MediaBase extends RenderHtml implements implAddNot
     fetchCharacters(): Promise<this>;
     /**
      * *getCharacter* - Retourne un personnage à partir de son identifiant
-     * @param   {number} id - Identifiant du personnage
+     * @param   {number} id - Identifiant de l'actor
      * @returns {Character | null}
      */
     getCharacter(id: number): Character | null;
