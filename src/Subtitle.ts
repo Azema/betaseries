@@ -1,36 +1,55 @@
-import { Base, HTTP_VERBS, Obj } from "./Base";
+import { UsBetaSeries, HTTP_VERBS, Obj } from "./Base";
 
 export class Subtitle {
     /**
-     * @type {number} - L'identifiant du subtitle
+     * L'identifiant du subtitle
+     * @type {number}
      */
     id: number;
     /**
-     * @type {string} - La langue du subtitle
+     * La langue du subtitle
+     * @type {string}
      */
     language: string;
     /**
-     * @type {string} - La source du subtitle
+     * La source du subtitle
+     * @type {string}
      */
     source: string;
     /**
-     * @type {number} - La qualité du subtitle
+     * La qualité du subtitle
+     * @type {number}
      */
     quality: number;
     /**
-     * @type {string} - Le nom du fichier du subtitle
+     * Le nom du fichier du subtitle
+     * @type {string}
      */
     file: string;
     /**
-     * @type {string} - L'URL d'accès au subtitle
+     * L'URL d'accès au subtitle
+     * @type {string}
      */
     url: string;
     /**
-     * @type {Date} - Date de mise en ligne
+     * Date de mise en ligne
+     * @type {Date}
      */
     date: Date;
+    /**
+     * Identifiant ou numéro de l'épisode
+     * @type {number}
+     */
     episode: number;
+    /**
+     * Identifiant de la série
+     * @type {number}
+     */
     show: number;
+    /**
+     * Numéro de saison
+     * @type {number}
+     */
     season: number;
 
     constructor(data: Obj) {
@@ -47,6 +66,12 @@ export class Subtitle {
     }
 }
 
+/**
+ * SortTypeSubtitles
+ * @enum
+ * @memberof Subtitles
+ * @alias SortTypeSubtitles
+ */
 export enum SortTypeSubtitles {
     LANGUAGE = 'language',
     SOURCE = 'source',
@@ -54,31 +79,53 @@ export enum SortTypeSubtitles {
     DATE = 'date'
 }
 
+/**
+ * SubtitleTypes
+ * @enum
+ * @memberof Subtitles
+ * @alias SubtitleTypes
+ */
 export enum SubtitleTypes {
     EPISODE = 'episode',
     SEASON = 'season',
     SHOW = 'show'
 }
 
+/**
+ * SubtitleLanguages
+ * @enum
+ * @memberof Subtitles
+ * @alias SubtitleLanguages
+ */
 export enum SubtitleLanguages {
     ALL = 'all',
     VOVF = 'vovf',
     VO = 'vo',
     VF = 'vf'
 }
+/**
+ * ParamsFetchSubtitles
+ * @memberof Subtitles
+ * @alias ParamsFetchSubtitles
+ */
 export type ParamsFetchSubtitles = {
     id: number;
     season?: number;
 };
-
+/**
+ * Subtitles - Classe collection de sous-titres
+ * @class
+ */
 export class Subtitles {
     /**
-     * @type {Array<Subtitle>} - Collection de subtitles
+     * Collection de subtitles
+     * @type {Subtitle[]}
      */
     subtitles: Array<Subtitle>;
 
     /**
      * Récupère et retourne une collection de subtitles
+     * @static
      * @param   {SubtitleTypes} type - Type de média
      * @param   {ParamsFetchSubtitles} ids - Les identifiants de recherche
      * @param   {SubtitleLanguages} language - La langue des subtitles recherchés
@@ -89,12 +136,16 @@ export class Subtitles {
         if (type === SubtitleTypes.SEASON) {
             params.season = ids.season;
         }
-        return Base.callApi(HTTP_VERBS.GET, 'subtitles', type, params)
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'subtitles', type, params)
         .then((data: Obj) => {
             return new Subtitles(data.subtitles);
         });
     }
-
+    /**
+     * Constructor
+     * @param  {Obj} data - Les données
+     * @return {Subtitles}
+     */
     constructor(data: Array<Obj>) {
         this.subtitles = [];
         if (data && data.length > 0) {

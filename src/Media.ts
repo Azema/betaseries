@@ -1,4 +1,4 @@
-import { Base, EventTypes, HTTP_VERBS, Obj } from "./Base";
+import { Base, UsBetaSeries, EventTypes, HTTP_VERBS, Obj } from "./Base";
 import { CacheUS, DataTypesCache } from "./Cache";
 import { Character } from "./Character";
 import { CommentsBS } from "./Comments";
@@ -70,7 +70,7 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
      */
     updatePropRenderObjNote(): void {
         if (! this.elt) return;
-        if (Base.debug) console.log('updatePropRenderObjNote');
+        if (UsBetaSeries.debug) console.log('updatePropRenderObjNote');
         this.objNote
             .updateStars()
             .updateAttrTitle();
@@ -106,8 +106,8 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
      * @return {MediaBase} L'instance du média
      */
     public save(): this {
-        if (Base.cache instanceof CacheUS) {
-            Base.cache.set(this.mediaType.plural as DataTypesCache, this.id, this);
+        if (UsBetaSeries.cache instanceof CacheUS) {
+            UsBetaSeries.cache.set(this.mediaType.plural as DataTypesCache, this.id, this);
             this._callListeners(EventTypes.SAVE);
         }
         return this;
@@ -160,13 +160,13 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
     addVote(note: number): Promise<boolean> {
         const self = this;
         // return new Promise((resolve, reject) => {
-        return Base.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
+        return UsBetaSeries.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'note', {id: this.id, note: note})
             .then((data: Obj) => {
                 self.fill(data[this.mediaType.singular]);
                 return this.objNote.user == note;
             })
             .catch(err => {
-                Base.notification('Erreur de vote', 'Une erreur s\'est produite lors de l\'envoi de la note: ' + err);
+                UsBetaSeries.notification('Erreur de vote', 'Une erreur s\'est produite lors de l\'envoi de la note: ' + err);
                 return false;
             }) as Promise<boolean>;
         // });
@@ -233,43 +233,53 @@ export abstract class Media extends MediaBase {
     /***************************************************/
 
     /**
-     * @type {number} Nombre de membres ayant ce média sur leur compte
+     * Nombre de membres ayant ce média sur leur compte
+     * @type {number}
      */
     followers: number;
     /**
-     * @type {Array<string>} Les genres attribués à ce média
+     * Les genres attribués à ce média
+     * @type {string[]}
      */
     genres: Array<string>;
     /**
-     * @type {string} Identifiant IMDB
+     * Identifiant IMDB
+     * @type {string}
      */
     imdb_id: string;
     /**
-     * @type {string} Langue originale du média
+     * Langue originale du média
+     * @type {string}
      */
     language: string;
     /**
-     * @type {number} Durée du média en minutes
+     * Durée du média en minutes
+     * @type {number}
      */
     duration: number;
     /**
-     * @type {string} Titre original du média
+     * Titre original du média
+     * @type {string}
      */
     original_title: string;
     /**
-     * @type {Array<Similar>} Tableau des médias similaires
+     * Tableau des médias similaires
+     * @type {Similar[]}
      */
     similars: Array<Similar>;
     /**
-     * @type {number} Nombre de médias similaires
+     * Nombre de médias similaires
+     * @type {number}
      */
     nbSimilars: number;
     /**
-     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
+     * Indique si le média se trouve sur le compte du membre connecté
+     * @type {boolean}
      */
     in_account: boolean;
     /**
-     * @type {string} slug - Identifiant du média servant pour l'URL
+     * Identifiant du média servant pour l'URL
+     * @type {string}
      */
     slug: string;
 
@@ -347,17 +357,17 @@ export abstract class Media extends MediaBase {
     async override(prop: string, value: string, params?: object): Promise<boolean> {
         const type = (this.constructor as typeof Media);
         if (type.propsAllowedOverride[prop]) {
-            const override = await Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
+            const override = await UsBetaSeries.gm_funcs.getValue('override', {shows: {}, movies: {}});
             if (override[type.overrideType][this.id] === undefined) override[type.overrideType][this.id] = {};
             override[type.overrideType][this.id][prop] = value;
             let path = type.propsAllowedOverride[prop].path;
             if (type.propsAllowedOverride[prop].params) {
                 override[type.overrideType][this.id][prop] = {value, params};
-                path = Base.replaceParams(path, type.propsAllowedOverride[prop].params, params);
+                path = UsBetaSeries.replaceParams(path, type.propsAllowedOverride[prop].params, params);
                 console.log('override', {prop, value, params, path});
             }
-            Base.setPropValue(this, path, value);
-            await Base.gm_funcs.setValue('override', override);
+            UsBetaSeries.setPropValue(this, path, value);
+            await UsBetaSeries.gm_funcs.setValue('override', override);
             return true;
         }
         return false;
@@ -371,20 +381,20 @@ export abstract class Media extends MediaBase {
     async _overrideProps(): Promise<Media> {
         const type = (this.constructor as typeof Media);
         const overrideType = type.overrideType;
-        const override = await Base.gm_funcs.getValue('override', {shows: {}, movies: {}});
-        if (Base.debug) console.log('_overrideProps override', override);
+        const override = await UsBetaSeries.gm_funcs.getValue('override', {shows: {}, movies: {}});
+        if (UsBetaSeries.debug) console.log('_overrideProps override', override);
         if (Reflect.has(override[overrideType], this.id)) {
-            if (Base.debug) console.log('_overrideProps override found', override[overrideType][this.id]);
+            if (UsBetaSeries.debug) console.log('_overrideProps override found', override[overrideType][this.id]);
             for (const prop in override[overrideType][this.id]) {
                 let path = type.propsAllowedOverride[prop].path;
                 let value = override[overrideType][this.id][prop];
                 if (type.propsAllowedOverride[prop].params && typeof override[overrideType][this.id][prop] === 'object') {
                     value = override[overrideType][this.id][prop].value;
                     const params = override[overrideType][this.id][prop].params;
-                    path = Base.replaceParams(path, type.propsAllowedOverride[prop].params, params);
+                    path = UsBetaSeries.replaceParams(path, type.propsAllowedOverride[prop].params, params);
                 }
-                if (Base.debug) console.log('_overrideProps prop[%s]', prop, {path, value});
-                Base.setPropValue(this, path, value);
+                if (UsBetaSeries.debug) console.log('_overrideProps prop[%s]', prop, {path, value});
+                UsBetaSeries.setPropValue(this, path, value);
             }
         }
         return this;
@@ -395,7 +405,7 @@ export abstract class Media extends MediaBase {
      * @returns {Promise<string>}
      */
     _getTvdbUrl(tvdb_id: number): Promise<string> {
-        const proxy = Base.serverBaseUrl + '/proxy/';
+        const proxy = UsBetaSeries.serverBaseUrl + '/proxy/';
         const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
             method: 'GET',
             headers: {

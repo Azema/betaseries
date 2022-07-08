@@ -1,4 +1,4 @@
-import {Base, Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr} from "./Base";
+import { Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, UsBetaSeries} from "./Base";
 import { implAddNote, Note } from "./Note";
 import {Media, MediaType} from "./Media";
 import {Season} from "./Season";
@@ -11,6 +11,7 @@ declare const PopupAlert;
 /**
  * Classe représentant les différentes images d'une série
  * @class
+ * @memberof Show
  */
 export class Images {
     /**
@@ -50,7 +51,12 @@ export class Images {
     /** @type {object} */
     _local: {show: string, banner: string, box: string, poster: string};
 }
-/** @enum {number} */
+/**
+ * Picked
+ * @memberof Show
+ * @enum {number}
+ * @alias Picked
+ */
 export enum Picked {
     none,
     banner,
@@ -59,6 +65,7 @@ export enum Picked {
 /**
  * Classe représentant une image
  * @class
+ * @memberof Show
  */
 export class Picture {
     /**
@@ -95,6 +102,7 @@ export class Picture {
 /**
  * Classe représentant une plateforme de diffusion
  * @class
+ * @memberof Show
  */
 export class Platform {
     /**
@@ -144,6 +152,7 @@ export class Platform {
  * Classe représentant les différentes plateformes de diffusion
  * sous deux types de plateformes
  * @class
+ * @memberof Show
  */
 export class PlatformList {
     /** @type {Array<Platform>} */
@@ -171,7 +180,7 @@ export class PlatformList {
      */
     static fetchPlatforms(country = 'us'): Promise<PlatformList> {
         return new Promise((resolve, reject) => {
-            Base.callApi(HTTP_VERBS.GET, 'platforms', 'list', {country})
+            UsBetaSeries.callApi(HTTP_VERBS.GET, 'platforms', 'list', {country})
             .then((data: Obj) => {
                 resolve(new PlatformList(data.platforms, country));
             })
@@ -237,6 +246,7 @@ export class PlatformList {
 /**
  * Classe représentant les différentes plateformes de diffusion d'un média
  * @class
+ * @memberof Show
  */
 export class Platforms {
     /**
@@ -270,6 +280,7 @@ export class Platforms {
 /**
  * Class représentant un ShowRunner
  * @class
+ * @memberof Show
  */
 export class Showrunner {
     /**
@@ -290,7 +301,7 @@ export class Showrunner {
 }
 /**
  * Interface de la classe Show
- * @interface
+ * @interface implShow
  */
 export interface implShow {
     aliases: object;
@@ -315,7 +326,8 @@ export interface implShow {
  * Class representing a Show
  * @class
  * @extends Media
- * @implements {implShow, implAddNote}
+ * @implements {implShow}
+ * @implements {implAddNote}
  */
 export class Show extends Media implements implShow, implAddNote {
     /***************************************************/
@@ -449,7 +461,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}
      */
     protected static _fetch(params: Obj, force = false): Promise<Show> {
-        return Base.callApi('GET', 'shows', 'display', params, force)
+        return UsBetaSeries.callApi('GET', 'shows', 'display', params, force)
             .then(data => {
                 try {
                     const show = new Show(data.show, jQuery('.blockInformations'));
@@ -469,7 +481,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Show>}         Une promesse avec les séries
      */
     static fetchLastSeen(limit = 10): Promise<Array<Show>> {
-        return Base.callApi(HTTP_VERBS.GET, 'shows', 'member', {order: 'last_seen', limit})
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'shows', 'member', {order: 'last_seen', limit})
             .then((data: Obj) => {
                 const shows: Array<Show> = [];
                 for (let s = 0; s < data.shows.length; s++) {
@@ -486,7 +498,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {Promise<Array<Show>>}
      */
     static fetchMulti(ids: Array<number>): Promise<Array<Show>> {
-        return Base.callApi(HTTP_VERBS.GET, 'shows', 'display', {id: ids.join(',')})
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'shows', 'display', {id: ids.join(',')})
             .then((data: Obj) => {
                 const shows: Array<Show> = [];
                 if (ids.length > 1) {
@@ -538,39 +550,48 @@ export class Show extends Media implements implShow, implAddNote {
     /***************************************************/
 
     /**
-     * @type {object} Contient les alias de la série
+     * Contient les alias de la série
+     * @type {object}
      */
     aliases: object;
     /**
-     * @type {string} Année de création de la série
+     * Année de création de la série
+     * @type {string}
      */
     creation: string;
     /**
-     * @type {string} Pays d'origine de la série
+     * Pays d'origine de la série
+     * @type {string}
      */
     country: string;
     /**
-     * @type {number} Pointeur vers la saison courante
+     * Pointeur vers la saison courante
+     * @type {number}
      */
     _currentSeason: number;
     /**
-     * @type {Images} Contient les URLs d'accès aux images de la série
+     * Contient les URLs d'accès aux images de la série
+     * @type {Images}
      */
     images: Images;
     /**
-     * @type {boolean} Indique si la série se trouve dans les séries à voir
+     * Indique si la série se trouve dans les séries à voir
+     * @type {boolean}
      */
     markToSee: boolean;
     /**
-     * @type {number} Nombre total d'épisodes dans la série
+     * Nombre total d'épisodes dans la série
+     * @type {number}
      */
     nbEpisodes: number;
     /**
-     * @type {number} Nombre de saisons dans la série
+     * Nombre de saisons dans la série
+     * @type {number}
      */
     nbSeasons: number;
     /**
-     * @type {string} Chaîne TV ayant produit la série
+     * Chaîne TV ayant produit la série
+     * @type {string}
      */
     network: string;
     /**
@@ -582,23 +603,28 @@ export class Show extends Media implements implShow, implAddNote {
      */
     next_trailer_host: string;
     /**
-     * @type {string} Code de classification TV parental
+     * Code de classification TV parental
+     * @type {string}
      */
     rating: string;
     /**
-     * @type {Array<Person>} Tableau des acteurs de la série
+     * Tableau des acteurs de la série
+     * @type {Person[]}
      */
     persons: Array<Person>;
     /**
-     * @type {Array<Picture>} Tableau des images uploadées par les membres
+     * Tableau des images uploadées par les membres
+     * @type {Picture[]}
      */
     pictures: Array<Picture>;
     /**
-     * @type {Platforms} Plateformes de diffusion
+     * Plateformes de diffusion
+     * @type {Platforms}
      */
     platforms: Platforms;
     /**
-     * @type {Array<Season>} Tableau des saisons de la série
+     * Tableau des saisons de la série
+     * @type {Season[]}
      */
     seasons: Array<Season>;
     /**
@@ -606,19 +632,23 @@ export class Show extends Media implements implShow, implAddNote {
      */
     showrunner: Showrunner;
     /**
-     * @type {Array<string>} Tableau des liens sociaux de la série
+     * Tableau des liens sociaux de la série
+     * @type {string[]}
      */
     social_links: Array<string>;
     /**
-     * @type {string} Status de la série sur le compte du membre
+     * Statut de la série (en cours ou terminée)
+     * @type {string}
      */
     status: string;
     /**
-     * @type {number} Identifiant TheTVDB de la série
+     * Identifiant TheTVDB de la série
+     * @type {number}
      */
     thetvdb_id: number;
     /**
-     * @type {object} Contient les URLs des posters disponibles pour la série
+     * Contient les URLs des posters disponibles pour la série
+     * @type {object}
      */
     _posters: object;
 
@@ -629,7 +659,7 @@ export class Show extends Media implements implShow, implAddNote {
     /**
      * Constructeur de la classe Show
      * @param   {Obj} data - Les données du média
-     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
      * @returns {Show}
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>) {
@@ -782,12 +812,12 @@ export class Show extends Media implements implShow, implAddNote {
     /**
      * Récupère les données de la série sur l'API
      * @param  {boolean} [force=true]   Indique si on utilise les données en cache
-     * @return {Promise<*>}             Les données de la série
+     * @return {Promise<Obj>}             Les données de la série
      */
     fetch(force = true): Promise<Obj> {
         const self = this;
         if (this.__fetches.show) return this.__fetches.show;
-        this.__fetches.show = Base.callApi('GET', 'shows', 'display', {id: this.id}, force)
+        this.__fetches.show = UsBetaSeries.callApi('GET', 'shows', 'display', {id: this.id}, force)
         .then((data) => {
             return data;
         }).finally(() => delete self.__fetches.show);
@@ -807,7 +837,7 @@ export class Show extends Media implements implShow, implAddNote {
             params.id = this.id;
             force = true;
         }
-        this.__fetches.seasons = Base.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
+        this.__fetches.seasons = UsBetaSeries.callApi(HTTP_VERBS.GET, 'shows', 'seasons', params, force)
         .then((data: Obj) => {
             if (data?.seasons?.length <= 0) {
                 delete self.__fetches.seasons;
@@ -844,7 +874,7 @@ export class Show extends Media implements implShow, implAddNote {
     fetchCharacters(): Promise<this> {
         const self = this;
         if (this.__fetches.characters) return this.__fetches.characters as Promise<this>;
-        this.__fetches.characters = Base.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
+        this.__fetches.characters = UsBetaSeries.callApi(HTTP_VERBS.GET, 'shows', 'characters', {thetvdb_id: this.thetvdb_id})
         .then((data: Obj) => {
             self.characters = [];
             if (data?.characters?.length <= 0) {
@@ -880,7 +910,7 @@ export class Show extends Media implements implShow, implAddNote {
     fetchPersons(): Promise<Show> {
         const self = this;
         if (this.__fetches.persons) return this.__fetches.persons as Promise<Show>;
-        this.__fetches.persons = Base.callApi(HTTP_VERBS.GET, 'persons', 'show', {id: this.id})
+        this.__fetches.persons = UsBetaSeries.callApi(HTTP_VERBS.GET, 'persons', 'show', {id: this.id})
         .then(data => {
             this.persons = [];
             if (data.persons) {
@@ -973,7 +1003,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {boolean}
      */
     async isMarkedToSee(): Promise<boolean> {
-        const toSee: Obj = await Base.gm_funcs.getValue('toSee', {});
+        const toSee: Obj = await UsBetaSeries.gm_funcs.getValue('toSee', {});
         return toSee[this.id] !== undefined;
     }
     /**
@@ -985,7 +1015,7 @@ export class Show extends Media implements implShow, implAddNote {
         if (this.in_account) return new Promise(resolve => resolve(self));
 
         return new Promise((resolve, reject) => {
-            Base.callApi('POST', 'shows', 'show', {id: self.id})
+            UsBetaSeries.callApi('POST', 'shows', 'show', {id: self.id})
             .then(data => {
                 self.fill(data.show);
                 self._callListeners(EventTypes.ADD);
@@ -1011,7 +1041,7 @@ export class Show extends Media implements implShow, implAddNote {
         if (! this.in_account) return new Promise(resolve => resolve(self));
 
         return new Promise((resolve, reject) => {
-            Base.callApi('DELETE', 'shows', 'show', {id: self.id})
+            UsBetaSeries.callApi('DELETE', 'shows', 'show', {id: self.id})
             .then(data => {
                 self.fill(data.show);
                 self._callListeners(EventTypes.REMOVE);
@@ -1035,7 +1065,7 @@ export class Show extends Media implements implShow, implAddNote {
     archive(): Promise<Show> {
         const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('POST', 'shows', 'archive', {id: self.id})
+            UsBetaSeries.callApi('POST', 'shows', 'archive', {id: self.id})
             .then(data => {
                 self.fill(data.show);
                 self.save();
@@ -1053,7 +1083,7 @@ export class Show extends Media implements implShow, implAddNote {
     unarchive(): Promise<Show> {
         const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('DELETE', 'shows', 'archive', {id: self.id})
+            UsBetaSeries.callApi('DELETE', 'shows', 'archive', {id: self.id})
             .then(data => {
                 self.fill(data.show);
                 self.save();
@@ -1071,7 +1101,7 @@ export class Show extends Media implements implShow, implAddNote {
     favorite(): Promise<Show> {
         const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('POST', 'shows', 'favorite', {id: self.id})
+            UsBetaSeries.callApi('POST', 'shows', 'favorite', {id: self.id})
             .then(data => {
                 self.fill(data.show);
                 self.save();
@@ -1088,7 +1118,7 @@ export class Show extends Media implements implShow, implAddNote {
     unfavorite(): Promise<Show> {
         const self = this;
         return new Promise((resolve, reject) => {
-            Media.callApi('DELETE', 'shows', 'favorite', {id: self.id})
+            UsBetaSeries.callApi('DELETE', 'shows', 'favorite', {id: self.id})
             .then(data => {
                 self.fill(data.show);
                 self.save();
@@ -1100,12 +1130,12 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Met à jour les données de la série
-     * @param  {Callback} [cb = Base.noop]  Fonction de callback
+     * @param  {Callback} [cb = BetaSeries.noop]  Fonction de callback
      * @return {Promise<Show>}              Promesse (Show)
      */
-    update(cb: Callback = Base.noop): Promise<Show> {
+    update(cb: Callback = UsBetaSeries.noop): Promise<Show> {
         const self = this;
-        return Base.callApi('GET', 'shows', 'display', {id: self.id}, true)
+        return UsBetaSeries.callApi('GET', 'shows', 'display', {id: self.id}, true)
         .then(data => {
             if (data.show) {
                 self.fill(data.show).save();
@@ -1117,17 +1147,17 @@ export class Show extends Media implements implShow, implAddNote {
             return self;
         })
         .catch(err => {
-            Base.notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
+            UsBetaSeries.notification('Erreur de récupération de la ressource Show', 'Show update: ' + err);
             if (typeof cb === 'function') cb();
         }) as Promise<Show>;
     }
     /**
      * Met à jour le rendu de la barre de progression
      * et du prochain épisode
-     * @param  {Callback} [cb=Base.noop] Fonction de callback
+     * @param  {Callback} [cb=BetaSeries.noop] Fonction de callback
      * @return {void}
      */
-    updateRender(cb: Callback = Base.noop): void {
+    updateRender(cb: Callback = UsBetaSeries.noop): void {
         if (!this.elt) return;
 
         const self = this;
@@ -1136,7 +1166,7 @@ export class Show extends Media implements implShow, implAddNote {
         this.updateArchived();
         // this.updateNote();
         const note = this.objNote;
-        if (Base.debug) {
+        if (UsBetaSeries.debug) {
             console.log('Next ID et status', {
                 next: this.user.next.id,
                 status: this.status,
@@ -1150,7 +1180,7 @@ export class Show extends Media implements implShow, implAddNote {
             // On propose d'archiver si la série n'est plus en production
             if (this.isEnded() && ! this.isArchived())
             {
-                if (Base.debug) console.log('Série terminée, popup proposition archivage');
+                if (UsBetaSeries.debug) console.log('Série terminée, popup proposition archivage');
                 promise = new Promise(resolve => {
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
@@ -1169,12 +1199,12 @@ export class Show extends Media implements implShow, implAddNote {
             }
             // On propose de noter la série
             if (note.user === 0) {
-                if (Base.debug) console.log('Proposition de voter pour la série');
+                if (UsBetaSeries.debug) console.log('Proposition de voter pour la série');
                 promise.then(() => {
                     let retourCallback = false;
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
-                        title: Base.trans("popin.note.title.show"),
+                        title: UsBetaSeries.trans("popin.note.title.show"),
                         text: "Voulez-vous noter la série ?",
                         callback_yes: function() {
                             // jQuery('.blockInformations__metadatas > button').trigger('click');
@@ -1205,7 +1235,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {void}
      */
     updateProgressBar(): void {
-        if (Base.debug) console.log('updateProgressBar');
+        if (UsBetaSeries.debug) console.log('updateProgressBar');
         // On met à jour la barre de progression
         jQuery('.progressBarShow').css('width', this.user.status.toFixed(1) + '%');
     }
@@ -1214,7 +1244,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     updateArchived(): void {
         if (!this.elt) return;
-        if (Base.debug) console.log('Show updateArchived');
+        if (UsBetaSeries.debug) console.log('Show updateArchived');
         const $btnArchive = jQuery('#reactjs-show-actions button.btn-archive', this.elt);
         if (this.isArchived() && $btnArchive.length > 0) {
             $btnArchive.trigger('click');
@@ -1225,9 +1255,9 @@ export class Show extends Media implements implShow, implAddNote {
      * @param   {Callback} [cb=noop] Fonction de callback
      * @returns {void}
      */
-    updateNextEpisode(cb: Callback = Base.noop): void {
+    updateNextEpisode(cb: Callback = UsBetaSeries.noop): void {
         if (!this.elt) return;
-        if (Base.debug) console.log('updateNextEpisode');
+        if (UsBetaSeries.debug) console.log('updateNextEpisode');
         const self = this;
         const $nextEpisode = jQuery('a.blockNextEpisode', this.elt);
         /**
@@ -1255,14 +1285,14 @@ export class Show extends Media implements implShow, implAddNote {
                     image: ''
                 });
             }
-            if (Base.debug) console.log('nextEpisode et show.user.next OK', this.user, next);
+            if (UsBetaSeries.debug) console.log('nextEpisode et show.user.next OK', this.user, next);
             // Modifier l'image
             const $img = $nextEpisode.find('img'),
                   $remaining = $nextEpisode.find('.remaining div'),
                   $parent = $img.parent('div'),
                   height = $img.attr('height'),
                   width = $img.attr('width'),
-                  src = `${Base.api.url}/pictures/episodes?key=${Base.userKey}&id=${next.id}&width=${width}&height=${height}`;
+                  src = `${UsBetaSeries.api.url}/pictures/episodes?key=${UsBetaSeries.userKey}&id=${next.id}&width=${width}&height=${height}`;
             $img.remove();
             $parent.append(`<img data-src="${src}" class="js-lazy-image" height="${height}" width="${width}" />`);
             // Modifier le titre
@@ -1273,7 +1303,7 @@ export class Show extends Media implements implShow, implAddNote {
             $remaining.text($remaining.text().trim().replace(/^\d+/, getNbEpisodesUnwatchedTotal()));
         }
         else if ($nextEpisode.length <= 0 && this.user.next && !isNaN(this.user.next.id)) {
-            if (Base.debug) console.log('No nextEpisode et show.user.next OK', this.user);
+            if (UsBetaSeries.debug) console.log('No nextEpisode et show.user.next OK', this.user);
             buildNextEpisode(this);
         }
         else if (! this.user.next || isNaN(this.user.next.id)) {
@@ -1289,7 +1319,7 @@ export class Show extends Media implements implShow, implAddNote {
         function buildNextEpisode(res: Show): void {
             const height = 70,
                     width = 124,
-                    src = `${Base.api.url}/pictures/episodes?key=${Base.userKey}&id=${res.user.next.id}&width=${width}&height=${height}`,
+                    src = `${UsBetaSeries.api.url}/pictures/episodes?key=${UsBetaSeries.userKey}&id=${res.user.next.id}&width=${width}&height=${height}`,
                     serieTitle = res.resource_url.split('/').pop();
 
             jQuery('.blockInformations__actions').last().after(
@@ -1335,7 +1365,7 @@ export class Show extends Media implements implShow, implAddNote {
                             </svg>
                         </span>
                     </button>
-                    <div class="label">${Base.trans('show.button.add.label')}</div>
+                    <div class="label">${UsBetaSeries.trans('show.button.add.label')}</div>
                 </div>`
             );
             this.addBtnToSee();
@@ -1347,14 +1377,14 @@ export class Show extends Media implements implShow, implAddNote {
             jQuery('#reactjs-show-actions > div > button').off('click').one('click', (e: JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (Base.debug) console.groupCollapsed('AddShow');
+                if (UsBetaSeries.debug) console.groupCollapsed('AddShow');
                 const done = function(): void {
                     // On met à jour les boutons Archiver et Favori
                     changeBtnAdd(self);
                     // On met à jour le bloc du prochain épisode à voir
                     self.updateNextEpisode(function() {
                         self._callListeners(EventTypes.ADDED);
-                        if (Base.debug) console.groupEnd();
+                        if (UsBetaSeries.debug) console.groupEnd();
                     });
                 };
                 self.addToAccount()
@@ -1363,8 +1393,8 @@ export class Show extends Media implements implShow, implAddNote {
                         done();
                         return;
                     }
-                    Base.notification('Erreur d\'ajout de la série', err);
-                    if (Base.debug) console.groupEnd();
+                    UsBetaSeries.notification('Erreur d\'ajout de la série', err);
+                    if (UsBetaSeries.debug) console.groupEnd();
                 });
             });
         }
@@ -1430,7 +1460,7 @@ export class Show extends Media implements implShow, implAddNote {
                                 data-show-id="${show.id}"
                                 data-user-hasarchived="${show.user.archived ? '1' : ''}"
                                 data-show-inaccount="1"
-                                data-user-id="${Base.userId}"
+                                data-user-id="${UsBetaSeries.userId}"
                                 data-show-favorised="${show.user.favorited ? '1' : ''}">
                             <div class="blockInformations__action">
                                 <button class="btn-reset btn-transparent btn-archive" type="button">
@@ -1440,7 +1470,7 @@ export class Show extends Media implements implShow, implAddNote {
                                     </svg>
                                     </span>
                                 </button>
-                                <div class="label">${Base.trans('show.button.archive.label')}</div>
+                                <div class="label">${UsBetaSeries.trans('show.button.archive.label')}</div>
                             </div>
                             <div class="blockInformations__action">
                                 <button class="btn-reset btn-transparent btn-favoris" type="button">
@@ -1450,7 +1480,7 @@ export class Show extends Media implements implShow, implAddNote {
                                     </svg>
                                     </span>
                                 </button>
-                                <div class="label">${Base.trans('show.button.favorite.label')}</div>
+                                <div class="label">${UsBetaSeries.trans('show.button.favorite.label')}</div>
                             </div>
                         </div>`);
                 // On ofusque l'image des épisodes non-vu
@@ -1475,16 +1505,16 @@ export class Show extends Media implements implShow, implAddNote {
                     type="button"
                     class="btn-reset blockTitle-subtitle u-colorWhiteOpacity05"
                 >
-                    ${Base.trans("popup.suggest_show.title", {'%title%': "une série"})}</button>`;
+                    ${UsBetaSeries.trans("popup.suggest_show.title", {'%title%': "une série"})}</button>`;
                 jQuery('#similars h2.blockTitle').after(btnAddSimilars);
                 // self.addNumberVoters();
                 // On supprime le btn ToSeeLater
                 self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
                 self.elt.find('.blockInformations__title .fa-clock-o').remove();
-                const toSee = await Base.gm_funcs.getValue('toSee', {});
+                const toSee = await UsBetaSeries.gm_funcs.getValue('toSee', {});
                 if (toSee[self.id] !== undefined) {
                     delete toSee[self.id];
-                    Base.gm_funcs.setValue('toSee', toSee);
+                    UsBetaSeries.gm_funcs.setValue('toSee', toSee);
                 }
             }
             self.addEventBtnsArchiveAndFavoris();
@@ -1532,7 +1562,7 @@ export class Show extends Media implements implShow, implAddNote {
                                     </svg>
                                 </span>
                                 </button>
-                                <div class="label">${Base.trans('show.button.add.label')}</div>
+                                <div class="label">${UsBetaSeries.trans('show.button.add.label')}</div>
                             </div>`
                         );
                         // On supprime les items du menu Options
@@ -1552,7 +1582,7 @@ export class Show extends Media implements implShow, implAddNote {
                                     season.episodes[e].elt = $(checks.get(e));
                                 }
                                 if (e === season.episodes.length - 1) update = true;
-                                if (Base.debug) console.log('clean episode %d', e, update);
+                                if (UsBetaSeries.debug) console.log('clean episode %d', e, update);
                                 season.episodes[e].updateRender('notSeen', update);
                             }
                         });
@@ -1572,31 +1602,31 @@ export class Show extends Media implements implShow, implAddNote {
                     };
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
-                        title: Base.trans("popup.delete_show_success.title"),
-                        text: Base.trans("popup.delete_show_success.text", { "%title%": self.title }),
-                        yes: Base.trans("popup.delete_show_success.yes"),
+                        title: UsBetaSeries.trans("popup.delete_show_success.title"),
+                        text: UsBetaSeries.trans("popup.delete_show_success.text", { "%title%": self.title }),
+                        yes: UsBetaSeries.trans("popup.delete_show_success.yes"),
                         callback_yes: afterNotif
                     });
                 };
                 // Supprimer la série du compte utilisateur
                 // eslint-disable-next-line no-undef
                 new PopupAlert({
-                    title: Base.trans("popup.delete_show.title", { "%title%": self.title }),
-                    text: Base.trans("popup.delete_show.text", { "%title%": self.title }),
+                    title: UsBetaSeries.trans("popup.delete_show.title", { "%title%": self.title }),
+                    text: UsBetaSeries.trans("popup.delete_show.text", { "%title%": self.title }),
                     callback_yes: function() {
-                        if (Base.debug) console.groupCollapsed('delete show');
+                        if (UsBetaSeries.debug) console.groupCollapsed('delete show');
                         self.removeFromAccount()
                         .then(done, err => {
                             if (err && err.code !== undefined && err.code === 2004) {
                                 done();
-                                if (Base.debug) console.groupEnd();
+                                if (UsBetaSeries.debug) console.groupEnd();
                                 return;
                             }
-                            Media.notification('Erreur de suppression de la série', err);
-                            if (Base.debug) console.groupEnd();
+                            UsBetaSeries.notification('Erreur de suppression de la série', err);
+                            if (UsBetaSeries.debug) console.groupEnd();
                         });
                     },
-                    callback_no: Base.noop
+                    callback_no: UsBetaSeries.noop
                 });
             });
         }
@@ -1616,14 +1646,14 @@ export class Show extends Media implements implShow, implAddNote {
                 <div class="label">A voir</div>
             </div>`;
         const toggleToSeeShow = async (showId: number): Promise<boolean> => {
-            const storeToSee: Array<number> = await Base.gm_funcs.getValue('toSee', []);
+            const storeToSee: Array<number> = await UsBetaSeries.gm_funcs.getValue('toSee', []);
             const toSee = storeToSee.includes(showId);
             if (!toSee) {
                 storeToSee.push(showId);
             } else {
                 storeToSee.splice(storeToSee.indexOf(showId), 1);
             }
-            Base.gm_funcs.setValue('toSee', storeToSee);
+            UsBetaSeries.gm_funcs.setValue('toSee', storeToSee);
             return toSee;
         };
         this.elt.find('.blockInformations__actions').last().append(btnHTML);
@@ -1644,7 +1674,7 @@ export class Show extends Media implements implShow, implAddNote {
             }
             $btn.blur();
         });
-        const toSee: Obj = await Base.gm_funcs.getValue('toSee', {});
+        const toSee: Obj = await UsBetaSeries.gm_funcs.getValue('toSee', {});
         if (toSee[this.id] !== undefined) {
             $btn.find('i.fa').css('color', 'var(--body_background)');
             $btn.attr('title', 'Retirer la série des séries à voir');
@@ -1669,17 +1699,17 @@ export class Show extends Media implements implShow, implAddNote {
         $btnArchive.off('click').click((e: JQuery.ClickEvent): void => {
             e.stopPropagation();
             e.preventDefault();
-            if (Base.debug) console.groupCollapsed('show-archive');
+            if (UsBetaSeries.debug) console.groupCollapsed('show-archive');
             // Met à jour le bouton d'archivage de la série
             function updateBtnArchive(promise: Promise<Show>, transform: string, label: string, notif: string) {
                 promise.then(() => {
                     const $parent = $(e.currentTarget).parent();
                     $('span', e.currentTarget).css('transform', transform);
-                    $('.label', $parent).text(Base.trans(label));
-                    if (Base.debug) console.groupEnd();
+                    $('.label', $parent).text(UsBetaSeries.trans(label));
+                    if (UsBetaSeries.debug) console.groupEnd();
                 }, err => {
-                    Base.notification(notif, err);
-                    if (Base.debug) console.groupEnd();
+                    UsBetaSeries.notification(notif, err);
+                    if (UsBetaSeries.debug) console.groupEnd();
                 });
             }
             if (! self.isArchived()) {
@@ -1698,7 +1728,7 @@ export class Show extends Media implements implShow, implAddNote {
         $btnFavoris.off('click').click((e: JQuery.ClickEvent): void => {
             e.stopPropagation();
             e.preventDefault();
-            if (Base.debug) console.groupCollapsed('show-favoris');
+            if (UsBetaSeries.debug) console.groupCollapsed('show-favoris');
             if (! self.isFavorite()) {
                 self.favorite()
                 .then(() => {
@@ -1708,10 +1738,10 @@ export class Show extends Media implements implShow, implAddNote {
                                 <path d="M15.156.91a5.887 5.887 0 0 0-4.406 2.026A5.887 5.887 0 0 0 6.344.909C3.328.91.958 3.256.958 6.242c0 3.666 3.33 6.653 8.372 11.19l1.42 1.271 1.42-1.28c5.042-4.528 8.372-7.515 8.372-11.18 0-2.987-2.37-5.334-5.386-5.334z"></path>
                             </svg>
                             </span>`);
-                    if (Base.debug) console.groupEnd();
+                    if (UsBetaSeries.debug) console.groupEnd();
                 }, err => {
-                    Base.notification('Erreur de favoris de la série', err);
-                    if (Base.debug) console.groupEnd();
+                    UsBetaSeries.notification('Erreur de favoris de la série', err);
+                    if (UsBetaSeries.debug) console.groupEnd();
                 });
             } else {
                 self.unfavorite()
@@ -1722,10 +1752,10 @@ export class Show extends Media implements implShow, implAddNote {
                                 <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
                             </svg>
                             </span>`);
-                    if (Base.debug) console.groupEnd();
+                    if (UsBetaSeries.debug) console.groupEnd();
                 }, err => {
-                    Base.notification('Erreur de favoris de la série', err);
-                    if (Base.debug) console.groupEnd();
+                    UsBetaSeries.notification('Erreur de favoris de la série', err);
+                    if (UsBetaSeries.debug) console.groupEnd();
                 });
             }
         });
@@ -1734,10 +1764,10 @@ export class Show extends Media implements implShow, implAddNote {
      * Ajoute la classification dans les détails de la ressource
      */
     addRating() {
-        if (Base.debug) console.log('addRating');
+        if (UsBetaSeries.debug) console.log('addRating');
 
         if (this.rating) {
-            const rating: Rating = Base.ratings[this.rating] !== undefined ? Base.ratings[this.rating] : null;
+            const rating: Rating = UsBetaSeries.ratings[this.rating] !== undefined ? UsBetaSeries.ratings[this.rating] : null;
             if (rating !== null) {
                 // On ajoute la classification
                 jQuery('.blockInformations__details')
@@ -1751,7 +1781,7 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Définit la saison courante
-     * @param   {number} seasonNumber Le numéro de la saison courante (commence à 1)
+     * @param   {number} seasonNumber - Le numéro de la saison courante (commence à 1)
      * @returns {Show}  L'instance de la série
      * @throws  {Error} if seasonNumber is out of range of seasons
      */
@@ -1776,7 +1806,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {Season}
      */
     getSeason(seasonNumber: number): Season {
-        if (Base.debug) console.log('Show.getSeason: seasonNumber(%d)', seasonNumber);
+        if (UsBetaSeries.debug) console.log('Show.getSeason: seasonNumber(%d)', seasonNumber);
         if (seasonNumber <= 0 || seasonNumber > this.seasons.length) {
             throw new RangeError(`seasonNumber[${seasonNumber}] is out of range of seasons(length: ${this.seasons.length})`);
         }
@@ -1784,11 +1814,11 @@ export class Show extends Media implements implShow, implAddNote {
     }
     /**
      * Retourne une image, si disponible, en fonction du format désiré
-     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+     * @param  {string} [format = Images.formats.poster] -  Le format de l'image désiré
      * @return {Promise<string>}                         L'URL de l'image
      */
     getDefaultImage(format: string = Images.formats.poster): Promise<string> {
-        const proxy = Base.serverBaseUrl + '/posters';
+        const proxy = UsBetaSeries.serverBaseUrl + '/posters';
         const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
             method: 'GET',
             headers: {
@@ -1800,7 +1830,7 @@ export class Show extends Media implements implShow, implAddNote {
         };
         return new Promise((res, rej) => {
             if (format === Images.formats.poster) {
-                if (Base.debug) console.log('Show.getDefaultImage poster', this.images.poster);
+                if (UsBetaSeries.debug) console.log('Show.getDefaultImage poster', this.images.poster);
                 if (this.images.poster) res(this.images.poster);
                 else {
                     this._getTvdbUrl(this.thetvdb_id).then(url => {
@@ -1861,7 +1891,7 @@ export class Show extends Media implements implShow, implAddNote {
         if (this._posters) {
             return new Promise(res => res(this._posters));
         }
-        const proxy = Base.serverBaseUrl + '/posters';
+        const proxy = UsBetaSeries.serverBaseUrl + '/posters';
         const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
             method: 'GET',
             headers: {

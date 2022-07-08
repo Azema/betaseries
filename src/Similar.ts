@@ -1,4 +1,4 @@
-import { Base, Obj, HTTP_VERBS } from "./Base";
+import { Obj, HTTP_VERBS, UsBetaSeries } from "./Base";
 import { Media, MediaType, MediaTypes } from "./Media";
 import { Season } from "./Season";
 import { implShow, Showrunner, Platforms, Images, Picture, Show } from "./Show";
@@ -7,8 +7,11 @@ import { Platform_link } from "./Episode";
 import { Person } from "./Character";
 
 declare const renderjson;
-
-interface implDialog {
+/**
+ * implDialog
+ * @interface
+ */
+export interface implDialog {
     show: () => void,
     close: () => void,
     setContent: (text: string) => void,
@@ -16,6 +19,13 @@ interface implDialog {
     setTitle: (title: string) => void,
     init: () => void
 }
+/**
+ * Similar
+ * @class
+ * @extends Media
+ * @implements {implShow}
+ * @implements {implMovie}
+ */
 export class Similar extends Media implements implShow, implMovie {
     static relatedProps = {};
 
@@ -94,7 +104,7 @@ export class Similar extends Media implements implShow, implMovie {
         if (this.mediaType.singular === MediaType.movie) {
             action = 'movie';
         }
-        return Base.callApi('GET', this.mediaType.plural, action, {id: this.id}, force);
+        return UsBetaSeries.callApi('GET', this.mediaType.plural, action, {id: this.id}, force);
     }
     /**
      * Ajoute le bandeau Viewed sur le poster du similar
@@ -111,7 +121,7 @@ export class Similar extends Media implements implShow, implMovie {
         {
             // On ajoute le bandeau "Viewed"
             $slideImg.prepend(
-                `<img src="${Base.serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
+                `<img src="${UsBetaSeries.serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
             );
         }
         // On ajoute des infos pour la recherche du similar pour les popups
@@ -147,7 +157,7 @@ export class Similar extends Media implements implShow, implMovie {
             this.fetch().then(function(data) {
                 // eslint-disable-next-line no-undef
                 dialog.setContent(renderjson.set_show_to_level(2)(data[self.mediaType.singular]));
-                dialog.setCounter(Base.counter.toString());
+                dialog.setCounter(UsBetaSeries.counter.toString());
                 dialog.setTitle('Données du similar');
                 dialog.show();
             });
@@ -262,7 +272,7 @@ export class Similar extends Media implements implShow, implMovie {
      * @return {string}
      */
     getTitlePopup(): string {
-        // if (Base.debug) console.log('getTitlePopup', this);
+        // if (BetaSeries.debug) console.log('getTitlePopup', this);
         let title: string = this.title;
         if (this.objNote.total > 0) {
             title += ' <span style="font-size: 0.8em;color:var(--link_color);">' +
@@ -334,7 +344,7 @@ export class Similar extends Media implements implShow, implMovie {
                 );
             }
             else {
-                const proxy = Base.serverBaseUrl + '/posters/';
+                const proxy = UsBetaSeries.serverBaseUrl + '/posters/';
                 const initFetch: RequestInit = { // objet qui contient les paramètres de la requête
                     method: 'GET',
                     headers: {
@@ -372,8 +382,8 @@ export class Similar extends Media implements implShow, implMovie {
             }
         }
         else if (this.mediaType.singular === MediaType.movie && this.tmdb_id && this.tmdb_id > 0) {
-            if (Base.themoviedb_api_user_key.length <= 0) return;
-            const uriApiTmdb = `https://api.themoviedb.org/3/movie/${this.tmdb_id}?api_key=${Base.themoviedb_api_user_key}&language=fr-FR`;
+            if (UsBetaSeries.themoviedb_api_user_key.length <= 0) return;
+            const uriApiTmdb = `https://api.themoviedb.org/3/movie/${this.tmdb_id}?api_key=${UsBetaSeries.themoviedb_api_user_key}&language=fr-FR`;
             fetch(uriApiTmdb).then(response => {
                 if (!response.ok) return null;
                 return response.json();
@@ -418,7 +428,7 @@ export class Similar extends Media implements implShow, implMovie {
             params.state = state;
         }
 
-        return Base.callApi(verb, this.mediaType.plural, this.mediaType.singular, params)
+        return UsBetaSeries.callApi(verb, this.mediaType.plural, this.mediaType.singular, params)
         .then((data: Obj) => {
             self.fill(data[self.mediaType.singular]);
             // En attente de la résolution du bug https://www.betaseries.com/bugs/api/462
@@ -431,7 +441,7 @@ export class Similar extends Media implements implShow, implMovie {
         })
         .catch(err => {
             console.warn('Erreur changeState similar', err);
-            Base.notification('Change State Similar', 'Erreur lors du changement de statut: ' + err.toString());
+            UsBetaSeries.notification('Change State Similar', 'Erreur lors du changement de statut: ' + err.toString());
             return self;
         });
     }

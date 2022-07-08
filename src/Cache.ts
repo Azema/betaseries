@@ -1,4 +1,4 @@
-type ObjHome = {
+export type ObjHome = {
     [key in DataTypesCache]: any;
 };
 export enum DataTypesCache {

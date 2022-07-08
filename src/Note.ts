@@ -1,4 +1,4 @@
-import { Base, EventTypes, Obj, Callback } from "./Base";
+import { EventTypes, Obj, Callback, UsBetaSeries } from "./Base";
 import { MediaBase, MediaType } from "./Media";
 import { Changes } from "./RenderHtml";
 
@@ -48,23 +48,25 @@ export class Note {
             mean: parseFloat
         };
         for (const propKey of Object.keys(fnTransform)) {
-            const descriptor: PropertyDescriptor = {
-                configurable: true,
-                enumerable: true,
-                get: () => {
-                    return self['_' + propKey];
-                },
-                set: (newValue: number) => {
-                    const oldValue = self['_' + propKey];
-                    if (oldValue === newValue) return;
-                    self['_' + propKey] = newValue;
-                    if (!self.__initial) {
-                        self.__changes[propKey] = {oldValue, newValue};
-                        if (self._parent) self._parent.updatePropRenderObjNote();
+            if (self.__initial) {
+                const descriptor: PropertyDescriptor = {
+                    configurable: true,
+                    enumerable: true,
+                    get: () => {
+                        return self['_' + propKey];
+                    },
+                    set: (newValue: number) => {
+                        const oldValue = self['_' + propKey];
+                        if (oldValue === newValue) return;
+                        self['_' + propKey] = newValue;
+                        if (!self.__initial) {
+                            self.__changes[propKey] = {oldValue, newValue};
+                            if (self._parent) self._parent.updatePropRenderObjNote();
+                        }
                     }
-                }
-            };
-            Object.defineProperty(this, propKey, descriptor);
+                };
+                Object.defineProperty(this, propKey, descriptor);
+            }
             const value = fnTransform[propKey](data[propKey]);
             Reflect.set(this, propKey, value);
         }
@@ -75,6 +77,9 @@ export class Note {
         return this._parent;
     }
     set parent(parent: MediaBase) {
+        if (!(parent instanceof MediaBase)) {
+            throw new TypeError('Parameter "parent" must be an instance of MediaBase');
+        }
         this._parent = parent;
     }
     /**
@@ -89,14 +94,18 @@ export class Note {
      * @returns {string}
      */
     public toString(): string {
+        let locale = 'fr-FR';
+        if (UsBetaSeries.member) {
+            locale = UsBetaSeries.member.locale;
+        }
         const votes = 'vote' + (this.total > 1 ? 's' : ''),
               // On met en forme le nombre de votes
-              total = new Intl.NumberFormat('fr-FR', {style: 'decimal', useGrouping: true}).format(this.total),
+              total = new Intl.NumberFormat(locale, {style: 'decimal', useGrouping: true}).format(this.total),
               // On limite le nombre de chiffre après la virgule
               note = this.mean.toFixed(2);
         let toString = `${total} ${votes} : ${note} / 5`;
         // On ajoute la note du membre connecté, si il a voté
-        if (Base.userIdentified() && this.user > 0) {
+        if (UsBetaSeries.userIdentified() && this.user > 0) {
             toString += `, votre note: ${this.user}`;
         }
         return toString;
@@ -115,9 +124,10 @@ export class Note {
     }
     /**
      * Crée une popup avec 5 étoiles pour noter le média
+     * @param {Callback} cb - Fonction callback
      */
-    public createPopupForVote(cb: Callback = Base.noop): void {
-        if (Base.debug) console.log('objNote createPopupForVote');
+    public createPopupForVote(cb: Callback = UsBetaSeries.noop): void {
+        if (UsBetaSeries.debug) console.log('objNote createPopupForVote');
         // La popup et ses éléments
         const self = this,
               $popup = jQuery('#popin-dialog'),
@@ -125,7 +135,7 @@ export class Note {
               $contentReact = $popup.find('.popin-content-reactmodule'),
               $closeButtons = $popup.find(".js-close-popupalert"),
               hidePopup = () => {
-                  if (Base.debug) console.log('objNote createPopupForVote hidePopup');
+                  if (UsBetaSeries.debug) console.log('objNote createPopupForVote hidePopup');
                   $popup.attr('aria-hidden', 'true');
                   $contentHtmlElement.find(".button-set").show();
                   $contentHtmlElement.hide();
@@ -133,7 +143,7 @@ export class Note {
                   $text.find('.star-svg').off('mouseenter').off('mouseleave').off('click');
                 },
                 showPopup = () => {
-                    if (Base.debug) console.log('objNote createPopupForVote showPopup');
+                    if (UsBetaSeries.debug) console.log('objNote createPopupForVote showPopup');
                     $contentHtmlElement.find(".button-set").hide();
                     $contentHtmlElement.show();
                     $contentReact.hide();
@@ -217,7 +227,7 @@ export class Note {
                         self._parent._callListeners(EventTypes.NOTE);
                         if (cb) cb.call(self);
                     } else {
-                        Base.notification('Erreur Vote', "Une erreur s'est produite durant le vote");
+                        UsBetaSeries.notification('Erreur Vote', "Une erreur s'est produite durant le vote");
                     }
                 })
                 .catch(() => hidePopup() );

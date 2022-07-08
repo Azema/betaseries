@@ -1,4 +1,4 @@
-import { Base, Obj, HTTP_VERBS } from "./Base";
+import { Obj, HTTP_VERBS, UsBetaSeries } from "./Base";
 
 /*
 {
@@ -117,7 +117,7 @@ export class NotificationList {
             sort: 'DESC',
             number: nb
         };
-        return Base.callApi(HTTP_VERBS.GET, 'members', 'notifications', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'members', 'notifications', params)
         .then((data: Obj) => {
             const notifications = new NotificationList();
             for (let n = 0; n < data.notifications.length; n++) {

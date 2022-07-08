@@ -1,4 +1,4 @@
-import { Base, Obj, HTTP_VERBS, EventTypes } from "./Base";
+import { Obj, HTTP_VERBS, EventTypes, UsBetaSeries } from "./Base";
 import { Character } from "./Character";
 import { implAddNote, Note } from "./Note";
 import { Season } from "./Season";
@@ -12,20 +12,36 @@ declare const PopupAlert;
 
 export type Platform_link = {
     /**
-     * @type {number} Identifiant de l'épisode sur la plateforme
+     * Identifiant de l'épisode sur la plateforme
+     * @type {number}
      */
     id: number;
+    /**
+     * Identifiant de la plateforme
+     * @type {number}
+     */
     platform_id?: number;
     /**
-     * @type {string} Lien vers l'épisode sur la plateforme
+     * Lien vers l'épisode sur la plateforme
+     * @type {string}
      */
     link: string;
     /**
-     * @type {string} Le nom de la plateforme
+     * Le nom de la plateforme
+     * @type {string}
      */
     platform: string;
+    /**
+     * @type {string}
+     */
     color?: string;
+    /**
+     * @type {string}
+     */
     type?: string;
+    /**
+     * @type {string}
+     */
     logo?: string;
 };
 export type ReleasesSvod = {
@@ -34,19 +50,23 @@ export type ReleasesSvod = {
 };
 export type WatchedBy = {
     /**
-     * @type {number} Identifiant du membre
+     * Identifiant du membre
+     * @type {number}
      */
     id: number;
     /**
-     * @type {string} Login du membre
+     * Login du membre
+     * @type {string}
      */
     login: string;
     /**
-     * @type {number} La note du membre
+     * La note du membre
+     * @type {number}
      */
     note: number;
     /**
-     * @type {string} L'URL de l'avatar du membre
+     * L'URL de l'avatar du membre
+     * @type {string}
      */
     avatar?: string;
 };
@@ -76,21 +96,24 @@ export class Episode extends MediaBase implements implAddNote {
         youtube_id: {key: "youtube_id", type: 'string', default: ''}
     };
     public static fetch(epId: number): Promise<Episode> {
-        return Base.callApi(HTTP_VERBS.GET, 'episodes', 'display', {id: epId})
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'episodes', 'display', {id: epId})
         .then((data: Obj) => {
             return new Episode(data.episode, null, jQuery('.blockInformations'));
         });
     }
     /**
-     * @type {Season} L'objet Season contenant l'épisode
+     * L'objet Season contenant l'épisode
+     * @type {Season}
      */
     _season: Season;
     /**
-     * @type {string} Le code de l'épisode SXXEXX
+     * Le code de l'épisode SXXEXX
+     * @type {string}
      */
     code: string;
     /**
-     * @type {Date} La date de sortie de l'épisode
+     * La date de sortie de l'épisode
+     * @type {Date}
      */
     date: Date;
     /**
@@ -98,19 +121,23 @@ export class Episode extends MediaBase implements implAddNote {
      */
     director: string;
     /**
-     * @type {number} Le numéro de l'épisode dans la saison
+     * Le numéro de l'épisode dans la saison
+     * @type {number}
      */
     number: number;
     /**
-     * @type {number} Le numéro de l'épisode dans la série
+     * Le numéro de l'épisode dans la série
+     * @type {number}
      */
     global: number;
     /**
-     * @type {number} Le numéro de la saison
+     * Le numéro de la saison
+     * @type {number}
      */
     numSeason: number;
     /**
-     * @type {Array<Platform_link>} Les plateformes de diffusion
+     * Les plateformes de diffusion
+     * @type {Platform_link[]}
      */
     platform_links: Array<Platform_link>;
     /**
@@ -118,33 +145,44 @@ export class Episode extends MediaBase implements implAddNote {
      */
     releasesSvod: ReleasesSvod;
     /**
-     * @type {number} Nombre de membres de BS à avoir vu l'épisode
+     * Nombre de membres de BS à avoir vu l'épisode
+     * @type {number}
      */
     seen_total: number;
     /**
-     * @type {boolean} Indique si il s'agit d'un épisode spécial
+     * Indique si il s'agit d'un épisode spécial
+     * @type {boolean}
      */
     special: boolean;
     /**
-     * @type {Array<Subtitle>} Tableau des sous-titres dispo sur BS
+     * Tableau des sous-titres dispo sur BS
+     * @type {Subtitle[]}
      */
     subtitles: Subtitles;
     /**
-     * @type {number} Identifiant de l'épisode sur thetvdb.com
+     * Identifiant de l'épisode sur thetvdb.com
+     * @type {number}
      */
     thetvdb_id: number;
     /**
-     * @type {Array<WatchedBy>} Tableau des amis ayant vu l'épisode
+     * Tableau des amis ayant vu l'épisode
+     * @type {WatchedBy[]}
      */
     watched_by: Array<WatchedBy>;
     /**
-     * @type {Array<string>} Tableau des scénaristes de l'épisode
+     * Tableau des scénaristes de l'épisode
+     * @type {string[]}
      */
     writers: Array<string>;
     /**
-     * @type {string} Identifiant de la vidéo sur Youtube
+     * Identifiant de la vidéo sur Youtube
+     * @type {string}
      */
     youtube_id: string;
+    /**
+     * Les requêtes en cours
+     * @type {Object.<string, Promise<Episode>>}
+     */
     private __fetches: Record<string, Promise<this>>;
 
     /**
@@ -167,6 +205,13 @@ export class Episode extends MediaBase implements implAddNote {
         if (this._season) {
             this.initCheckSeen(this.number - 1);
             this.addAttrTitle().addPopup();
+            this.elt
+                .attr('data-id', this.id)
+                .attr('data-code', this.code)
+                .attr('data-note-user', this.objNote.user)
+                .attr('data-number', this.number)
+                .attr('data-season', this.numSeason)
+                .attr('data-special', this.special ? '1' : '0');
         } else {
             super._initRender();
         }
@@ -292,7 +337,7 @@ export class Episode extends MediaBase implements implAddNote {
             $checkbox.attr('data-id', this.id);
             $checkbox.attr('data-pos', pos);
             $checkbox.attr('data-special', this.special ? '1' : '0');
-            $checkbox.attr('title', Base.trans("member_shows.remove"));
+            $checkbox.attr('title', UsBetaSeries.trans("member_shows.remove"));
             $checkbox.addClass('seen');
         } else if ($checkbox.length <= 0 && !this.user.seen && !this.user.hidden) {
             // On ajoute la case à cocher pour permettre d'indiquer l'épisode comme vu
@@ -303,7 +348,7 @@ export class Episode extends MediaBase implements implAddNote {
                                 data-pos="${pos}"
                                 data-special="${this.special ? '1' : '0'}"
                                 style="background: rgba(13,21,28,.2);"
-                                title="${Base.trans("member_shows.markas")}"></div>`
+                                title="${UsBetaSeries.trans("member_shows.markas")}"></div>`
             );
             this.elt.find('.slide__image img.js-lazy-image').attr('style', 'filter: blur(5px);');
         } else if ($checkbox.length > 0 && this.user.hidden) {
@@ -321,23 +366,23 @@ export class Episode extends MediaBase implements implAddNote {
 
         let changed = false;
         if ($checkSeen.length > 0 && $checkSeen.attr('id') === undefined) {
-            if (Base.debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
+            if (UsBetaSeries.debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
             // On ajoute l'attribut ID
             $checkSeen.attr('id', 'episode-' + this.id);
             $checkSeen.data('id', this.id);
             $checkSeen.data('pos', pos);
             $checkSeen.data('special', this.special ? '1': '0');
         }
-        // if (Base.debug) console.log('updateCheckSeen', {seen: this.user.seen, elt: this.elt, checkSeen: $checkSeen.length, classSeen: $checkSeen.hasClass('seen'), pos: pos, Episode: this});
+        // if (BetaSeries.debug) console.log('updateCheckSeen', {seen: this.user.seen, elt: this.elt, checkSeen: $checkSeen.length, classSeen: $checkSeen.hasClass('seen'), pos: pos, Episode: this});
         // Si le membre a vu l'épisode et qu'il n'est pas indiqué, on change le statut
         if (this.user.seen && $checkSeen.length > 0 && !$checkSeen.hasClass('seen')) {
-            if (Base.debug) console.log('Changement du statut (seen) de l\'épisode %s', this.code);
+            if (UsBetaSeries.debug) console.log('Changement du statut (seen) de l\'épisode %s', this.code);
             this.updateRender('seen', false);
             changed = true;
         }
         // Si le membre n'a pas vu l'épisode et qu'il n'est pas indiqué, on change le statut
         else if (!this.user.seen && $checkSeen.length > 0 && $checkSeen.hasClass('seen')) {
-            if (Base.debug) console.log('Changement du statut (notSeen) de l\'épisode %s', this.code);
+            if (UsBetaSeries.debug) console.log('Changement du statut (notSeen) de l\'épisode %s', this.code);
             this.updateRender('notSeen', false);
             changed = true;
         }
@@ -393,8 +438,8 @@ export class Episode extends MediaBase implements implAddNote {
                     new PopupAlert({
                         title: 'Episodes vus',
                         contentHtml: '<p>Doit-on cocher les épisodes précédents comme vu ?</p>',
-                        yes: Base.trans('popup.yes'),
-                        no: Base.trans('popup.no'),
+                        yes: UsBetaSeries.trans('popup.yes'),
+                        no: UsBetaSeries.trans('popup.no'),
                         callback_yes: () => {
                             resolve(true);
                         },
@@ -423,9 +468,9 @@ export class Episode extends MediaBase implements implAddNote {
                 args.bulk = false; // Flag pour ne pas mettre les épisodes précédents comme vus automatiquement
             }
 
-            Base.callApi(method, 'episodes', 'watched', args)
+            UsBetaSeries.callApi(method, 'episodes', 'watched', args)
             .then((data: Obj) => {
-                if (Base.debug) console.log('updateStatus %s episodes/watched', method, data);
+                if (UsBetaSeries.debug) console.log('updateStatus %s episodes/watched', method, data);
                 // Si un épisode est vu et que la série n'a pas été ajoutée
                 // au compte du membre connecté
                 if (self._season && ! self._season.showInAccount() && data.episode.show.in_account) {
@@ -471,9 +516,9 @@ export class Episode extends MediaBase implements implAddNote {
                 }
             })
             .catch(err => {
-                if (Base.debug) console.error('updateStatus error %s', err);
+                if (UsBetaSeries.debug) console.error('updateStatus error %s', err);
                 if (err && err == 'changeStatus') {
-                    if (Base.debug) console.log('updateStatus error %s changeStatus', method);
+                    if (UsBetaSeries.debug) console.log('updateStatus error %s changeStatus', method);
                     self.user.seen = (status === 'seen') ? true : false;
                     self.updateRender(status);
                     if (self.season) {
@@ -485,7 +530,7 @@ export class Episode extends MediaBase implements implAddNote {
                     }
                 } else {
                     self.toggleSpinner(false);
-                    Base.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
+                    UsBetaSeries.notification('Erreur de modification d\'un épisode', 'updateStatus: ' + err);
                 }
             });
         });
@@ -498,18 +543,18 @@ export class Episode extends MediaBase implements implAddNote {
      */
     updateRender(newStatus: string, update = true): Episode {
         const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
-        if (Base.debug) console.log('Episode.changeStatus (season: %d, episode: %d, statut: %s)', this.season.number, this.number, newStatus, {elt: $elt, update: update});
+        if (UsBetaSeries.debug) console.log('Episode.changeStatus (season: %d, episode: %d, statut: %s)', this.season.number, this.number, newStatus, {elt: $elt, update: update});
         if (newStatus === 'seen') {
             $elt.css('background', ''); // On ajoute le check dans la case à cocher
             $elt.addClass('seen'); // On ajoute la classe 'seen'
-            $elt.attr('title', Base.trans("member_shows.remove"));
+            $elt.attr('title', UsBetaSeries.trans("member_shows.remove"));
             // On supprime le voile masquant sur la vignette pour voir l'image de l'épisode
             $elt.parents('div.slide__image').first().find('img').removeAttr('style');
             $elt.parents('div.slide_flex').first().removeClass('slide--notSeen');
         } else if (newStatus === 'notSeen') {
             $elt.css('background', 'rgba(13,21,28,.2)'); // On enlève le check dans la case à cocher
             $elt.removeClass('seen'); // On supprime la classe 'seen'
-            $elt.attr('title', Base.trans("member_shows.markas"));
+            $elt.attr('title', UsBetaSeries.trans("member_shows.markas"));
             // On remet le voile masquant sur la vignette de l'épisode
             $elt.parents('div.slide__image').first()
                 .find('img')
@@ -537,11 +582,11 @@ export class Episode extends MediaBase implements implAddNote {
     toggleSpinner(display: boolean): Episode {
         if (! display) {
             jQuery('.spinner').remove();
-            // if (Base.debug) console.log('toggleSpinner');
-            if (Base.debug) console.groupEnd();
+            // if (BetaSeries.debug) console.log('toggleSpinner');
+            if (UsBetaSeries.debug) console.groupEnd();
         } else {
-            if (Base.debug) console.groupCollapsed('episode checkSeen');
-            // if (Base.debug) console.log('toggleSpinner');
+            if (UsBetaSeries.debug) console.groupCollapsed('episode checkSeen');
+            // if (BetaSeries.debug) console.log('toggleSpinner');
             this.elt.find('.slide__image').first().prepend(`
                 <div class="spinner">
                     <div class="spinner-item"></div>
@@ -568,7 +613,7 @@ export class Episode extends MediaBase implements implAddNote {
             cache: 'no-cache'
         };*/
         return new Promise((res) => {
-            return res(`${Base.api.url}/pictures/episodes?id=${this.id}`);
+            return res(`${UsBetaSeries.api.url}/pictures/episodes?id=${this.id}`);
             /*else {
                 fetch(`${proxy}https://thetvdb.com/?tab=series&id=${this.thetvdb_id}`, initFetch)
                 .then((resp: Response) => {
@@ -595,7 +640,7 @@ export class Episode extends MediaBase implements implAddNote {
     fetchCharacters(): Promise<this> {
         const self = this;
         if (this.__fetches.characters) return this.__fetches.characters;
-        this.__fetches.characters = Base.callApi(HTTP_VERBS.GET, 'episodes', 'characters', {id: this.id}, true)
+        this.__fetches.characters = UsBetaSeries.callApi(HTTP_VERBS.GET, 'episodes', 'characters', {id: this.id}, true)
         .then((data: Obj) => {
             self.characters = [];
             if (data?.characters?.length <= 0) {

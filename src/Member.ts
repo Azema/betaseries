@@ -1,7 +1,13 @@
-import { Base, HTTP_VERBS, Obj } from "./Base";
+import { UsBetaSeries, HTTP_VERBS, Obj } from "./Base";
 import { NotificationList } from "./Notification";
 
-enum DaysOfWeek {
+/**
+ * DaysOfWeek
+ * @enum
+ * @memberof Stats
+ * @alias DaysOfWeek
+ */
+export enum DaysOfWeek {
     monday = 'lundi',
     tuesday = 'mardi',
     wednesday = 'mercredi',
@@ -10,6 +16,11 @@ enum DaysOfWeek {
     saturday = 'samedi',
     sunday = 'dimanche'
 }
+/**
+ * Stats
+ * @class
+ * @memberof Member
+ */
 export class Stats {
     friends: number
     shows: number
@@ -46,7 +57,12 @@ export class Stats {
         }
     }
 }
-export class Options {
+/**
+ * OptionsMember
+ * @class
+ * @memberof Member
+ */
+export class OptionsMember {
     downloaded: boolean
     notation: boolean
     timelag: boolean
@@ -78,10 +94,10 @@ export class Member {
      */
     public static fetch(): Promise<Member> {
         const params: Obj = {};
-        if (Base.userId !== null) {
-            params.id = Base.userId;
+        if (UsBetaSeries.userId !== null) {
+            params.id = UsBetaSeries.userId;
         }
-        return Base.callApi(HTTP_VERBS.GET, 'members', 'infos', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'members', 'infos', params)
         .then((data: Obj) => {
             return new Member(data.member);
         })
@@ -96,71 +112,88 @@ export class Member {
      */
 
     /**
-     * @type {number} Identifiant du membre
+     * Identifiant du membre
+     * @type {number}
      */
     id: number
     /**
-     * @type {number} Identifiant Facebook ?
+     * Identifiant Facebook ?
+     * @type {number}
      */
     fb_id: number
     /**
-     * @type {string} Login du membre
+     * Login du membre
+     * @type {string}
      */
     login: string
     /**
-     * @type {number} Points d'expérience
+     * Points d'expérience
+     * @type {number}
      */
     xp: number
     /**
-     * @type {string} Locale utiliser par le membre
+     * Locale utiliser par le membre
+     * @type {string}
      */
     locale: string
     /**
-     * @type {number} ?
+     * ???
+     * @type {number}
      */
     cached: number
     /**
-     * @type {string} URL de l'avatar du membre
+     * URL de l'avatar du membre
+     * @type {string}
      */
     avatar: string
     /**
-     * @type {string} URL de la bannière du membre
+     * URL de la bannière du membre
+     * @type {string}
      */
     profile_banner: string
     /**
-     * @type {boolean} ?
+     * ???
+     * @type {boolean}
      */
     in_account: boolean
     /**
-     * @type {boolean} Membre Administrateur ?
+     * Membre Administrateur ?
+     * @type {boolean}
      */
     is_admin: boolean
     /**
-     * @type {number} Année d'inscription
+     * Année d'inscription
+     * @type {number}
      */
     subscription: number
     /**
-     * @type {boolean} Indique si l'adresse mail a été validée
+     * Indique si l'adresse mail a été validée
+     * @type {boolean}
      */
     valid_email: boolean
     /**
-     * @type {Array<string>} ?
+     * ???
+     * @type {string[]}
      */
     screeners: Array<string>
     /**
-     * @type {string} Login Twitter
+     * Login Twitter
+     * @type {string}
      */
     twitterLogin: string
     /**
-     * @type {Stats} Les statistiques du membre
+     * Les statistiques du membre
+     * @type {Stats}
      */
     stats: Stats
     /**
-     * @type {Options} Les options de paramétrage du membre
+     * Les options de paramétrage du membre
+     * @type {OptionsMember}
      */
-    options: Options
+    options: OptionsMember
     /**
-     * @type {NotificationList} Tableau des notifications du membre
+     * Tableau des notifications du membre
+     * @type {NotificationList}
      */
     notifications: NotificationList;
 
@@ -189,7 +222,7 @@ export class Member {
         this.screeners = data.screeners;
         this.twitterLogin = data.twitterLogin;
         this.stats = new Stats(data.stats);
-        this.options = new Options(data.options);
+        this.options = new OptionsMember(data.options);
         this.checkNotifs();
     }
     public checkNotifs(): void {

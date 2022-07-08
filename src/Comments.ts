@@ -1,4 +1,4 @@
-import { Base, Obj, HTTP_VERBS, EventTypes, Callback } from "./Base";
+import { Base, Obj, HTTP_VERBS, EventTypes, Callback, UsBetaSeries } from "./Base";
 import { CommentBS, implRepliesComment } from "./Comment";
 import { MediaBase } from "./Media";
 import { Note } from "./Note";
@@ -47,7 +47,7 @@ export class CommentsBS extends Base implements implRepliesComment {
             id: media.id,
             text: text
         };
-        return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
         .then((data: Obj) => {
             const comment = new CommentBS(data.comment, media.comments);
             media.comments.addComment(comment);
@@ -55,7 +55,7 @@ export class CommentsBS extends Base implements implRepliesComment {
             return comment;
         })
         .catch(err => {
-            Base.notification('Commentaire', "Erreur durant l'ajout d'un commentaire");
+            UsBetaSeries.notification('Commentaire', "Erreur durant l'ajout d'un commentaire");
             console.error(err);
         });
     }
@@ -64,35 +64,47 @@ export class CommentsBS extends Base implements implRepliesComment {
     /*                  PROPERTIES                   */
     /*************************************************/
     /**
-     * @type {Array<CommentBS>} Tableau des commentaires
+     * Tableau des commentaires
+     * @type {CommentBS[]}
      */
     comments: Array<CommentBS>;
     /**
-     * @type {number} Nombre total de commentaires du média
+     * Nombre total de commentaires du média
+     * @type {number}
      */
     nbComments: number;
     /**
-     * @type {boolean} Indique si le membre à souscrit aux alertes commentaires du média
+     * Indique si le membre à souscrit aux alertes commentaires du média
+     * @type {boolean}
      */
     is_subscribed: boolean;
     /**
-     * @type {string} Indique si les commentaires sont ouverts ou fermés
+     * Indique si les commentaires sont ouverts ou fermés
+     * @type {string}
      */
     status: string;
     /**
-     * @type {Base} Le média auquel sont associés les commentaires
+     * Le média auquel sont associés les commentaires
+     * @type {Base}
      * @private
      */
     private _parent: MediaBase;
     /**
-     * @type {Array<CustomEvent>} Tableau des events déclarés par la fonction loadEvents
+     * Tableau des events déclarés par la fonction loadEvents
+     * @type {Array<CustomEvent>}
      * @private
      */
     private _events: Array<CustomEvent>;
     /**
-     * @type {OrderComments} Ordre de tri des commentaires et des réponses
+     * Ordre de tri des commentaires et des réponses
+     * @type {OrderComments}
      */
     private _order: OrderComments;
+    /**
+     * Indique si la collection est affiché ou non
+     * @type {boolean}
+     */
+    private _display = false;
 
     /*************************************************/
     /*                  METHODS                      */
@@ -200,7 +212,7 @@ export class CommentsBS extends Base implements implRepliesComment {
             if (since > 0) {
                 params.since_id = since;
             }
-            Base.callApi(HTTP_VERBS.GET, 'comments', 'comments', params)
+            UsBetaSeries.callApi(HTTP_VERBS.GET, 'comments', 'comments', params)
             .then((data: Obj) => {
                 if (data.comments !== undefined) {
                     if (since <= 0) {
@@ -218,7 +230,7 @@ export class CommentsBS extends Base implements implRepliesComment {
             })
             .catch(err => {
                 console.warn('fetchComments', err);
-                Base.notification('Récupération des commentaires', "Une erreur est apparue durant la récupération des commentaires");
+                UsBetaSeries.notification('Récupération des commentaires', "Une erreur est apparue durant la récupération des commentaires");
                 reject(err);
             });
         });
@@ -231,7 +243,7 @@ export class CommentsBS extends Base implements implRepliesComment {
      */
     public addComment(data: Obj | CommentBS): this {
         const method = this.order == OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
-        if (Base.debug) console.log('addComment order: %s - method: %s', this.order, method.name);
+        if (UsBetaSeries.debug) console.log('addComment order: %s - method: %s', this.order, method.name);
         if (data instanceof CommentBS) {
             method.call(this.comments, data);
         } else {
@@ -333,7 +345,7 @@ export class CommentsBS extends Base implements implRepliesComment {
      * @returns {Promise<Array<CommentBS>>} Tableau des réponses
      */
     public async fetchReplies(commentId: number, order: OrderComments = OrderComments.ASC): Promise<Array<CommentBS>> {
-        const data = await Base.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: commentId, order });
+        const data = await UsBetaSeries.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: commentId, order });
         const replies = [];
         if (data.comments) {
             for (let c = 0; c < data.comments.length; c++) {
@@ -369,9 +381,9 @@ export class CommentsBS extends Base implements implRepliesComment {
         return new Promise((resolve, reject) => {
             let promise = Promise.resolve(self);
 
-            if (Base.debug) console.log('Base ', {length: self.comments.length, nbComments: self.nbComments});
+            if (UsBetaSeries.debug) console.log('Base ', {length: self.comments.length, nbComments: self.nbComments});
             if (self.comments.length <= 0 && self.nbComments > 0) {
-                if (Base.debug) console.log('Base fetchComments call');
+                if (UsBetaSeries.debug) console.log('Base fetchComments call');
                 promise = self.fetchComments(nbpp) as Promise<this>;
             }
             promise.then(async () => {
@@ -381,7 +393,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                             data-media-id="${self._parent.id}"
                             class="displayFlex flexDirectionColumn"
                             style="margin-top: 2px; min-height: 0">`;
-                if (Base.userIdentified()) {
+                if (UsBetaSeries.userIdentified()) {
                     template += `
                     <button type="button" class="btn-reset btnSubscribe" style="position: absolute; top: 3px; right: 31px; padding: 8px;">
                         <span class="svgContainer">
@@ -396,7 +408,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                     // Si le commentaires à des réponses et qu'elles ne sont pas chargées
                     if (comment.nbReplies > 0 && comment.replies.length <= 0) {
                         // On récupère les réponses
-                        if (Base.debug) console.log('Comments render getTemplate fetchReplies');
+                        if (UsBetaSeries.debug) console.log('Comments render getTemplate fetchReplies');
                         await comment.fetchReplies();
                         // On ajoute un boutton pour afficher/masquer les réponses
                     }
@@ -408,13 +420,13 @@ export class CommentsBS extends Base implements implRepliesComment {
                 if (self.comments.length < self.nbComments) {
                     template += `
                         <button type="button" class="btn-reset btn-greyBorder moreComments" style="margin-top: 10px; width: 100%;">
-                            ${Base.trans("timeline.comments.display_more")}
+                            ${UsBetaSeries.trans("timeline.comments.display_more")}
                             <i class="fa fa-cog fa-spin fa-2x fa-fw" style="display:none;margin-left:15px;vertical-align:middle;"></i>
                             <span class="sr-only">Loading...</span>
                         </button>`;
                 }
                 template += '</div>'; // Close div.comments
-                if (self.isOpen() && Base.userIdentified()) {
+                if (self.isOpen() && UsBetaSeries.userIdentified()) {
                     template += CommentBS.getTemplateWriting();
                 }
                 resolve(template + '</div>');
@@ -521,7 +533,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                 $btn.removeClass('active');
                 $btn.attr('title', "Recevoir les commentaires par e-mail");
                 $btn.find('svg').replaceWith(`
-                    <svg fill="${Base.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" width="14" height="16" style="position: relative; top: 1px; left: -1px;">
+                    <svg fill="${UsBetaSeries.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" width="14" height="16" style="position: relative; top: 1px; left: -1px;">
                         <path fill-rule="nonzero" d="M13.176 13.284L3.162 2.987 1.046.812 0 1.854l2.306 2.298v.008c-.428.812-.659 1.772-.659 2.806v4.103L0 12.709v.821h11.307l1.647 1.641L14 14.13l-.824-.845zM6.588 16c.914 0 1.647-.73 1.647-1.641H4.941c0 .91.733 1.641 1.647 1.641zm4.941-6.006v-3.02c0-2.527-1.35-4.627-3.705-5.185V1.23C7.824.55 7.272 0 6.588 0c-.683 0-1.235.55-1.235 1.23v.559c-.124.024-.239.065-.346.098a2.994 2.994 0 0 0-.247.09h-.008c-.008 0-.008 0-.017.009-.19.073-.379.164-.56.254 0 0-.008 0-.008.008l7.362 7.746z"></path>
                     </svg>
                 `);
@@ -532,7 +544,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                     <svg width="20" height="22" viewBox="0 0 20 22" style="width: 17px;">
                         <g transform="translate(-4)" fill="none">
                             <path d="M0 0h24v24h-24z"></path>
-                            <path fill="${Base.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32v-.68c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68c-2.87.68-4.5 3.24-4.5 6.32v5l-2 2v1h16v-1l-2-2z"></path>
+                            <path fill="${UsBetaSeries.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32v-.68c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68c-2.87.68-4.5 3.24-4.5 6.32v5l-2 2v1h16v-1l-2-2z"></path>
                         </g>
                     </svg>
                 `);
@@ -541,20 +553,20 @@ export class CommentsBS extends Base implements implRepliesComment {
         $btnSubscribe.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn = $(e.currentTarget);
             const params: Obj = {type: self._parent.mediaType.singular, id: self._parent.id};
             if ($btn.hasClass('active')) {
-                Base.callApi(HTTP_VERBS.DELETE, 'comments', 'subscription', params)
+                UsBetaSeries.callApi(HTTP_VERBS.DELETE, 'comments', 'subscription', params)
                 .then(() => {
                     self.is_subscribed = false;
                     displaySubscription($btn);
                 });
             } else {
-                Base.callApi(HTTP_VERBS.POST, 'comments', 'subscription', params)
+                UsBetaSeries.callApi(HTTP_VERBS.POST, 'comments', 'subscription', params)
                 .then(() => {
                     self.is_subscribed = true;
                     displaySubscription($btn);
@@ -591,7 +603,7 @@ export class CommentsBS extends Base implements implRepliesComment {
         $btnThumb.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
@@ -627,7 +639,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                 console.warn("Le vote est impossible. Annuler votre vote et recommencer");
                 return;
             }
-            Base.callApi(verb, 'comments', 'thumb', params)
+            UsBetaSeries.callApi(verb, 'comments', 'thumb', params)
             .then((data: Obj) => {
                 comment.thumbs = parseInt(data.comment.thumbs, 10);
                 comment.thumbed = data.comment.thumbed ? parseInt(data.comment.thumbed, 10) : 0;
@@ -635,7 +647,7 @@ export class CommentsBS extends Base implements implRepliesComment {
             })
             .catch(err => {
                 const msg = err.text !== undefined ? err.text : err;
-                Base.notification('Thumb commentaire', "Une erreur est apparue durant le vote: " + msg);
+                UsBetaSeries.notification('Thumb commentaire', "Une erreur est apparue durant le vote: " + msg);
             });
         });
         this._events.push({elt: $btnThumb, event: 'click'});
@@ -665,7 +677,7 @@ export class CommentsBS extends Base implements implRepliesComment {
         $btnSend.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
@@ -787,13 +799,13 @@ export class CommentsBS extends Base implements implRepliesComment {
             if (state == '0') {
                 // On affiche
                 $replies.fadeIn('fast');
-                $btn.find('.btnText').text(Base.trans("comment.hide_answers"));
+                $btn.find('.btnText').text(UsBetaSeries.trans("comment.hide_answers"));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s; transform: rotate(180deg);');
                 $btn.attr('data-toggle', '1');
             } else {
                 // On masque
                 $replies.fadeOut('fast');
-                $btn.find('.btnText').text(Base.trans("comment.button.reply", {"%count%": $replies.length.toString()}, $replies.length));
+                $btn.find('.btnText').text(UsBetaSeries.trans("comment.button.reply", {"%count%": $replies.length.toString()}, $replies.length));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s;');
                 $btn.attr('data-toggle', '0');
             }
@@ -807,7 +819,7 @@ export class CommentsBS extends Base implements implRepliesComment {
         $btnResponse.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
@@ -928,7 +940,7 @@ export class CommentsBS extends Base implements implRepliesComment {
      * @param   {Function} onComplete - Fonction de callback
      * @returns {void}
      */
-    protected cleanEvents(onComplete: Callback = Base.noop): void {
+    protected cleanEvents(onComplete: Callback = UsBetaSeries.noop): void {
         if (this._events && this._events.length > 0) {
             let data: CustomEvent;
             for (let e = 0; e < this._events.length; e++) {
@@ -945,7 +957,7 @@ export class CommentsBS extends Base implements implRepliesComment {
      * @returns {void}
      */
     public render(): void {
-        if (Base.debug) console.log('CommentsBS render');
+        if (UsBetaSeries.debug) console.log('CommentsBS render');
         // La popup et ses éléments
         const self = this,
               $popup = jQuery('#popin-dialog'),
@@ -973,7 +985,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                   $popup.attr('aria-hidden', 'false');
               };
         // On ajoute le loader dans la popup et on l'affiche
-        $contentReact.empty().append(`<div class="title" id="dialog-title" tabindex="0">${Base.trans("blog.title.comments")}</div>`);
+        $contentReact.empty().append(`<div class="title" id="dialog-title" tabindex="0">${UsBetaSeries.trans("blog.title.comments")}</div>`);
         const $title = $contentReact.find('.title');
         $title.append(`<button type="button" class="btn-primary toggleAllReplies" data-toggle="1" style="border-radius:4px;margin-left:10px;">Cacher toutes les réponses</button>`);
         let templateLoader = `
@@ -1027,7 +1039,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                         Ce commentaire contient un spoiler.
                     </span>
                     <span class="btn-semiTransparent">
-                        ${Base.trans("show.comment.show_spoiler")}
+                        ${UsBetaSeries.trans("show.comment.show_spoiler")}
                     </span>
                 </span>
             </button>
@@ -1051,7 +1063,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                         <div class="media-body">
                             <div class="displayFlex alignItemsCenter">
                                 ${comment.login}
-                                <span class="stars">${Note.renderStars(comment.user_note, comment.user_id === Base.userId ? 'blue' : '')}</span>
+                                <span class="stars">${Note.renderStars(comment.user_note, comment.user_id === UsBetaSeries.userId ? 'blue' : '')}</span>
                             </div>
                             <div>
                                 <time class="u-colorWhiteOpacity05" style="font-size: 14px;">
@@ -1087,7 +1099,7 @@ export class CommentsBS extends Base implements implRepliesComment {
             replies: 1,
             nbpp: this.media.nbComments
         };
-        return Base.callApi(HTTP_VERBS.GET, 'comments', 'comments', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'comments', 'comments', params)
         .then((data: Obj) => {
             let comments = data.comments || [];
             comments = comments.filter((comment: Obj) => { return comment.user_note > 0; });

@@ -1,18 +1,34 @@
 import { Base, Obj } from "./Base";
 import { AbstractDecorator, FillDecorator, implFillDecorator } from "./Decorators";
 
-
+/**
+ * RelatedProp
+ * @memberof RenderHtml
+ * @alias RelatedProp
+ */
 export type RelatedProp = {
+    /** @type {string} */
     key: string; // Nom de la propriété dans l'objet
+    /** @type {*} */
     type: any; // type de donnée
+    /** @type {*} */
     default?: any; // valeur par défaut
+    /** @type {(ob: object, data: Obj) => *} */
     transform?: (obj: object, data: Obj) => any; // Fonction de transformation de la donnée
 }
+/**
+ * Changes
+ * @memberof RenderHtml
+ * @alias Changes
+ */
 export type Changes = {
     oldValue: any;
     newValue: any;
 }
-
+/**
+ * implRenderHtml
+ * @interface implRenderHtml
+ */
 export interface implRenderHtml {
     fill(data: Obj): this;
     [Symbol.iterator](): object;
@@ -27,6 +43,14 @@ export interface implRenderHtml {
     set elt(jElt: JQuery<HTMLElement>);
 }
 
+/**
+ * RenderHtml - Classe abstraite des éléments ayant un rendu HTML sur la page Web
+ * @class
+ * @abstract
+ * @extends Base
+ * @implements {implRenderHtml}
+ * @implements {implFillDecorator}
+ */
 export abstract class RenderHtml extends Base implements implRenderHtml, implFillDecorator {
 
     static relatedProps: Record<string, RelatedProp> = {};
@@ -34,27 +58,31 @@ export abstract class RenderHtml extends Base implements implRenderHtml, implFil
 
     /**
      * Decorators de la classe
-     * @type {Record<string, AbstractDecorator>}
+     * @type {Object.<string, AbstractDecorator>}
      */
     private __decorators: Record<string, AbstractDecorator> = {
         fill: new FillDecorator(this)
     };
     /**
-     * @type {JQuery<HTMLElement>} Element HTML de référence du média
+     * Element HTML de référence du média
+     * @type {JQuery<HTMLElement>}
      */
     private __elt: JQuery<HTMLElement>;
     /**
-     * @type {boolean} Flag d'initialisation de l'objet, nécessaire pour les methodes fill and compare
+     * Flag d'initialisation de l'objet, nécessaire pour les methodes fill and compare
+     * @type {boolean}
      */
-    public __initial: boolean;
+    public __initial = true;
      /**
-      * @type {Record<string, Changes} Stocke les changements des propriétés de l'objet
+      * Stocke les changements des propriétés de l'objet
+      * @type {Object.<string, Changes>}
       */
-    public __changes: Record<string, Changes>;
+    public __changes: Record<string, Changes> = {};
     /**
-     * @type {Array<string>} Tableau des propriétés énumerables de l'objet
+     * Tableau des propriétés énumerables de l'objet
+     * @type {Array<string>}
      */
-    public __props: Array<string>;
+    public __props: Array<string> = [];
 
     /*
                     METHODS
@@ -92,9 +120,8 @@ export abstract class RenderHtml extends Base implements implRenderHtml, implFil
 
     /**
      * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data - Les données provenant de l'API
+     * @param   {Obj} data - Les données provenant de l'API
      * @returns {RenderHtml}
-     * @virtual
      */
     public fill(data: Obj): this {
         try {

@@ -2,6 +2,11 @@ import { Obj } from "./Base";
 import { WatchedBy } from "./Episode";
 import { RelatedProp, RenderHtml } from "./RenderHtml";
 
+/**
+ * Next
+ * @class
+ * @memberof User
+ */
 export class Next {
     id: number;
     code: string;
@@ -17,7 +22,17 @@ export class Next {
         this.image = data.image;
     }
 }
+/**
+ * User
+ * @class
+ * @extends RenderHtml
+ */
 export class User extends RenderHtml {
+    /**
+     * Objet contenant les relations entre les données de l'API BS et la classe User
+     * @type {Record<string, RelatedProp>}
+     * @static
+     */
     static relatedProps: Record<string, RelatedProp> = {
         archived: {key: "archived", type: 'boolean', default: false},
         downloaded: {key: "downloaded", type: 'boolean', default: false},
@@ -65,7 +80,7 @@ export class User extends RenderHtml {
 
     /**
      * Initialise le rendu HTML de la saison
-     * @returns {RenderHtml}
+     * @returns {User}
      */
     _initRender(): this {
         return this;

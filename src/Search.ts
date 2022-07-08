@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Base, HTTP_VERBS, Obj } from "./Base";
+import { UsBetaSeries, HTTP_VERBS, Obj } from "./Base";
 
 export interface ShowSearch {
     id: number;
@@ -290,7 +290,7 @@ export class Search {
             limit: params.limit,
             page: params.offset
         };
-        return Base.callApi(HTTP_VERBS.GET, 'search', 'shows', params.toRequest())
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'search', 'shows', params.toRequest())
         .then((data: Obj) => {
             const keys = Object.keys(result);
             for (const key in data) {
@@ -317,7 +317,7 @@ export class Search {
             limit: params.limit,
             page: params.offset
         };
-        return Base.callApi(HTTP_VERBS.GET, 'search', 'movies', params.toRequest())
+        return UsBetaSeries.callApi(HTTP_VERBS.GET, 'search', 'movies', params.toRequest())
         .then((data: Obj) => {
             const keys = Object.keys(result);
             for (const key in data) {

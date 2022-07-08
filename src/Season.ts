@@ -1,4 +1,4 @@
-import { Base, HTTP_VERBS, isNull, Obj } from "./Base";
+import { UsBetaSeries, HTTP_VERBS, isNull, Obj } from "./Base";
 import { Episode } from "./Episode";
 import { RelatedProp, RenderHtml } from "./RenderHtml";
 import { Show } from "./Show";
@@ -33,11 +33,13 @@ export class Season extends RenderHtml {
         has_subtitles: {key: "has_subtitles", type: 'boolean', default: false}
     };
     /**
-     * @type {number} Numéro de la saison dans la série
+     * Numéro de la saison dans la série
+     * @type {number}
      */
     number: number;
     /**
-     * @type {Array<Episode>} Tableau des épisodes de la saison
+     * Tableau des épisodes de la saison
+     * @type {Array<Episode>}
      */
     episodes: Array<Episode>;
     /**
@@ -46,28 +48,33 @@ export class Season extends RenderHtml {
      */
     nbEpisodes: number;
     /**
-     * @type {boolean} Possède des sous-titres
+     * Possède des sous-titres
+     * @type {boolean}
      */
     has_subtitles: boolean;
     /**
-     * @type {boolean} Saison pas vu
+     * Indique si la saison est indiquée comme ignorée par le membre
+     * @type {boolean}
      */
     hidden: boolean;
     /**
-     * @type {string} URL de l'image
+     * URL de l'image
+     * @type {string}
      */
     image: string;
     /**
-     * @type {boolean} Saison vu
+     * Indique si le membre a vu la saison complète
+     * @type {boolean}
      */
     seen: boolean;
     /**
-     * @type {Show} L'objet Show auquel est rattaché la saison
+     * L'objet Show auquel est rattaché la saison
+     * @type {Show}
      */
     private _show: Show;
     /**
      * Objet contenant les promesses en attente des méthodes fetchXXX
-     * @type {Record<string, Promise<Season>>}
+     * @type {Object.<string, Promise<Season>>}
      */
     private __fetches: Record<string, Promise<Season>> = {};
 
@@ -94,6 +101,12 @@ export class Season extends RenderHtml {
      */
     _initRender(): this {
         if (!this.elt) return this;
+
+        this.elt
+            .attr('data-number', this.number)
+            .attr('data-seen', this.seen ? '1' : '0')
+            .attr('data-hidden', this.hidden ? '1' : '0')
+            .attr('data-episodes', this.nbEpisodes);
 
         const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes, this.elt);
         const $spanNbEpisodes = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.elt);
@@ -165,7 +178,7 @@ export class Season extends RenderHtml {
             id: self._show.id,
             season: self.number
         };
-        this.__fetches.fepisodes = Base.callApi('GET', 'shows', 'episodes', params, true)
+        this.__fetches.fepisodes = UsBetaSeries.callApi('GET', 'shows', 'episodes', params, true)
             .then((data: Obj) => {
                 self.episodes = [];
                 for (let e = 0; e < data.episodes.length; e++) {
@@ -197,7 +210,7 @@ export class Season extends RenderHtml {
             id: self._show.id,
             season: self.number
         };
-        this.__fetches.cepisodes = Base.callApi('GET', 'shows', 'episodes', params, true)
+        this.__fetches.cepisodes = UsBetaSeries.callApi('GET', 'shows', 'episodes', params, true)
             .then((data: Obj) => {
                 for (let e = 0; e < data.episodes.length; e++) {
                     if (self.episodes.length <= e) {
@@ -226,7 +239,7 @@ export class Season extends RenderHtml {
     watched(): Promise<Season> {
         const self = this;
         const params = {id: this.episodes[this.length - 1].id, bulk: true};
-        return Base.callApi(HTTP_VERBS.POST, 'episodes', 'watched', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.POST, 'episodes', 'watched', params)
         .then(() => {
             let update = false;
             for (let e = 0; e < self.episodes.length; e++) {
@@ -244,7 +257,7 @@ export class Season extends RenderHtml {
     hide(): Promise<Season> {
         const self = this;
         const params = {id: this._show.id, season: this.number};
-        return Base.callApi(HTTP_VERBS.POST, 'seasons', 'hide', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.POST, 'seasons', 'hide', params)
         .then(() => {
             self.hidden = true;
             jQuery(`#seasons .slide_flex:nth-child(${self.number}) .slide__image`).prepend('<div class="checkSeen"></div><div class="hideIcon"></div>');
@@ -325,15 +338,15 @@ export class Season extends RenderHtml {
         return this.checkEpisodes().then(() => {
             for (const episode of self.episodes) {
                 if (episode.isModified()) {
-                    if (Base.debug) console.log('Season.update changed true', self);
+                    if (UsBetaSeries.debug) console.log('Season.update changed true', self);
                     return self.updateRender()
                                .updateShow().then(() => self);
                 }
             }
-            if (Base.debug) console.log('Season.update no changes');
+            if (UsBetaSeries.debug) console.log('Season.update no changes');
             return self;
         }).catch(err => {
-            Base.notification('Erreur de mise à jour des épisodes', 'Season update: ' + err);
+            UsBetaSeries.notification('Erreur de mise à jour des épisodes', 'Season update: ' + err);
         }) as Promise<Season>;
     }
 
@@ -347,7 +360,7 @@ export class Season extends RenderHtml {
         const lenSpecials: number = this.getNbEpisodesSpecial();
         const lenNotSpecials: number = lenEpisodes - lenSpecials;
         const lenSeen: number = self.getNbEpisodesSeen();
-        if (Base.debug) console.log('Season.updateRender', {lenEpisodes, lenSpecials, lenNotSpecials, lenSeen});
+        if (UsBetaSeries.debug) console.log('Season.updateRender', {lenEpisodes, lenSpecials, lenNotSpecials, lenSeen});
         /**
          * Met à jour la vignette de la saison courante
          * et change de saison, si il y en a une suivante
@@ -355,10 +368,10 @@ export class Season extends RenderHtml {
         const seasonViewed = function(): void {
             // On check la saison
             self.elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
-            if (Base.debug) console.log('Season.updateRender: Tous les épisodes de la saison ont été vus', self.elt, self.elt.next());
+            if (UsBetaSeries.debug) console.log('Season.updateRender: Tous les épisodes de la saison ont été vus', self.elt, self.elt.next());
             // Si il y a une saison suivante, on la sélectionne
             if (self.elt.next('.slide_flex').length > 0) {
-                if (Base.debug) console.log('Season.updateRender: Il y a une autre saison');
+                if (UsBetaSeries.debug) console.log('Season.updateRender: Il y a une autre saison');
                 self.elt.removeClass('slide--current');
                 self.elt.next('.slide_flex').find('.slide__image').trigger('click');
             }

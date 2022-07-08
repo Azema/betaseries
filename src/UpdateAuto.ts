@@ -1,4 +1,4 @@
-import { Base, Obj } from "./Base";
+import { UsBetaSeries, Obj } from "./Base";
 import { Show } from "./Show";
 
 export class UpdateAuto {
@@ -73,7 +73,7 @@ export class UpdateAuto {
     }
 
     private async _init() {
-        const objUpAuto = await Base.gm_funcs.getValue('objUpAuto', {});
+        const objUpAuto = await UsBetaSeries.gm_funcs.getValue('objUpAuto', {});
         this._exist = false;
         this._lastUpdate = null;
         if (objUpAuto[this._showId] !== undefined) {
@@ -114,14 +114,14 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     async _save() {
-        const objUpAuto = await Base.gm_funcs.getValue('objUpAuto', {});
+        const objUpAuto = await UsBetaSeries.gm_funcs.getValue('objUpAuto', {});
         const obj = {
             status: this._status,
             auto: this._auto,
             interval: this._interval
         };
         objUpAuto[this._showId] = obj;
-        Base.gm_funcs.setValue('objUpAuto', objUpAuto);
+        UsBetaSeries.gm_funcs.setValue('objUpAuto', objUpAuto);
         this._exist = true;
         this.changeColorBtn();
         return this;
@@ -255,7 +255,7 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     stop(): UpdateAuto {
-        if (Base.debug) console.log('%cUpdateAuto%c: task stop', 'color:#fd7e14', 'color:inherit');
+        if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task stop', 'color:#fd7e14', 'color:inherit');
         if (this._show.user.remaining <= 0 && this._show.isEnded()) {
             this._auto = false;
             this._interval = 0;
@@ -277,12 +277,12 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     async delete(): Promise<UpdateAuto> {
-        if (Base.debug) console.log('%cUpdateAuto%c: task delete', 'color:#dc3545', 'color:inherit');
+        if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task delete', 'color:#dc3545', 'color:inherit');
         this.stop();
-        const objUpAuto = await Base.gm_funcs.getValue('objUpAuto', {});
+        const objUpAuto = await UsBetaSeries.gm_funcs.getValue('objUpAuto', {});
         if (objUpAuto[this._showId] !== undefined) {
             delete objUpAuto[this._showId];
-            Base.gm_funcs.setValue('objUpAuto', objUpAuto);
+            UsBetaSeries.gm_funcs.setValue('objUpAuto', objUpAuto);
             this._auto = false;
             this._interval = 0;
             this._exist = false;
@@ -301,7 +301,7 @@ export class UpdateAuto {
         // Si les options sont modifiées pour arrêter la tâche
         // et que le statut est en cours
         if (this.status && (!this.auto || this.interval <= 0)) {
-            if (Base.debug) console.log('close interval updateEpisodeListAuto');
+            if (UsBetaSeries.debug) console.log('close interval updateEpisodeListAuto');
             return this.stop();
         }
         // Si les options modifiées pour lancer
@@ -317,10 +317,10 @@ export class UpdateAuto {
                 return this;
             }
             if (this._timer) {
-                if (Base.debug) console.log('close old interval timer');
+                if (UsBetaSeries.debug) console.log('close old interval timer');
                 clearInterval(this._timer);
             }
-            if (Base.debug) console.log('%cUpdateAuto%c: task launch', 'color:#28a745', 'color:inherit');
+            if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task launch', 'color:#28a745', 'color:inherit');
             if (! this.status) this.status = true;
             this._tick();
             this._timer = setInterval(this._tick.bind(this), (this.interval * 60) * 1000);
@@ -336,16 +336,16 @@ export class UpdateAuto {
      */
     private _tick(): void {
         this._lastUpdate = Date.now();
-        if (Base.debug) {
+        if (UsBetaSeries.debug) {
             console.log('[%s] UpdateAuto tick', (new Date).format('datetime'));
         }
         jQuery('#episodes .updateEpisodes').trigger('click');
         if ( ! this.status) {
             this.status = true;
         }
-        // if (Base.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
+        // if (BetaSeries.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
         if (! this.auto || this.show.user.remaining <= 0) {
-            if (Base.debug) console.log('Arrêt de la mise à jour auto des épisodes');
+            if (UsBetaSeries.debug) console.log('Arrêt de la mise à jour auto des épisodes');
             this.stop();
         }
     }

@@ -1,24 +1,73 @@
-import { Base, HTTP_VERBS, Obj, EventTypes, Callback } from './Base';
+import { Base, HTTP_VERBS, Obj, EventTypes, Callback, UsBetaSeries } from './Base';
 import { CommentsBS, CustomEvent, OrderComments } from './Comments';
+import { AbstractDecorator, FillDecorator, implFillDecorator } from './Decorators';
 import { Note } from './Note';
+import { Changes, RelatedProp } from './RenderHtml';
 
 declare const currentLogin: string, getScrollbarWidth, faceboxDisplay;
+
 export interface implRepliesComment {
     fetchReplies(commentId: number): Promise<Array<CommentBS>>;
     changeThumbs(commentId: number, thumbs: number, thumbed: number): boolean;
 }
-export type implReplyUser = {
+/**
+ * ReplyUser
+ * @memberof CommentBS
+ * @alias ReplyUser
+ */
+export type ReplyUser = {
     id: number;
     login: string;
 };
-export class CommentBS extends Base {
+/**
+ * TypeDisplayComment
+ * @memberof CommentBS
+ * @enum
+ * @alias TypeDisplayComment
+ */
+export enum TypeDisplayComment {
+    'hidden', // non visible
+    'page', // Affiché sur la page Web
+    'collection', // Afficher avec l'ensemble les commentaires
+    'alone' // Affiché seul
+}
+/**
+ * CommentBS - Classe servant à manipuler les commentaires provenant de l'API BetaSeries
+ * @class
+ * @extends Base
+ * @implements {implFillDecorator}
+ */
+export class CommentBS extends Base implements implFillDecorator {
     /*************************************************/
     /*                  STATIC                       */
     /*************************************************/
-
+    /**
+     * @type {Object.<string, RelatedProp>}
+     */
+    static relatedProps: Record<string, RelatedProp> = {
+        id: { key: "id", type: "number"},
+        reference: { key: "reference", type: "string"}, // type.slug(.code)
+        type: { key: "type", type: "string"}, // member, episode, show, movie
+        ref_id: { key: "ref_id", type: 'number'},
+        user_id: { key: 'user_id', type: 'number'},
+        login: { key: "login", type: "string"},
+        avatar: { key: "avatar", type: "string"},
+        date: { key: "date", type: 'date'},
+        text: { key: "text", type: "string"},
+        inner_id: { key: "inner_id", type: 'number'},
+        in_reply_to: { key: "in_reply_to", type: 'number'},
+        in_reply_id: { key: "in_reply_id", type: 'number'},
+        in_reply_user: { key: "in_reply_user", type: "object"},
+        user_note: { key: "user_note", type: 'number', default: 0},
+        thumbs: { key: "thumbs", type: 'number'},
+        thumbed: { key: "thumbed", type: 'number', default: 0},
+        replies: { key: "nbReplies", type: 'number', default: 0},
+        from_admin: { key: "from_admin", type: 'boolean', default: false},
+        user_rank: { key: "user_rank", type: 'string'},
+    };
     /**
      * Types d'évenements gérés par cette classe
-     * @type {Array}
+     * @type {EventTypes[]}
      */
     static EventTypes: Array<EventTypes> = [
         EventTypes.UPDATE,
@@ -31,7 +80,7 @@ export class CommentBS extends Base {
 
     /**
      * Contient le nom des classes CSS utilisées pour le rendu du commentaire
-     * @type Obj
+     * @type {Obj}
      */
     static classNamesCSS: Obj = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
 
@@ -39,97 +88,177 @@ export class CommentBS extends Base {
     /*                  PROPERTIES                   */
     /*************************************************/
 
+    /**
+     * Identifiant du commentaire
+     * @type {number}
+     */
     id: number;
     /**
      * Référence du média, pour créer l'URL (type.titleUrl)
+     * @type {string}
      */
     reference: string;
     /**
      * Type de média
+     * @type {string}
      */
     type: string;
     /**
      * Identifiant du média
+     * @type {number}
      */
     ref_id: number;
     /**
      * Identifiant du membre du commentaire
+     * @type {number}
      */
     user_id: number;
     /**
      * Login du membre du commentaire
+     * @type {string}
      */
     login: string;
     /**
      * URL de l'avatar du membre du commentaire
+     * @type {string}
      */
     avatar: string;
     /**
      * Date de création du commentaire
+     * @type {Date}
      */
     date: Date;
     /**
      * Contenu du commentaire
+     * @type {string}
      */
     text: string;
     /**
      * Index du commentaire dans la liste des commentaires du média
+     * @type {number}
      */
     inner_id: number;
     /**
      * Index du commentaire dont celui-ci est une réponse
+     * @type {number}
      */
     in_reply_to: number;
     /**
      * Identifiant du commentaire dont celui-ci est une réponse
+     * @type {number}
      */
     in_reply_id: number;
     /**
      * Informations sur le membre du commentaire original
+     * @type {ReplyUser}
      */
-    in_reply_user: implReplyUser;
+    in_reply_user: ReplyUser;
     /**
      * Note du membre pour le média
+     * @type {number}
      */
     user_note: number;
     /**
      * Votes pour ce commentaire
+     * @type {number}
      */
     thumbs: number;
     /**
      * Vote du membre connecté
+     * @type {number}
      */
     thumbed: number;
     /**
      * Nombre de réponse à ce commentaires
+     * @type {number}
      */
     nbReplies: number;
     /**
      * Les réponses au commentaire
-     * @type {Array<CommentBS>}
+     * @type {CommentBS[]}
      */
     replies: Array<CommentBS>;
     /**
      * Message de l'administration
+     * @type {boolean}
      */
     from_admin: boolean;
     /**
      * ???
+     * @type {string}
      */
     user_rank: string;
+
     /**
-     * @type {CommentsBS} La collection de commentaires
+     * Indique le type d'affichage en cours du commentaire
+     * @type {TypeDisplayComment}
+     */
+    private _typeDisplay: TypeDisplayComment = TypeDisplayComment.hidden;
+
+    /**
+     * La collection de commentaires
+     * @type {CommentsBS}
      */
     private _parent: CommentsBS | CommentBS;
     /**
-     * @type {Array<CustomEvent>} Liste des events déclarés par la fonction loadEvents
+     * Liste des events déclarés par la fonction loadEvents
+     * @type {CustomEvent[]}
      */
     private _events: Array<CustomEvent>;
+
+    /**
+     * Decorators de la classe
+     * @type {Object.<string, AbstractDecorator>}
+     */
+    private __decorators: Record<string, AbstractDecorator> = {
+        fill: new FillDecorator(this)
+    };
+    /**
+     * Element HTML de référence du commentaire
+     * @type {JQuery<HTMLElement>}
+     */
+    private __elt: JQuery<HTMLElement>;
+    /**
+     * Flag d'initialisation de l'objet, nécessaire pour la methode fill
+     * @type {boolean}
+     */
+    public __initial = true;
+     /**
+      * Stocke les changements des propriétés de l'objet
+      * @type {Object.<string, Changes>}
+      */
+    public __changes: Record<string, Changes> = {};
+    /**
+     * Tableau des propriétés énumerables de l'objet
+     * @type {string[]}
+     */
+    public __props: Array<string> = [];
 
     constructor(data: Obj, parent: CommentsBS | CommentBS) {
         super(data);
         this._parent = parent;
-        return this.fill(data);
+        this.replies = [];
+        return this.fill(data).init();
+    }
+
+    /**
+     * Initialise l'objet CommentBS
+     * @returns {CommentBS}
+     */
+    public init(): CommentBS {
+        const selectorCSS = `#comments .slides_flex .slide_flex .slide__comment[data-comment-id="${this.id}"]`;
+        const $comment = jQuery(selectorCSS);
+        if ($comment.length > 0) {
+            this.elt = $comment.parents('.slide_flex');
+        }
+        return this;
+    }
+
+    get elt(): JQuery<HTMLElement> {
+        return this.__elt;
+    }
+    set elt(elt: JQuery<HTMLElement>) {
+        this.__elt = elt;
     }
 
     get parent(): CommentsBS | CommentBS {
@@ -144,33 +273,35 @@ export class CommentBS extends Base {
     }
 
     /**
-     * Remplit l'objet CommentBS avec les données provenant de l'API
+     * Remplit l'objet avec les données fournit en paramètre
      * @param   {Obj} data - Les données provenant de l'API
      * @returns {CommentBS}
+     * @see FillDecorator.fill
      */
-    public fill(data: Obj): CommentBS {
-        this.id = parseInt(data.id, 10);
-        this.reference = data.reference;
-        this.type = data.type;
-        this.ref_id = parseInt(data.ref_id, 10);
-        this.user_id = parseInt(data.user_id, 10);
-        this.login = data.login;
-        this.avatar = data.avatar;
-        this.date = new Date(data.date);
-        this.text = data.text;
-        this.inner_id = parseInt(data.inner_id, 10);
-        this.in_reply_to = parseInt(data.in_reply_to, 10);
-        this.in_reply_id = parseInt(data.in_reply_id, 10);
-        this.in_reply_user = data.in_reply_user;
-        this.user_note = data.user_note ? parseInt(data.user_note, 10) : 0;
-        this.thumbs = parseInt(data.thumbs, 10);
-        this.thumbed = data.thumbed ? parseInt(data.thumbed, 10) : 0;
-        this.nbReplies = parseInt(data.replies, 10);
-        this.replies = [];
-        this.from_admin = data.from_admin;
-        this.user_rank = data.user_rank;
-        return this;
+    public fill(data: Obj): this {
+        try {
+            return (this.__decorators.fill as FillDecorator).fill.call(this, data);
+        } catch (err) {
+            console.error(err);
+        }
     }
+
+    /**
+     * Met à jour le rendu HTML des propriétés de l'objet,
+     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
+     * **Méthode appelée automatiquement par le setter de la propriété**
+     * @see Show.selectorsCSS
+     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+     * @returns {void}
+     */
+    updatePropRender(propKey: string): void {
+        try {
+            (this.__decorators.fill as FillDecorator).updatePropRender.call(this, propKey);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
     /**
      * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
      * pour la méthode JSON.stringify
@@ -178,13 +309,12 @@ export class CommentBS extends Base {
      */
     toJSON(): object {
         const obj: object = {};
-        const keys = Reflect.ownKeys(this)
-            .filter((key:string) => !key.startsWith('_'));
-        for (const key of keys) {
+        for (const key of this.__props) {
             obj[key] = this[key];
         }
         return obj;
     }
+
     /**
      * Récupère les réponses du commentaire
      * @param   {OrderComments} order - Ordre de tri des réponses
@@ -192,15 +322,38 @@ export class CommentBS extends Base {
      */
     public async fetchReplies(order: OrderComments = OrderComments.ASC): Promise<CommentBS> {
         if (this.nbReplies <= 0) return this;
-        const data = await Base.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: this.id, order });
-        this.replies = [];
+        const data = await UsBetaSeries.callApi(HTTP_VERBS.GET, 'comments', 'replies', { id: this.id, order }, true);
+        // this.replies = [];
         if (data.comments) {
-            for (let c = 0; c < data.comments.length; c++) {
-                this.replies.push(new CommentBS(data.comments[c], this));
+            for (let c = 0, _len = data.comments.length; c < _len; c++) {
+                if (this.replies[c] && this.replies[c].id == data.comments[c].id) {
+                    this.replies[c].fill(data.comments[c]);
+                } else {
+                    // TODO: créer une fonction Array.insertAt pour insérer un élément
+                    // dans un tableau à une position donnée et déplacer le reste du tableau
+                    this.replies.push(new CommentBS(data.comments[c], this));
+                }
             }
         }
         return this;
     }
+
+    /**
+     * Permet de trier les réponses du commentaires selon l'ordre passé en paramètre
+     * @param   {OrderComments} [order='asc'] - Ordre de tri des réponses
+     * @returns {CommentBS[]}
+     */
+    public sortReplies(order: OrderComments = OrderComments.ASC): Array<CommentBS> {
+        this.replies.sort((cmtA: CommentBS, cmtB: CommentBS) => {
+            if (order === OrderComments.ASC) {
+                return (cmtA.inner_id < cmtB.inner_id) ? -1 : cmtA.inner_id > cmtB.inner_id ? 1 : 0;
+            } else {
+                return (cmtB.inner_id < cmtA.inner_id) ? -1 : cmtB.inner_id > cmtA.inner_id ? 1 : 0;
+            }
+        });
+        return this.replies;
+    }
+
     /**
      * Modifie le texte du commentaire
      * @param   {string} msg - Le nouveau message du commentaire
@@ -213,25 +366,25 @@ export class CommentBS extends Base {
             edit_id: this.id,
             text: msg
         };
-        return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
         .then((data: Obj) => {
             return self.fill(data.comment);
         });
     }
     /**
      * Supprime le commentaire sur l'API
-     * @returns
+     * @returns {void}
      */
     public delete() {
         const self = this;
         const promises = [];
         if (this.nbReplies > 0) {
             for (let r = 0; r < this.replies.length; r++) {
-                promises.push(Base.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.replies[r].id}));
+                promises.push(UsBetaSeries.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.replies[r].id}));
             }
         }
         Promise.all(promises).then(() => {
-            Base.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.id})
+            UsBetaSeries.callApi(HTTP_VERBS.DELETE, 'comments', 'comment', {id: this.id})
             .then(() => {
                 if (self._parent instanceof CommentsBS) {
                     self._parent.removeComment(self.id);
@@ -273,7 +426,7 @@ export class CommentBS extends Base {
         if (/@\w+/.test(text)) {
             text = text.replace(/@(\w+)/g, '<a href="/membre/$1" class="mainLink mainLink--regular">@$1</a>');
         }
-        const btnSpoiler = comment.isSpoiler() ? `<button type="button" class="btn-reset mainLink view-spoiler">${Base.trans("comment.button.display_spoiler")}</button>` : '';
+        const btnSpoiler = comment.isSpoiler() ? `<button type="button" class="btn-reset mainLink view-spoiler">${UsBetaSeries.trans("comment.button.display_spoiler")}</button>` : '';
         text = text.replace(/\[spoiler\](.*)\[\/spoiler\]/g, '<span class="spoiler" style="display:none">$1</span>');
         // let classNames = {reply: 'iv_i5', actions: 'iv_i3', comment: 'iv_iz'};
         // const classNames = {reply: 'it_i3', actions: 'it_i1', comment: 'it_ix'};
@@ -285,28 +438,28 @@ export class CommentBS extends Base {
                     <svg width="8" height="6" xmlns="http://www.w3.org/2000/svg" style="transition: transform 200ms ease 0s; transform: rotate(180deg);">
                         <path d="M4 5.667l4-4-.94-.94L4 3.78.94.727l-.94.94z" fill="#54709D" fill-rule="nonzero"></path>
                     </svg>
-                </span>&nbsp;<span class="btnText">${Base.trans("comment.hide_answers")}</span>
+                </span>&nbsp;<span class="btnText">${UsBetaSeries.trans("comment.hide_answers")}</span>
             </button>` : '';
         let templateOptions = `
             <a href="/messages/nouveau?login=${comment.login}" class="mainLink">Envoyer un message</a>
             <span class="mainLink">∙</span>
             <button type="button" class="btn-reset mainLink btnSignal">Signaler</button>
         `;
-        if (comment.user_id === Base.userId) {
+        if (comment.user_id === UsBetaSeries.userId) {
             templateOptions = `
                 <button type="button" class="btn-reset mainLink btnEditComment">Éditer</button>
                 <span class="mainLink">∙</span>
                 <button type="button" class="btn-reset mainLink btnDeleteComment">Supprimer</button>
             `;
         }
-        let btnResponse = `<span class="mainLink">&nbsp;∙&nbsp;</span><button type="button" class="btn-reset mainLink mainLink--regular btnResponse" ${!Base.userIdentified() ? 'style="display:none;"' : ''}>${Base.trans("timeline.comment.reply")}</button>`;
+        let btnResponse = `<span class="mainLink">&nbsp;∙&nbsp;</span><button type="button" class="btn-reset mainLink mainLink--regular btnResponse" ${!UsBetaSeries.userIdentified() ? 'style="display:none;"' : ''}>${UsBetaSeries.trans("timeline.comment.reply")}</button>`;
         if (isReply) btnResponse = '';
         return `
             <div class="comment ${className}positionRelative ${CommentBS.classNamesCSS.comment}" data-comment-id="${comment.id}" ${comment.in_reply_to > 0 ? 'data-comment-reply="' + comment.in_reply_to + '"' : ''} data-comment-inner="${comment.inner_id}">
                 <div class="media">
                     <div class="media-left">
                         <a href="/membre/${comment.login}" class="avatar">
-                            <img src="https://api.betaseries.com/pictures/members?key=${Base.userKey}&amp;id=${comment.user_id}&amp;width=64&amp;height=64&amp;placeholder=png" width="32" height="32" alt="Profil de ${comment.login}">
+                            <img src="https://api.betaseries.com/pictures/members?key=${UsBetaSeries.userKey}&amp;id=${comment.user_id}&amp;width=64&amp;height=64&amp;placeholder=png" width="32" height="32" alt="Profil de ${comment.login}">
                         </a>
                     </div>
                     <div class="media-body">
@@ -338,7 +491,7 @@ export class CommentBS extends Base {
                                 <span class="mainLink">∙</span>
                                 <span class="mainTime">Le ${comment.date.format('dd/mm/yyyy HH:MM')}</span>
                                 <span class="stars" title="${comment.user_note} / 5">
-                                    ${Note.renderStars(comment.user_note, comment.user_id === Base.userId ? 'blue' : '')}
+                                    ${Note.renderStars(comment.user_note, comment.user_id === UsBetaSeries.userId ? 'blue' : '')}
                                 </span>
                                 <div class="it_iv">
                                     <button type="button" class="btn-reset btnToggleOptions">
@@ -347,7 +500,7 @@ export class CommentBS extends Base {
                                                 <defs>
                                                     <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" id="svgthreedots"></path>
                                                 </defs>
-                                                <use fill="${Base.theme === 'dark' ? "rgba(255, 255, 255, .5)" : "#333"}" fill-rule="nonzero" xlink:href="#svgthreedots" transform="translate(-10 -4)"></use>
+                                                <use fill="${UsBetaSeries.theme === 'dark' ? "rgba(255, 255, 255, .5)" : "#333"}" fill-rule="nonzero" xlink:href="#svgthreedots" transform="translate(-10 -4)"></use>
                                             </svg>
                                         </span>
                                     </button>
@@ -357,7 +510,7 @@ export class CommentBS extends Base {
                                 ${templateOptions}
                                 <button type="button" class="btn-reset btnToggleOptions">
                                     <span class="svgContainer">
-                                        <svg fill="${Base.theme === 'dark' ? "rgba(255, 255, 255, .5)" : "#333"}" width="9" height="9" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
+                                        <svg fill="${UsBetaSeries.theme === 'dark' ? "rgba(255, 255, 255, .5)" : "#333"}" width="9" height="9" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M14 1.41l-1.41-1.41-5.59 5.59-5.59-5.59-1.41 1.41 5.59 5.59-5.59 5.59 1.41 1.41 5.59-5.59 5.59 5.59 1.41-1.41-5.59-5.59z"></path>
                                         </svg>
                                     </span>
@@ -376,9 +529,9 @@ export class CommentBS extends Base {
      * @returns {string}
      */
     public static getTemplateWriting(comment?: CommentBS): string {
-        const login = Base.userIdentified() ? currentLogin : '';
+        const login = UsBetaSeries.userIdentified() ? currentLogin : '';
         let replyTo = '',
-            placeholder = Base.trans("timeline.comment.write");
+            placeholder = UsBetaSeries.trans("timeline.comment.write");
         if (comment) {
             replyTo = ` data-reply-to="${comment.id}"`;
             placeholder = "Ecrivez une réponse à ce commentaire";
@@ -388,15 +541,15 @@ export class CommentBS extends Base {
                 <div class="media">
                     <div class="media-left">
                         <div class="avatar">
-                            <img src="https://api.betaseries.com/pictures/members?key=${Base.userKey}&amp;id=${Base.userId}&amp;width=32&amp;height=32&amp;placeholder=png" width="32" height="32" alt="Profil de ${login}">
+                            <img src="https://api.betaseries.com/pictures/members?key=${UsBetaSeries.userKey}&amp;id=${UsBetaSeries.userId}&amp;width=32&amp;height=32&amp;placeholder=png" width="32" height="32" alt="Profil de ${login}">
                         </div>
                     </div>
                     <div class="media-body">
                         <form class="gz_g1">
                             <textarea rows="2" placeholder="${placeholder }" class="form-control"${replyTo}></textarea>
-                            <button class="btn-reset sendComment" disabled="" aria-label="${Base.trans("comment.send.label")}" title="${Base.trans("comment.send.label")}">
+                            <button class="btn-reset sendComment" disabled="" aria-label="${UsBetaSeries.trans("comment.send.label")}" title="${UsBetaSeries.trans("comment.send.label")}">
                                 <span class="svgContainer" style="width: 16px; height: 16px;">
-                                    <svg fill="${Base.theme === 'dark' ? "#fff" : "#333"}" width="15" height="12" xmlns="http://www.w3.org/2000/svg">
+                                    <svg fill="${UsBetaSeries.theme === 'dark' ? "#fff" : "#333"}" width="15" height="12" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M.34 12l13.993-6L.34 0 .333 4.667l10 1.333-10 1.333z"></path>
                                     </svg>
                                 </span>
@@ -430,6 +583,10 @@ export class CommentBS extends Base {
                 <input type="hidden" name="type" value="comment">
             </form>`;
     }
+    /**
+     * Retourne le login du commentaire et des réponses
+     * @returns {string[]}
+     */
     public getLogins(): Array<string> {
         const users = [];
         users.push(this.login);
@@ -450,7 +607,7 @@ export class CommentBS extends Base {
         const val = parseInt($thumbs.text(), 10);
         const result = (vote == this.thumbed) ? val + vote : val - vote;
         const text = result > 0 ? `+${result}` : result.toString();
-        // if (Base.debug) console.log('renderThumbs: ', {val, vote, result, text});
+        // if (BetaSeries.debug) console.log('renderThumbs: ', {val, vote, result, text});
         $thumbs.text(text);
         if (this.thumbed == 0) {
             // On supprime la couleur de remplissage des icones de vote
@@ -481,7 +638,7 @@ export class CommentBS extends Base {
     /**
      * Retourne la réponse correspondant à l'identifiant fournit
      * @param   {number} commentId L'identifiant de la réponse
-     * @returns {CommentBS | void} La réponse
+     * @returns {Promise<(CommentBS | void)>} La réponse
      */
     public async getReply(commentId: number): Promise<CommentBS> {
         if (this.replies.length <= 0 && this.nbReplies <= 0) return null;
@@ -596,7 +753,7 @@ export class CommentBS extends Base {
                 $btn.removeClass('active');
                 $btn.attr('title', "Recevoir les commentaires par e-mail");
                 $btn.find('svg').replaceWith(`
-                    <svg fill="${Base.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" width="14" height="16" style="position: relative; top: 1px; left: -1px;">
+                    <svg fill="${UsBetaSeries.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" width="14" height="16" style="position: relative; top: 1px; left: -1px;">
                         <path fill-rule="nonzero" d="M13.176 13.284L3.162 2.987 1.046.812 0 1.854l2.306 2.298v.008c-.428.812-.659 1.772-.659 2.806v4.103L0 12.709v.821h11.307l1.647 1.641L14 14.13l-.824-.845zM6.588 16c.914 0 1.647-.73 1.647-1.641H4.941c0 .91.733 1.641 1.647 1.641zm4.941-6.006v-3.02c0-2.527-1.35-4.627-3.705-5.185V1.23C7.824.55 7.272 0 6.588 0c-.683 0-1.235.55-1.235 1.23v.559c-.124.024-.239.065-.346.098a2.994 2.994 0 0 0-.247.09h-.008c-.008 0-.008 0-.017.009-.19.073-.379.164-.56.254 0 0-.008 0-.008.008l7.362 7.746z"></path>
                     </svg>
                 `);
@@ -607,7 +764,7 @@ export class CommentBS extends Base {
                     <svg width="20" height="22" viewBox="0 0 20 22" style="width: 17px;">
                         <g transform="translate(-4)" fill="none">
                             <path d="M0 0h24v24h-24z"></path>
-                            <path fill="${Base.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32v-.68c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68c-2.87.68-4.5 3.24-4.5 6.32v5l-2 2v1h16v-1l-2-2z"></path>
+                            <path fill="${UsBetaSeries.theme == 'dark' ? 'rgba(255, 255, 255, .5)' : '#333'}" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32v-.68c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68c-2.87.68-4.5 3.24-4.5 6.32v5l-2 2v1h16v-1l-2-2z"></path>
                         </g>
                     </svg>
                 `);
@@ -616,20 +773,20 @@ export class CommentBS extends Base {
         $btnSubscribe.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
             const $btn = $(e.currentTarget);
             const params: Obj = {type: self.getCollectionComments().media.mediaType.singular, id: self.getCollectionComments().media.id};
             if ($btn.hasClass('active')) {
-                Base.callApi(HTTP_VERBS.DELETE, 'comments', 'subscription', params)
+                UsBetaSeries.callApi(HTTP_VERBS.DELETE, 'comments', 'subscription', params)
                 .then(() => {
                     self.getCollectionComments().is_subscribed = false;
                     displaySubscription($btn);
                 });
             } else {
-                Base.callApi(HTTP_VERBS.POST, 'comments', 'subscription', params)
+                UsBetaSeries.callApi(HTTP_VERBS.POST, 'comments', 'subscription', params)
                 .then(() => {
                     self.getCollectionComments().is_subscribed = true;
                     displaySubscription($btn);
@@ -702,7 +859,7 @@ export class CommentBS extends Base {
         $btnThumb.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
@@ -720,7 +877,7 @@ export class CommentBS extends Base {
                 console.warn("Le vote est impossible. Annuler votre vote et recommencer");
                 return;
             }
-            Base.callApi(verb, 'comments', 'thumb', params)
+            UsBetaSeries.callApi(verb, 'comments', 'thumb', params)
             .then(async (data: Obj) => {
                 if (commentId == self.id) {
                     self.thumbs = parseInt(data.comment.thumbs, 10);
@@ -742,7 +899,7 @@ export class CommentBS extends Base {
             })
             .catch(err => {
                 const msg = err.text !== undefined ? err.text : err;
-                Base.notification('Vote commentaire', "Une erreur est apparue durant le vote: " + msg);
+                UsBetaSeries.notification('Vote commentaire', "Une erreur est apparue durant le vote: " + msg);
             });
         });
         this._events.push({elt: $btnThumb, event: 'click'});
@@ -751,7 +908,7 @@ export class CommentBS extends Base {
          * On affiche/masque les options du commentaire
          */
         const $btnOptions = $container.find('.btnToggleOptions');
-        // if (Base.debug) console.log('Comment loadEvents toggleOptions.length', $btnOptions.length);
+        // if (BetaSeries.debug) console.log('Comment loadEvents toggleOptions.length', $btnOptions.length);
         $btnOptions.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
@@ -775,7 +932,7 @@ export class CommentBS extends Base {
         $btnSend.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
@@ -877,14 +1034,14 @@ export class CommentBS extends Base {
                 // On affiche
                 $replies.nextAll('.sub').fadeIn('fast');
                 $replies.fadeIn('fast');
-                $btn.find('.btnText').text(Base.trans("comment.hide_answers"));
+                $btn.find('.btnText').text(UsBetaSeries.trans("comment.hide_answers"));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s; transform: rotate(180deg);');
                 $btn.data('toggle', '1');
             } else {
                 // On masque
                 $replies.nextAll('.sub').fadeOut('fast');
                 $replies.fadeOut('fast');
-                $btn.find('.btnText').text(Base.trans("comment.button.reply", {"%count%": $replies.length.toString()}, $replies.length));
+                $btn.find('.btnText').text(UsBetaSeries.trans("comment.button.reply", {"%count%": $replies.length.toString()}, $replies.length));
                 $btn.find('svg').attr('style', 'transition: transform 200ms ease 0s;');
                 $btn.data('toggle', '0');
             }
@@ -895,7 +1052,7 @@ export class CommentBS extends Base {
         $btnResponse.on('click', async (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
-            if (!Base.userIdentified()) {
+            if (!UsBetaSeries.userIdentified()) {
                 faceboxDisplay('inscription', {}, () => {});
                 return;
             }
@@ -955,10 +1112,10 @@ export class CommentBS extends Base {
     }
     /**
      * Nettoie les events créer par la fonction loadEvents
-     * @param   {Function} onComplete - Fonction de callback
+     * @param   {Callback} onComplete - Fonction de callback
      * @returns {void}
      */
-    protected cleanEvents(onComplete: Callback = Base.noop): void {
+    protected cleanEvents(onComplete: Callback = UsBetaSeries.noop): void {
         if (this._events && this._events.length > 0) {
             let data: CustomEvent;
             for (let e = 0; e < this._events.length; e++) {
@@ -1000,7 +1157,7 @@ export class CommentBS extends Base {
                   $popup.attr('aria-hidden', 'false');
               };
               // On ajoute le loader dans la popup et on l'affiche
-        $contentReact.empty().append(`<div class="title" id="dialog-title" tabindex="0">${Base.trans("blog.title.comments")}</div>`);
+        $contentReact.empty().append(`<div class="title" id="dialog-title" tabindex="0">${UsBetaSeries.trans("blog.title.comments")}</div>`);
         let $title = $contentReact.find('.title');
         let templateLoader = `
             <div class="loaderCmt">
@@ -1026,7 +1183,7 @@ export class CommentBS extends Base {
                             data-media-id="${self.getCollectionComments().media.id}"
                             class="displayFlex flexDirectionColumn"
                             style="margin-top: 2px; min-height: 0">`;
-        if (Base.userIdentified()) {
+        if (UsBetaSeries.userIdentified()) {
             template += `<button type="button" class="btn-reset btnSubscribe" style="position: absolute; top: 3px; right: 31px; padding: 8px;">
                 <span class="svgContainer">
                     <svg></svg>
@@ -1044,7 +1201,7 @@ export class CommentBS extends Base {
             template += CommentBS.getTemplateComment(this.replies[r]);
         }
         template += '</div>';
-        if (this.getCollectionComments().isOpen() && Base.userIdentified()) {
+        if (this.getCollectionComments().isOpen() && UsBetaSeries.userIdentified()) {
             template += CommentBS.getTemplateWriting(self);
         }
         template += '</div>';
@@ -1064,7 +1221,7 @@ export class CommentBS extends Base {
             if (! self._parent.isLast(self.id)) {
                 nav += '  <i class="fa fa-chevron-circle-right next-comment" aria-hidden="true" title="Commentaire suivant"></i>';
             }
-            $title.append(Base.trans("blog.title.comments") + nav);
+            $title.append(UsBetaSeries.trans("blog.title.comments") + nav);
             // On ajoute les templates HTML du commentaire,
             // des réponses et du formulaire de d'écriture
             $contentReact.append(template);
@@ -1077,7 +1234,7 @@ export class CommentBS extends Base {
     /**
      * Envoie une réponse de ce commentaire à l'API
      * @param   {string} text        Le texte de la réponse
-     * @returns {Promise<void | CommentBS>}
+     * @returns {Promise<(void | CommentBS)>}
      */
     public sendReply(text: string): Promise<void | CommentBS> {
         const self = this;
@@ -1087,7 +1244,7 @@ export class CommentBS extends Base {
             in_reply_to: this.inner_id,
             text: text
         };
-        return Base.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
+        return UsBetaSeries.callApi(HTTP_VERBS.POST, 'comments', 'comment', params)
         .then((data: Obj) => {
             const comment = new CommentBS(data.comment, self);
             const method = self.getCollectionComments().order === OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
@@ -1098,7 +1255,7 @@ export class CommentBS extends Base {
             return comment;
         })
         .catch(err => {
-            Base.notification('Commentaire', "Erreur durant l'ajout d'un commentaire");
+            UsBetaSeries.notification('Commentaire', "Erreur durant l'ajout d'un commentaire");
             console.error(err);
         });
     }

@@ -1,12 +1,12 @@
 import "reflect-metadata";
-import { Base, isNull, Obj } from "./Base";
+import { Base, UsBetaSeries, isNull, Obj } from "./Base";
 import { CacheUS } from "./Cache";
 import { Character, Person, personMedia } from "./Character";
 import { CommentBS } from "./Comment";
 import { CommentsBS } from "./Comments";
 import { Episode } from "./Episode";
 import { Media, MediaBase } from "./Media";
-import { Member, Options, Stats } from "./Member";
+import { Member, OptionsMember, Stats } from "./Member";
 import { Movie } from "./Movie";
 import { Note } from "./Note";
 import { NotificationBS, NotificationList, NotifPayload } from "./Notification";
@@ -77,7 +77,10 @@ export function validateType(target: any, propertyKey: string, descriptor: Prope
 /*
 *                      Custom Decorators
 */
-
+/**
+ * implFillDecorator
+ * @interface implFillDecorator
+ */
 export interface implFillDecorator {
     __initial: boolean;
     __changes: Record<string, Changes>;
@@ -88,63 +91,15 @@ export interface implFillDecorator {
     toJSON(): object;
 }
 
-
-class InstanceBuilder {
-    static bsModule: Record<string, any> = {
-        "Base": Base,
-        "CacheUS": CacheUS,
-        "Character": Character,
-        "CommentBS": CommentBS,
-        "CommentsBS": CommentsBS,
-        "Episode": Episode,
-        "Images": Images,
-        "Media": Media,
-        "MediaBase": MediaBase,
-        "Member": Member,
-        "Movie": Movie,
-        "Next": Next,
-        "Note": Note,
-        "NotificationBS": NotificationBS,
-        "NotificationList": NotificationList,
-        "NotifPayload": NotifPayload,
-        "Options": Options,
-        "Person": Person,
-        "PersonMedia": personMedia,
-        "Picture": Picture,
-        "Platform": Platform,
-        "PlatformList": PlatformList,
-        "Platforms": Platforms,
-        "RenderHtml": RenderHtml,
-        "Search": Search,
-        "ParamsSearchMovies": ParamsSearchMovies,
-        "ParamsSearchShows": ParamsSearchShows,
-        "Season": Season,
-        "Show": Show,
-        "Showrunner": Showrunner,
-        "Similar": Similar,
-        "Stats": Stats,
-        "Subtitle": Subtitle,
-        "UpdateAuto": UpdateAuto,
-        "User": User
-    };
-    static getInstance(className: string, ...args: any[]): any {
-
-        // TODO: Handle Null and invalid className arguments
-        if (typeof InstanceBuilder.bsModule[className] !== undefined) {
-            return new InstanceBuilder.bsModule[className](args);
-        } else {
-            throw new Error("Class not found: " + className);
-        }
-    }
-    static checkClassname(className: string): boolean {
-        return typeof InstanceBuilder.bsModule[className] !== undefined;
-    }
-}
-
+/**
+ * AbstractDecorator - Classe abstraite des decorators
+ * @class
+ * @abstract
+ */
 export abstract class AbstractDecorator {
-    protected __target: implFillDecorator;
+    protected __target: any;
 
-    constructor(target: implFillDecorator) {
+    constructor(target: any) {
         this.__target = target;
         return this;
     }
@@ -157,8 +112,19 @@ export abstract class AbstractDecorator {
     }
 }
 
+/**
+ * Classe FillDecorator permet d'ajouter des méthodes à d'autres classes
+ * Ces méthodes servent à peupler un objet de classe
+ * @class
+ * @extends AbstractDecorator
+ */
 export class FillDecorator extends AbstractDecorator {
 
+    /**
+     * Constructor
+     * @param   {implFillDecorator} target - La classe utilisant le décorateur
+     * @returns {FillDecorator}
+     */
     constructor(target: implFillDecorator) {
         super(target);
         return this;
@@ -166,9 +132,8 @@ export class FillDecorator extends AbstractDecorator {
 
     /**
      * Remplit l'objet avec les données fournit en paramètre
-     * @param  {Obj} data - Les données provenant de l'API
+     * @param   {Obj} data - Les données provenant de l'API
      * @returns {implFillDecorator}
-     * @virtual
      */
     fill(data: Obj): implFillDecorator {
         const self = this as unknown as implFillDecorator;
@@ -198,7 +163,7 @@ export class FillDecorator extends AbstractDecorator {
             let subType = null;
             if (typeof type === 'string' && /^array<\w+>$/.test(type)) {
                 subType = type.match(/<(\w+)>$/)[1];
-                if (Base.debug) console.log('FillDecorator.fill for (%s.%s) type: array - subType: %s', self.constructor.name, key, subType, value);
+                if (UsBetaSeries.debug) console.log('FillDecorator.fill for (%s.%s) type: array - subType: %s', self.constructor.name, key, subType, value);
             }
             switch(type) {
                 case 'string':
@@ -222,12 +187,12 @@ export class FillDecorator extends AbstractDecorator {
                     if (!isNull(subType) && Array.isArray(value)) {
                         const data = [];
                         let isClass = false;
-                        if (InstanceBuilder.checkClassname(subType)) {
+                        if (UsBetaSeries.checkClassname(subType)) {
                             isClass = true;
                         }
                         for (let d = 0, _len = value.length; d < _len; d++) {
                             let subVal = value[d];
-                            if (isClass) subVal = InstanceBuilder.getInstance(subType, [value[d]]);
+                            if (isClass) subVal = UsBetaSeries.getInstance(subType, [value[d]]);
                             data.push(subVal);
                         }
                         value = data;
@@ -263,7 +228,7 @@ export class FillDecorator extends AbstractDecorator {
                         value = (! isNull(value)) ? Object.assign({}, value) : hasDefault ? relatedProp.default : null;
                     }
                     else if (typeof type === 'function' && !isNull(value) && !(value instanceof type)) {
-                        // if (Base.debug) console.log('FillDecorator.fill: type Function for [%s.%s]', classStatic.name, key, {type, value});
+                        // if (BetaSeries.debug) console.log('FillDecorator.fill: type Function for [%s.%s]', classStatic.name, key, {type, value});
                         // value = Reflect.construct(type, [value]);
                         value = new (type)(value);
                         if (typeof value === 'object' && Reflect.has(value, 'parent')) {
@@ -273,7 +238,7 @@ export class FillDecorator extends AbstractDecorator {
                     if (self.__initial || isNull(oldValue)) return value;
                     let changed = false;
                     try {
-                        // if (Base.debug) console.log('comparaison d\'objets', {typeOld: typeof oldValue, oldValue, typeNew: typeof value, value});
+                        // if (BetaSeries.debug) console.log('comparaison d\'objets', {typeOld: typeof oldValue, oldValue, typeNew: typeof value, value});
                         if (
                             (isNull(oldValue) && !isNull(value)) ||
                             (!isNull(oldValue) && isNull(value))
@@ -282,13 +247,13 @@ export class FillDecorator extends AbstractDecorator {
                         }
                         else if (typeof value === 'object' && !isNull(value)) {
                             if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
-                                if (Base.debug) console.log('compare objects with JSON.stringify and are differents', {oldValue, value});
+                                if (UsBetaSeries.debug) console.log('compare objects with JSON.stringify and are differents', {oldValue, value});
                                 changed = true;
                             }
                         }
                         if (!changed) return undefined;
                     } catch (err) {
-                        console.warn('Base.fill => checkTypeValue: error setter[%s.%s]', target.constructor.name, key, {oldValue, value});
+                        console.warn('FillDecorator.fill => checkTypeValue: error setter[%s.%s]', target.constructor.name, key, {oldValue, value});
                         throw err;
                     }
                 }
@@ -334,10 +299,10 @@ export class FillDecorator extends AbstractDecorator {
                         const oldValue = self['_' + relatedProp.key];
                         // Si value est undefined, alors pas de modification de valeur
                         if (value === undefined) {
-                            // console.log('Base.fill setter[%s.%s] not changed', self.constructor.name, relatedProp.key, relatedProp.type, {newValue, oldValue, relatedProp});
+                            // console.log('FillDecorator.fill setter[%s.%s] not changed', self.constructor.name, relatedProp.key, relatedProp.type, {newValue, oldValue, relatedProp});
                             return;
                         }
-                        if (Base.debug) console.log('%s.fill setter[%s.%s] value changed', self.constructor.name, self.constructor.name, relatedProp.key, {type: relatedProp.type, newValue, oldValue, value, relatedProp});
+                        if (UsBetaSeries.debug) console.log('FillDecorator.fill setter[%s.%s] value changed', self.constructor.name, relatedProp.key, {type: relatedProp.type, newValue, oldValue, value, relatedProp});
                         // On set la nouvelle valeur
                         self['_' + relatedProp.key] = value;
                         // On stocke le changement de valeurs
@@ -348,7 +313,7 @@ export class FillDecorator extends AbstractDecorator {
                 };
             }
 
-            // if (Base.debug) console.log('Base.fill descriptor[%s.%s]', this.constructor.name, relatedProp.key, {relatedProp, dataProp, descriptor});
+            // if (BetaSeries.debug) console.log('FillDecorator.fill descriptor[%s.%s]', this.constructor.name, relatedProp.key, {relatedProp, dataProp, descriptor});
             // Lors de l'initialisation, on définit la propriété de l'objet
             // et on ajoute le nom de la propriété dans le tableau __props
             if (self.__initial) {
@@ -379,13 +344,13 @@ export class FillDecorator extends AbstractDecorator {
         if (! self.elt || ! self.__props.includes(propKey)) return;
         const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
         const classStatic = self.constructor as typeof RenderHtml;
-        // if (Base.debug) console.log('%s.updatePropRender', classStatic.name, propKey, fnPropKey);
+        // if (BetaSeries.debug) console.log('%s.updatePropRender', classStatic.name, propKey, fnPropKey);
         if (Reflect.has(self, fnPropKey)) {
-            // if (Base.debug) console.log('%s.updatePropRender Reflect has method: %s', classStatic.name, fnPropKey);
+            // if (BetaSeries.debug) console.log('%s.updatePropRender Reflect has method: %s', classStatic.name, fnPropKey);
             self[fnPropKey]();
         }
         else if (classStatic.selectorsCSS && classStatic.selectorsCSS[propKey]) {
-            // if (Base.debug) console.log('updatePropRender default');
+            // if (BetaSeries.debug) console.log('updatePropRender default');
             const selectorCSS = classStatic.selectorsCSS[propKey];
             jQuery(selectorCSS).text(self[propKey].toString());
             delete self.__changes[propKey];
