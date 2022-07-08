@@ -58,6 +58,7 @@ tmdb: 634649
 * Ajout de la gestion du synopsis (description), pour l'afficher au complet et pour revenir à un synopsis tronqué, autant de fois que nécessaire.
 * Modification de l'affichage pour noter le média. Je l'ai modifié pour les mêmes raisons que les commentaires (cf. ci-dessous).
 * Ajout du nombre de médias similaires, dans la barre de navigation du média, à côté de lien **SIMILAIRES**.
+* Ajout de la visualisation de la filmographie d'un acteur/actrice, lors d'un clic sur sa photo.
 
 #### Commentaires
 
