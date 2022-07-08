@@ -11,3 +11,4 @@ start-grunt.bat
 ssl
 db/betaseries.json
 db/betaseries-*.json
+/doc

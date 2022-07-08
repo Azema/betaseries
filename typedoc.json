@@ -1,0 +1,11 @@
+{
+    "entryPoints": ["./src"],
+    "entryPointStrategy": "expand",
+    "out": "doc",
+    "name": "BetaSeries Documentation",
+    "includeVersion": true,
+    "htmlLang": "fr",
+    "cleanOutputDir": true,
+    "commentStyle": "jsdoc",
+    "exclude": ["node_modules/", "*.(json|cjs)"]
+}
