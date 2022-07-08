@@ -245,6 +245,8 @@ export class FillDecorator extends AbstractDecorator {
             }
             if (type === 'date') {
                 type = Date;
+            } else if (type === 'other' && hasTransform) {
+                return value;
             }
             if ((typeof type === 'string' && typeof value !== type) ||
                 (typeof type === 'function' && !(value instanceof type)))
