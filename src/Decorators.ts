@@ -1,23 +1,6 @@
 import "reflect-metadata";
-import { Base, UsBetaSeries, isNull, Obj } from "./Base";
-import { CacheUS } from "./Cache";
-import { Character, Person, personMedia } from "./Character";
-import { CommentBS } from "./Comment";
-import { CommentsBS } from "./Comments";
-import { Episode } from "./Episode";
-import { Media, MediaBase } from "./Media";
-import { Member, OptionsMember, Stats } from "./Member";
-import { Movie } from "./Movie";
-import { Note } from "./Note";
-import { NotificationBS, NotificationList, NotifPayload } from "./Notification";
+import { UsBetaSeries, isNull, Obj } from "./Base";
 import { Changes, RelatedProp, RenderHtml } from "./RenderHtml";
-import { ParamsSearchMovies, ParamsSearchShows, Search } from "./Search";
-import { Season } from "./Season";
-import { Images, Picture, Platform, PlatformList, Platforms, Show, Showrunner } from "./Show";
-import { Similar } from "./Similar";
-import { Subtitle } from "./Subtitle";
-import { UpdateAuto } from "./UpdateAuto";
-import { Next, User } from "./User";
 
 /*
  *              Class Decorators
@@ -74,9 +57,11 @@ export function validateType(target: any, propertyKey: string, descriptor: Prope
     }
 }
 
-/*
-*                      Custom Decorators
-*/
+
+/********************************************************************************/
+/*                          Custom Decorators                                   */
+/********************************************************************************/
+
 /**
  * implFillDecorator
  * @interface implFillDecorator
