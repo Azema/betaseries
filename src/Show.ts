@@ -804,6 +804,7 @@ export class Show extends Media implements implShow, implAddNote {
                 }
                 return this;
             }));
+            promises.push(this.fetchCharacters());
             promises.push(super.init());
             return Promise.all(promises).then(() => this);
         }
