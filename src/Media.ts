@@ -181,12 +181,12 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
     }
     /**
      * *getCharacter* - Retourne un personnage à partir de son identifiant
-     * @param   {number} id - Identifiant du personnage
+     * @param   {number} id - Identifiant de l'actor
      * @returns {Character | null}
      */
     getCharacter(id: number): Character | null {
         for (const actor of this.characters) {
-            if (actor.id === id) return actor;
+            if (actor.person_id === id) return actor;
         }
         return null;
     }
