@@ -1,6 +1,12 @@
 import { Obj } from "./Base";
 import { NotificationList } from "./Notification";
-declare enum DaysOfWeek {
+/**
+ * DaysOfWeek
+ * @enum
+ * @memberof Stats
+ * @alias DaysOfWeek
+ */
+export declare enum DaysOfWeek {
     monday = "lundi",
     tuesday = "mardi",
     wednesday = "mercredi",
@@ -9,6 +15,11 @@ declare enum DaysOfWeek {
     saturday = "samedi",
     sunday = "dimanche"
 }
+/**
+ * Stats
+ * @class
+ * @memberof Member
+ */
 export declare class Stats {
     friends: number;
     shows: number;
@@ -40,7 +51,12 @@ export declare class Stats {
     time_to_spend_movies: number;
     constructor(data: Obj);
 }
-export declare class Options {
+/**
+ * OptionsMember
+ * @class
+ * @memberof Member
+ */
+export declare class OptionsMember {
     downloaded: boolean;
     notation: boolean;
     timelag: boolean;
@@ -63,71 +79,88 @@ export declare class Member {
      */
     static fetch(): Promise<Member>;
     /**
-     * @type {number} Identifiant du membre
+     * Identifiant du membre
+     * @type {number}
      */
     id: number;
     /**
-     * @type {number} Identifiant Facebook ?
+     * Identifiant Facebook ?
+     * @type {number}
      */
     fb_id: number;
     /**
-     * @type {string} Login du membre
+     * Login du membre
+     * @type {string}
      */
     login: string;
     /**
-     * @type {number} Points d'expérience
+     * Points d'expérience
+     * @type {number}
      */
     xp: number;
     /**
-     * @type {string} Locale utiliser par le membre
+     * Locale utiliser par le membre
+     * @type {string}
      */
     locale: string;
     /**
-     * @type {number} ?
+     * ???
+     * @type {number}
      */
     cached: number;
     /**
-     * @type {string} URL de l'avatar du membre
+     * URL de l'avatar du membre
+     * @type {string}
      */
     avatar: string;
     /**
-     * @type {string} URL de la bannière du membre
+     * URL de la bannière du membre
+     * @type {string}
      */
     profile_banner: string;
     /**
-     * @type {boolean} ?
+     * ???
+     * @type {boolean}
      */
     in_account: boolean;
     /**
-     * @type {boolean} Membre Administrateur ?
+     * Membre Administrateur ?
+     * @type {boolean}
      */
     is_admin: boolean;
     /**
-     * @type {number} Année d'inscription
+     * Année d'inscription
+     * @type {number}
      */
     subscription: number;
     /**
-     * @type {boolean} Indique si l'adresse mail a été validée
+     * Indique si l'adresse mail a été validée
+     * @type {boolean}
      */
     valid_email: boolean;
     /**
-     * @type {Array<string>} ?
+     * ???
+     * @type {string[]}
      */
     screeners: Array<string>;
     /**
-     * @type {string} Login Twitter
+     * Login Twitter
+     * @type {string}
      */
     twitterLogin: string;
     /**
-     * @type {Stats} Les statistiques du membre
+     * Les statistiques du membre
+     * @type {Stats}
      */
     stats: Stats;
     /**
-     * @type {Options} Les options de paramétrage du membre
+     * Les options de paramétrage du membre
+     * @type {OptionsMember}
      */
-    options: Options;
+    options: OptionsMember;
     /**
-     * @type {NotificationList} Tableau des notifications du membre
+     * Tableau des notifications du membre
+     * @type {NotificationList}
      */
     notifications: NotificationList;
     /**
@@ -142,4 +175,3 @@ export declare class Member {
      */
     renderNotifications(): void;
 }
-export {};

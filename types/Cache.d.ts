@@ -1,4 +1,4 @@
-declare type ObjHome = {
+export declare type ObjHome = {
     [key in DataTypesCache]: any;
 };
 export declare enum DataTypesCache {
@@ -69,4 +69,3 @@ export declare class CacheUS {
      */
     remove(type: DataTypesCache, key: string | number): this;
 }
-export {};

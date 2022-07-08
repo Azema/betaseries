@@ -122,43 +122,53 @@ export declare abstract class Media extends MediaBase {
     /***************************************************/
     /***************************************************/
     /**
-     * @type {number} Nombre de membres ayant ce média sur leur compte
+     * Nombre de membres ayant ce média sur leur compte
+     * @type {number}
      */
     followers: number;
     /**
-     * @type {Array<string>} Les genres attribués à ce média
+     * Les genres attribués à ce média
+     * @type {string[]}
      */
     genres: Array<string>;
     /**
-     * @type {string} Identifiant IMDB
+     * Identifiant IMDB
+     * @type {string}
      */
     imdb_id: string;
     /**
-     * @type {string} Langue originale du média
+     * Langue originale du média
+     * @type {string}
      */
     language: string;
     /**
-     * @type {number} Durée du média en minutes
+     * Durée du média en minutes
+     * @type {number}
      */
     duration: number;
     /**
-     * @type {string} Titre original du média
+     * Titre original du média
+     * @type {string}
      */
     original_title: string;
     /**
-     * @type {Array<Similar>} Tableau des médias similaires
+     * Tableau des médias similaires
+     * @type {Similar[]}
      */
     similars: Array<Similar>;
     /**
-     * @type {number} Nombre de médias similaires
+     * Nombre de médias similaires
+     * @type {number}
      */
     nbSimilars: number;
     /**
-     * @type {boolean} Indique si le média se trouve sur le compte du membre connecté
+     * Indique si le média se trouve sur le compte du membre connecté
+     * @type {boolean}
      */
     in_account: boolean;
     /**
-     * @type {string} slug - Identifiant du média servant pour l'URL
+     * Identifiant du média servant pour l'URL
+     * @type {string}
      */
     slug: string;
     protected __fetches: Record<string, Promise<any>>;

@@ -113,8 +113,8 @@ export declare class Movie extends Media implements implAddNote {
     changeStatus(state: MovieStatus): Promise<this>;
     /**
      * Retourne une image, si disponible, en fonction du format désiré
-     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
-     * @return {Promise<string>}                         L'URL de l'image
+     * @param  {string} [format = Images.formats.poster] - Le format de l'image désiré
+     * @return {Promise<string>} L'URL de l'image
      */
     getDefaultImage(format?: string): Promise<string>;
     /**
@@ -122,5 +122,9 @@ export declare class Movie extends Media implements implAddNote {
      * @returns {Promise<this>}
      */
     fetchCharacters(): Promise<this>;
+    /**
+     * Retourne une collection d'affiche, si trouvées sur l'API theMovieDb
+     * @returns {Promise<Object>}
+     */
     getAllPosters(): Promise<object>;
 }

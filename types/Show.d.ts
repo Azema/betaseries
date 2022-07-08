@@ -7,6 +7,7 @@ import { RelatedProp } from "./RenderHtml";
 /**
  * Classe représentant les différentes images d'une série
  * @class
+ * @memberof Show
  */
 export declare class Images {
     /**
@@ -39,7 +40,12 @@ export declare class Images {
         poster: string;
     };
 }
-/** @enum {number} */
+/**
+ * Picked
+ * @memberof Show
+ * @enum {number}
+ * @alias Picked
+ */
 export declare enum Picked {
     none = 0,
     banner = 1,
@@ -48,6 +54,7 @@ export declare enum Picked {
 /**
  * Classe représentant une image
  * @class
+ * @memberof Show
  */
 export declare class Picture {
     /**
@@ -75,6 +82,7 @@ export declare class Picture {
 /**
  * Classe représentant une plateforme de diffusion
  * @class
+ * @memberof Show
  */
 export declare class Platform {
     /**
@@ -116,6 +124,7 @@ export declare class Platform {
  * Classe représentant les différentes plateformes de diffusion
  * sous deux types de plateformes
  * @class
+ * @memberof Show
  */
 export declare class PlatformList {
     /** @type {Array<Platform>} */
@@ -154,6 +163,7 @@ export declare class PlatformList {
 /**
  * Classe représentant les différentes plateformes de diffusion d'un média
  * @class
+ * @memberof Show
  */
 export declare class Platforms {
     /**
@@ -171,6 +181,7 @@ export declare class Platforms {
 /**
  * Class représentant un ShowRunner
  * @class
+ * @memberof Show
  */
 export declare class Showrunner {
     /**
@@ -187,7 +198,7 @@ export declare class Showrunner {
 }
 /**
  * Interface de la classe Show
- * @interface
+ * @interface implShow
  */
 export interface implShow {
     aliases: object;
@@ -212,7 +223,8 @@ export interface implShow {
  * Class representing a Show
  * @class
  * @extends Media
- * @implements {implShow, implAddNote}
+ * @implements {implShow}
+ * @implements {implAddNote}
  */
 export declare class Show extends Media implements implShow, implAddNote {
     /***************************************************/
@@ -308,39 +320,48 @@ export declare class Show extends Media implements implShow, implAddNote {
     /***************************************************/
     /***************************************************/
     /**
-     * @type {object} Contient les alias de la série
+     * Contient les alias de la série
+     * @type {object}
      */
     aliases: object;
     /**
-     * @type {string} Année de création de la série
+     * Année de création de la série
+     * @type {string}
      */
     creation: string;
     /**
-     * @type {string} Pays d'origine de la série
+     * Pays d'origine de la série
+     * @type {string}
      */
     country: string;
     /**
-     * @type {number} Pointeur vers la saison courante
+     * Pointeur vers la saison courante
+     * @type {number}
      */
     _currentSeason: number;
     /**
-     * @type {Images} Contient les URLs d'accès aux images de la série
+     * Contient les URLs d'accès aux images de la série
+     * @type {Images}
      */
     images: Images;
     /**
-     * @type {boolean} Indique si la série se trouve dans les séries à voir
+     * Indique si la série se trouve dans les séries à voir
+     * @type {boolean}
      */
     markToSee: boolean;
     /**
-     * @type {number} Nombre total d'épisodes dans la série
+     * Nombre total d'épisodes dans la série
+     * @type {number}
      */
     nbEpisodes: number;
     /**
-     * @type {number} Nombre de saisons dans la série
+     * Nombre de saisons dans la série
+     * @type {number}
      */
     nbSeasons: number;
     /**
-     * @type {string} Chaîne TV ayant produit la série
+     * Chaîne TV ayant produit la série
+     * @type {string}
      */
     network: string;
     /**
@@ -352,23 +373,28 @@ export declare class Show extends Media implements implShow, implAddNote {
      */
     next_trailer_host: string;
     /**
-     * @type {string} Code de classification TV parental
+     * Code de classification TV parental
+     * @type {string}
      */
     rating: string;
     /**
-     * @type {Array<Person>} Tableau des acteurs de la série
+     * Tableau des acteurs de la série
+     * @type {Person[]}
      */
     persons: Array<Person>;
     /**
-     * @type {Array<Picture>} Tableau des images uploadées par les membres
+     * Tableau des images uploadées par les membres
+     * @type {Picture[]}
      */
     pictures: Array<Picture>;
     /**
-     * @type {Platforms} Plateformes de diffusion
+     * Plateformes de diffusion
+     * @type {Platforms}
      */
     platforms: Platforms;
     /**
-     * @type {Array<Season>} Tableau des saisons de la série
+     * Tableau des saisons de la série
+     * @type {Season[]}
      */
     seasons: Array<Season>;
     /**
@@ -376,19 +402,23 @@ export declare class Show extends Media implements implShow, implAddNote {
      */
     showrunner: Showrunner;
     /**
-     * @type {Array<string>} Tableau des liens sociaux de la série
+     * Tableau des liens sociaux de la série
+     * @type {string[]}
      */
     social_links: Array<string>;
     /**
-     * @type {string} Status de la série sur le compte du membre
+     * Statut de la série (en cours ou terminée)
+     * @type {string}
      */
     status: string;
     /**
-     * @type {number} Identifiant TheTVDB de la série
+     * Identifiant TheTVDB de la série
+     * @type {number}
      */
     thetvdb_id: number;
     /**
-     * @type {object} Contient les URLs des posters disponibles pour la série
+     * Contient les URLs des posters disponibles pour la série
+     * @type {object}
      */
     _posters: object;
     /***************************************************/
@@ -396,7 +426,7 @@ export declare class Show extends Media implements implShow, implAddNote {
     /**
      * Constructeur de la classe Show
      * @param   {Obj} data - Les données du média
-     * @param   {JQuery<HTMLElement>} element - Le DOMElement associé au média
+     * @param   {JQuery<HTMLElement>} [element] - Le DOMElement associé au média
      * @returns {Show}
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>);
@@ -435,7 +465,7 @@ export declare class Show extends Media implements implShow, implAddNote {
     /**
      * Récupère les données de la série sur l'API
      * @param  {boolean} [force=true]   Indique si on utilise les données en cache
-     * @return {Promise<*>}             Les données de la série
+     * @return {Promise<Obj>}             Les données de la série
      */
     fetch(force?: boolean): Promise<Obj>;
     /**
@@ -535,14 +565,14 @@ export declare class Show extends Media implements implShow, implAddNote {
     unfavorite(): Promise<Show>;
     /**
      * Met à jour les données de la série
-     * @param  {Callback} [cb = Base.noop]  Fonction de callback
+     * @param  {Callback} [cb = BetaSeries.noop]  Fonction de callback
      * @return {Promise<Show>}              Promesse (Show)
      */
     update(cb?: Callback): Promise<Show>;
     /**
      * Met à jour le rendu de la barre de progression
      * et du prochain épisode
-     * @param  {Callback} [cb=Base.noop] Fonction de callback
+     * @param  {Callback} [cb=BetaSeries.noop] Fonction de callback
      * @return {void}
      */
     updateRender(cb?: Callback): void;
@@ -589,7 +619,7 @@ export declare class Show extends Media implements implShow, implAddNote {
     addRating(): void;
     /**
      * Définit la saison courante
-     * @param   {number} seasonNumber Le numéro de la saison courante (commence à 1)
+     * @param   {number} seasonNumber - Le numéro de la saison courante (commence à 1)
      * @returns {Show}  L'instance de la série
      * @throws  {Error} if seasonNumber is out of range of seasons
      */
@@ -607,7 +637,7 @@ export declare class Show extends Media implements implShow, implAddNote {
     getSeason(seasonNumber: number): Season;
     /**
      * Retourne une image, si disponible, en fonction du format désiré
-     * @param  {string = Images.formats.poster} format   Le format de l'image désiré
+     * @param  {string} [format = Images.formats.poster] -  Le format de l'image désiré
      * @return {Promise<string>}                         L'URL de l'image
      */
     getDefaultImage(format?: string): Promise<string>;

@@ -5,7 +5,11 @@ import { implShow, Showrunner, Platforms, Images, Picture } from "./Show";
 import { implMovie, OtherTitle } from "./Movie";
 import { Platform_link } from "./Episode";
 import { Person } from "./Character";
-interface implDialog {
+/**
+ * implDialog
+ * @interface
+ */
+export interface implDialog {
     show: () => void;
     close: () => void;
     setContent: (text: string) => void;
@@ -13,6 +17,13 @@ interface implDialog {
     setTitle: (title: string) => void;
     init: () => void;
 }
+/**
+ * Similar
+ * @class
+ * @extends Media
+ * @implements {implShow}
+ * @implements {implMovie}
+ */
 export declare class Similar extends Media implements implShow, implMovie {
     static relatedProps: {};
     backdrop: string;
@@ -118,4 +129,3 @@ export declare class Similar extends Media implements implShow, implMovie {
      */
     addVote(note: number): Promise<boolean>;
 }
-export {};

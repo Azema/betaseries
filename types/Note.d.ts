@@ -49,6 +49,7 @@ export declare class Note {
     toJSON(): object;
     /**
      * Crée une popup avec 5 étoiles pour noter le média
+     * @param {Callback} cb - Fonction callback
      */
     createPopupForVote(cb?: Callback): void;
     /**

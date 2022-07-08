@@ -27,7 +27,7 @@ export interface TooltipOption {
     placement?: Placement | ((tip: HTMLElement, elt: Element) => Placement) | undefined;
 }
 
-import Base from "./types/Base";
+import { Base, UsBetaSeries } from "./types/Base";
 import CacheUS from "./types/Cache";
 import Character from "./types/Character";
 import CommentBS from "./types/Comment";
@@ -46,4 +46,4 @@ import Subtitle from "./types/Subtitle";
 import UpdateAuto from "./types/UpdateAuto";
 import User from "./types/User";
 
-export {Base, CacheUS, Character, CommentBS, CommentsBS, Episode, Media, Member, Movie, Note, NotificationBS, Search, Season, Show, Similar, Subtitle, UpdateAuto, User, Tooltip};
+export {Base, UsBetaSeries, CacheUS, Character, CommentBS, CommentsBS, Episode, Media, Member, Movie, Note, NotificationBS, Search, Season, Show, Similar, Subtitle, UpdateAuto, User, Tooltip};

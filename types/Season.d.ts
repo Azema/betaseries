@@ -18,11 +18,13 @@ export declare class Season extends RenderHtml {
      */
     static relatedProps: Record<string, RelatedProp>;
     /**
-     * @type {number} Numéro de la saison dans la série
+     * Numéro de la saison dans la série
+     * @type {number}
      */
     number: number;
     /**
-     * @type {Array<Episode>} Tableau des épisodes de la saison
+     * Tableau des épisodes de la saison
+     * @type {Array<Episode>}
      */
     episodes: Array<Episode>;
     /**
@@ -31,28 +33,33 @@ export declare class Season extends RenderHtml {
      */
     nbEpisodes: number;
     /**
-     * @type {boolean} Possède des sous-titres
+     * Possède des sous-titres
+     * @type {boolean}
      */
     has_subtitles: boolean;
     /**
-     * @type {boolean} Saison pas vu
+     * Indique si la saison est indiquée comme ignorée par le membre
+     * @type {boolean}
      */
     hidden: boolean;
     /**
-     * @type {string} URL de l'image
+     * URL de l'image
+     * @type {string}
      */
     image: string;
     /**
-     * @type {boolean} Saison vu
+     * Indique si le membre a vu la saison complète
+     * @type {boolean}
      */
     seen: boolean;
     /**
-     * @type {Show} L'objet Show auquel est rattaché la saison
+     * L'objet Show auquel est rattaché la saison
+     * @type {Show}
      */
     private _show;
     /**
      * Objet contenant les promesses en attente des méthodes fetchXXX
-     * @type {Record<string, Promise<Season>>}
+     * @type {Object.<string, Promise<Season>>}
      */
     private __fetches;
     /**

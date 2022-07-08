@@ -1,14 +1,36 @@
 /// <reference types="node" />
+/**
+ * @module BetaSeries
+ */
 import { CacheUS } from "./Cache";
+import { Member } from "./Member";
+/**
+ * Un objet Error, type ExceptionIdentification
+ * @param {string} message - Le message d'erreur
+ */
 export declare function ExceptionIdentification(message: string): void;
+/**
+ * NetworkState
+ * @enum
+ * @alias NetworkState
+ */
 export declare enum NetworkState {
     'offline' = 0,
     'online' = 1
 }
+/**
+ * NetworkStateEvents
+ * @alias NetworkStateEvents
+ */
 export declare type NetworkStateEvents = {
     offline: () => void;
     online: () => void;
 };
+/**
+ * EventTypes
+ * @enum
+ * @alias EventTypes
+ */
 export declare enum EventTypes {
     UPDATE = "update",
     SAVE = "save",
@@ -22,6 +44,11 @@ export declare enum EventTypes {
     SHOW = "show",
     HIDE = "hide"
 }
+/**
+ * HTTP_VERBS
+ * @enum
+ * @alias HTTP_VERBS
+ */
 export declare enum HTTP_VERBS {
     GET = "GET",
     POST = "POST",
@@ -30,90 +57,141 @@ export declare enum HTTP_VERBS {
     OPTIONS = "OPTIONS",
     HEAD = "HEAD"
 }
+/**
+ * Rating
+ * @memberof Ratings
+ * @alias Rating
+ */
 export declare type Rating = {
     img: string;
     title: string;
 };
+/**
+ * Ratings
+ * @alias Ratings
+ */
 export declare type Ratings = {
     [key: string]: Rating;
 };
+/**
+ * Obj
+ * @alias Obj
+ */
 export declare type Obj = {
     [key: string]: any;
 };
+/**
+ * Callback
+ * @alias Callback
+ */
 export declare type Callback = () => void;
 export declare function objToArr(obj: Base, data: Obj): Array<any>;
+/**
+ * Fonction servant à vérifier si une variable existe et si elle est nulle
+ * @param val - Valeur à vérifier
+ * @returns {boolean}
+ */
 export declare function isNull(val: any): boolean;
+/**
+ * Interface FetchTimeout
+ * @alias FetchTimeout
+ * @see fetchTimeout
+ */
+export declare type FetchTimeout = {
+    abort: () => void;
+    ready: () => Promise<Response>;
+};
 /**
  * FakePromise - Classe servant à simuler une promesse
  * d'appel à l'API lorsque le réseau est offline et
  * de réaliser le souhait lorsque le réseau est online
  * @class
  */
-declare class FakePromise {
+export declare class FakePromise {
     /**
      * Permet de vérifier si la fonction se trouve déjà dans le
      * tableau des fonctions callback
-     * @param   {any} fn - Fonction callback de référence
-     * @param   {any[]} funcs - Tableau des fonctions
+     * @static
+     * @param   {Function} fn - Fonction callback de référence
+     * @param   {Function[]} funcs - Tableau des fonctions
      * @returns {boolean}
      */
     static fnAlreadyInclude(fn: any, funcs: Array<any>): boolean;
     /**
+     * @callback thenCallback
+     * @param   {Obj} data - Les données
+     * @returns {void}
+     */
+    /**
+     * @callback catchCallback
+     * @param   {?(string | Error)} reason - La raison de l'échec
+     * @returns {(void | PromiseLike<never>)}
+     */
+    /**
+     * @callback finallyCallback
+     * @returns {void}
+     */
+    /**
      * Tableau des fonctions callback de type **then**
-     * @type {Array<(data: Obj) => void>}
+     * @type {thenCallback[]}
      */
     thenQueue: Array<(data: Obj) => void>;
     /**
      * Tableau des fonctions callback de type **catch**
-     * @type {Array<(reason: any) => void>}
+     * @type {catchCallback[]}
      */
     catchQueue: Array<(reason: any) => void>;
     /**
      * Tableau des fonctions callback de type **finally**
-     * @type {Array<() => void>}
+     * @type {finallyCallback[]}
      */
     finallyQueue: Array<() => void>;
     /**
+     * @callback apiCallback
+     * @param   {?string} reason - Une raison d'échec
+     * @returns {Promise<Obj>}
+     */
+    /**
      * Fonction qui sera executée lors de l'appel à la méthode **launch**
      * @see FakePromise.launch
-     * @type {() => Promise<Obj>}
+     * @type {apiCallback}
      */
     promiseFunc: (reason?: string) => Promise<Obj>;
     /**
      * Constructor
-     * @param   {(reason?: string) => Promise<Obj>} [func] - Fonction promise qui sera executée plus tard
+     * @param   {apiCallback} [func] - Fonction promise qui sera executée plus tard
      * @returns {FakePromise}
      */
     constructor(func?: (reason?: string) => Promise<Obj>);
     /**
      * Permet de définir la fonction qui retourne la vraie promesse
-     * @param   {() => Promise<Obj>} func Fonction promise qui sera executée plus tard
+     * @param   {apiCallback} func - Fonction promise qui sera executée plus tard
      * @returns {FakePromise}
      */
     setFunction(func: (reason?: string) => Promise<Obj>): FakePromise;
     /**
      * Simule un objet promise et stocke les fonctions pour plus tard
-     * @param   {(data: Obj) => void} onfulfilled - Fonction appelée lorsque la promesse est tenue
-     * @param   {(reason: any) => PromiseLike<never>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
+     * @param   {thenCallback} onfulfilled - Fonction appelée lorsque la promesse est tenue
+     * @param   {?catchCallback} onrejected - Fonction appelée lorsque la promesse est rejetée
      * @returns {FakePromise}
      */
     then(onfulfilled?: (data: Obj) => void, onrejected?: (reason: any) => void | PromiseLike<never>): FakePromise;
     /**
      * Simule un objet promise et stocke les fonctions pour plus tard
-     * @param   {(reason: any) => void | PromiseLike<void>} [onrejected] - Fonction appelée lorsque la promesse est rejetée
+     * @param   {catchCallback} onrejected - Fonction appelée lorsque la promesse est rejetée
      * @returns {FakePromise}
      */
     catch(onrejected?: (reason: any) => void | PromiseLike<never>): FakePromise;
     /**
      * Simule un objet promise et stocke les fonctions pour plus tard
-     * @param   {() => void} [onfinally] - Fonction appelée lorsque la promesse est terminée
+     * @param   {finallyCallback} onfinally - Fonction appelée lorsque la promesse est terminée
      * @returns {FakePromise}
      */
     finally(onfinally?: () => void): FakePromise;
     /**
      * Rejet de la promise
      * @param reason - Le raison du rejet de la promise
-     * @returns {Promise<void | Obj>}
+     * @returns {Promise<void>}
      */
     reject(reason: string): Promise<void | Obj>;
     /**
@@ -123,7 +201,72 @@ declare class FakePromise {
      */
     launch(): Promise<any>;
 }
+/**
+ * Classe de base contenant essentiellement des propriétés et des méthodes statiques
+ * @class
+ * @abstract
+ */
 export declare abstract class Base {
+    /**
+     * Types d'évenements gérés par cette classe
+     * @type {Array}
+     */
+    static EventTypes: Array<EventTypes>;
+    /**
+     * Contient les écouteurs d'évènements de l'objet
+     * @type {object}
+     */
+    private __listeners;
+    /**
+     * Constructor
+     * @param data - Les données provenant de l'API
+     * @returns {Base}
+     */
+    constructor(data: Obj);
+    /**
+     * Initialize le tableau des écouteurs d'évènements
+     * @returns {Base}
+     * @sealed
+     */
+    private _initListeners;
+    /**
+     * Permet d'ajouter un listener sur un type d'évenement
+     * @param  {EventTypes} name - Le type d'évenement
+     * @param  {Function}   fn   - La fonction à appeler
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
+    /**
+     * Permet d'ajouter un listener sur plusieurs types d'évenements
+     * @param  {EventTypes[]} names -   Le type d'évenement
+     * @param  {Function} fn -          La fonction à appeler
+     * @param  {any[]} [args] -         Paramètres optionnels
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    addListeners(names: EventTypes[], fn: Callback, ...args: any[]): this;
+    /**
+     * Permet de supprimer un listener sur un type d'évenement
+     * @param  {string}   name - Le type d'évenement
+     * @param  {Function} fn   - La fonction qui était appelée
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    removeListener(name: EventTypes, fn: Callback): this;
+    /**
+     * Appel les listeners pour un type d'évenement
+     * @param  {EventTypes} name - Le type d'évenement
+     * @return {Base} L'instance du média
+     * @sealed
+     */
+    _callListeners(name: EventTypes): this;
+}
+/**
+ * Classe principale du projet, contenant toutes les propriétés et méthodes statiques
+ * @class
+ */
+export declare class UsBetaSeries {
     /**
      * Flag de debug pour le dev
      * @static
@@ -161,6 +304,12 @@ export declare abstract class Base {
      */
     static userId: number;
     /**
+     * Infos du membre, si il est connecté
+     * @static
+     * @type {Member}
+     */
+    static member: Member;
+    /**
      * Clé d'authentification pour l'API TheMovieDB
      * @static
      * @type {string}
@@ -182,7 +331,7 @@ export declare abstract class Base {
     /**
      * L'URL de base du serveur pour l'authentification
      * @static
-     * @see Base.authenticate
+     * @see UsBetaSeries.authenticate
      * @type {String}
      */
     static serverOauthUrl: string;
@@ -210,7 +359,7 @@ export declare abstract class Base {
     /**
      * Fonction de traduction de chaînes de caractères
      * @param   {String}  msg  - Identifiant de la chaîne à traduire
-     * @param   {Obj}     [params] - Variables utilisées dans la traduction {"%key%"": value}
+     * @param   {Obj}     [params] - Variables utilisées dans la traduction \{"%key%"": value\}
      * @param   {number}  [count=1] - Nombre d'éléments pour la version plural
      * @returns {string}
      */
@@ -225,10 +374,30 @@ export declare abstract class Base {
         setValue: (key: string, val: Obj | Array<Obj> | Array<string> | Array<number>) => void;
     };
     /**
-     * Types d'évenements gérés par cette classe
-     * @type {Array}
+     * bsModule contient la correspondance entre les noms de classe et l'objet Function\
+     * Cela sert aux méthodes getInstance et checkClassname
+     * @static
+     * @type {Record<string, any>}
      */
-    static EventTypes: Array<EventTypes>;
+    static bsModule: Record<string, any>;
+    /**
+     * getInstance - fonction servant à instancier un objet à partir de son nom de classe
+     * et de paramètres
+     * @static
+     * @param   {string} className - Le nom de la classe à instancier
+     * @param   {Array} [args = []] - Les paramètres à fournir au constructeur
+     * @returns {any} L'objet instancié
+     * @throws Error
+     */
+    static getInstance: (className: string, ...args: any[]) => any;
+    /**
+     * checkClassname - Fonction servant à vérifier si la classe est connue
+     * et peut être instanciée
+     * @static
+     * @param   {string} className - Le nom de classe à vérifier
+     * @returns {boolean}
+     */
+    static checkClassname: (className: string) => boolean;
     /**
      * Méthode servant à afficher le loader sur la page Web
      * @static
@@ -246,9 +415,11 @@ export declare abstract class Base {
      */
     static authenticate(): Promise<string>;
     /**
-     * @type {boolean} Flag indiquant qu'une demande d'authentification est en cours
+     * Flag indiquant qu'une demande d'authentification est en cours
+     * @type {boolean}
+     * @private
      */
-    static __checkAuthenticate: boolean;
+    private static __checkAuthenticate;
     /**
      * Nombre de timeout consécutifs lors des appels à l'API
      * @type {number}
@@ -298,12 +469,12 @@ export declare abstract class Base {
     static __networkState: NetworkState;
     /**
      * Contient l'identifiant du timer de vérification du réseau
-     * @type {NodeJS.Timer}
+     * @type {number}
      */
     static networkTimeout: NodeJS.Timer;
     /**
      * Stockage des appels à l'API lorsque le réseau est offline
-     * @type {Record<string, FakePromise>}
+     * @type {Object.<string, FakePromise>}
      */
     static __networkQueue: Record<string, FakePromise>;
     /**
@@ -315,52 +486,9 @@ export declare abstract class Base {
      * Modifie la variable de l'état du réseau
      * Et gère les promesses d'appels à l'API lorsque le réseau est online
      * @param {NetworkState} state - Etat du réseau
-     * @param {boolean} testNetwork - Flag demandant de vérifier l'état du réseau régulièrement
+     * @param {boolean} [testNetwork = false] - Flag demandant de vérifier l'état du réseau régulièrement
      */
     static changeNetworkState(state: NetworkState, testNetwork?: boolean): void;
-    /**
-     * @type {object} Contient les écouteurs d'évènements de l'objet
-     */
-    private __listeners;
-    constructor(data: Obj);
-    /**
-     * Initialize le tableau des écouteurs d'évènements
-     * @returns {Base}
-     * @sealed
-     */
-    private _initListeners;
-    /**
-     * Permet d'ajouter un listener sur un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @param  {Function}   fn   - La fonction à appeler
-     * @return {Base} L'instance du média
-     * @sealed
-     */
-    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
-    /**
-     * Permet d'ajouter un listener sur plusieurs types d'évenements
-     * @param  {EventTypes[]} names -   Le type d'évenement
-     * @param  {Function} fn -          La fonction à appeler
-     * @param  {any[]} [args] -         Paramètres optionnels
-     * @return {Base} L'instance du média
-     * @sealed
-     */
-    addListeners(names: EventTypes[], fn: Callback, ...args: any[]): this;
-    /**
-     * Permet de supprimer un listener sur un type d'évenement
-     * @param  {string}   name - Le type d'évenement
-     * @param  {Function} fn   - La fonction qui était appelée
-     * @return {Base} L'instance du média
-     * @sealed
-     */
-    removeListener(name: EventTypes, fn: Callback): this;
-    /**
-     * Appel les listeners pour un type d'évenement
-     * @param  {EventTypes} name - Le type d'évenement
-     * @return {Base} L'instance du média
-     * @sealed
-     */
-    _callListeners(name: EventTypes): this;
 }
 declare global {
     interface Date {
@@ -372,4 +500,3 @@ declare global {
         camelCase: () => string;
     }
 }
-export {};

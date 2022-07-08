@@ -6,20 +6,36 @@ import { MediaBase } from "./Media";
 import { RelatedProp } from "./RenderHtml";
 export declare type Platform_link = {
     /**
-     * @type {number} Identifiant de l'épisode sur la plateforme
+     * Identifiant de l'épisode sur la plateforme
+     * @type {number}
      */
     id: number;
+    /**
+     * Identifiant de la plateforme
+     * @type {number}
+     */
     platform_id?: number;
     /**
-     * @type {string} Lien vers l'épisode sur la plateforme
+     * Lien vers l'épisode sur la plateforme
+     * @type {string}
      */
     link: string;
     /**
-     * @type {string} Le nom de la plateforme
+     * Le nom de la plateforme
+     * @type {string}
      */
     platform: string;
+    /**
+     * @type {string}
+     */
     color?: string;
+    /**
+     * @type {string}
+     */
     type?: string;
+    /**
+     * @type {string}
+     */
     logo?: string;
 };
 export declare type ReleasesSvod = {
@@ -28,37 +44,43 @@ export declare type ReleasesSvod = {
 };
 export declare type WatchedBy = {
     /**
-     * @type {number} Identifiant du membre
+     * Identifiant du membre
+     * @type {number}
      */
     id: number;
     /**
-     * @type {string} Login du membre
+     * Login du membre
+     * @type {string}
      */
     login: string;
     /**
-     * @type {number} La note du membre
+     * La note du membre
+     * @type {number}
      */
     note: number;
     /**
-     * @type {string} L'URL de l'avatar du membre
+     * L'URL de l'avatar du membre
+     * @type {string}
      */
     avatar?: string;
 };
 export declare class Episode extends MediaBase implements implAddNote {
-    [x: string]: any;
     static selectorsCSS: Record<string, string>;
     static relatedProps: Record<string, RelatedProp>;
     static fetch(epId: number): Promise<Episode>;
     /**
-     * @type {Season} L'objet Season contenant l'épisode
+     * L'objet Season contenant l'épisode
+     * @type {Season}
      */
     _season: Season;
     /**
-     * @type {string} Le code de l'épisode SXXEXX
+     * Le code de l'épisode SXXEXX
+     * @type {string}
      */
     code: string;
     /**
-     * @type {Date} La date de sortie de l'épisode
+     * La date de sortie de l'épisode
+     * @type {Date}
      */
     date: Date;
     /**
@@ -66,19 +88,23 @@ export declare class Episode extends MediaBase implements implAddNote {
      */
     director: string;
     /**
-     * @type {number} Le numéro de l'épisode dans la saison
+     * Le numéro de l'épisode dans la saison
+     * @type {number}
      */
     number: number;
     /**
-     * @type {number} Le numéro de l'épisode dans la série
+     * Le numéro de l'épisode dans la série
+     * @type {number}
      */
     global: number;
     /**
-     * @type {number} Le numéro de la saison
+     * Le numéro de la saison
+     * @type {number}
      */
     numSeason: number;
     /**
-     * @type {Array<Platform_link>} Les plateformes de diffusion
+     * Les plateformes de diffusion
+     * @type {Platform_link[]}
      */
     platform_links: Array<Platform_link>;
     /**
@@ -86,33 +112,44 @@ export declare class Episode extends MediaBase implements implAddNote {
      */
     releasesSvod: ReleasesSvod;
     /**
-     * @type {number} Nombre de membres de BS à avoir vu l'épisode
+     * Nombre de membres de BS à avoir vu l'épisode
+     * @type {number}
      */
     seen_total: number;
     /**
-     * @type {boolean} Indique si il s'agit d'un épisode spécial
+     * Indique si il s'agit d'un épisode spécial
+     * @type {boolean}
      */
     special: boolean;
     /**
-     * @type {Array<Subtitle>} Tableau des sous-titres dispo sur BS
+     * Tableau des sous-titres dispo sur BS
+     * @type {Subtitle[]}
      */
     subtitles: Subtitles;
     /**
-     * @type {number} Identifiant de l'épisode sur thetvdb.com
+     * Identifiant de l'épisode sur thetvdb.com
+     * @type {number}
      */
     thetvdb_id: number;
     /**
-     * @type {Array<WatchedBy>} Tableau des amis ayant vu l'épisode
+     * Tableau des amis ayant vu l'épisode
+     * @type {WatchedBy[]}
      */
     watched_by: Array<WatchedBy>;
     /**
-     * @type {Array<string>} Tableau des scénaristes de l'épisode
+     * Tableau des scénaristes de l'épisode
+     * @type {string[]}
      */
     writers: Array<string>;
     /**
-     * @type {string} Identifiant de la vidéo sur Youtube
+     * Identifiant de la vidéo sur Youtube
+     * @type {string}
      */
     youtube_id: string;
+    /**
+     * Les requêtes en cours
+     * @type {Object.<string, Promise<Episode>>}
+     */
     private __fetches;
     /**
      * Constructeur de la classe Episode

@@ -4,43 +4,53 @@ import { Movie } from "./Movie";
 import { Show } from "./Show";
 export declare class Character {
     /**
-     * @type {string} Nom de l'acteur/actrice
+     * Nom de l'acteur/actrice
+     * @type {string}
      */
     actor: string;
     /**
-     * @type {string} Description du rôle
+     * Description du rôle
+     * @type {string}
      */
     description: string;
     /**
-     * @type {boolean} Invité ?
+     * Invité ?
+     * @type {boolean}
      */
     guest: boolean;
     /**
-     * @type {number} Identifiant de l'acteur
+     * Identifiant de l'acteur
+     * @type {number}
      */
     id: number;
     /**
-     * @type {string} Nom du personnage
+     * Nom du personnage
+     * @type {string}
      */
     name: string;
     /**
-     * @type {string} URL de l'image du personnage
+     * URL de l'image du personnage
+     * @type {string}
      */
     picture: string;
     /**
-     * @type {string} Type de rôle du personnage dans le média
+     * Type de rôle du personnage dans le média
+     * @type {string}
      */
     role: string;
     /**
-     * @type {number} Identifiant de la série
+     * Identifiant de la série
+     * @type {number}
      */
     show_id: number;
     /**
-     * @type {number} Identifiant du film
+     * Identifiant du film
+     * @type {number}
      */
     movie_id: number;
     /**
-     * @type {number} Identifiant de l'objet Person correspondant à l'acteur
+     * Identifiant de l'objet Person correspondant à l'acteur
+     * @type {number}
      */
     person_id: number;
     constructor(data: Obj);
@@ -61,35 +71,43 @@ export declare class Person {
      */
     static fetch(personId: number): Promise<Person | null>;
     /**
-     * @type {number} Identifiant de l'acteur / actrice
+     * Identifiant de l'acteur / actrice
+     * @type {number}
      */
     id: number;
     /**
-     * @type {string} Nom de l'acteur
+     * Nom de l'acteur
+     * @type {string}
      */
     name: string;
     /**
-     * @type {Date} Date de naissance
+     * Date de naissance
+     * @type {Date}
      */
     birthday: Date;
     /**
-     * @type {Date} Date de décès
+     * Date de décès
+     * @type {Date}
      */
     deathday: Date;
     /**
-     * @type {string} Description
+     * Description
+     * @type {string}
      */
     description: string;
     /**
-     * @type {personMedia} Dernier média enregistré sur BetaSeries
+     * Dernier média enregistré sur BetaSeries
+     * @type {personMedia}
      */
     last: personMedia;
     /**
-     * @type {Array<personMedia>} Tableau des séries dans lesquelles à joué l'acteur
+     * Tableau des séries dans lesquelles à joué l'acteur
+     * @type {Array<personMedia>}
      */
     shows: Array<personMedia>;
     /**
-     * @type {Array<personMedia>} Tableau des films dans lesquels a joué l'acteur
+     * Tableau des films dans lesquels a joué l'acteur
+     * @type {Array<personMedia>}
      */
     movies: Array<personMedia>;
     constructor(data: Obj);

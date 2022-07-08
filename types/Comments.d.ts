@@ -31,35 +31,47 @@ export declare class CommentsBS extends Base implements implRepliesComment {
     /*************************************************/
     /*************************************************/
     /**
-     * @type {Array<CommentBS>} Tableau des commentaires
+     * Tableau des commentaires
+     * @type {CommentBS[]}
      */
     comments: Array<CommentBS>;
     /**
-     * @type {number} Nombre total de commentaires du média
+     * Nombre total de commentaires du média
+     * @type {number}
      */
     nbComments: number;
     /**
-     * @type {boolean} Indique si le membre à souscrit aux alertes commentaires du média
+     * Indique si le membre à souscrit aux alertes commentaires du média
+     * @type {boolean}
      */
     is_subscribed: boolean;
     /**
-     * @type {string} Indique si les commentaires sont ouverts ou fermés
+     * Indique si les commentaires sont ouverts ou fermés
+     * @type {string}
      */
     status: string;
     /**
-     * @type {Base} Le média auquel sont associés les commentaires
+     * Le média auquel sont associés les commentaires
+     * @type {Base}
      * @private
      */
     private _parent;
     /**
-     * @type {Array<CustomEvent>} Tableau des events déclarés par la fonction loadEvents
+     * Tableau des events déclarés par la fonction loadEvents
+     * @type {Array<CustomEvent>}
      * @private
      */
     private _events;
     /**
-     * @type {OrderComments} Ordre de tri des commentaires et des réponses
+     * Ordre de tri des commentaires et des réponses
+     * @type {OrderComments}
      */
     private _order;
+    /**
+     * Indique si la collection est affiché ou non
+     * @type {boolean}
+     */
+    private _display;
     /*************************************************/
     /*************************************************/
     constructor(nbComments: number, media: MediaBase);
