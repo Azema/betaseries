@@ -28,6 +28,7 @@
 if (!window) {
     const { UsBetaSeries, EventTypes, HTTP_VERBS, NetworkState, isNull } = require('./types/Base');
     const { CacheUS, DataTypesCache } = require('./types/Cache');
+    const { Character, Person, PersonMedias, PersonMedia } = require('./types/Character');
     const { CommentBS } = require('./types/Comment');
     const { CommentsBS } = require('./types/Comments');
     const { Episode } = require('./types/Episode');
@@ -77,7 +78,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-1qquinERO/ef36TmH3LWpmGGh1MrYCkrRPbBiF99PqqGlFvxzOjwqRWQoMvw548n';
+const sriBundle = 'sha384-v8kvpGNPZkO2uw8kRtU9t2tuqBf0ep8hb3vVk2aCJNJhPi02pZm9819aPTB51Bpe';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -815,13 +816,6 @@ const launchScript = function($) {
          */
         isTruncated: function(el) {
             return el.scrollWidth > el.clientWidth;
-        },
-        /**
-         * Verifie si l'utilisateur est connecté
-         * @return {boolean}
-         */
-        userIdentified: function() {
-            return typeof betaseries_api_user_token !== 'undefined' && typeof betaseries_user_id !== 'undefined';
         },
         /**
          * Identifie, stocke et retourne le theme CSS utilisé (light or dark)
@@ -2810,21 +2804,136 @@ const launchScript = function($) {
             /**
              * @type {JQuery<HTMLElement>}
              */
-            const $actors = $('#actors .slide_flex .slide__title');
-            res.fetchPersonsFromCharacters()
-            .then(() => {
-                for (let a = 0; a < $actors.length; a++) {
-                    const $actor = $($actors.get(a));
-                    const name = $actor.text().trim();
-                    const character = res.getCharacterByName(name);
-                    const $link = $actor.parents('.slide_flex');
-                    if (character) {
-                        $link
-                            .attr('data-person-id', character.person_id)
-
+            const $actors = $('#actors .slide_flex');
+            let promise = Promise.resolve(res);
+            if (res.characters.length <= 0) {
+                promise = res.fetchCharacters();
+            }
+            promise.then((show) => {
+                $actors.off('click').on('click', (e) => {
+                    e.stopPropagation();
+                    const personId = parseInt(e.currentTarget.dataset.personId);
+                    const character = show.getCharacter(personId);
+                    // 1. Fetch Person, si la propriete person est null
+                    let promise = Promise.resolve(character.person);
+                    if (isNull(character._person)) {
+                        promise = character.fetchPerson();
                     }
-                }
-            })
+                    /**
+                     * Retourne une template HTML représentant les médias
+                     * @param {MediaType} type - Le type de média
+                     * @param {PersonMedias[]} medias - Les médias à afficher
+                     * @returns {string} La template
+                     */
+                    const getTemplateByMediaType = (type, medias) => {
+                        if (medias.length <= 0) return '';
+                        let template = '<div class="row"><div class="sectionTitle">';
+                        if (type === MediaType.show) {
+                            template += '<h3>Les séries de l\'acteur / actrice</h3>';
+                        } else if (type === MediaType.movie) {
+                            template += '<h3>Les films de l\'acteur / actrice</h3>';
+                        }
+                        template += '</div>';
+                        for (let m = 0, _len = medias.length; m < _len; m++) {
+                            const media = medias[m];
+                            template += media.getTemplate();
+                        }
+                        template += '</div>';
+                        return template;
+                    };
+
+                    // 2. Display la dialog avec les infos de l'acteur
+                    promise.then((/** @type {Person} */person) => {
+                        const dialog = system.getDialog();
+                        dialog.setTitle('Fiche de ' + person.name);
+                        const imgSrc = character.picture;
+                        const deathText = !isNull(person.deathday) ? `<div><u>Date de décès:</u> <span class="deathday">${person.deathday.format('dd/mm/yyyy')}</span></div>` : '';
+                        const description = !isNull(person.description) ? `<div><u>Description:</u> <p class="description">${person.description}</p></div>`: '';
+                        let template = `<div class="container">
+                            <div class="row">
+                                <div class="sectionTitle"><h2>Acteur / Actrice</h2></div>
+                                <div class="media-left">
+                                    <div class="u-insideBorderOpacity u-insideBorderOpacity--01">
+                                        <img data-src="${imgSrc}" class="js-lazy-image" alt="Photo de ${person.name}" />
+                                    </div>
+                                </div>
+                                <div class="media-body">
+                                    <div class="title">
+                                        <u>Nom:</u> <span class="name">${person.name}</span>
+                                        <div id="btnCopyPersonId" class="unread-count copy-id" title="Copy ID">ID</div>
+                                    </div>
+                                    <div><u>Date de naissance:</u> <span class="birthday">${person.birthday.format('dd/mm/yyyy')}</span></div>
+                                    ${deathText}
+                                    ${description}
+                                </div>
+                            </div>
+                            ${getTemplateByMediaType(MediaType.show, person.shows)}
+                            ${getTemplateByMediaType(MediaType.movie, person.movies)}
+                        </div>`;
+                        dialog
+                            .setContent(template)
+                            .addStyle(`
+                            #dialog-resource .row:first-child {
+                                padding-bottom: 10px;
+                            }
+                            #dialog-resource .row:first-child .media-left {
+                                display: inline-block;
+                            }
+                            #dialog-resource .row:first-child .media-body {
+                                display: inline-block;
+                                width: 80%;
+                            }
+                            #dialog-resource .row:first-child .media-left img {
+                                width: 150px;
+                            }
+                            #dialog-resource .row:not(:first-child) {
+                                border-top: 1px solid;
+                                padding-top: 10px;
+                            }
+                            #dialog-resource .row .sectionTitle {
+                                width: 100%;
+                            }
+                            #dialog-resource .row:not(:first-child) .card {
+                                margin-bottom: 10px;
+                            }
+
+                            #dialog-resource .row:not(:first-child) .card:not(:nth-child(2)) {
+                                margin-left: 10px;
+                            }
+                            #dialog-resource .row:not(:first-child) .card .card-title {
+                                text-align: center;
+                            }
+                            #dialog-resource .copy-id {
+                                font-size: 0.7em;
+                                margin-top: -6px;
+                            }
+                            `)
+                            .show();
+                        /*
+                         *             Bouton ID clipboard
+                         */
+                        $('#dialog-resource .copy-id').on('click', (e) => {
+                            e.stopPropagation();
+                            const $btn = $(e.target);
+                            const id = person.id;
+                            navigator.clipboard.writeText(id).then(function() {
+                                /* Animation de copie réussie */
+                                $btn.on('animationend', () => {
+                                    $btn.removeClass('copied');
+                                });
+                                $btn.addClass('copied');
+                            }).catch(function() {
+                                /* échec de l’écriture dans le presse-papiers */
+                                const origColor = $btn.css('backgroundColor');
+                                const redColor = getComputedStyle(document.documentElement).getPropertyValue('--red');
+                                $btn.animate({'background-color': redColor}, {duration: 'slow', complete: () => {
+                                    $btn.animate({'background-color': origColor}, {duration: 'slow'});
+                                }});
+                            });
+                        });
+                    });
+                });
+            });
         }
     };
     const members = {
@@ -4452,6 +4561,7 @@ const launchScript = function($) {
             medias.comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
             medias.replaceVoteFn(objRes);
             medias.checkPoster(objRes);
+            medias.upgradeActors(objRes);
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 // Ajoute l'attribut target="_blank" pour ouvrir le lien thetvdb dans un autre onglet
@@ -4462,7 +4572,6 @@ const launchScript = function($) {
                 medias.upgradeSeasonsActions(objRes);
                 // medias.proposePlatform(objRes);
                 medias.checkNextEpisode(objRes);
-                // medias.upgradeActors(objRes);
             }
             else if (/^\/film\//.test(url)) {
                 medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
