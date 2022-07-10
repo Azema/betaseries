@@ -152,7 +152,7 @@ export class FillDecorator extends AbstractDecorator {
             }
             switch(type) {
                 case 'string':
-                    value = (! isNull(value)) ? String(value) : hasDefault ? relatedProp.default : null;
+                    value = (! isNull(value)) ? String(value).trim() : hasDefault ? relatedProp.default : null;
                     if (oldValue === value) return undefined;
                     break;
                 case 'number':
@@ -195,6 +195,9 @@ export class FillDecorator extends AbstractDecorator {
                     break;
                 }
                 case 'date': {
+                    if (typeof value === 'string' && value === '0000-00-00') {
+                        return null;
+                    }
                     if (typeNV !== 'number' && !(value instanceof Date) &&
                         (typeNV === 'string' && Number.isNaN(Date.parse(value))))
                     {
@@ -331,15 +334,15 @@ export class FillDecorator extends AbstractDecorator {
         if (! self.elt || ! self.__props.includes(propKey)) return;
         const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
         const classStatic = self.constructor as typeof RenderHtml;
-        // if (BetaSeries.debug) console.log('%s.updatePropRender', classStatic.name, propKey, fnPropKey);
+        // if (UsBetaSeries.debug) console.log('FillDecorator.updatePropRender(%s.%s)', classStatic.name, propKey, fnPropKey);
         if (Reflect.has(self, fnPropKey)) {
-            // if (BetaSeries.debug) console.log('%s.updatePropRender Reflect has method: %s', classStatic.name, fnPropKey);
+            // if (UsBetaSeries.debug) console.log('FillDecorator.updatePropRender call method: %s.%s', classStatic.name, fnPropKey);
             self[fnPropKey]();
         }
         else if (classStatic.selectorsCSS && classStatic.selectorsCSS[propKey]) {
-            // if (BetaSeries.debug) console.log('updatePropRender default');
+            // if (UsBetaSeries.debug) console.log('FillDecorator.updatePropRender default method: class: %s - selector: %s', classStatic.name, classStatic.selectorsCSS[propKey]);
             const selectorCSS = classStatic.selectorsCSS[propKey];
-            jQuery(selectorCSS).text(self[propKey].toString());
+            jQuery(selectorCSS, self.elt).text(self[propKey].toString());
             delete self.__changes[propKey];
         }
     }
