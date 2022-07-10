@@ -1,4 +1,4 @@
-import { Obj, HTTP_VERBS, UsBetaSeries } from "./Base";
+import { Obj, HTTP_VERBS, UsBetaSeries, isNull } from "./Base";
 
 /*
 {
@@ -55,20 +55,20 @@ export class NotifPayload {
      * Tableau des différentes propriétés de la classe NotifPayload
      * avec leur type, leur valeur par défaut et leur fonction de traitement
      */
-    static props = [
-        {key: 'url', type: 'string', fn: null, default: ''},
-        {key: 'title', type: 'string', fn: null, default: ''},
-        {key: 'code', type: 'string', fn: null, default: ''},
-        {key: 'show_title', type: 'string', fn: null, default: ''},
-        {key: 'picture', type: 'string', fn: null, default: ''},
-        {key: 'season', type: 'number', fn: parseInt, default: 0},
-        {key: 'name', type: 'string', fn: null, default: ''},
-        {key: 'xp', type: 'number', fn: parseInt, default: 0},
-        {key: 'user', type: 'string', fn: null, default: ''},
-        {key: 'user_id', type: 'number', fn: parseInt, default: 0},
-        {key: 'user_picture', type: 'string', fn: null, default: 'https://img.betaseries.com/5gtv-uQY0aSPqDtcyu7rhHLcu6Q=/40x40/smart/https%3A%2F%2Fwww.betaseries.com%2Fimages%2Fsite%2Flogo-64x64.png'},
-        {key: 'type', type: 'string', fn: null, default: ''},
-        {key: 'type_id', type: 'number', fn: parseInt, default: 0}
+    static props: Record<string, any>[] = [
+        {key: 'url', type: 'string', default: ''},
+        {key: 'title', type: 'string', default: ''},
+        {key: 'code', type: 'string', default: ''},
+        {key: 'show_title', type: 'string', default: ''},
+        {key: 'picture', type: 'string', default: ''},
+        {key: 'season', type: 'number', default: 0},
+        {key: 'name', type: 'string', default: ''},
+        {key: 'xp', type: 'number', default: 0},
+        {key: 'user', type: 'string', default: ''},
+        {key: 'user_id', type: 'number', default: 0},
+        {key: 'user_picture', type: 'string', default: 'https://img.betaseries.com/5gtv-uQY0aSPqDtcyu7rhHLcu6Q=/40x40/smart/https%3A%2F%2Fwww.betaseries.com%2Fimages%2Fsite%2Flogo-64x64.png'},
+        {key: 'type', type: 'string', default: ''},
+        {key: 'type_id', type: 'number', default: 0}
     ];
     url: string; // all
     title?: string; // season, episode, comment
@@ -85,15 +85,18 @@ export class NotifPayload {
     type_id?: number; // comment
 
     constructor(data: Obj) {
-        let prop: Obj, val: string|number;
-        for (let p = 0; p < NotifPayload.props.length; p++) {
+        if (!data) return this;
+        let prop: Obj,
+            val: string|number;
+        for (let p = 0, _len = NotifPayload.props.length; p < _len; p++) {
             prop = NotifPayload.props[p];
             val = NotifPayload.props[p].default;
             // eslint-disable-next-line no-prototype-builtins
-            if (data && data.hasOwnProperty(prop.key)) {
-                val = data[prop.key];
-                if (prop.fn !== null) {
-                    val = prop.fn(val, 10);
+            if (Reflect.has(data, prop.key) && !isNull(data[prop.key])) {
+                if (prop.type === 'string') {
+                    val = String(data[prop.key]).trim();
+                } else {
+                    val = parseInt(data[prop.key], 10);
                 }
             }
             this[prop.key] = val;
@@ -160,6 +163,22 @@ export class NotificationList {
     public add(notif: NotificationBS): void {
         const category = (notif.seen === null) ? 'new' : 'old';
         this[category].push(notif);
+    }
+    /**
+     * Tri les tableaux des notifications en ordre DESC
+     * @returns {NotificationList}
+     */
+    public sort(): NotificationList {
+        const sortNotifs = (a: NotificationBS, b: NotificationBS) => {
+            if (a.date.getTime() > b.date.getTime())
+                return -1;
+            else if (a.date.getTime() < b.date.getTime())
+                return 1;
+            return 0;
+        };
+        this.new.sort(sortNotifs);
+        this.old.sort(sortNotifs);
+        return this;
     }
     /**
      * markAllAsSeen - Met à jour les nouvelles notifications en ajoutant
