@@ -58,7 +58,6 @@ tmdb: 634649
 * Ajout de la gestion du synopsis (description), pour l'afficher au complet et pour revenir à un synopsis tronqué, autant de fois que nécessaire.
 * Modification de l'affichage pour noter le média. Je l'ai modifié pour les mêmes raisons que les commentaires (cf. ci-dessous).
 * Ajout du nombre de médias similaires, dans la barre de navigation du média, à côté de lien **SIMILAIRES**.
-* Ajout de la visualisation de la filmographie d'un acteur/actrice, lors d'un clic sur sa photo.
 
 #### Commentaires
 
@@ -127,6 +126,9 @@ tmdb: 634649
 * Un lien a été ajouté dans le menu "_Séries_" (10 last seen) pour afficher les 10 dernières séries vues par le membre, dans le même style que les séries à voir plus tard.
 * Ouverture de la fiche TheTVDB dans un nouvel onglet
 * Ajout d'une fonction permettant de surcharger le choix de l'affiche d'une saison. Pour l'utiliser, vous trouverez une icône format camera, en haut à gauche de l'affiche de chaque saison. Il vous suffit de cliquer dessus pour afficher les différentes affiches disponibles. Sélectionnez celle que vous souhaitez en cliquant dessus.
+* Ajout de la visualisation de la filmographie d'un acteur/actrice, lors d'un clic sur sa photo.
+
+!["Filmographie d'un acteur/actrice"](./screenshots/filmographie.jpg "Filmographie d'un acteur/actrice")
 
 #### Gestion des épisodes
 * Ajout d'un bouton de mise à jour de tous les épisodes de la saison courante.
@@ -223,6 +225,7 @@ tmdb: 634649
 * Utilisation de Grunt pour l'automatisation des tâches de build.
 * Utilisation de `grunt connect` comme serveur local pour le développement, n'oubliez pas de modifier la variable `serverBaseUrl`, en début de script, pour pointer sur le serveur local `http://localhost:9001`.
 * Utilisation du serveur pour stocker les [données partagées](#données-partagées), plutôt que le stockage de **Tampermonkey**.
+* Utilisation de [websocket](https://developer.mozilla.org/fr/docs/Web/API/WebSockets_API) pour le push de nouvelles notifications. Dorénavant, les requêtes à l'API, pour les notifications, se feront à partir du serveur gérant les ressources statiques et les proxy. Utilisation d'un serveur [Redis](https://ioredis.readthedocs.io/en/stable/README/) pour le stockage des sessions de websocket.
 
 ## Ressources
 
