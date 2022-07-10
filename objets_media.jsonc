@@ -446,59 +446,67 @@
                     "url": "nobody",
                     "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/72235.jpg"
                 }
-            },
-            {
-                "name": "The Reverend",
-                "movie": {
-                    "id": 68700,
-                    "title": "The Silence",
-                    "tmdb_id": 527261,
-                    "imdb_id": "tt7315484",
-                    "followers": 17258,
-                    "production_year": 2019,
-                    "url": "the-silence",
-                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/68700.jpg"
-                }
-            },
-            {
-                "name": "Frank",
-                "movie": {
-                    "id": 59318,
-                    "title": "Maudie",
-                    "tmdb_id": 359784,
-                    "imdb_id": "tt3721954",
-                    "followers": 97,
-                    "production_year": 2016,
-                    "url": "maudie",
-                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/59318.jpg"
-                }
-            },
-            {
-                "name": "Daniel Lapp",
-                "movie": {
-                    "id": 15089,
-                    "title": "Condamn\u00e9s au silence",
-                    "tmdb_id": 159937,
-                    "imdb_id": "tt2234451",
-                    "followers": 40,
-                    "production_year": 2013,
-                    "url": "an-amish-murder",
-                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/15089.jpg"
-                }
-            },
-            {
-                "name": "Cadet",
-                "movie": {
-                    "id": 3995,
-                    "title": "American Psycho 2",
-                    "tmdb_id": 10726,
-                    "imdb_id": "tt0283877",
-                    "followers": 252,
-                    "production_year": 2002,
-                    "url": "american-psycho-ii-all-american-girl",
-                    "poster": "https:\/\/pictures.betaseries.com\/films\/affiches\/fr\/3995.jpg"
-                }
             }
         ]
+    },
+    "member": {
+        "id": 464427,
+        "login": "azema31",
+        "xp": 15448,
+        "locale": "fr",
+        "cached": 1657476942,
+        "avatar": "https:\/\/img.betaseries.com\/3d-4qoPN12uiDRyQepMHZIpT7Sg=\/250x250\/smart\/https%3A%2F%2Fwww.betaseries.com%2Fdata%2Favatars%2F7d%2F7d4c58bb9577ac84e258c3fcdaecf82d.png",
+        "profile_banner": null,
+        "in_account": true,
+        "is_admin": false,
+        "subscription": 2014,
+        "valid_email": true,
+        "screeners": [],
+        "twitterLogin": null,
+        "stats": {
+            "friends": 5,
+            "shows": 722,
+            "seasons": 1805,
+            "episodes": 25850,
+            "comments": 105,
+            "progress": 97.2300000000000039790393202565610408782958984375,
+            "episodes_to_watch": 737,
+            "time_on_tv": 1148450,
+            "time_to_spend": 33063,
+            "movies": 454,
+            "badges": 55,
+            "member_since_days": 2832,
+            "friends_of_friends": 498,
+            "episodes_per_month": 597,
+            "favorite_day": "dimanche",
+            "five_stars_percent": 23.269999999999999573674358543939888477325439453125,
+            "four-five_stars_total": 539,
+            "streak_days": 201,
+            "favorite_genre": "Drame",
+            "written_words": 4658,
+            "without_days": 6,
+            "shows_finished": 523,
+            "shows_current": 49,
+            "shows_to_watch": 8,
+            "shows_abandoned": 142,
+            "movies_to_watch": 28,
+            "time_on_movies": 52219,
+            "time_to_spend_movies": 2942
+        },
+        "options": {
+            "downloaded": false,
+            "notation": false,
+            "timelag": true,
+            "global": false,
+            "specials": true,
+            "episodes_tri": "",
+            "friendship": "requests",
+            "country": "fr",
+            "language": "fr",
+            "mail_mois": true,
+            "mail_hebdo": true,
+            "notification_news": true,
+            "twitter_auto": false
+        }
     }
 }
