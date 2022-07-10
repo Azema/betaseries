@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('fs');
 // eslint-disable-next-line no-unused-vars
-const { IncomingMessage, OutgoingMessage } = require('http');
+const { IncomingMessage, OutgoingMessage, Server } = require('http');
 var path = require('path');
 //const exit = require('process');
 // var util = require('util');
@@ -18,7 +18,7 @@ module.exports = function(grunt) {
     grunt.util.linefeed = '\n';
 
     grunt.registerTask('dev', [
-        'clean', 'ts', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
+        'clean', 'ts', 'upVersion', 'cleanExports:dist', 'concat:dist', 'lineending:dist',
         'copy:dist', 'sri:dist', 'version']
     );
     grunt.registerTask('prod', [
@@ -156,6 +156,9 @@ module.exports = function(grunt) {
         version: {
             v: '<%= pkg.version %>'
         },
+        upVersion: {
+            v: '<%= pkg.version %>'
+        },
         gitadd: {
             oauth: {
                 options: {
@@ -220,13 +223,110 @@ module.exports = function(grunt) {
                     debug: true,
                     keepalive: true,
                     /**
-                     *
-                     * @param {Server} _server
-                     * @param {Connect} _connect
+                     * onCreateServer
+                     * @param {Server} server
+                     * @param {Connect} connect
                      */
-                    // eslint-disable-next-line no-unused-vars
                     onCreateServer: function(server, connect) {
                         connect.storageFile = {};
+                        const { Server } = require('socket.io');
+                        const io = new Server(server, {
+                            cors: {origin: 'https://www.betaseries.com'}
+                        });
+                        const Redis = require("ioredis");
+                        const redisClient = new Redis(6379, "192.168.1.32");
+                        const { RedisSessionStore } = require("./websockets/sessionStore");
+                        const sessionStore = new RedisSessionStore(redisClient);
+                        const { crypto } = require("crypto");
+                        const randomId = () => {
+                            console.log('randomId');
+                            try {
+                                const buf = crypto.randomBytes(8);
+                                // console.log('randomId bytes', buf);
+                                return buf.toString("hex");
+                            } catch (err) {
+                                console.error('randomId error', err);
+                            }
+                        }
+                        // const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
+                        const { checkNotifs, authApi } = require('./websockets/socket');
+                        // Middleware authentification
+                        io.use((socket, next) => {
+                            console.log('wbesocket middleware', socket.handshake.auth);
+                            const sessionID = socket.handshake.auth.sessionID;
+                            if (sessionID) {
+                                // find existing session
+                                const session = sessionStore.findSession(sessionID);
+                                if (session) {
+                                    console.log('wbesocket session found');
+                                    socket.sessionID = sessionID;
+                                    socket.userId = session.userId;
+                                    socket.lastNotifId = session.lastNotifId;
+                                    socket.token = session.token;
+                                    return next();
+                                }
+                            }
+                            // 1. Récupérer l'identifiant du membre
+                            const userId = socket.handshake.auth.userId;
+                            const token = socket.handshake.auth.token;
+                            if (!userId || typeof userId !== 'number' || userId <= 0) {
+                                console.log('Error, userId not found or invalid', userId);
+                                return next(new Error("invalid userId"));
+                            }
+                            socket.sessionID = randomId();
+                            socket.userId = userId;
+                            socket.lastNotifId = null;
+                            socket.token = '';
+                            if (token) {
+                                socket.token = token;
+                            }
+                            socket.nbRetry = 0;
+                            console.log('a user connected with userId: %d', userId, socket.sessionID);
+                            next();
+                        });
+                        io.on('connection', (socket) => {
+                            console.log('wbesocket event.connection', {token: socket.token});
+                            sessionStore.saveSession(socket.sessionID, {
+                                userId: socket.userId,
+                                lastNotifId: socket.lastNotifId,
+                                token: socket.token,
+                                connected: true,
+                            });
+                            // 1. Récupérer l'identifiant du membre
+                            socket.emit("session", {
+                                sessionID: socket.sessionID,
+                                userId: socket.userId,
+                                lastNotifId: socket.lastNotifId
+                            });
+                            // 2. Récupérer les notifs sur l'API BS
+                            if (socket.token && socket.token.length > 0) {
+                                checkNotifs(socket);
+                            } else {
+                                authApi(socket, (err) => {
+                                    if (err) {
+                                        console.error('websocket authApi error, disconnect', err);
+                                        socket.disconnect(true);
+                                        return false;
+                                    }
+                                    checkNotifs(socket);
+                                });
+                            }
+                            // 3. Si nouvelles notifs, envoyer les notifs au client
+
+                            socket.on('disconnect', () => {
+                                console.log('wbesocket event.disconnect');
+                                sessionStore.saveSession(socket.sessionID, {
+                                    userId: socket.userId,
+                                    lastModified: socket.lastNotifId,
+                                    token: socket.token,
+                                    connected: false,
+                                });
+                                if (socket.timer) {
+                                    console.log('websocket disconnect clearTimeout');
+                                    clearTimeout(socket.timer);
+                                }
+                            });
+                        });
                     },
                     // remove next from params
                     middleware: function(connect, _options, middlewares) {
@@ -595,7 +695,8 @@ module.exports = function(grunt) {
         }
     });
     grunt.registerMultiTask('version', 'Remplace le numéro de version du userscript par celle du package', function() {
-        const version = this.data;
+        const pkg = grunt.file.readJSON('package.json');
+        const version = pkg.version;
         if (!version || version.length <= 0) {
             grunt.log.error('Le paramètre "v" est requis');
             return false;
@@ -612,6 +713,31 @@ module.exports = function(grunt) {
             }
             let content = grunt.file.read(filepaths[p])
                         .replace(/@version(\s+)[0-9.]*/, `@version$1${version}`);
+            grunt.file.write(filepaths[p], content);
+        }
+    });
+    grunt.registerMultiTask('upVersion', 'Incrémente et remplace le numéro de version du manifest par celui du package', function() {
+        const version = this.data;
+        if (!version || version.length <= 0) {
+            grunt.log.error('Le paramètre "v" est requis');
+            return false;
+        }
+        function incrementVersion(numero) {
+            let minor = parseInt(numero.split('.').pop(), 10);
+            return numero.replace(/\d+$/, ++minor);
+        }
+        const filepaths = [
+            path.resolve('./package.json')
+        ];
+        const numero = incrementVersion(version);
+        for (let p = 0; p < filepaths.length; p++) {
+            grunt.verbose.writeln('Change Version in ' + filepaths[p]);
+            if (!grunt.file.exists(filepaths[p])) {
+                grunt.log.error(`Le fichier de destination (${filepaths[p]}) n'existe pas.`);
+                continue;
+            }
+            let content = grunt.file.read(filepaths[p])
+                        .replace(/"version":(\s*)"[0-9.]*"/, `"version":$1"${numero}"`);
             grunt.file.write(filepaths[p], content);
         }
     });

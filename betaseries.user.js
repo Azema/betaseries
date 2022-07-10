@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.5.0
+// @version      1.5.23
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -33,6 +33,7 @@ if (!window) {
     const { CommentsBS } = require('./types/Comments');
     const { Episode } = require('./types/Episode');
     const { Media, MediaBase, MediaType } = require('./types/Media');
+    const { NotificationBS } = require('./types/Notification');
     const { Show, PlatformList } = require('./types/Show');
     const { Movie, MovieStatus } = require('./types/Movie');
     const { Member } = require('./types/Member');
@@ -46,12 +47,16 @@ if (!window) {
  * @typedef { import('./types/Base').NetworkState } NetworkState
  * @typedef { import('./types/Cache').CacheUS } CacheUS
  * @typedef { import('./types/Cache').DataTypesCache } DataTypesCache
+ * @typedef { import('./types/Character').Character } Character
+ * @typedef { import('./types/Character').Person } Person
+ * @typedef { import('./types/Character').personMedia } personMedia
  * @typedef { import('./types/Comment').CommentBS } CommentBS
  * @typedef { import('./types/Comments').Episode } CommentsBS
  * @typedef { import('./types/Episode').Episode } Episode
  * @typedef { import('./types/Media').Media } Media
  * @typedef { import('./types/Media').MediaBase } MediaBase
  * @typedef { import('./types/Media').MediaType } MediaType
+ * @typedef { import('./types/Notification').NotificationBS } NotificationBS
  * @typedef { import('./types/Show').Show } Show
  * @typedef { import('./types/Show').PlatformList } PlatformList
  * @typedef { import('./types/Movie').Movie } Movie
@@ -78,7 +83,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-v8kvpGNPZkO2uw8kRtU9t2tuqBf0ep8hb3vVk2aCJNJhPi02pZm9819aPTB51Bpe';
+const sriBundle = 'sha384-B/JhxU4a/6iH+9n4/zOBQiNhNCF/E5QoSqZRfkqRE0b+9nQJALg+Gky+3lQqYTXW';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -419,6 +424,14 @@ const launchScript = function($) {
             type: 'script',
             id: 'searchFriendJs',
             src: '/js/search-friends.js',
+            called: false,
+            loaded: false
+        },
+        "socket": {
+            type: 'script',
+            id: 'socketjs',
+            src: 'https://cdn.socket.io/4.5.1/socket.io.min.js',
+            integrity: 'sha384-dZoVd6Ro98cGu3vTPJeEj0bVrpH2p/SgENb5iMjpBTSMobGNb6Fg+M5CJ2RHq+H2',
             called: false,
             loaded: false
         }
@@ -2813,6 +2826,10 @@ const launchScript = function($) {
                 $actors.off('click').on('click', (e) => {
                     e.stopPropagation();
                     const personId = parseInt(e.currentTarget.dataset.personId);
+                    if (isNull(personId)) {
+                        if (debug) console.log('userscript media.upgradeActors personId not found', e.currentTarget);
+                        return false;
+                    }
                     const character = show.getCharacter(personId);
                     // 1. Fetch Person, si la propriete person est null
                     let promise = Promise.resolve(character.person);
@@ -4496,6 +4513,7 @@ const launchScript = function($) {
      */
     UsBetaSeries.debug = debug;
     UsBetaSeries.cache = cache;
+    UsBetaSeries.routes = routes;
     UsBetaSeries.notification = system.notification;
     UsBetaSeries.token = !isNull(betaseries_api_user_token) ? betaseries_api_user_token : null;
     UsBetaSeries.userKey = !isNull(betaseries_api_user_key) ? betaseries_api_user_key : null;
@@ -4539,6 +4557,40 @@ const launchScript = function($) {
         UsBetaSeries.changeNetworkState(NetworkState.online);
     });
 
+    if (UsBetaSeries.userIdentified()) {
+        system.addScriptAndLink('socket', () => {
+            if (typeof io !== 'undefined') {
+                socket = io(serverBaseUrl.replace(/^https/, 'wss'), { autoConnect: false, reconnection: false });
+            }
+            socket.auth = { userId: parseInt(betaseries_user_id, 10), token: betaseries_api_user_token };
+            const sessionID = localStorage.getItem('sessionID');
+            if (sessionID) {
+                socket.auth.sessionID = sessionID;
+            }
+            socket.connect();
+            socket.on("connect", () => {
+                console.log('socket event.connect - id: %d', socket.id, {connected: socket.connected});
+            });
+
+            socket.on('notifications', (data) => {
+                if (data.notifications) {
+                    user.addNotifications(data.notifications);
+                }
+            });
+            socket.on("session", ({ sessionID, userId }) => {
+                // attach the session ID to the next reconnection attempts
+                socket.auth = { sessionID };
+                // store it in the localStorage
+                localStorage.setItem("sessionID", sessionID);
+                // save the ID of the user
+                socket.userId = userId;
+            });
+
+            socket.on("disconnect", () => {
+                console.log('socket event.disconnect', {connected: socket.connected});
+            });
+        });
+    }
     /**
      * Initialization du script
      */
@@ -4561,7 +4613,6 @@ const launchScript = function($) {
             medias.comments(objRes); // On modifie le fonctionnement de l'affichage des commentaires
             medias.replaceVoteFn(objRes);
             medias.checkPoster(objRes);
-            medias.upgradeActors(objRes);
             if (/^\/serie\//.test(url)) {
                 objRes.addRating(); // On ajoute la classification TV de la ressource courante
                 // Ajoute l'attribut target="_blank" pour ouvrir le lien thetvdb dans un autre onglet
@@ -4572,6 +4623,7 @@ const launchScript = function($) {
                 medias.upgradeSeasonsActions(objRes);
                 // medias.proposePlatform(objRes);
                 medias.checkNextEpisode(objRes);
+                medias.upgradeActors(objRes);
             }
             else if (/^\/film\//.test(url)) {
                 medias.observeBtnVu(objRes); // On modifie le fonctionnement du btn Vu
