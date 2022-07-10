@@ -12,9 +12,11 @@ export class Season extends RenderHtml {
      * @type {Record<string, string>}
      */
     static selectorsCSS: Record<string, string> = {
-        title: '.slide__title',
-        nbEpisodes: '.slide__infos',
-        image: '.slide__image img'
+        title: 'div.slide__title',
+        nbEpisodes: 'div.slide__infos',
+        image: 'div.slide__image img',
+        seen: '.checkSeen',
+        hidden: '.hideIcon'
     };
     /**
      * Objet contenant les informations de relations entre les propriétés des objets de l'API
@@ -89,7 +91,6 @@ export class Season extends RenderHtml {
         // Si le parent Show à son HTMLElement de déclaré, alors on déclare celui de la saison
         const elt = (number && show.elt) ? jQuery(`#seasons .slides_flex .slide_flex:nth-child(${number.toString()})`) : null;
         super(data, elt);
-        this.__fetches = {};
         this._show = show;
         this.episodes = [];
         return this.fill(data)._initRender();
@@ -110,14 +111,18 @@ export class Season extends RenderHtml {
 
         const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes, this.elt);
         const $spanNbEpisodes = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.elt);
+        // if (UsBetaSeries.debug) console.log('Season._initRender', $nbEpisode, $spanNbEpisodes);
         if ($nbEpisode.length > 0 && $spanNbEpisodes.length <= 0) {
             $nbEpisode.empty().append(`<span class="nbEpisodes">${this.nbEpisodes}</span> épisodes`);
         }
-        if (this.seen && jQuery('.checkSeen', this.elt).length <= 0) {
-            jQuery('.slide__image img', this.elt).before('<div class="checkSeen"></div>');
+        const $img = jQuery(Season.selectorsCSS.image, this.elt);
+        const $checkSeen = jQuery(Season.selectorsCSS.seen, this.elt);
+        const $hidden = jQuery(Season.selectorsCSS.hidden, this.elt);
+        if (this.seen && $checkSeen.length <= 0) {
+            $img.before('<div class="checkSeen"></div>');
         }
-        else if (this.hidden && jQuery('.hideIcon', this.elt).length <= 0) {
-            jQuery('.slide__image img', this.elt).before('<div class="hideIcon"></div>');
+        else if (this.hidden && $hidden.length <= 0) {
+            $img.before('<div class="hideIcon"></div>');
         }
         return this;
     }
@@ -126,7 +131,7 @@ export class Season extends RenderHtml {
      * Mise à jour du nombre d'épisodes de la saison sur la page Web
      * @returns {void}
      */
-    updatePropRenderNbEpisodes(): void {
+    updatePropRenderNbepisodes(): void {
         if (!this.elt) return;
         const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.elt);
         if ($nbEpisode.length > 0) {
@@ -180,10 +185,24 @@ export class Season extends RenderHtml {
         };
         this.__fetches.fepisodes = UsBetaSeries.callApi('GET', 'shows', 'episodes', params, true)
             .then((data: Obj) => {
-                self.episodes = [];
-                for (let e = 0; e < data.episodes.length; e++) {
-                    const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
-                    self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
+                if (isNull(self.episodes) || self.episodes.length <= 0) {
+                    self.episodes = new Array(data.episodes.length);
+                    for (let e = 0; e < data.episodes.length; e++) {
+                        const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
+                        self.episodes[e] = new Episode(data.episodes[e], self, jQuery(selector));
+                    }
+                } else {
+                    for (let e = 0; e < data.episodes.length; e++) {
+                        // const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
+                        const episode = self.getEpisode(data.episodes[e].id);
+                        if (episode) {
+                            episode.fill(data.episodes[e]);
+                        } else {
+                            if (UsBetaSeries.debug) console.log('Season.checkEpisodes: episode(pos: %d) unknown', e, data.episodes[e]);
+                            const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
+                            self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
+                        }
+                    }
                 }
                 delete self.__fetches.fepisodes;
                 return self;
@@ -200,7 +219,7 @@ export class Season extends RenderHtml {
      * Vérifie et met à jour les épisodes de la saison
      * @returns {Promise<Season>}
      */
-    checkEpisodes(): Promise<Season> {
+    /* checkEpisodes(): Promise<Season> {
         if (!this.number || this.number <= 0) {
             throw new Error('season number incorrect');
         }
@@ -212,12 +231,23 @@ export class Season extends RenderHtml {
         };
         this.__fetches.cepisodes = UsBetaSeries.callApi('GET', 'shows', 'episodes', params, true)
             .then((data: Obj) => {
-                for (let e = 0; e < data.episodes.length; e++) {
-                    if (self.episodes.length <= e) {
+                if (isNull(self.episodes) || self.episodes.length <= 0) {
+                    self.episodes = [data.episodes.length];
+                    for (let e = 0; e < data.episodes.length; e++) {
                         const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
                         self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
-                    } else {
-                        self.episodes[e].fill(data.episodes[e]);
+                    }
+                } else {
+                    for (let e = 0; e < data.episodes.length; e++) {
+                        // const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
+                        const episode = self.getEpisode(data.episodes[e].id);
+                        if (episode) {
+                            episode.fill(data.episodes[e]);
+                        } else {
+                            if (UsBetaSeries.debug) console.log('Season.checkEpisodes: episode(pos: %d) unknown', e, data.episodes[e]);
+                            const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
+                            self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
+                        }
                     }
                 }
                 delete self.__fetches.cepisodes;
@@ -230,7 +260,7 @@ export class Season extends RenderHtml {
             });
 
         return this.__fetches.cepisodes as Promise<Season>;
-    }
+    } */
 
     /**
      * Cette méthode permet de passer tous les épisodes de la saison en statut **seen**
@@ -335,8 +365,10 @@ export class Season extends RenderHtml {
      */
     update(): Promise<Season> {
         const self = this;
-        return this.checkEpisodes().then(() => {
+        return this.fetchEpisodes().then(() => {
+            // if (UsBetaSeries.debug) console.log('Season.update: episodes', self.episodes);
             for (const episode of self.episodes) {
+                // if (UsBetaSeries.debug) console.log('Season.update: check episode changes', episode);
                 if (episode.isModified()) {
                     if (UsBetaSeries.debug) console.log('Season.update changed true', self);
                     return self.updateRender()
@@ -346,6 +378,7 @@ export class Season extends RenderHtml {
             if (UsBetaSeries.debug) console.log('Season.update no changes');
             return self;
         }).catch(err => {
+            console.error(err);
             UsBetaSeries.notification('Erreur de mise à jour des épisodes', 'Season update: ' + err);
         }) as Promise<Season>;
     }
