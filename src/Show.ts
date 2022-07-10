@@ -672,6 +672,28 @@ export class Show extends Media implements implShow, implAddNote {
         return this.fill(data)._initRender();
     }
     /**
+     * Initialise l'objet après sa construction et son remplissage
+     * @returns {Promise<Show>}
+     */
+    public init(): Promise<this> {
+        if (this.elt) {
+            const promises = [];
+            promises.push(this.fetchSeasons().then(() => {
+                // On gère l'ajout et la suppression de la série dans le compte utilisateur
+                if (this.in_account) {
+                    this.deleteShowClick();
+                } else {
+                    this.addShowClick();
+                }
+                return this;
+            }));
+            promises.push(this.fetchCharacters());
+            promises.push(super.init());
+            return Promise.all(promises).then(() => this);
+        }
+        return super.init();
+    }
+    /**
      * Initialisation du rendu HTML
      * Sert à définir les sélecteurs CSS et ajouter, si nécessaire, des balises HTML supplémentaires
      * Seulement si la propriété {@link Show.elt} est définie
@@ -787,28 +809,6 @@ export class Show extends Media implements implShow, implAddNote {
         if ($duration.length > 0) {
             $duration.text(this.duration.toString());
         }
-    }
-    /**
-     * Initialise l'objet après sa construction et son remplissage
-     * @returns {Promise<Show>}
-     */
-    public init(): Promise<this> {
-        if (this.elt) {
-            const promises = [];
-            promises.push(this.fetchSeasons().then(() => {
-                // On gère l'ajout et la suppression de la série dans le compte utilisateur
-                if (this.in_account) {
-                    this.deleteShowClick();
-                } else {
-                    this.addShowClick();
-                }
-                return this;
-            }));
-            promises.push(this.fetchCharacters());
-            promises.push(super.init());
-            return Promise.all(promises).then(() => this);
-        }
-        return super.init();
     }
     /**
      * Récupère les données de la série sur l'API
@@ -1008,6 +1008,19 @@ export class Show extends Media implements implShow, implAddNote {
         return toSee[this.id] !== undefined;
     }
     /**
+     * Supprime l'identifant de la liste des séries à voir,
+     * si elle y est présente
+     * @returns {void}
+     */
+    async removeFromToSee() {
+        const toSee: number[] = await UsBetaSeries.gm_funcs.getValue('toSee', []);
+        const index = toSee.indexOf(this.id);
+        if (index >= 0) {
+            toSee.splice(index, 1);
+            UsBetaSeries.gm_funcs.setValue('toSee', toSee);
+        }
+    }
+    /**
      * addToAccount - Ajout la série sur le compte du membre connecté
      * @return {Promise<Show>} Promise of show
      */
@@ -1019,6 +1032,7 @@ export class Show extends Media implements implShow, implAddNote {
             UsBetaSeries.callApi('POST', 'shows', 'show', {id: self.id})
             .then(data => {
                 self.fill(data.show);
+                self.removeFromToSee();
                 self._callListeners(EventTypes.ADD);
                 self.save();
                 resolve(self);
@@ -1675,7 +1689,7 @@ export class Show extends Media implements implShow, implAddNote {
             }
             $btn.blur();
         });
-        const toSee: Obj = await UsBetaSeries.gm_funcs.getValue('toSee', {});
+        const toSee: Obj = await UsBetaSeries.gm_funcs.getValue('toSee', []);
         if (toSee[this.id] !== undefined) {
             $btn.find('i.fa').css('color', 'var(--body_background)');
             $btn.attr('title', 'Retirer la série des séries à voir');
