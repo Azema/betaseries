@@ -2,27 +2,13 @@ import { Obj } from "./Base";
 import { implFillDecorator } from "./Decorators";
 import { MediaType } from "./Media";
 import { Changes, RelatedProp } from "./RenderHtml";
-export declare class Character {
+export declare class Character implements implFillDecorator {
+    static relatedProps: Record<string, RelatedProp>;
     /**
      * Nom de l'acteur/actrice
      * @type {string}
      */
     actor: string;
-    /**
-     * Description du rôle
-     * @type {string}
-     */
-    description: string;
-    /**
-     * Invité ?
-     * @type {boolean}
-     */
-    guest: boolean;
-    /**
-     * Identifiant de l'acteur
-     * @type {number}
-     */
-    id: number;
     /**
      * Nom du personnage
      * @type {string}
@@ -33,11 +19,6 @@ export declare class Character {
      * @type {string}
      */
     picture: string;
-    /**
-     * Type de rôle du personnage dans le média
-     * @type {string}
-     */
-    role: string;
     /**
      * Identifiant de la série
      * @type {number}
@@ -53,12 +34,37 @@ export declare class Character {
      * @type {number}
      */
     person_id: number;
+    private __decorators;
     protected __elt: JQuery<HTMLElement>;
+    __initial: boolean;
+    __changes: Record<string, Changes>;
+    __props: string[];
     person: Person;
     constructor(data: Obj);
     _initRender(): Character;
     get elt(): JQuery<HTMLElement>;
     set elt(elt: JQuery<HTMLElement>);
+    /**
+     * Remplit l'objet avec les données fournit en paramètre
+     * @param   {Obj} data - Les données provenant de l'API
+     * @returns {Character}
+     */
+    fill(data: Obj): this;
+    /**
+     * Met à jour le rendu HTML des propriétés de l'objet,
+     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
+     * **Méthode appelée automatiquement par le setter de la propriété**
+     * @see Show.selectorsCSS
+     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+     * @returns {void}
+     */
+    updatePropRender(propKey: string): void;
+    /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object;
     fetchPerson(): Promise<Person | void>;
 }
 export declare class PersonMedia implements implFillDecorator {

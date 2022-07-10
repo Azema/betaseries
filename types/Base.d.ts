@@ -280,11 +280,24 @@ export declare class UsBetaSeries {
      */
     static cache: CacheUS;
     /**
+     * Objet contenant les modèles de routes du site BetaSeries
+     * @type {Object.<string, string>}
+     */
+    static routes: Record<string, string>;
+    /**
+     * Génère une route à partir de son type et des données fournit en paramètre
+     * @param   {string} routeType - Type de route à générer (doit être une clé de l'objet UsBetaSeries.routes)
+     * @param   {object} [data = {}] - L'objet contenant les données à remplacer dans la route
+     * @returns {string} La route générée
+     * @throws  {Error} Si la donnée de remplacement n'est pas trouvée
+     */
+    static generateRoute(routeType: string, data?: object): string;
+    /**
      * Objet contenant les informations de l'API
      * @static
      * @type {Obj}
      */
-    static api: Obj;
+    static api: Record<string, any>;
     /**
      * Le token d'authentification de l'API BetaSeries
      * @static

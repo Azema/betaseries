@@ -1,5 +1,7 @@
 import { Obj } from "./Base";
+import { implFillDecorator } from "./Decorators";
 import { NotificationList } from "./Notification";
+import { Changes, RelatedProp } from "./RenderHtml";
 /**
  * DaysOfWeek
  * @enum
@@ -72,7 +74,8 @@ export declare class OptionsMember {
     twitter_auto: boolean;
     constructor(data: Obj);
 }
-export declare class Member {
+export declare class Member implements implFillDecorator {
+    static relatedProps: Record<string, RelatedProp>;
     /**
      * Retourne les infos du membre connecté
      * @returns {Promise<Member>} Une instance du membre connecté
@@ -163,13 +166,40 @@ export declare class Member {
      * @type {NotificationList}
      */
     notifications: NotificationList;
+    private __decorators;
+    __initial: boolean;
+    __changes: Record<string, Changes>;
+    __props: string[];
+    elt: JQuery<HTMLElement>;
     /**
      * Constructeur de la classe Membre
      * @param data Les données provenant de l'API
      * @returns {Member}
      */
     constructor(data: Obj);
+    /**
+     * Remplit l'objet avec les données fournit en paramètre
+     * @param   {Obj} data - Les données provenant de l'API
+     * @returns {Member}
+     */
+    fill(data: Obj): this;
+    /**
+     * Met à jour le rendu HTML des propriétés de l'objet,
+     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
+     * **Méthode appelée automatiquement par le setter de la propriété**
+     * @see Show.selectorsCSS
+     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+     * @returns {void}
+     */
+    updatePropRender(propKey: string): void;
+    /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object;
     checkNotifs(): void;
+    addNotifications(notifs: Obj): void;
     /**
      * renderNotifications - Affiche les notifications du membre
      */

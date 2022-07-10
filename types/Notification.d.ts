@@ -35,17 +35,7 @@ export declare class NotifPayload {
      * Tableau des différentes propriétés de la classe NotifPayload
      * avec leur type, leur valeur par défaut et leur fonction de traitement
      */
-    static props: ({
-        key: string;
-        type: string;
-        fn: any;
-        default: string;
-    } | {
-        key: string;
-        type: string;
-        fn: typeof parseInt;
-        default: number;
-    })[];
+    static props: Record<string, any>[];
     url: string;
     title?: string;
     code?: string;
@@ -91,6 +81,11 @@ export declare class NotificationList {
      * @param {NotificationBS} notif La notification à ajouter
      */
     add(notif: NotificationBS): void;
+    /**
+     * Tri les tableaux des notifications en ordre DESC
+     * @returns {NotificationList}
+     */
+    sort(): NotificationList;
     /**
      * markAllAsSeen - Met à jour les nouvelles notifications en ajoutant
      * la date à la propriété seen et en déplacant les notifs dans le

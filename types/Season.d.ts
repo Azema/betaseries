@@ -78,7 +78,7 @@ export declare class Season extends RenderHtml {
      * Mise à jour du nombre d'épisodes de la saison sur la page Web
      * @returns {void}
      */
-    updatePropRenderNbEpisodes(): void;
+    updatePropRenderNbepisodes(): void;
     /**
      * Mise à jour de l'image de la saison sur la page Web
      * @returns {void}
@@ -98,7 +98,6 @@ export declare class Season extends RenderHtml {
      * Vérifie et met à jour les épisodes de la saison
      * @returns {Promise<Season>}
      */
-    checkEpisodes(): Promise<Season>;
     /**
      * Cette méthode permet de passer tous les épisodes de la saison en statut **seen**
      * @returns {Promise<Season>}

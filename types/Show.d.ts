@@ -431,6 +431,11 @@ export declare class Show extends Media implements implShow, implAddNote {
      */
     constructor(data: Obj, element?: JQuery<HTMLElement>);
     /**
+     * Initialise l'objet après sa construction et son remplissage
+     * @returns {Promise<Show>}
+     */
+    init(): Promise<this>;
+    /**
      * Initialisation du rendu HTML
      * Sert à définir les sélecteurs CSS et ajouter, si nécessaire, des balises HTML supplémentaires
      * Seulement si la propriété {@link Show.elt} est définie
@@ -457,11 +462,6 @@ export declare class Show extends Media implements implShow, implAddNote {
      * Met à jour la durée d'un épisode sur la page Web
      */
     updatePropRenderDuration(): void;
-    /**
-     * Initialise l'objet après sa construction et son remplissage
-     * @returns {Promise<Show>}
-     */
-    init(): Promise<this>;
     /**
      * Récupère les données de la série sur l'API
      * @param  {boolean} [force=true]   Indique si on utilise les données en cache
@@ -533,6 +533,12 @@ export declare class Show extends Media implements implShow, implAddNote {
      * @returns {boolean}
      */
     isMarkedToSee(): Promise<boolean>;
+    /**
+     * Supprime l'identifant de la liste des séries à voir,
+     * si elle y est présente
+     * @returns {void}
+     */
+    removeFromToSee(): Promise<void>;
     /**
      * addToAccount - Ajout la série sur le compte du membre connecté
      * @return {Promise<Show>} Promise of show
