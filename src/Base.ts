@@ -180,12 +180,11 @@ function checkNetwork(milliseconds = 0) {
                 console.log('Network is come back');
             }
         }).catch(err => {
-            if (err.name === 'AbortError') {
-                milliseconds += (milliseconds === 0) ? 1000 : 10000;
-                console.log('checkNetwork: Fetch aborted (next check in: %s)', duration(milliseconds / 1000));
-            } else if (err.message.toLowerCase() !== 'failed to fetch') {
+            milliseconds += (milliseconds === 0) ? 1000 : 10000;
+            if (err.message.toLowerCase() !== 'failed to fetch') {
                 console.error('checkNetwork catch: ', err);
             }
+            console.log('checkNetwork: Fetch aborted (next check in: %s)', duration(milliseconds / 1000));
             UsBetaSeries.networkTimeout = setTimeout(checkNetwork, milliseconds, milliseconds);
         });
 }
@@ -537,11 +536,42 @@ export class UsBetaSeries {
      */
     static cache: CacheUS = null;
     /**
+     * Objet contenant les modèles de routes du site BetaSeries
+     * @type {Object.<string, string>}
+     */
+    static routes: Record<string, string> = {};
+    /**
+     * Génère une route à partir de son type et des données fournit en paramètre
+     * @param   {string} routeType - Type de route à générer (doit être une clé de l'objet UsBetaSeries.routes)
+     * @param   {object} [data = {}] - L'objet contenant les données à remplacer dans la route
+     * @returns {string} La route générée
+     * @throws  {Error} Si la donnée de remplacement n'est pas trouvée
+     */
+    static generateRoute(routeType: string, data: object = {}): string {
+        // console.log('UsBetaSeries.generateRoute', {routeType, data, routes: this.routes});
+        if (isNull(this.routes[routeType]) || isNull(data))
+            return null;
+        let route = this.routes[routeType],
+            found: RegExpMatchArray;
+        // console.log('UsBetaSeries.generateRoute model route: %s', route);
+        const reg = /\{(\w+)\}/;
+        while (!isNull(found = route.match(reg))) {
+            // console.log('UsBetaSeries.generateRoute while route: %s', route, found);
+            if (isNull(data[found[1]])) {
+                // console.log('UsBetaSeries.generateRoute while data not found', route, data[found[1]]);
+                throw new Error(`UsBetaSeries.generateRoute data[${found[1]}] not found`);
+            }
+            route = route.replace(reg, data[found[1]]);
+        }
+        // console.log('UsBetaSeries.generateRoute return route: %s', route);
+        return route;
+    }
+    /**
      * Objet contenant les informations de l'API
      * @static
      * @type {Obj}
      */
-    static api: Obj = {
+    static api: Record<string, any> = {
         "url": 'https://api.betaseries.com',
         "versions": {
             "current": '3.0',
@@ -872,7 +902,7 @@ export class UsBetaSeries {
             checkKeys = Object.keys(UsBetaSeries.api.check);
 
         if (UsBetaSeries.debug && display) {
-            console.log('BetaSeries::callApi', {
+            console.log('UsBetaSeries::callApi', {
                 type: type,
                 resource: resource,
                 action: action,
@@ -884,7 +914,7 @@ export class UsBetaSeries {
         // On retourne la ressource en cache si elle y est présente
         if (UsBetaSeries.cache && !force && type === 'GET' && args && 'id' in args &&
             UsBetaSeries.cache.has((resource as DataTypesCache), args.id)) {
-            //if (debug) console.log('BetaSeries.callApi retourne la ressource du cache (%s: %d)', resource, args.id);
+            //if (debug) console.log('UsBetaSeries.callApi retourne la ressource du cache (%s: %d)', resource, args.id);
             return new Promise((resolve) => {
                 resolve(UsBetaSeries.cache.get((resource as DataTypesCache), args.id));
                 UsBetaSeries.hideLoader();
@@ -914,7 +944,7 @@ export class UsBetaSeries {
             UsBetaSeries.api.check[resource].indexOf(action) !== -1) {
             check = true;
             if (UsBetaSeries.__checkAuthenticate) {
-                if (UsBetaSeries.debug) console.log('BetaSeries::callApi authenticate in progress');
+                if (UsBetaSeries.debug) console.log('UsBetaSeries::callApi authenticate in progress');
                 return new Promise((res, rej) => {
                     let loop = 0;
                     const checkAuthenticate = function checkAuthenticate(): void {
@@ -930,7 +960,7 @@ export class UsBetaSeries {
                                 .catch(err => rej(err));
                         } else {
                             if (UsBetaSeries.debug)
-                                console.log('BetaSeries::callApi checkAuthenticate - condition unknown', {
+                                console.log('UsBetaSeries::callApi checkAuthenticate - condition unknown', {
                                     checkAuthenticate: UsBetaSeries.__checkAuthenticate
                                 });
                         }
@@ -969,11 +999,11 @@ export class UsBetaSeries {
                     UsBetaSeries.__nbNetTimeout = 0;
                     UsBetaSeries.counter++; // Incrément du compteur de requêtes à l'API
                     if (UsBetaSeries.debug && (display || response.status !== 200))
-                        console.log('BetaSeries::callApi fetchUri (%s %s) response status: %d', type, uri, response.status);
+                        console.log('UsBetaSeries::callApi fetchUri (%s %s) response status: %d', type, uri, response.status);
                     // On récupère les données et les transforme en objet
                     response.json().then((data) => {
                         if (UsBetaSeries.debug && (display || response.status !== 200))
-                            console.log('BetaSeries::callApi fetchUri (%s %s) data', type, uri, data);
+                            console.log('UsBetaSeries::callApi fetchUri (%s %s) data', type, uri, data);
                         // On gère le retour d'erreurs de l'API
                         if (data.errors !== undefined && data.errors.length > 0) {
                             const code = data.errors[0].code,
@@ -998,7 +1028,7 @@ export class UsBetaSeries {
                         }
                         // On gère les erreurs réseau
                         if (!response.ok) {
-                            console.error('BetaSeries::callApi Fetch erreur network', response);
+                            console.error('UsBetaSeries::callApi Fetch erreur network', response);
                             reject(response);
                             UsBetaSeries.hideLoader();
                             return;
@@ -1007,7 +1037,7 @@ export class UsBetaSeries {
                         UsBetaSeries.hideLoader();
                     });
                 }).catch(error => {
-                    console.warn('BetaSeries::callApi fetchUri catch (%s: %s/%s)', type, resource, action);
+                    console.warn('UsBetaSeries::callApi fetchUri catch (%s: %s/%s)', type, resource, action);
                     if (error.name === 'AbortError') {
                         if (++UsBetaSeries.__nbNetTimeout > UsBetaSeries.__maxTimeout) {
                             if (UsBetaSeries.debug)
@@ -1015,10 +1045,10 @@ export class UsBetaSeries {
                             UsBetaSeries.changeNetworkState(NetworkState.offline, true);
                         }
                         if (UsBetaSeries.debug)
-                            console.log('BetaSeries::callApi AbortError Timeout(nb retry: %d) fetchUri', UsBetaSeries.__nbNetTimeout);
+                            console.log('UsBetaSeries::callApi AbortError Timeout(nb retry: %d) fetchUri', UsBetaSeries.__nbNetTimeout);
                         return;
                     }
-                    console.warn('BetaSeries::callApi fetchUri error: ' + error.message);
+                    console.warn('UsBetaSeries::callApi fetchUri error: ' + error.message);
                     console.error(error);
                     reject(error);
                 }).finally(() => {
@@ -1057,7 +1087,7 @@ export class UsBetaSeries {
                         fetchUri(resolve, reject);
                     }).catch(error => {
                         UsBetaSeries.__checkAuthenticate = false;
-                        console.warn('BetaSeries::callApi fetch members/is_active catch');
+                        console.warn('UsBetaSeries::callApi fetch members/is_active catch');
                         if (error.name === 'AbortError') {
                             if (++UsBetaSeries.__nbNetTimeout > UsBetaSeries.__maxTimeout) {
                                 if (UsBetaSeries.debug)
@@ -1065,7 +1095,7 @@ export class UsBetaSeries {
                                 UsBetaSeries.changeNetworkState(NetworkState.offline, true);
                             }
                             if (UsBetaSeries.debug)
-                                console.log('BetaSeries::callApi AbortError Timeout(nb retry: %d) members/is_active', UsBetaSeries.__nbNetTimeout);
+                                console.log('UsBetaSeries::callApi AbortError Timeout(nb retry: %d) members/is_active', UsBetaSeries.__nbNetTimeout);
                             return;
                         } else if (error.message.toLowerCase() === 'failed to fetch') {
                             if (UsBetaSeries.debug) console.log('On déclare le réseau hors ligne. Le retour du réseau sera testé régulièrement.');
