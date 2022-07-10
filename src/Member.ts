@@ -1,5 +1,7 @@
-import { UsBetaSeries, HTTP_VERBS, Obj } from "./Base";
-import { NotificationList } from "./Notification";
+import { UsBetaSeries, HTTP_VERBS, Obj, isNull } from "./Base";
+import { AbstractDecorator, FillDecorator, implFillDecorator } from "./Decorators";
+import { NotificationBS, NotificationList } from "./Notification";
+import { Changes, RelatedProp } from "./RenderHtml";
 
 /**
  * DaysOfWeek
@@ -84,10 +86,29 @@ export class OptionsMember {
     }
 }
 /* eslint-disable-next-line no-unused-vars */
-export class Member {
+export class Member implements implFillDecorator {
     /*
                     STATIC
      */
+    static relatedProps: Record<string, RelatedProp> = {
+        "id": {key: "id", type: 'number'},
+        "fb_id": {key: "fb_id", type: 'number'},
+        "login": {key: "login", type: 'string'},
+        "xp": {key: "xp", type: 'number'},
+        "locale": {key: "locale", type: 'string'},
+        "cached": {key: "cached", type: 'number'},
+        "avatar": {key: "avatar", type: 'string'},
+        "profile_banner": {key: "profile_banner", type: 'string'},
+        "in_account": {key: "in_account", type: 'boolean'},
+        "is_admin": {key: "is_admin", type: 'boolean', default: false},
+        "subscription": {key: "subscription", type: 'number'},
+        "valid_email": {key: "valid_email", type: 'boolean', default: false},
+        "screeners": {key: "screeners", type: 'array<string>', default: []},
+        "twitterLogin": {key: "twitterLogin", type: 'string'},
+        "stats": {key: "stats", type: Stats},
+        "options": {key: "options", type: OptionsMember}
+    };
+
     /**
      * Retourne les infos du membre connecté
      * @returns {Promise<Member>} Une instance du membre connecté
@@ -197,6 +218,16 @@ export class Member {
      */
     notifications: NotificationList;
 
+    private __decorators: Record<string, AbstractDecorator> = {
+        fill: new FillDecorator(this)
+    };
+
+    __initial = true;
+    __changes: Record<string, Changes> = {};
+    __props: string[] = [];
+
+    elt: JQuery<HTMLElement>;
+
     /*
                     METHODS
      */
@@ -207,24 +238,52 @@ export class Member {
      * @returns {Member}
      */
     constructor(data: Obj) {
-        this.id = parseInt(data.id, 10);
-        this.fb_id = parseInt(data.fb_id, 10);
-        this.login = data.login;
-        this.xp = parseInt(data.xp, 10);
-        this.locale = data.locale;
-        this.cached = parseInt(data.cached, 10);
-        this.avatar = data.avatar;
-        this.profile_banner = data.profile_banner;
-        this.in_account = !!data.in_account;
-        this.is_admin = !!data.is_admin;
-        this.subscription = parseInt(data.subscription, 10);
-        this.valid_email = !!data.valid_email;
-        this.screeners = data.screeners;
-        this.twitterLogin = data.twitterLogin;
-        this.stats = new Stats(data.stats);
-        this.options = new OptionsMember(data.options);
-        this.checkNotifs();
+        this.notifications = new NotificationList();
+        return this.fill(data);
     }
+
+    /**
+     * Remplit l'objet avec les données fournit en paramètre
+     * @param   {Obj} data - Les données provenant de l'API
+     * @returns {Member}
+     */
+    public fill(data: Obj): this {
+        try {
+            return (this.__decorators.fill as FillDecorator).fill.call(this, data);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    /**
+     * Met à jour le rendu HTML des propriétés de l'objet,
+     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
+     * **Méthode appelée automatiquement par le setter de la propriété**
+     * @see Show.selectorsCSS
+     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+     * @returns {void}
+     */
+    updatePropRender(propKey: string): void {
+        try {
+            (this.__decorators.fill as FillDecorator).updatePropRender.call(this, propKey);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object {
+        const obj: object = {};
+        for (const key of this.__props) {
+            obj[key] = this[key];
+        }
+        return obj;
+    }
+
     public checkNotifs(): void {
         /**
          * Fonction de traitement de récupération des notifications du membre
@@ -250,6 +309,28 @@ export class Member {
         // On met à jour les notifications toutes les 5 minutes
         setInterval(fetchNotifs, 300000);
         fetchNotifs();
+    }
+
+    public addNotifications(notifs: Obj): void {
+        jQuery('.menu-icon--bell').removeClass('has-notifications');
+        const $badge = jQuery('#menuUnseenNotifications');
+        if (isNull(this.notifications)) {
+            this.notifications = new NotificationList();
+        }
+        for (let n = 0, _len = notifs.length; n < _len; n++) {
+            this.notifications.add(new NotificationBS(notifs[n]));
+        }
+        this.notifications.sort();
+        if (this.notifications.new.length > 0) {
+            if ($badge.length <= 0) {
+                // Alerter le membre de nouvelles notifications
+                jQuery('.menu-wrapper .js-iconNotifications').append(`<i class="unread-count unread-notifications" id="menuUnseenNotifications">${this.notifications.new.length}</i>`);
+            } else {
+                $badge.text(this.notifications.new.length);
+            }
+        } else if ($badge.length > 0) {
+            $badge.remove();
+        }
     }
 
     /**
