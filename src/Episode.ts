@@ -95,6 +95,7 @@ export class Episode extends MediaBase implements implAddNote {
         user: {key: "user", type: User},
         youtube_id: {key: "youtube_id", type: 'string', default: ''}
     };
+
     public static fetch(epId: number): Promise<Episode> {
         return UsBetaSeries.callApi(HTTP_VERBS.GET, 'episodes', 'display', {id: epId})
         .then((data: Obj) => {

@@ -76,7 +76,7 @@ export class Movie extends Media implements implAddNote {
         production_year: {key: "production_year", type: 'number', default: 0},
         release_date: {key: "release_date", type: 'date'},
         resource_url: {key: "resource_url", type: 'string', default: ''},
-        sale_date: {key: "sale_date", type: 'date'},
+        sale_date: {key: "sale_date", type: 'date', default: null},
         similars: {key: "nbSimilars", type: 'number', default: 0},
         synopsis: {key: "description", type: 'string', default: ''},
         tagline: {key: "tagline", type: 'string', default: ''},
