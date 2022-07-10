@@ -233,15 +233,19 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     changeColorBtn(): UpdateAuto {
-        let color = '#fff';
+        let color = '#fff'; // Status unknown
         if (! this._exist) {
+            // The task doesn't exists
             color = '#6c757d'; // grey
         } else if (this._status && this._auto) {
-            color = 'green';
+            // The task running
+            color = '#28a745'; // green
         } else if (this._auto && ! this._status) {
-            color = 'orange';
+            // The task configured but not launched
+            color = '#fd7e14'; // orange
         } else if (! this._auto && ! this._status) {
-            color = 'red';
+            // The task not configured and not launched
+            color = '#dc3545'; // red
         }
         $('.updateEpisodes').css('color', color);
         return this;
@@ -255,6 +259,10 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     stop(): UpdateAuto {
+        if (!this.status) {
+            if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task stop (%cnot started%c)', 'color:#fd7e14', 'color:inherit', 'color:#dc3545', 'color:inherit');
+            return this;
+        }
         if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task stop', 'color:#fd7e14', 'color:inherit');
         if (this._show.user.remaining <= 0 && this._show.isEnded()) {
             this._auto = false;
@@ -277,6 +285,10 @@ export class UpdateAuto {
      * @return {UpdateAuto} L'instance unique UpdateAuto
      */
     async delete(): Promise<UpdateAuto> {
+        if (!this._exist) {
+            if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task delete (%cnot exists%c)', 'color:#dc3545', 'color:inherit', 'color:#fd7e14', 'color:inherit');
+            return Promise.resolve(this);
+        }
         if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task delete', 'color:#dc3545', 'color:inherit');
         this.stop();
         const objUpAuto = await UsBetaSeries.gm_funcs.getValue('objUpAuto', {});
