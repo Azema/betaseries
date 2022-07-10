@@ -3,27 +3,25 @@ import { AbstractDecorator, FillDecorator, implFillDecorator } from "./Decorator
 import { MediaType } from "./Media";
 import { Changes, RelatedProp } from "./RenderHtml";
 
-export class Character {
+export class Character implements implFillDecorator {
+    static relatedProps: Record<string, RelatedProp> = {
+        "actor": {key: "actor", type: 'string'},
+        // "description": {key: "description", type: 'string'},
+        // "guest": {key: "guest", type: 'boolean', default: false},
+        // "id": {key: "id", type: 'number'},
+        "name": {key: "name", type: 'string'},
+        "picture": {key: "picture", type: 'string'},
+        // "role": {key: "role", type: 'string'},
+        "show_id": {key: "show_id", type: 'number'},
+        "movie_id": {key: "movie_id", type: 'number'},
+        "person_id": {key: "person_id", type: 'number'}
+    };
+
     /**
      * Nom de l'acteur/actrice
      * @type {string}
      */
     actor: string;
-    /**
-     * Description du rôle
-     * @type {string}
-     */
-    description: string;
-    /**
-     * Invité ?
-     * @type {boolean}
-     */
-    guest: boolean;
-    /**
-     * Identifiant de l'acteur
-     * @type {number}
-     */
-    id: number;
     /**
      * Nom du personnage
      * @type {string}
@@ -34,11 +32,6 @@ export class Character {
      * @type {string}
      */
     picture: string;
-    /**
-     * Type de rôle du personnage dans le média
-     * @type {string}
-     */
-    role: string;
     /**
      * Identifiant de la série
      * @type {number}
@@ -55,22 +48,18 @@ export class Character {
      */
     person_id: number;
 
+    private __decorators: Record<string, AbstractDecorator> = {
+        fill: new FillDecorator(this)
+    }
     protected __elt: JQuery<HTMLElement>;
+    __initial = true;
+    __changes: Record<string, Changes> = {};
+    __props: string[] = [];
 
     person: Person;
 
     constructor(data: Obj) {
-        this.actor = data.actor || '';
-        this.picture = data.picture || '';
-        this.name = data.name || '';
-        this.guest = !!data.guest || false;
-        this.id = (data.id !== undefined) ? parseInt(data.id, 10) : 0;
-        this.description = data.description || '';
-        this.role = data.role || '';
-        this.show_id = (data.show_id !== undefined) ? parseInt(data.show_id, 10) : 0;
-        this.movie_id = (data.movie_id !== undefined) ? parseInt(data.movie_id, 10) : 0;
-        this.person_id = (data.person_id !== undefined) ? parseInt(data.person_id, 10) : 0;
-        return this._initRender();
+        return this.fill(data)._initRender();
     }
 
     _initRender(): Character {
@@ -78,9 +67,12 @@ export class Character {
             const self = this;
             const $actors = jQuery('#actors .slides_flex .slide_flex');
             $actors.each((_, elt) => {
-                const title = jQuery('.slide__title', elt).text().trim();
+                let title = jQuery('.slide__title', elt).text().trim();
+                if (/&nbsp;/g.test(title)) {
+                    title = title.replace(/&nbsp;/g, '');
+                }
                 if (title == this.actor) {
-                    if (UsBetaSeries.debug) console.log('Character._initRender: actor found', {actor: this.actor, title});
+                    // if (UsBetaSeries.debug) console.log('Character._initRender: actor found', {actor: this.actor, title});
                     self.elt = jQuery(elt);
                     self.elt.attr('data-person-id', this.person_id);
                     return false;
@@ -95,6 +87,49 @@ export class Character {
     set elt(elt: JQuery<HTMLElement>) {
         this.__elt = elt;
     }
+
+    /**
+     * Remplit l'objet avec les données fournit en paramètre
+     * @param   {Obj} data - Les données provenant de l'API
+     * @returns {Character}
+     */
+    public fill(data: Obj): this {
+        try {
+            return (this.__decorators.fill as FillDecorator).fill.call(this, data);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    /**
+     * Met à jour le rendu HTML des propriétés de l'objet,
+     * si un sélecteur CSS exite pour la propriété fournit en paramètre\
+     * **Méthode appelée automatiquement par le setter de la propriété**
+     * @see Show.selectorsCSS
+     * @param   {string} propKey - La propriété de l'objet à mettre à jour
+     * @returns {void}
+     */
+    updatePropRender(propKey: string): void {
+        try {
+            (this.__decorators.fill as FillDecorator).updatePropRender.call(this, propKey);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    /**
+     * Retourne l'objet sous forme d'objet simple, sans référence circulaire,
+     * pour la méthode JSON.stringify
+     * @returns {object}
+     */
+    toJSON(): object {
+        const obj: object = {};
+        for (const key of this.__props) {
+            obj[key] = this[key];
+        }
+        return obj;
+    }
+
     public fetchPerson(): Promise<Person | void> {
         return Person.fetch(this.person_id)
         .then((person: Person) => {
@@ -210,14 +245,7 @@ export class PersonMedias {
      * @returns {string}
      */
     createLink(): string {
-        let link = `https://www.betaseries.com/`;
-        if (this.type === MediaType.show) {
-            link += 'serie/';
-        } else if (this.type === MediaType.movie) {
-            link += 'film/';
-        }
-        link += this.media.slug;
-        return link;
+        return UsBetaSeries.generateRoute(this.type, this.media);
     }
     /**
      * Retourne la représentation du média et de l'acteur
