@@ -12,3 +12,4 @@ ssl
 db/betaseries.json
 db/betaseries-*.json
 /doc
+websockets/conf.json

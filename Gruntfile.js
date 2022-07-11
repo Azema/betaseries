@@ -234,35 +234,31 @@ module.exports = function(grunt) {
                             cors: {origin: 'https://www.betaseries.com'}
                         });
                         const Redis = require("ioredis");
-                        const redisClient = new Redis(6379, "192.168.1.32");
+                        const { checkNotifs, authApi, getRedisUrl } = require('./websockets/socket');
+                        // TODO: pensez au fichier de config dans le répertoire websockets
+                        const redisUrl = getRedisUrl();
+                        /** @type {Redis} */
+                        const redisClient = new Redis(redisUrl);
                         const { RedisSessionStore } = require("./websockets/sessionStore");
                         const sessionStore = new RedisSessionStore(redisClient);
-                        const { crypto } = require("crypto");
-                        const randomId = () => {
-                            console.log('randomId');
-                            try {
-                                const buf = crypto.randomBytes(8);
-                                // console.log('randomId bytes', buf);
-                                return buf.toString("hex");
-                            } catch (err) {
-                                console.error('randomId error', err);
-                            }
-                        }
-                        // const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
-                        const { checkNotifs, authApi } = require('./websockets/socket');
+                        const { randomBytes } = require("crypto");
+                        const randomId = () => randomBytes(8).toString("hex");
                         // Middleware authentification
-                        io.use((socket, next) => {
-                            console.log('wbesocket middleware', socket.handshake.auth);
+                        io.use(async (socket, next) => {
+                            // console.log('wbesocket middleware', socket.handshake.auth);
                             const sessionID = socket.handshake.auth.sessionID;
                             if (sessionID) {
+                                // console.log('SessionID found', sessionID);
                                 // find existing session
-                                const session = sessionStore.findSession(sessionID);
+                                const session = await sessionStore.findSession(sessionID);
                                 if (session) {
-                                    console.log('wbesocket session found');
+                                    console.log('session found', session);
                                     socket.sessionID = sessionID;
                                     socket.userId = session.userId;
                                     socket.lastNotifId = session.lastNotifId;
                                     socket.token = session.token;
+                                    socket.nbRetry = 0;
+                                    // console.log('wbesocket session found', {lastNotifId: session.lastNotifId, token: session.token});
                                     return next();
                                 }
                             }
@@ -270,22 +266,28 @@ module.exports = function(grunt) {
                             const userId = socket.handshake.auth.userId;
                             const token = socket.handshake.auth.token;
                             if (!userId || typeof userId !== 'number' || userId <= 0) {
-                                console.log('Error, userId not found or invalid', userId);
+                                console.error('Error, userId not found or invalid', userId);
                                 return next(new Error("invalid userId"));
                             }
                             socket.sessionID = randomId();
                             socket.userId = userId;
-                            socket.lastNotifId = null;
+                            socket.lastNotifId = 0;
                             socket.token = '';
                             if (token) {
                                 socket.token = token;
                             }
                             socket.nbRetry = 0;
-                            console.log('a user connected with userId: %d', userId, socket.sessionID);
+                            sessionStore.saveSession(socket.sessionID, {
+                                userId: socket.userId,
+                                lastNotifId: socket.lastNotifId,
+                                token: socket.token,
+                                connected: true
+                            });
+                            console.log('a new session with user connected with userId: %d', userId, socket.sessionID);
                             next();
                         });
                         io.on('connection', (socket) => {
-                            console.log('wbesocket event.connection', {token: socket.token});
+                            // console.log('wbesocket event.connection', {token: socket.token});
                             sessionStore.saveSession(socket.sessionID, {
                                 userId: socket.userId,
                                 lastNotifId: socket.lastNotifId,
@@ -300,7 +302,7 @@ module.exports = function(grunt) {
                             });
                             // 2. Récupérer les notifs sur l'API BS
                             if (socket.token && socket.token.length > 0) {
-                                checkNotifs(socket);
+                                checkNotifs(socket, sessionStore);
                             } else {
                                 authApi(socket, (err) => {
                                     if (err) {
@@ -308,7 +310,7 @@ module.exports = function(grunt) {
                                         socket.disconnect(true);
                                         return false;
                                     }
-                                    checkNotifs(socket);
+                                    checkNotifs(socket, sessionStore);
                                 });
                             }
                             // 3. Si nouvelles notifs, envoyer les notifs au client
@@ -317,9 +319,9 @@ module.exports = function(grunt) {
                                 console.log('wbesocket event.disconnect');
                                 sessionStore.saveSession(socket.sessionID, {
                                     userId: socket.userId,
-                                    lastModified: socket.lastNotifId,
+                                    lastNotifId: socket.lastNotifId,
                                     token: socket.token,
-                                    connected: false,
+                                    connected: false
                                 });
                                 if (socket.timer) {
                                     console.log('websocket disconnect clearTimeout');

@@ -1,3 +1,6 @@
+// eslint-disable-next-line no-unused-vars
+const { default: Redis } = require("ioredis");
+
 /* abstract */ class SessionStore {
     // eslint-disable-next-line no-unused-vars
     findSession(id) {}
@@ -26,30 +29,49 @@ class InMemorySessionStore extends SessionStore {
 }
 
 const SESSION_TTL = 24 * 60 * 60;
-const mapSession = ([userID, username, connected]) =>
-  userID ? { userID, username, connected: connected === "true" } : undefined;
+const mapSession = ([userId, lastNotifId, token, connected]) =>
+  userId ? { userId: parseInt(userId), lastNotifId: parseInt(lastNotifId), token, connected: connected === "true" } : undefined;
 
 class RedisSessionStore extends SessionStore {
+    /**
+     * @type {Redis}
+     */
+    redisClient;
     constructor(redisClient) {
         super();
         this.redisClient = redisClient;
     }
 
+    /**
+     * Retourne la session si elle existe
+     * @param {number} id - Key Redis
+     * @returns {Promise<mapSession | null>}
+     */
     findSession(id) {
         return this.redisClient
-        .hmget(`session:${id}`, "userID", "username", "connected")
-        .then(mapSession);
+            .hmget(`session:${id}`, "userId", "lastNotifId", "token", "connected")
+            .then(mapSession);
     }
-
-    saveSession(id, { userID, username, connected }) {
+    /**
+     * Sauver la session
+     * @param {string} id - Key Redis
+     * @param {Object} param1 - Les données à sauver
+     * @param {number} param1.userId - L'ID du membre
+     * @param {number} param1.lastNotifId - L'ID de la dernière notification
+     * @param {string} param1.token - Le token de l'API BS
+     * @param {boolean} param1.connected - L'état de connexion de la socket
+     */
+    saveSession(id, { userId, lastNotifId, token, connected }) {
         this.redisClient
             .multi()
             .hset(
                 `session:${id}`,
-                "userID",
-                userID,
-                "username",
-                username,
+                "userId",
+                userId,
+                "lastNotifId",
+                lastNotifId,
+                "token",
+                token,
                 "connected",
                 connected
             )
@@ -73,7 +95,7 @@ class RedisSessionStore extends SessionStore {
         } while (nextIndex !== 0);
         const commands = [];
         keys.forEach((key) => {
-            commands.push(["hmget", key, "userID", "username", "connected"]);
+            commands.push(["hmget", key, "userId", "lastNotifId", "token", "connected"]);
         });
         return this.redisClient
             .multi(commands)
