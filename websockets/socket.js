@@ -8,7 +8,25 @@ const config = require('./conf.json');
 const axios = require('axios').default;
 const betaseries_api_user_key = config.apiUserKey;
 const timeoutCheckNotifs = config.timeoutCheckNotifs || 300000; // 5 minutes
-
+/**
+ * Les couleurs pour les logs de la console
+ * @type {Object<string, string>}
+ */
+const colors = {
+    black: '\x1b[30m',
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
+    cyan: '\x1b[36m',
+    white: '\x1b[37m',
+    initial: '\x1b[0m'
+};
+const dateFormatted = () => {
+    const now = new Date();
+    return `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+}
 const axiosAPI = axios.create({
     baseURL: 'https://api.betaseries.com',
     timeout: 10000
@@ -42,6 +60,7 @@ function getRedisUrl() {
  * @param {function} cb - Callback
  */
 function checkToken(socket, cb) {
+    console.log('[%s] %scheckToken\x1b[0m: token: %s', dateFormatted(), colors.yellow, socket.token);
     axiosAPI.get('/members/is_active')
         .then(res => {
             if (res.status == 400) {
@@ -57,8 +76,27 @@ function checkToken(socket, cb) {
                 return cb();
             }
         }).catch(err => {
-            console.error('checkToken error request', err.message);
-            return cb(err);
+            console.error('checkToken error request:', err.message);
+            if (err.message == 'Request failed with status code 400') {
+                // console.log('checkToken1 cb', typeof cb);
+                try {
+                    authApi(socket, (err, newToken) => {
+                        if (err) {
+                            // console.log('checkToken2 cb', typeof cb);
+                            console.error('Error from authApi: ', err);
+                            return cb(err);
+                        }
+                        socket.token = newToken;
+                        // console.log('checkToken3 cb', typeof cb);
+                        return cb();
+                    });
+                } catch(err) {
+                    console.error('Error authApi in checkToken', err);
+                }
+            } else {
+                // console.log('checkToken4 cb', typeof cb);
+                return cb(err);
+            }
         });
 }
 
@@ -68,12 +106,13 @@ function checkToken(socket, cb) {
  * @param {RedisSessionStore} sessionStore - La stockage de session
  */
 const checkNotifs = function(socket, sessionStore) {
+    console.log('[%s] %scheckNotifs\x1b[0m: token: %s', dateFormatted(), colors.cyan, socket.token);
     axiosAPI.defaults.headers.common['X-BetaSeries-Token'] = socket.token || '';
     const relaunch = (err) => {
         if (err) {
             console.error('relaunch checkNotifs error, nbRetry: %d - err: %s', socket.nbRetry, err);
-            if (socket.nbRetry && socket.nbRetry < 5) {
-                // console.log('relaunch checkNotifs in %d seconds', timeoutCheckNotifs/1000);
+            if (socket.nbRetry < 5) {
+                console.log('relaunch checkNotifs in %d seconds', timeoutCheckNotifs/1000);
                 socket.nbRetry++;
                 socket.timer = setTimeout(checkNotifs, timeoutCheckNotifs, socket, sessionStore);
             } else if (socket.timer) {
@@ -151,6 +190,7 @@ const checkNotifs = function(socket, sessionStore) {
  * @param {function} cb - Callback
  */
 const authApi = function(socket, cb) {
+    console.log('[%s] %sauthApi\x1b[0m: token: %s', dateFormatted(), colors.magenta, socket.token);
     axiosAPI.defaults.headers.common['X-BetaSeries-Token'] = socket.token || '';
     const postData = {
         'login': config.login,
@@ -181,7 +221,7 @@ const authApi = function(socket, cb) {
                 return cb(null, res.data.token);
             }
         }).catch(err => {
-            console.error('problem with request: %s', err.message);
+            console.error('authApi catch - error request: %s', err.message);
             cb(err.message);
         });
 };
