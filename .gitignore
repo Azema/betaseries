@@ -8,7 +8,8 @@ objets_media.json
 *.sh
 local.betaseries.user.js
 start-grunt.bat
-ssl
+ssl/*
+!ssl/createCertificate.sh
 db/betaseries.json
 db/betaseries-*.json
 /doc
