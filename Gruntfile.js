@@ -204,9 +204,9 @@ module.exports = function(grunt) {
             server: {
                 options: {
                     protocol: 'https',
-                    key: grunt.file.read('./ssl/RootCA.key').toString(),
-                    cert: grunt.file.read('./ssl/RootCA.crt').toString(),
-                    ca: grunt.file.read('./ssl/RootCA.pem').toString(),
+                    key: grunt.file.read('./ssl/localhost.key').toString(),
+                    cert: grunt.file.read('./ssl/localhost.crt').toString(),
+                    ca: grunt.file.read('./ssl/myCA.pem').toString(),
                     port: 9001,
                     hostname: 'localhost',
                     base: {
