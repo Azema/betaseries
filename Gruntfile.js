@@ -243,6 +243,7 @@ module.exports = function(grunt) {
                         const sessionStore = new RedisSessionStore(redisClient);
                         const { randomBytes } = require("crypto");
                         const randomId = () => randomBytes(8).toString("hex");
+                        const cleanToken = (token) => String(token).replace(/[^a-fA-F0-9]*/g, '').trim();
                         // Middleware authentification
                         io.use(async (socket, next) => {
                             // console.log('wbesocket middleware', socket.handshake.auth);
@@ -252,13 +253,19 @@ module.exports = function(grunt) {
                                 // find existing session
                                 const session = await sessionStore.findSession(sessionID);
                                 if (session) {
-                                    console.log('session found', session);
+                                    // console.log('session found', session);
                                     socket.sessionID = sessionID;
                                     socket.userId = session.userId;
                                     socket.lastNotifId = session.lastNotifId;
                                     socket.token = session.token;
                                     socket.nbRetry = 0;
-                                    // console.log('wbesocket session found', {lastNotifId: session.lastNotifId, token: session.token});
+                                    if (socket.handshake.auth.lastNotifId) {
+                                        socket.lastNotifId = parseInt(socket.handshake.auth.lastNotifId);
+                                    }
+                                    if (socket.handshake.auth.token) {
+                                        socket.token = cleanToken(socket.handshake.auth.token);
+                                    }
+                                    console.log('wbesocket session found', {lastNotifId: socket.lastNotifId, token: socket.token, userId: socket.userId, sessionID: socket.sessionID});
                                     return next();
                                 }
                             }

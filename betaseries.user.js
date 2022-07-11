@@ -4562,32 +4562,78 @@ const launchScript = function($) {
             if (typeof io !== 'undefined') {
                 socket = io(serverBaseUrl.replace(/^https/, 'wss'), { autoConnect: false, reconnection: false });
             }
-            socket.auth = { userId: parseInt(betaseries_user_id, 10), token: betaseries_api_user_token };
+            socket.auth = {
+                userId: parseInt(betaseries_user_id, 10),
+                token: betaseries_api_user_token,
+                lastNotifId: 1
+            };
             const sessionID = localStorage.getItem('sessionID');
             if (sessionID) {
                 socket.auth.sessionID = sessionID;
             }
             socket.connect();
             socket.on("connect", () => {
-                console.log('socket event.connect - id: %d', socket.id, {connected: socket.connected});
+                if (debug) console.log('socket event.connect', {connected: socket.connected});
+                if (socket.connected) nbRetryConn = 0;
             });
 
             socket.on('notifications', (data) => {
+                if (debug) console.log('news notifications received', data);
                 if (data.notifications) {
                     user.addNotifications(data.notifications);
                 }
+                if (data.lastNotifId) {
+                    // On stocke le dernier ID connu, en cas de reconnexion
+                    socket.auth.lastNotifId = data.lastNotifId;
+                }
             });
-            socket.on("session", ({ sessionID, userId }) => {
+            socket.on("session", ({ sessionID, userId, lastNotifId }) => {
                 // attach the session ID to the next reconnection attempts
                 socket.auth = { sessionID };
                 // store it in the localStorage
                 localStorage.setItem("sessionID", sessionID);
                 // save the ID of the user
                 socket.userId = userId;
+                socket.auth.lastNotifId = lastNotifId;
             });
+            /*
+             * Tentative de reconnexion manuelle
+             */
+            const maxRetryConn = 5;
+            let nbRetryConn = 0;
+            const tryReconnect = () => {
+                if (nbRetryConn < maxRetryConn) {
+                    nbRetryConn++;
+                    setTimeout(() => {
+                        console.log('tryReconnect: tentative de reconnexion %d', nbRetryConn);
+                        socket.open();
+                        if (socket.listeners("connect_error").length <= 0) {
+                            socket.on('connect_error', (err) => {
+                                if (err) {
+                                    console.log('tryReconnect: reconnexion KO', err);
+                                    tryReconnect();
+                                }
+            });
+                        }
+                    }, 2000);
+                }
+            }
+            socket.on("close", tryReconnect);
 
             socket.on("disconnect", () => {
                 console.log('socket event.disconnect', {connected: socket.connected});
+                tryReconnect();
+            });
+            unsafeWindow.addEventListener('offline', () => {
+                if (socket) {
+                    nbRetryConn = maxRetryConn;
+                }
+            });
+            unsafeWindow.addEventListener('online', () => {
+                if (socket) {
+                    nbRetryConn = 0;
+                    tryReconnect();
+                }
             });
         });
     }

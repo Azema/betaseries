@@ -122,9 +122,9 @@ const checkNotifs = function(socket, sessionStore) {
                             }
                             notifs.push(data.notifications[n]);
                         }
-                        socket.emit('notifications', {notifications: notifs});
-                        // Nouvelles notifications
                         socket.lastNotifId = data.notifications[0].id;
+                        socket.emit('notifications', {notifications: notifs, lastNotifId: socket.lastNotifId});
+                        // Nouvelles notifications
                         sessionStore.saveSession(socket.sessionID, {
                             userId: socket.userId,
                             lastNotifId: socket.lastNotifId,
