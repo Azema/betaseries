@@ -336,7 +336,7 @@ const launchScript = function($) {
         "renderjson": {
             type: 'script',
             id: 'renderjson',
-            src: `${serverBaseUrl}/js/renderjson.min.js`,
+            link: `${serverBaseUrl}/js/renderjson.min.js`,
             integrity: 'sha384-/mHGJ/3gaDqVJCEeed/Uh1fJVO01E+CLBZrFqjv1REaFAZxEBvGMHQyBmwln/uhx',
             called: false,
             loaded: false
@@ -344,7 +344,7 @@ const launchScript = function($) {
         "popover": {
             type: 'style',
             id: 'csspopover',
-            href: `${serverBaseUrl}/css/popover.min.css`,
+            link: `${serverBaseUrl}/css/popover.min.css`,
             integrity: 'sha384-yebLb3hn+3mwaxg0KwLhE2YYLEKsMRsxRvUPyBOF6gzkzLEOWEeD9ELZeDACSwO7',
             media: 'all',
             called: false,
@@ -353,7 +353,7 @@ const launchScript = function($) {
         "bootstrap": {
             type: 'script',
             id: 'jsbootstrap',
-            src: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js',
+            link: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js',
             integrity: 'sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl',
             called: false,
             loaded: false
@@ -361,7 +361,7 @@ const launchScript = function($) {
         "tablecss": {
             type: 'style',
             id: 'tablecss',
-            href: `${serverBaseUrl}/css/table.min.css`,
+            link: `${serverBaseUrl}/css/table.min.css`,
             integrity: 'sha384-tRMvWzqbXtOp2OM+OPoYpWVxHw8eXcFKgzi4q9m6i0rvWTU33pdb8Bx33wBWjlo9',
             media: 'all',
             called: false,
@@ -370,7 +370,7 @@ const launchScript = function($) {
         "stylehome": {
             type: 'style',
             id: 'stylehome',
-            href: `${serverBaseUrl}/css/style.min.css`,
+            link: `${serverBaseUrl}/css/style.min.css`,
             integrity: 'sha384-Cekddv8gf4cq4AusXXtPX3r9DlcjafJgbufsVTp6JWWlh8r1Jq11d0DKiB53wlIc',
             media: 'all',
             called: false,
@@ -379,16 +379,24 @@ const launchScript = function($) {
         "awesome": {
             type: 'style',
             id: 'awesome',
-            href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
+            link: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
             integrity: 'sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==',
             media: 'all',
+            called: false,
+            loaded: false
+        },
+        "awesome6": {
+            type: 'script',
+            id: 'awesome6',
+            link: `${serverBaseUrl}/js/font-awesome-6.1.min.js`,
+            integrity: 'sha384-RRYsVjoikrI5QSLEcefbI8XvMN2J/m8V0n1AAg8T9Y6xICVEsdJdeN6OavRJFMgZ',
             called: false,
             loaded: false
         },
         "comments": {
             type: 'style',
             id: 'commentstyle',
-            href: `${serverBaseUrl}/css/comments.min.css`,
+            link: `${serverBaseUrl}/css/comments.min.css`,
             integrity: 'sha384-37/ghsJZTBvNPxUAy6GMPGxa3BKjrZ2ykMb7gUpkkVvoZwAsm4WhigKhMyYCN+Ft',
             media: 'all',
             called: false,
@@ -397,7 +405,7 @@ const launchScript = function($) {
         "textcomplete": {
             type: 'script',
             id: 'jstextcomplete',
-            src: `${serverBaseUrl}/js/jquery.textcomplete.min.js`,
+            link: `${serverBaseUrl}/js/jquery.textcomplete.min.js`,
             integrity: 'sha384-kf6mqav/ZhBkPgNGorOiE7+/0GmfN9NDz0ov5G3fy6PuV/wqAggrTaWkTVfPM79L',
             called: false,
             loaded: false
@@ -405,7 +413,7 @@ const launchScript = function($) {
         "lazyload": {
             type: 'script',
             id: 'lazyload',
-            src: `${serverBaseUrl}/js/lazyload.min.js`,
+            link: `${serverBaseUrl}/js/lazyload.min.js`,
             integrity: 'sha384-ZjtdUVt9uqIO0cVuZ4zQ5r/1QqXlGIct+PFRAMtAlSz3F4apy925Pn5Tm3hnczMg',
             called: false,
             loaded: false
@@ -413,7 +421,7 @@ const launchScript = function($) {
         "jqueryuijs": {
             type: 'script',
             id: 'jqueryui-js',
-            src: 'https://code.jquery.com/ui/1.13.1/jquery-ui.js',
+            link: 'https://code.jquery.com/ui/1.13.1/jquery-ui.js',
             integrity: 'sha384-KUSBBRKMO05pX3xNidXAX5N1p4iNwntmhHY4iugl7mINOyOXFL4KZWceJtMj7M0A',
             called: false,
             loaded: false
@@ -421,7 +429,7 @@ const launchScript = function($) {
         "jqueryuicss": {
             type: 'style',
             id: 'jqueryui-css',
-            href: 'https://code.jquery.com/ui/1.13.1/themes/base/jquery-ui.css',
+            link: 'https://code.jquery.com/ui/1.13.1/themes/base/jquery-ui.css',
             integrity: 'sha384-Wh/opNnCPQdVc7YXIh18hoqN6NYg40GBaO/GwQSwrIbAIo8uCeYri2DX2IisvVP6',
             called: false,
             loaded: false
@@ -429,14 +437,14 @@ const launchScript = function($) {
         "searchFriend": {
             type: 'script',
             id: 'searchFriendJs',
-            src: '/js/search-friends.js',
+            link: '/js/search-friends.js',
             called: false,
             loaded: false
         },
         "socket": {
             type: 'script',
             id: 'socketjs',
-            src: 'https://cdn.socket.io/4.5.1/socket.io.min.js',
+            link: 'https://cdn.socket.io/4.5.1/socket.io.min.js',
             integrity: 'sha384-dZoVd6Ro98cGu3vTPJeEj0bVrpH2p/SgENb5iMjpBTSMobGNb6Fg+M5CJ2RHq+H2',
             called: false,
             loaded: false
@@ -456,307 +464,313 @@ const launchScript = function($) {
          * Initialisation du script
          */
         init: function() {
-            const $head = $('head');
-            $head.append(`<link rel="dns-prefetch" href="${new URL(serverOauthUrl).origin}">`);
-            $head.append(`<link rel="dns-prefetch" href="${new URL(serverBaseUrl).origin}">`);
-            $head.append(`<link rel="preconnect" href="${new URL(serverBaseUrl).origin}" crossorigin>`);
-            $head.append(`<link rel="dns-prefetch" href="${new URL(UsBetaSeries.api.url).origin}">`);
-            $head.append(`<link rel="preconnect" href="${new URL(UsBetaSeries.api.url).origin}" crossorigin>`);
-            system.updateResources();
-            /*
-                    CHARGEMENT LIBRARY SearchFriend pour la recommandation à un ami
-             */
-            if (typeof SearchFriend === 'undefined') {
-                system.addScriptAndLink(['searchFriend']);
-            }
-            /*
-             *          AJOUT DU LOADER
-             */
-            $('#popup-bg').after('<div id="loader-bg"><i class="fa fa-spinner fa-pulse fa-4x fa-fw"></i><span class="sr-only">Loading...</span></div>');
-            // Ajout des feuilles de styles pour le userscript
-            system.addScriptAndLink(['awesome', 'stylehome']);
-            if (UsBetaSeries.userIdentified()) {
-                Member.fetch().then(member => {
-                    /** @type {Member} */
-                    user = unsafeWindow.user = member;
-                    UsBetaSeries.member = member;
-                    // On affiche la version du script
-                    if (typeof GM_info !== 'undefined') {
-                            log('%cUserScript BetaSeries%c: v%s - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit', user.login);
-                    } else {
-                            log('%cUserScript BetaSeries%c - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', 'color:#00979c', 'color:inherit', user.login);
-                    }
-                    // On désactive les fonctions de notifications originales
-                    unsafeWindow.notificationChecker = () => {};
-                    unsafeWindow.growlNotificationChecker = () => {};
-                    $('.js-iconNotifications').off('click').on('click', (e) => {
-                        e.stopPropagation();
-                        $("body").toggleClass("menu-open").toggleClass("menu-open--notifications");
-                        const $growl = $("#growl");
-                        if ($growl.hasClass("visible")) {
-                            $growl.removeClass("visible");
-                            localStorage.removeItem("seen-growl-notifications");
-                            if (member.notifications.seen) {
-                                markAllNotificationsAsSeen();
-                                member.notifications.markAllAsSeen();
-                            }
-                        } else {
-                            member.renderNotifications();
-                        }
-                        $(".notification--standalone").remove();
-                    });
-                    $(".js-close-elements").off('click').on("click", () => {
-                        // close notifications
-                        $('#growl').removeClass('visible');
-                        $("body").toggleClass("menu-open").toggleClass("menu-open--notifications");
-                        if (user.notifications.seen) {
-                            markAllNotificationsAsSeen();
-                            user.notifications.markAllAsSeen();
-                        }
-                    });
-                });
-            } else {
-                if (typeof GM_info !== 'undefined') {
-                    // log('GM_info', GM_info);
-                    // On affiche la version du script
-                    log('%cUserScript BetaSeries%c: v%s - %cMembre%c: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit');
-                }
-            }
-            system.checkApiVersion();
-            /*
-             *          BANDEAU DE NAVIGATION DU SITE WEB
-             */
-            (function navigation() {
-                /** @type {jQuery<HTMLElement>} */
-                const $nav = $('nav#top'); // Jquery<HTMLElement> Bandeau de navigation
-                let forceNotScrolled = false; // Permet de forcer ou non la taille initiale du bandeau
+            return new Promise((res) => {
+                const $head = $('head');
+                $head.append(`<link rel="dns-prefetch" href="${new URL(serverOauthUrl).origin}">`);
+                $head.append(`<link rel="dns-prefetch" href="${new URL(serverBaseUrl).origin}">`);
+                $head.append(`<link rel="preconnect" href="${new URL(serverBaseUrl).origin}" crossorigin>`);
+                $head.append(`<link rel="dns-prefetch" href="${new URL(UsBetaSeries.api.url).origin}">`);
+                $head.append(`<link rel="preconnect" href="${new URL(UsBetaSeries.api.url).origin}" crossorigin>`);
+                system.updateResources();
                 /*
-                 * Permet de diminuer ou remettre à la normale, le bandeau de navigation durant le scrolling
-                 */
-                const boundHandleScroll = function() {
-                    $nav.toggleClass('scrolled', (window.visualViewport.pageTop > 40 && !forceNotScrolled));
-                };
-                boundHandleScroll('call initial');
-                window.addEventListener("scroll", boundHandleScroll);
-                $('#reactjs-header-search .menu-item > button').on('click', () => {
-                    /*
-                     * Force la taille du bandeau de navigation à sa taille initiale,
-                     * lors d'une recherche de média
-                     */
-                    forceNotScrolled = true;
-                    $nav.removeClass('scrolled');
-                    $nav.addClass('search');
-                    system.waitDomPresent('#reactjs-header-search .menu-item form', () => {
-                        $('#reactjs-header-search .menu-item form button:last-child').on('click', () => {
-                            $nav.removeClass('search');
-                            forceNotScrolled = false;
-                            boundHandleScroll();
+                        CHARGEMENT LIBRARY SearchFriend pour la recommandation à un ami
+                */
+                if (typeof SearchFriend === 'undefined') {
+                    system.addScriptAndLink(['searchFriend']);
+                }
+                /*
+                *          AJOUT DU LOADER
+                */
+                    $('#popup-bg').after('<div id="loader-bg"><i class="fa-solid fa-sync fa-spin fa-4x"></i><span class="sr-only">Loading...</span></div>');
+                // Ajout des feuilles de styles pour le userscript
+                    system.addScriptAndLink(['awesome6', 'stylehome']);
+                if (UsBetaSeries.userIdentified()) {
+                    Member.fetch().then(member => {
+                        /** @type {Member} */
+                        user = unsafeWindow.user = member;
+                        UsBetaSeries.member = member;
+                            res(member);
+                        // On affiche la version du script
+                        if (typeof GM_info !== 'undefined') {
+                                log('%cUserScript BetaSeries%c: v%s - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit', user.login);
+                        } else {
+                                log('%cUserScript BetaSeries%c - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', 'color:#00979c', 'color:inherit', user.login);
+                        }
+                        if (jQuery('.menu-icon--bell').length > 0) {
+                            jQuery('.menu-icon--bell').replaceWith(`<span class="menu-icon menu-icon-bell fa-solid fa-bell"></span>`);
+                        }
+                        // On désactive les fonctions de notifications originales
+                        unsafeWindow.notificationChecker = () => {};
+                        unsafeWindow.growlNotificationChecker = () => {};
+                        $('.js-iconNotifications').off('click').on('click', (e) => {
+                            e.stopPropagation();
+                            $("body").toggleClass("menu-open").toggleClass("menu-open--notifications");
+                            const $growl = $("#growl");
+                            if ($growl.hasClass("visible")) {
+                                $growl.removeClass("visible");
+                                localStorage.removeItem("seen-growl-notifications");
+                                if (member.notifications.seen) {
+                                    markAllNotificationsAsSeen();
+                                    member.notifications.markAllAsSeen();
+                                }
+                            } else {
+                                member.renderNotifications();
+                            }
+                            $(".notification--standalone").remove();
+                        });
+                        $(".js-close-elements").off('click').on("click", () => {
+                            // close notifications
+                            $('#growl').removeClass('visible');
+                            $("body").toggleClass("menu-open").toggleClass("menu-open--notifications");
+                            if (user.notifications.seen) {
+                                markAllNotificationsAsSeen();
+                                user.notifications.markAllAsSeen();
+                            }
                         });
                     });
-                });
-            })();
-            /*
-                                LAZYLOAD
-             */
-            system.addScriptAndLink('lazyload', () => {
-                fnLazy = function() {
-                    $(optionsLazyload.selector).lazyload(optionsLazyload);
-                };
-            });
-            /**
-             *          FORMULAIRE DE RECHERCHE DE MEDIAS
-             *
-             * Permet d'ajouter des améliorations au menu de recherche du site
-             */
-            (function headerSearch() {
-                // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
-                // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
-                const observer = new MutationObserver(mutationsList => {
-                    const updateTitle = (i, e) => {
-                        if (system.isTruncated(e)) {
-                            $(e).parents('a').attr('title', $(e).text());
-                        }
-                    };
-                    const updateImg = (i, elt) => {
-                            log('headerSearch updateImg[%d]', i);
-                        const $elt = $(elt);
-                        const $col = $elt.parents('.col-md-4').first();
-                            // log('col', $col);
-                        if ($col.hasClass('show_searchResult')) {
-                            // Show
-                            const slug = $elt.attr('href').split('/').pop();
-                            Show.fetchByUrl(slug).then((show) => {
-                                /**
-                                 * @typedef {Show} show
-                                 */
-                                if (show.in_account && show.user.status > 0) {
-                                        log('show[%s]: found and viewed', slug);
-                                    $('.mainLink', $elt)
-                                        .css('textDecoration', 'line-throught')
-                                        .css('color', 'red');
-                                }
-                            })
-                        } else if ($col.hasClass('movie_searchResult')) {
-                            // Movie
-                            const title = $('.mainLink', $elt).text().trim();
-                            Movie.search(title).then(movie => {
-                                /**
-                                 * @typedef {Movie} movie
-                                 */
-                                if (movie.in_account && movie.user.status > 0) {
-                                    $('.mainLink', $elt)
-                                        .css('textDecoration', 'line-throught')
-                                        .css('color', 'red');
-                                }
-                            })
-                        }
-                    };
-                    for (let mutation of mutationsList) {
-                        if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
-                            /** @type {JQuery<HTMLElement>} */
-                            const $node = $(mutation.addedNodes[0]);
-                            if ($node.hasClass('col-md-4')) {
-                                $('.mainLink', $node).each(updateTitle);
-                                $('a.js-searchResult', $node).each(updateImg);
-                            }
-                            /*else if ($node.hasClass('js-searchResult')) {
-                                const title = $('.mainLink', $node).get(0);
-                                if (system.isTruncated(title)) {
-                                    $node.attr('title', $(title).text());
-                                }
-                                updateImg(0, $node);
-                            }*/
-                            else if (mutation.addedNodes[0].nodeName.toLowerCase() === 'form') {
-                                    log('Observer HeaderSearch mutation', mutation);
-                                $('input', $node).keyup((e) => {
-                                    const target = $(e.currentTarget);
-                                        log('HeaderSearch input value', e.currentTarget.value);
-                                    if (target && /^imdb:\s*tt\d+/i.test(target.val())) {
-                                        e.stopPropagation();
-                                        const imdb_id = target.val().match(/^imdb:\s*(tt\d+)/i)[1].trim();
-                                            log('HeaderSearch imdb_id: ', imdb_id);
-                                        Show.fetchByImdb(imdb_id, true).then(show => {
-                                            let template = `
-                                            <div class="col-md-4 kz_k1 show_searchResult">
-                                                <div class="ComponentHeaderSearchTitle kz_il">Séries</div>
-                                                <div style="max-height: 580px; overflow-y: hidden;">
-                                                    <a href="${show.resource_url}"
-                                                        class="js-searchResult kv_kx">
-                                                        <div class="media">
-                                                            <div class="media-left">
-                                                                <img class="greyBorder"
-                                                                    src="${show.images.poster}"
-                                                                    width="27" height="40" alt="Affiche de ${show.title}">
-                                                            </div>
-                                                            <div class="media-body media-body--ellipsis">
-                                                                <div class="mainLink" style="margin-top: 1px;">${show.title}</div>
-                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
-                                                                    <div>${show.creation}</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            `;
-                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
-                                        });
-                                        Movie.fetchByImdb(imdb_id, true).then(movie => {
-                                            let template = `
-                                            <div class="col-md-4 kz_k1 movie_searchResult">
-                                                <div class="ComponentHeaderSearchTitle kz_il">Films</div>
-                                                <div style="max-height: 580px; overflow-y: hidden;">
-                                                    <a href="${movie.resource_url}"
-                                                        class="js-searchResult kv_kx">
-                                                        <div class="media">
-                                                            <div class="media-left">
-                                                                <img class="greyBorder"
-                                                                    src="${movie.poster}"
-                                                                    width="27" height="40" alt="Affiche de ${movie.title}">
-                                                            </div>
-                                                            <div class="media-body media-body--ellipsis">
-                                                                <div class="mainLink" style="margin-top: 1px;">${movie.title}</div>
-                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
-                                                                    <div>${movie.creation}</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            `;
-                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
-                                        });
-                                    }
-                                    else if (target && /^tvdb:\s*\d+/i.test(target.val())) {
-                                        e.stopPropagation();
-                                        const tvdb_id = target.val().match(/^tvdb:\s*(\d+)/i)[1].trim();
-                                            log('HeaderSearch tvdb_id: ', tvdb_id);
-                                        Show.fetchByTvdb(tvdb_id).then(show => {
-                                            let template = `
-                                            <div class="col-md-4 kz_k1 show_searchResult">
-                                                <div class="ComponentHeaderSearchTitle kz_il">Séries</div>
-                                                <div style="max-height: 580px; overflow-y: hidden;">
-                                                    <a href="${show.resource_url}"
-                                                        class="js-searchResult kv_kx">
-                                                        <div class="media">
-                                                            <div class="media-left">
-                                                                <img class="greyBorder"
-                                                                    src="${show.images.poster}"
-                                                                    width="27" height="40" alt="Affiche de ${show.title}">
-                                                            </div>
-                                                            <div class="media-body media-body--ellipsis">
-                                                                <div class="mainLink" style="margin-top: 1px;">${show.title}</div>
-                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
-                                                                    <div>${show.creation}</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            `;
-                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
-                                        });
-                                    }
-                                    else if (target && /^tmdb:\s*\d+/i.test(target.val())) {
-                                        e.stopPropagation();
-                                        const tmdb_id = target.val().match(/^tmdb:\s*(\d+)/i)[1].trim();
-                                            log('HeaderSearch tmdb_id: ', tmdb_id);
-                                        Movie.fetchByTmdb(tmdb_id, true).then(movie => {
-                                            let template = `
-                                            <div class="col-md-4 kz_k1 movie_searchResult">
-                                                <div class="ComponentHeaderSearchTitle kz_il">Films</div>
-                                                <div style="max-height: 580px; overflow-y: hidden;">
-                                                    <a href="${movie.resource_url}"
-                                                        class="js-searchResult kv_kx">
-                                                        <div class="media">
-                                                            <div class="media-left">
-                                                                <img class="greyBorder"
-                                                                    src="${movie.poster}"
-                                                                    width="27" height="40" alt="Affiche de ${movie.title}">
-                                                            </div>
-                                                            <div class="media-body media-body--ellipsis">
-                                                                <div class="mainLink" style="margin-top: 1px;">${movie.title}</div>
-                                                                <div class="mainTime" style="margin-top: 2px; display: flex;">
-                                                                    <div>${movie.creation}</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            `;
-                                            $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
-                                        });
-                                    }
-                                });
-                            }
-                        }
+                } else {
+                    if (typeof GM_info !== 'undefined') {
+                        // log('GM_info', GM_info);
+                        // On affiche la version du script
+                        log('%cUserScript BetaSeries%c: v%s - %cMembre%c: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit');
                     }
+                }
+                system.checkApiVersion();
+                /*
+                *          BANDEAU DE NAVIGATION DU SITE WEB
+                */
+                (function navigation() {
+                    /** @type {jQuery<HTMLElement>} */
+                    const $nav = $('nav#top'); // Jquery<HTMLElement> Bandeau de navigation
+                    let forceNotScrolled = false; // Permet de forcer ou non la taille initiale du bandeau
+                    /*
+                    * Permet de diminuer ou remettre à la normale, le bandeau de navigation durant le scrolling
+                    */
+                    const boundHandleScroll = function() {
+                        $nav.toggleClass('scrolled', (window.visualViewport.pageTop > 40 && !forceNotScrolled));
+                    };
+                    boundHandleScroll('call initial');
+                    window.addEventListener("scroll", boundHandleScroll);
+                    $('#reactjs-header-search .menu-item > button').on('click', () => {
+                        /*
+                        * Force la taille du bandeau de navigation à sa taille initiale,
+                        * lors d'une recherche de média
+                        */
+                        forceNotScrolled = true;
+                        $nav.removeClass('scrolled');
+                        $nav.addClass('search');
+                        system.waitDomPresent('#reactjs-header-search .menu-item form', () => {
+                            $('#reactjs-header-search .menu-item form button:last-child').on('click', () => {
+                                $nav.removeClass('search');
+                                forceNotScrolled = false;
+                                boundHandleScroll();
+                            });
+                        });
+                    });
+                })();
+                /*
+                                    LAZYLOAD
+                */
+                system.addScriptAndLink('lazyload', () => {
+                    fnLazy = function() {
+                        $(optionsLazyload.selector).lazyload(optionsLazyload);
+                    };
                 });
-                observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
-            })();
+                /**
+                 *          FORMULAIRE DE RECHERCHE DE MEDIAS
+                 *
+                 * Permet d'ajouter des améliorations au menu de recherche du site
+                 */
+                (function headerSearch() {
+                    // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
+                    // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
+                    const observer = new MutationObserver(mutationsList => {
+                        const updateTitle = (i, e) => {
+                            if (system.isTruncated(e)) {
+                                $(e).parents('a').attr('title', $(e).text());
+                            }
+                        };
+                        const updateImg = (i, elt) => {
+                                log('headerSearch updateImg[%d]', i);
+                            const $elt = $(elt);
+                            const $col = $elt.parents('.col-md-4').first();
+                                // log('col', $col);
+                            if ($col.hasClass('show_searchResult')) {
+                                // Show
+                                const slug = $elt.attr('href').split('/').pop();
+                                Show.fetchByUrl(slug).then((show) => {
+                                    /**
+                                     * @typedef {Show} show
+                                     */
+                                    if (show.in_account && show.user.status > 0) {
+                                            log('show[%s]: found and viewed', slug);
+                                        $('.mainLink', $elt)
+                                            .css('textDecoration', 'line-throught')
+                                            .css('color', 'red');
+                                    }
+                                })
+                            } else if ($col.hasClass('movie_searchResult')) {
+                                // Movie
+                                const title = $('.mainLink', $elt).text().trim();
+                                Movie.search(title).then(movie => {
+                                    /**
+                                     * @typedef {Movie} movie
+                                     */
+                                    if (movie.in_account && movie.user.status > 0) {
+                                        $('.mainLink', $elt)
+                                            .css('textDecoration', 'line-throught')
+                                            .css('color', 'red');
+                                    }
+                                })
+                            }
+                        };
+                        for (let mutation of mutationsList) {
+                            if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
+                                /** @type {JQuery<HTMLElement>} */
+                                const $node = $(mutation.addedNodes[0]);
+                                if ($node.hasClass('col-md-4')) {
+                                    $('.mainLink', $node).each(updateTitle);
+                                    $('a.js-searchResult', $node).each(updateImg);
+                                }
+                                /*else if ($node.hasClass('js-searchResult')) {
+                                    const title = $('.mainLink', $node).get(0);
+                                    if (system.isTruncated(title)) {
+                                        $node.attr('title', $(title).text());
+                                    }
+                                    updateImg(0, $node);
+                                }*/
+                                else if (mutation.addedNodes[0].nodeName.toLowerCase() === 'form') {
+                                        log('Observer HeaderSearch mutation', mutation);
+                                    $('input', $node).keyup((e) => {
+                                        const target = $(e.currentTarget);
+                                            log('HeaderSearch input value', e.currentTarget.value);
+                                        if (target && /^imdb:\s*tt\d+/i.test(target.val())) {
+                                            e.stopPropagation();
+                                            const imdb_id = target.val().match(/^imdb:\s*(tt\d+)/i)[1].trim();
+                                                log('HeaderSearch imdb_id: ', imdb_id);
+                                            Show.fetchByImdb(imdb_id, true).then(show => {
+                                                let template = `
+                                                <div class="col-md-4 kz_k1 show_searchResult">
+                                                    <div class="ComponentHeaderSearchTitle kz_il">Séries</div>
+                                                    <div style="max-height: 580px; overflow-y: hidden;">
+                                                        <a href="${show.resource_url}"
+                                                            class="js-searchResult kv_kx">
+                                                            <div class="media">
+                                                                <div class="media-left">
+                                                                    <img class="greyBorder"
+                                                                        src="${show.images.poster}"
+                                                                        width="27" height="40" alt="Affiche de ${show.title}">
+                                                                </div>
+                                                                <div class="media-body media-body--ellipsis">
+                                                                    <div class="mainLink" style="margin-top: 1px;">${show.title}</div>
+                                                                    <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                        <div>${show.creation}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                `;
+                                                $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                            });
+                                            Movie.fetchByImdb(imdb_id, true).then(movie => {
+                                                let template = `
+                                                <div class="col-md-4 kz_k1 movie_searchResult">
+                                                    <div class="ComponentHeaderSearchTitle kz_il">Films</div>
+                                                    <div style="max-height: 580px; overflow-y: hidden;">
+                                                        <a href="${movie.resource_url}"
+                                                            class="js-searchResult kv_kx">
+                                                            <div class="media">
+                                                                <div class="media-left">
+                                                                    <img class="greyBorder"
+                                                                        src="${movie.poster}"
+                                                                        width="27" height="40" alt="Affiche de ${movie.title}">
+                                                                </div>
+                                                                <div class="media-body media-body--ellipsis">
+                                                                    <div class="mainLink" style="margin-top: 1px;">${movie.title}</div>
+                                                                    <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                        <div>${movie.creation}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                `;
+                                                $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                            });
+                                        }
+                                        else if (target && /^tvdb:\s*\d+/i.test(target.val())) {
+                                            e.stopPropagation();
+                                            const tvdb_id = target.val().match(/^tvdb:\s*(\d+)/i)[1].trim();
+                                                log('HeaderSearch tvdb_id: ', tvdb_id);
+                                            Show.fetchByTvdb(tvdb_id).then(show => {
+                                                let template = `
+                                                <div class="col-md-4 kz_k1 show_searchResult">
+                                                    <div class="ComponentHeaderSearchTitle kz_il">Séries</div>
+                                                    <div style="max-height: 580px; overflow-y: hidden;">
+                                                        <a href="${show.resource_url}"
+                                                            class="js-searchResult kv_kx">
+                                                            <div class="media">
+                                                                <div class="media-left">
+                                                                    <img class="greyBorder"
+                                                                        src="${show.images.poster}"
+                                                                        width="27" height="40" alt="Affiche de ${show.title}">
+                                                                </div>
+                                                                <div class="media-body media-body--ellipsis">
+                                                                    <div class="mainLink" style="margin-top: 1px;">${show.title}</div>
+                                                                    <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                        <div>${show.creation}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                `;
+                                                $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                            });
+                                        }
+                                        else if (target && /^tmdb:\s*\d+/i.test(target.val())) {
+                                            e.stopPropagation();
+                                            const tmdb_id = target.val().match(/^tmdb:\s*(\d+)/i)[1].trim();
+                                                log('HeaderSearch tmdb_id: ', tmdb_id);
+                                            Movie.fetchByTmdb(tmdb_id, true).then(movie => {
+                                                let template = `
+                                                <div class="col-md-4 kz_k1 movie_searchResult">
+                                                    <div class="ComponentHeaderSearchTitle kz_il">Films</div>
+                                                    <div style="max-height: 580px; overflow-y: hidden;">
+                                                        <a href="${movie.resource_url}"
+                                                            class="js-searchResult kv_kx">
+                                                            <div class="media">
+                                                                <div class="media-left">
+                                                                    <img class="greyBorder"
+                                                                        src="${movie.poster}"
+                                                                        width="27" height="40" alt="Affiche de ${movie.title}">
+                                                                </div>
+                                                                <div class="media-body media-body--ellipsis">
+                                                                    <div class="mainLink" style="margin-top: 1px;">${movie.title}</div>
+                                                                    <div class="mainTime" style="margin-top: 2px; display: flex;">
+                                                                        <div>${movie.creation}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                `;
+                                                $('.ComponentHeaderSearchContainer .row').empty().prepend(template);
+                                            });
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                    observer.observe(document.getElementById('reactjs-header-search'), { childList: true, subtree: true });
+                })();
+            });
         },
         /**
          * Met à jour les attributs integrity des ressources CSS et JS
@@ -774,18 +788,13 @@ const launchScript = function($) {
                 if (!scriptsAndStyles[resKey]) {
                     continue;
                     }
-                    scriptsAndStyles[style].href += '?v=' + version;
+                const res = resources.resources[resKey];
+                const key = Object.keys(res).shift();
+                // log('updateResources subkey: %s - res: %s', key, res);
+                if (key && scriptsAndStyles[resKey].integrity) {
+                    scriptsAndStyles[resKey].integrity = res[key];
                 }
-            }
-            // Scripts
-            for (const script in resources.js) {
-                if (scriptsAndStyles[script]) {
-                    let key = Object.keys(resources.js[script])[0];
-                    if (scriptsAndStyles[script].integrity) {
-                        scriptsAndStyles[script].integrity = resources.js[script][key];
-                    }
-                    scriptsAndStyles[script].src += '?v=' + version;
-                }
+                scriptsAndStyles[resKey].link += '?v=' + version;
             }
         },
         /**
@@ -889,7 +898,7 @@ const launchScript = function($) {
             let notifContainer = $('.userscript-notifications');
             // On ajoute notre zone de notifications
             if ($('.userscript-notifications').length <= 0) {
-                $('#fb-root').after('<div class="userscript-notifications"><h3><span class="title"></span><i class="fa fa-times" aria-hidden="true"></i></h3><p class="text"></p></div>');
+                $('#fb-root').after('<div class="userscript-notifications"><h3><span class="title"></span><i class="fa-solid fa-xmark" aria-hidden="true"></i></h3><p class="text"></p></div>');
                 notifContainer = $('.userscript-notifications');
                 $('.userscript-notifications .fa-times').on('click', () => {
                     $('.userscript-notifications').slideUp();
@@ -898,7 +907,7 @@ const launchScript = function($) {
             notifContainer.hide();
             $('.userscript-notifications .title').html(title);
             $('.userscript-notifications .text').html(text);
-            notifContainer.slideDown().delay(10000).slideUp();
+            notifContainer.slideDown()/* .delay(5000).slideUp() */;
             console.warn(text);
             console.trace('Notification');
         },
@@ -940,30 +949,54 @@ const launchScript = function($) {
                     data.loaded = true;
                     cb();
                 };
-                loadJS(data.src, {
+                loadJS(data.link, {
                     integrity: data.integrity,
                     id: data.id,
                     crossOrigin: 'anonymous',
                     referrerPolicy: 'no-referrer'
                 }, onloadFn, loadErrorScript);
-            }
-            else if (data.type === 'style') {
+            };
+            const loadStyle = function(data, cb) {
                 const loadErrorStyle = function(oError) {
                     logLoad('loadErrorStyle error', oError);
                     console.error("The style " + oError.target.href + " didn't load correctly.");
                 }
-                let origOnLoadFunction = onloadFn;
                 onloadFn = function() {
                     logLoad('style(%s) chargé, on renvoie le callback', name);
                     data.loaded = true;
                     cb();
                 };
-                loadCSS( data.href, null, data.media, {
+                loadCSS( data.link, null, data.media, {
                     integrity: data.integrity,
                     id: data.id,
                     crossOrigin: 'anonymous',
                     referrerPolicy: 'no-referrer'
                 }, onloadFn, loadErrorStyle );
+            };
+            const data = scriptsAndStyles[name];
+            if (Array.isArray(data)) {
+                const nbData = data.length;
+                let nbLoaded = 0;
+                const callback = () => {
+                    if (++nbLoaded === nbData) onloadFn();
+                };
+                for (let d = 0; d < nbData; d++) {
+                    data[d].called = true;
+                    if (data[d].type === 'script') loadScript(data[d], callback);
+                    else if (data[d].type === 'style') loadStyle(data[d], callback);
+                }
+            }
+            // On vérifie si il est déjà chargé
+            else if (data.called && data.loaded) {
+                logLoad('%s(%s) déjà appelé et chargé, on renvoie direct', data.type, name);
+                return onloadFn();
+            } else if (data.called && !data.loaded) {
+                system.waitPresent(() => { return scriptsAndStyles[name].loaded; }, onloadFn, 10, 10);
+                return;
+            } else {
+                scriptsAndStyles[name].called = true;
+                if (data.type === 'script') loadScript(data, onloadFn);
+                else if (data.type === 'style') loadStyle(data, onloadFn);
             }
         },
         /**
@@ -1218,7 +1251,7 @@ const launchScript = function($) {
                         if ((res.mediaType.singular === 'show' && res.images.poster === posters[title][p]) ||
                             (res.mediaType.singular === 'movie' && res.poster === posters[title][p]))
                         {
-                            check = '<i class="fa fa-check-circle fa-3x" aria-hidden="true"></i>';
+                            check = '<i class="fa-solid fa-circle-check fa-3x" aria-hidden="true"></i>';
                         }
                         let cross = '';
                         if (!regDomain.test(posters[title][p])) {
@@ -1259,7 +1292,7 @@ const launchScript = function($) {
                     .posters .row .poster img.js-lazy-image {
                         cursor: pointer;
                     }
-                    .posters .row .poster .fa {
+                    .posters .row .poster .fa-solid {
                         position: absolute;
                         top: 5px;
                         left: 5px;
@@ -1309,7 +1342,7 @@ const launchScript = function($) {
             } else if (res.mediaType.singular === 'movie' && res.poster && res.poster !== $poster.attr('src')) {
                 $poster.attr('src', res.poster);
             }
-            $('.blockInformations__poster').append('<i class="fa fa-camera fa-2x selectPoster" aria-hidden="true" style="position:absolute;top:5px;right:5px;padding:5px;cursor:pointer;z-index:5;"></i>');
+            $('.blockInformations__poster').append('<i class="fa-solid fa-camera fa-2x selectPoster" aria-hidden="true" style="position:absolute;top:5px;right:5px;padding:5px;cursor:pointer;z-index:5;"></i>');
             $('.blockInformations__poster .selectPoster').on('click', (e) => {
                 e.stopPropagation();
                 medias.choiceImage(res, (src) => {
@@ -1440,7 +1473,7 @@ const launchScript = function($) {
                             <button type="button" class="close" aria-label="Close" title="Fermer">
                                 <span aria-hidden="true">&times;</span>
                             </button>
-                            <i class="fa fa-question-circle" style="color:blue;margin-left:5px;" aria-hidden="true" title="${help}"></i>
+                            <i class="fa-solid fa-circle-question" style="color:blue;margin-left:5px;" aria-hidden="true" title="${help}"></i>
                             </div>`;
                 };
                 // On relance l'update auto des épisodes au chargement de la page
@@ -1629,7 +1662,9 @@ const launchScript = function($) {
                     });
                 });
             }
-            res.addListeners([EventTypes.UPDATE, EventTypes.ARCHIVE, EventTypes.UNARCHIVE], updateAuto);
+            res.on(EventTypes.UPDATE, updateAuto)
+                .on(EventTypes.ARCHIVE, updateAuto)
+                .on(EventTypes.UNARCHIVE, updateAuto);
 
             // Ajoute les cases à cocher sur les vignettes des épisodes
             function addCheckSeen() {
@@ -1708,7 +1743,7 @@ const launchScript = function($) {
                     $('#episodes .blockTitles').prepend(`
                         <style>#updateEpisodeList .popover {left: 65px; top: 40px;}</style>
                         <div id="updateEpisodeList" class="updateElements">
-                        <i class="fa fa-refresh fa-2x updateEpisodes updateElement finish"
+                        <i class="fa-solid fa-arrows-rotate fa-2x updateEpisodes updateElement finish"
                             title="Mise à jour des épisodes de la saison"
                             style="margin-right:10px;"
                             aria-hidden="true"></i>
@@ -1784,7 +1819,7 @@ const launchScript = function($) {
                     season[typeBtn]();
                 });
             });
-            $('#seasons .slide_flex .slide__image').prepend('<div class="fa fa-camera fa-2x selectPoster" aria-hidden="true" style="position:absolute;top:5px;left:5px;padding:5px;cursor:pointer;z-index:5;" title="Choisir une affiche"></div>');
+            $('#seasons .slide_flex .slide__image').prepend('<div class="fa-solid fa-camera fa-2x selectPoster" aria-hidden="true" style="position:absolute;top:5px;left:5px;padding:5px;cursor:pointer;z-index:5;" title="Choisir une affiche"></div>');
             $('#seasons .slide_flex .slide__image .selectPoster').on('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -1979,7 +2014,7 @@ const launchScript = function($) {
             if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
             if (logger.enabled) console.groupCollapsed('similarsViewed');
             if (res instanceof Show && $('#similars').length <= 0) {
-                res.addListener(EventTypes.ADD, medias.addSimilarsSection);
+                res.on(EventTypes.ADD, medias.addSimilarsSection);
             }
             let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = $similars.length; // Le nombre de similaires
@@ -2170,22 +2205,26 @@ const launchScript = function($) {
                                     console.error('Popover addShow error', err);
                                 });
                             });
-                            $('.popover .toSeeShow').on('click', async (e) => {
+                            $('.popover .toSeeShow').on('click', (e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 const $link = $(e.currentTarget);
+                                const $icon = $link.children('.fa-solid');
                                 const showId = parseInt($link.data('showId'), 10);
                                 log('Popover toSeeShow', {$link, $icon, showId, toSee});
                                 system.toggleToSeeShow(showId).then(toSee => {
-                                if (toSee) {
-                                    $link.children('span').text('Ne plus voir');
-                                } else {
-                                    $link.children('span').text('A voir');
-                                }
+                                    if (toSee) {
+                                            $icon.text('Ne plus voir');
+                                            $icon.removeClass('fa-user-clock').addClass('fa-clock-rotate-left');
+                                    } else {
+                                            $icon.text('A voir');
+                                            $icon.removeClass('fa-clock-rotate-left').addClass('fa-user-clock');
+                                    }
+                                });
                             });
                         }
                     })
-                    .on('inserted.bs.popover', function() {
+                    .on('inserted.bs.popover', async function() {
                         const $link = $(this),
                               $popover = $('.popover'),
                               placement = funcPlacement(null, this),
@@ -2193,7 +2232,7 @@ const launchScript = function($) {
                               objSimilar = res.getSimilar(resId);
                         // log('placement similar: ', placement);
                         $('.popover-header').html(objSimilar.getTitlePopup());
-                        $('.popover-body').html(objSimilar.getContentPopup());
+                        $('.popover-body').html(await objSimilar.getContentPopup());
                         // On gère le placement de la Popover par rapport à l'image du similar
                         if (placement == 'left') {
                             const img = $popover.siblings('img.js-lazy-image'),
@@ -2209,7 +2248,9 @@ const launchScript = function($) {
             });
             medias.replaceSuggestSimilarHandler($('#similars button.blockTitle-subtitle'), objSimilars);
             if (res.mediaType.singular === MediaType.show) {
-                res.addListener(EventTypes.ADDED, medias.replaceSuggestSimilarHandler, '#similars button.blockTitle-subtitle', objSimilars);
+                res.on(EventTypes.ADDED, () => {
+                    medias.replaceSuggestSimilarHandler($('#similars button.blockTitle-subtitle'), objSimilars);
+                });
             }
         },
         /**
@@ -2318,11 +2359,11 @@ const launchScript = function($) {
                 });
             }
             // const $btnCmt = $('#comments div.slide__image > button');
-            res.comments.addListener(EventTypes.ADDED, eventComments);
-            res.comments.addListener(EventTypes.ADD, evaluations);
-            res.addListener(EventTypes.NOTE, evaluations);
-            res.comments.addListener(EventTypes.SHOW, () => {
-                if (debug) console.log('Listener show of comments');
+            res.comments.on(EventTypes.ADDED, eventComments);
+            res.comments.on(EventTypes.ADD, evaluations);
+            res.on(EventTypes.NOTE, evaluations);
+            res.comments.on(EventTypes.SHOW, () => {
+                log('Listener show of comments');
                 const $textarea = $('.writing textarea');
                 const users = res.comments.getLogins();
                 $textarea.textcomplete([{
@@ -2411,7 +2452,7 @@ const launchScript = function($) {
             if (res.objNote.user > 0) {
                 displayNotesInPopup();
             }
-            res.addListener(EventTypes.NOTE, displayNotesInPopup);
+            res.on(EventTypes.NOTE, displayNotesInPopup);
         },
         /**
          * Redéfinit l'event click sur le bouton Vu sur la page d'un film
@@ -2459,7 +2500,7 @@ const launchScript = function($) {
          * dans une modal
          */
         addBtnDev: function() {
-            const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>';
+            const btnHTML = '<div class="blockInformations__action"><button class="btn-reset btn-transparent" type="button" style="height:44px;width:64px;"><i class="fa-solid fa-wrench" aria-hidden="true" style="font-size:1.5em;"></i></button><div class="label">Dev</div></div>';
             $('.blockInformations__actions').last().append(btnHTML);
             /**
              * @type {Dialog}
@@ -2542,7 +2583,7 @@ const launchScript = function($) {
                                             <span aria-hidden="true">&times;</span>
                                         </div>
                                         <div class="thumbnailSearchTitle mainLink"><span class="showTitle">${show.title}</span>
-                                            <i class="fa fa-clipboard" aria-hidden="true" title="Copier le titre"></i>
+                                            <i class="fa-solid fa-clipboard" aria-hidden="true" title="Copier le titre"></i>
                                         </div>
                                         <p class="genre-result-search">${show.genres.join(', ')}</p>
                                         <div class="info-result-search">
@@ -2633,7 +2674,7 @@ const launchScript = function($) {
                           padding: 0.5em 0 0.5em 3em;
                         }
                         .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .ui-icon,
-                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .fa {
+                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .fa-solid {
                             height: 24px;
                             width: 24px;
                             position: absolute;
@@ -2645,7 +2686,7 @@ const launchScript = function($) {
                             top: 0.1em;
                             left: 0.4em;
                         }
-                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .fa {
+                        .ui-selectmenu-menu .ui-menu.customicons .ui-menu-item .fa-solid {
                             left: 0.2em;
                         }
                         .ui-selectmenu-menu.ui-front.ui-selectmenu-open {
@@ -2993,7 +3034,7 @@ const launchScript = function($) {
                             class="dialog-close"
                             aria-label="Fermer cette boîte de dialogue"
                             >
-                            <i class="fa fa-times" aria-hidden="true"></i>
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                             </button>
 
                             <h1 id="dialog-compare-title">Comparaison des membres</h1>
@@ -3100,7 +3141,7 @@ const launchScript = function($) {
         searchFriends: function() {
             // Ajouter un champ de recherche
             $('.maincontent h1').append('<input id="searchFriends" placeholder="Recherche d\'amis" list="friendsdata" autocomplete="off"/>' +
-                '<i class="fa fa-times clearSearch" aria-hidden="true" style="display:none;" title="Effacer la recherche"></i>');
+                '<i class="fa-solid fa-xmark clearSearch" aria-hidden="true" style="display:none;" title="Effacer la recherche"></i>');
             // Recuperer les identifiants et liens des membres
             let $links = $('.timeline-item .infos a'), objFriends = {}, idFriends = [], datalist = '<datalist id="friendsdata">';
             // On recupere les infos des amis
@@ -3265,7 +3306,7 @@ const launchScript = function($) {
                 e.preventDefault();
                 const dialog = system.getDialog();
                 dialog
-                    .setContent('<div style="text-align:center;"><i class="fa fa-spinner fa-3x" aria-hidden="true"></i></div>')
+                    .setContent('<div style="text-align:center;"><i class="fa-solid fa-sync fa-spin fa-3x" aria-hidden="true"></i></div>')
                     .setTitle('10 dernières séries vues').show();
                 Show.fetchLastSeen().then(async (shows) => {
                     const override = await dbGetValue('override', {shows:{},movies:{}});
@@ -3287,7 +3328,7 @@ const launchScript = function($) {
                                     </div>
                                     <div class="media-body" style="height:174px;position:relative;">
                                         <div class="thumbnailSearchTitle mainLink"><span class="showTitle">${show.title}</span>
-                                            <i class="fa fa-clipboard" aria-hidden="true" title="Copier le titre"></i>
+                                            <i class="fa-solid fa-clipboard" aria-hidden="true" title="Copier le titre"></i>
                                         </div>
                                         <p class="genre-result-search">${show.genres.join(', ')}</p>
                                         <div class="info-result-search">
@@ -3472,9 +3513,9 @@ const launchScript = function($) {
                 const showId = parseInt(elt.dataset.sid, 10);
                 const btnHTML = `
                         <button class="btn-reset btnMarkToSee" type="button" title="Ajouter la série aux séries à voir">
-                            <i class="fa fa-clock-o" aria-hidden="true"></i>
+                            <i class="fa-solid fa-user-clock" aria-hidden="true"></i>
                         </button>`;
-                const iconTitleHTML = '<i class="fa fa-clock-o" aria-hidden="true" title="Série à voir plus tard"></i>';
+                const iconTitleHTML = '<i class="fa-solid fa-clock" aria-hidden="true" title="Série à voir plus tard"></i>';
                 $(elt).prepend(btnHTML);
                 /** @type {JQuery<HTMLButtonElement} */
                 const $btn = $('.btnMarkToSee', elt);
@@ -3485,17 +3526,17 @@ const launchScript = function($) {
                     // const $btn = jQuery(e.currentTarget);
                     const toSeeShow = await system.toggleToSeeShow(showId);
                     if (toSeeShow) {
-                        $btn.addClass('marked');
+                        $btn.addClass('fa-trash-clock').removeClass('fa-user-clock');
                         $btn.attr('title', 'Retirer la série des séries à voir');
                         $title.append(iconTitleHTML);
                     } else {
-                        $btn.removeClass('marked');
+                        $btn.addClass('fa-user-clock').removeClass('fa-trash-clock');
                         $btn.attr('title', 'Ajouter la série aux séries à voir');
-                        $('.fa', $title).remove();
+                        $('.fa-solid', $title).remove();
                     }
                 });
                 if (toSee.includes(showId)) {
-                    $btn.addClass('marked');
+                    $btn.addClass('fa-trash-clock').removeClass('fa-user-clock');
                     $btn.attr('title', 'Retirer la série des séries à voir');
                     $title.append(iconTitleHTML);
                 }
@@ -3890,7 +3931,7 @@ const launchScript = function($) {
                 });
             });
             // Ajoute un cadenas vérouillé au paramètre 'Version' non-modifiable
-            $('.api-params:first').append('<i class="fa fa-lock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:not-allowed;" aria-hidden="true"></i>');
+            $('.api-params:first').append('<i class="fa-solid fa-lock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:not-allowed;" aria-hidden="true"></i>');
             addRemoveParamToConsole();
             addToggleShowResult();
             /**
@@ -3899,8 +3940,8 @@ const launchScript = function($) {
             function addRemoveParamToConsole() {
                 let elts = $('.api-params:not(.remove):not(.lock):not(:first)');
                 elts
-                    .append('<i class="remove-input fa fa-minus-circle fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
-                    .append('<i class="lock-param fa fa-unlock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
+                    .append('<i class="remove-input fa-solid fa-circle-minus fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
+                    .append('<i class="lock-param fa-solid fa-lock-open fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
                     .addClass('remove');
                 $('.remove-input').on('click', (e) => {
                     $(e.currentTarget).parent('.api-params').remove();
@@ -3909,13 +3950,13 @@ const launchScript = function($) {
                     e.stopPropagation();
                     e.preventDefault();
                     let self = $(e.currentTarget);
-                    if (UsBetaSeries.debug) console.log('lock-param', self, self.hasClass('fa-unlock'));
-                    if (self.hasClass('fa-unlock')) {
-                        self.removeClass('fa-unlock').addClass('fa-lock');
+                    log('lock-param', self, self.hasClass('fa-unlock'));
+                    if (self.hasClass('fa-lock-open')) {
+                        self.removeClass('fa-lock-open').addClass('fa-lock');
                         self.parent('.api-params').removeClass('remove').addClass('lock');
                     }
                     else {
-                        self.removeClass('fa-lock').addClass('fa-unlock');
+                        self.removeClass('fa-lock').addClass('fa-lock-open');
                         self.parent('.api-params').addClass('remove').removeClass('lock');
                     }
                 });
@@ -3923,21 +3964,21 @@ const launchScript = function($) {
             function addToggleShowResult() {
                 let $result = $('#result');
                 // On ajoute un titre pour la section de résultat de la requête
-                $result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa fa-chevron-circle-down" aria-hidden="true"></i></span></h2>');
+                $result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa-solid fa-circle-chevron-down" aria-hidden="true"></i></span></h2>');
                 $('.toggle').on('click', () => {
                     // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
                     $result.toggle(400, () => {
                         if ($result.is(':hidden')) {
-                            $('.toggle i').removeClass('fa-chevron-circle-up').addClass('fa-chevron-circle-down');
+                            $('.toggle i').removeClass('fa-circle-chevron-up').addClass('fa-circle-chevron-down');
                         }
                         else {
-                            $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
+                            $('.toggle i').removeClass('fa-circle-chevron-down').addClass('fa-circle-chevron-up');
                         }
                     });
                 });
                 // On modifie le sens du chevron lors du lancement d'une requête
                 $('button.is-full').on('click', () => {
-                    $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
+                    $('.toggle i').removeClass('fa-circle-chevron-down').addClass('fa-circle-chevron-up');
                 });
             }
         },
@@ -3961,7 +4002,7 @@ const launchScript = function($) {
                 let cell = '<td>';
                 if (verb in methods[key]) {
                     cell += `<i data-id="${methods[key][verb].id}"
-                                class="linkSommaire fa fa-check fa-2x"
+                                class="linkSommaire fa-solid fa-check fa-2x"
                                 title="${methods[key][verb].title}"></i>`;
                 }
                 return cell + '</td>';
@@ -3986,13 +4027,13 @@ const launchScript = function($) {
              */
             function buildTable() {
                 let $table = $(`
-                    <style>i.fa {cursor: pointer;margin-left: 10px;}</style>
+                    <style>i.fa-solid {cursor: pointer;margin-left: 10px;}</style>
                     <div id="sommaire" class="table-responsive" style="display:none;">
                         <table class="table table-dark table-striped table-bordered">
                             <thead class="thead-dark">
                                 <tr>
                                     <th colspan="5" scope="col" class="col-lg-12 liTitle">
-                                        Sommaire <i class="fa fa-chevron-circle-up" aria-hidden="true" title="Fermer le sommaire"></i>
+                                        Sommaire <i class="fa-solid fa-circle-chevron-up" aria-hidden="true" title="Fermer le sommaire"></i>
                                     </th>
                                 </tr>
                             </thead>
@@ -4016,7 +4057,7 @@ const launchScript = function($) {
                 // ajouter les ID aux titres des methodes, ainsi qu'un chevron pour renvoyer au sommaire
                 let $title = $(titles.get(t)), id = $title.text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-'), txt = $title.text().trim().split(' ')[1], desc = $title.next('p').text(), key = txt.toLowerCase().replace(/\//, ''), verb = $title.text().trim().split(' ')[0].toUpperCase();
                 $title.attr('id', id);
-                $title.append('<i class="fa fa-chevron-circle-up" aria-hidden="true" title="Retour au sommaire"></i>');
+                $title.append('<i class="fa-solid fa-circle-chevron-up" aria-hidden="true" title="Retour au sommaire"></i>');
                 if (!(key in methods)) methods[key] = { title: txt };
                 methods[key][verb] = { id: id, title: desc };
             }
@@ -4100,7 +4141,7 @@ const launchScript = function($) {
                             if (/^\/serie\//.test(link.pathname)) {
                                 Show.fetchByUrl(url).then(show => {
                                     resolve({
-                                        title: '<i class="fa fa-film" aria-hidden="true"></i> Détails de la série',
+                                        title: '<i class="fa-solid fa-film" aria-hidden="true"></i> Détails de la série',
                                         html: `
                                         <div class="media">
                                             <div class="media-left">
@@ -4108,7 +4149,7 @@ const launchScript = function($) {
                                             </div>
                                             <div class="media-body">
                                                 <div class="blogThumbnailShowTitle mainLink">
-                                                    ${show.title} ${show.in_account ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                                    ${show.title} <i class="fa-solid ${show.in_account?'fa-square-check':'fa-square'}" aria-hidden="true"></i>
                                                 </div>
                                                 <div class="display">
                                                     <div>${show.seasons.length} saisons - ${show.nbEpisodes} épisodes</div>
@@ -4126,7 +4167,7 @@ const launchScript = function($) {
                                 const movieId = url.match(/^(\d+)/)[1];
                                 Movie.fetch(movieId, true).then(movie => {
                                     resolve({
-                                        title: '<i class="fa fa-film" aria-hidden="true"></i> Détails du film',
+                                        title: '<i class="fa-solid fa-film" aria-hidden="true"></i> Détails du film',
                                         html: `
                                         <div class="media">
                                             <div class="media-left">
@@ -4134,7 +4175,7 @@ const launchScript = function($) {
                                             </div>
                                             <div class="media-body">
                                                 <div class="blogThumbnailShowTitle mainLink">
-                                                    ${movie.title} ${movie.user.status === 1 ? '<i class="fa fa-check-square-o" aria-hidden="true"></i>': '<i class="fa fa-square-o" aria-hidden="true"></i>'}
+                                                    ${movie.title} <i class="fa-solid ${movie.user.status === 1 ? 'fa-square-check': 'fa-square'}" aria-hidden="true"></i>
                                                 </div>
                                                 <div class="display">
                                                     <time class="mainTime" datetime="${movie.release_date.format('yyyy-mm-dd')}">${movie.release_date.format('dd mmmm yyyy')}</time>
@@ -4555,90 +4596,10 @@ const launchScript = function($) {
         UsBetaSeries.changeNetworkState(NetworkState.online);
     });
 
-    if (UsBetaSeries.userIdentified()) {
-        system.addScriptAndLink('socket', () => {
-            if (typeof io !== 'undefined') {
-                socket = io(serverBaseUrl.replace(/^https/, 'wss'), { autoConnect: false, reconnection: false });
-            }
-            socket.auth = {
-                userId: parseInt(betaseries_user_id, 10),
-                token: betaseries_api_user_token,
-                lastNotifId: 1
-            };
-            const sessionID = localStorage.getItem('sessionID');
-            if (sessionID) {
-                socket.auth.sessionID = sessionID;
-            }
-            socket.connect();
-            socket.on("connect", () => {
-                if (debug) console.log('socket event.connect', {connected: socket.connected});
-                if (socket.connected) nbRetryConn = 0;
-            });
-
-            socket.on('notifications', (data) => {
-                if (debug) console.log('news notifications received', data);
-                if (data.notifications) {
-                    user.addNotifications(data.notifications);
-                }
-                if (data.lastNotifId) {
-                    // On stocke le dernier ID connu, en cas de reconnexion
-                    socket.auth.lastNotifId = data.lastNotifId;
-                }
-            });
-            socket.on("session", ({ sessionID, userId, lastNotifId }) => {
-                // attach the session ID to the next reconnection attempts
-                socket.auth = { sessionID };
-                // store it in the localStorage
-                localStorage.setItem("sessionID", sessionID);
-                // save the ID of the user
-                socket.userId = userId;
-                socket.auth.lastNotifId = lastNotifId;
-            });
-            /*
-             * Tentative de reconnexion manuelle
-             */
-            const maxRetryConn = 5;
-            let nbRetryConn = 0;
-            const tryReconnect = () => {
-                if (nbRetryConn < maxRetryConn) {
-                    nbRetryConn++;
-                    setTimeout(() => {
-                        console.log('tryReconnect: tentative de reconnexion %d', nbRetryConn);
-                        socket.open();
-                        if (socket.listeners("connect_error").length <= 0) {
-                            socket.on('connect_error', (err) => {
-                                if (err) {
-                                    console.log('tryReconnect: reconnexion KO', err);
-                                    tryReconnect();
-                                }
-            });
-                        }
-                    }, 2000);
-                }
-            }
-            socket.on("close", tryReconnect);
-
-            socket.on("disconnect", () => {
-                console.log('socket event.disconnect', {connected: socket.connected});
-                tryReconnect();
-            });
-            unsafeWindow.addEventListener('offline', () => {
-                if (socket) {
-                    nbRetryConn = maxRetryConn;
-                }
-            });
-            unsafeWindow.addEventListener('online', () => {
-                if (socket) {
-                    nbRetryConn = 0;
-                    tryReconnect();
-                }
-            });
-        });
-    }
     /**
      * Initialization du script
      */
-    system.init();
+    userPromise = system.init();
     medias.addBtnToSee();
     members.lastSeen();
 
@@ -4734,6 +4695,142 @@ const launchScript = function($) {
         log('Page d\'un article');
         articles.checkArticle();
         articles.addPopupOnLinks();
+    }
+
+    /*
+     *      WebSockets et Notifications
+     */
+    if (UsBetaSeries.userIdentified()) {
+        system.addScriptAndLink('socket', () => {
+            const loggerWS = logger.extend('socket');
+            const logWS = loggerWS.fnLog;
+            let notifs =  localStorage.getItem('notifications');
+            let lastNotifId = parseInt(localStorage.getItem('lastNotifId')) || 1;
+            if (typeof notifs === 'string') {
+                try {
+                    notifs = JSON.parse(notifs);
+                    if (typeof notifs === 'object' && Reflect.has(notifs, 'new') && Reflect.has(notifs, 'old')) {
+                        userPromise.then((/** @type {Member} */ user) => {
+                            if (user) {
+                                user.addNotifications(notifs['old'].concat(notifs['new']));
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.error('JSON.parse notifications error', err);
+                }
+            }
+            const maxRetryConn = 10;
+            let nbRetryConn = 0;
+            let timeoutDuration = 2000;
+            if (typeof io !== 'undefined') {
+                const optsSocket = {
+                    transports: ["websocket", "polling"],
+                    rememberUpgrade: true,
+                    withCredentials: true,
+                    autoConnect: false,
+                    reconnection: true,
+                    reconnectionAttempts: maxRetryConn,
+                    reconnectionDelay: timeoutDuration,
+                    reconnectionDelayMax: 60000,
+                    timeout: 10000,
+                    auth: {
+                        userId: parseInt(betaseries_user_id, 10),
+                        token: betaseries_api_user_token, //betaseries_api_user_token,
+                        lastNotifId: lastNotifId // Indique que l'on veut récupérer toutes les notifs au démarrage
+                    }
+                }
+                const sessionID = localStorage.getItem('sessionID');
+                if (sessionID) {
+                    optsSocket.auth.sessionID = sessionID;
+                }
+                socket = io(serverBaseUrl.replace(/^https/, 'wss'), optsSocket);
+            }
+            socket.connect();
+            socket.on("connect", () => {
+                if (socket.connected) {
+                    logWS('event.connect', {connected: socket.connected, id: socket.id});
+                    // nbRetryConn = 0;
+                    // noRetry = false;
+                }
+            });
+
+
+            socket.on('notifications', (data) => {
+                if (socket.auth.lastNotifId == 1) {
+                    logWS('Get notifications initiales', data);
+                } else {
+                    logWS('News notifications received', data);
+                }
+                if (data.notifications) {
+                    user.addNotifications(data.notifications);
+                    localStorage.setItem('notifications', JSON.stringify(user.notifications));
+                }
+                if (data.lastNotifId) {
+                    // On stocke le dernier ID connu, en cas de reconnexion
+                    socket.auth.lastNotifId = data.lastNotifId;
+                    localStorage.setItem('lastNotifId', data.lastNotifId);
+                }
+            });
+            socket.on('token', (data) => {
+                logWS('Socket.on(token)', data);
+                if (data.token) {
+                    UsBetaSeries.token = data.token;
+                    unsafeWindow.betaseries_api_user_token = data.token;
+                }
+            })
+            socket.on("session", ({ sessionID, userId, lastNotifId }) => {
+                logWS('Socket.on(session)', { sessionID, userId, lastNotifId });
+                // attach the session ID to the next reconnection attempts
+                socket.auth = { sessionID };
+                // store it in the localStorage
+                localStorage.setItem("sessionID", sessionID);
+                // save the ID of the user
+                socket.userId = userId;
+                socket.auth.lastNotifId = lastNotifId;
+            });
+            socket.on('goodbye', () => noRetry = true);
+            /*
+             * Tentative de reconnexion manuelle
+             */
+            // let noRetry = false;
+            const tryReconnect = () => {
+                if (nbRetryConn < maxRetryConn) {
+                    nbRetryConn++;
+                    // timeoutDuration = (nbRetryConn * 10) * 2000;
+                    setTimeout(() => {
+                        console.warn('[%s] %ctryReconnect: tentative de reconnexion %d/%d', new Date().format('datetime'), 'color:#007bff', nbRetryConn, maxRetryConn);
+                        socket.open();
+                        if (socket.listeners("connect_error").length <= 0) {
+                            socket.on('connect_error', (err) => {
+                                if (err) {
+                                    const newTry = (nbRetryConn < maxRetryConn) ? `, nouvelle tentavie dans ${timeoutDuration / 1000} sec.` : '';
+                                    console.error('[%s] %ctryReconnect: reconnexion KO%s', new Date().format('datetime'), 'color:#007bff', newTry, err);
+                                    tryReconnect();
+                                }
+                            });
+                        }
+                    }, (nbRetryConn * 10) * 2000);
+                }
+            }
+
+            socket.on("disconnect", () => {
+                logWS('event.disconnect', {connected: socket.connected});
+                // if (!noRetry) tryReconnect();
+            });
+            unsafeWindow.addEventListener('offline', () => {
+                if (socket) {
+                    nbRetryConn = maxRetryConn;
+                }
+            });
+            unsafeWindow.addEventListener('online', () => {
+                if (socket) {
+                    logWS('Network online, try to reconnect socket');
+                    nbRetryConn = 0;
+                    tryReconnect();
+                }
+            });
+        });
     }
 };
 /*
