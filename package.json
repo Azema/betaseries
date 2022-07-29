@@ -1,7 +1,7 @@
 {
   "name": "betaseries_userscript",
   "description": "UserScript pour le site BetaSeries testé avec Tampermonkey sur Chrome",
-  "version": "1.5.23",
+  "version": "1.5.95",
   "author": {
     "email": "manuel.hervo@gmail.com",
     "name": "Azema"

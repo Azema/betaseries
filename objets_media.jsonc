@@ -508,5 +508,17 @@
             "notification_news": true,
             "twitter_auto": false
         }
+    },
+    "notification": {
+        "id": 1737635072,
+        "type": "poll",
+        "ref_id": "390",
+        "text": "Voici une notification de test",
+        "html": "Voici une <u>notification</u> de test : <a href=\"#\">Linkk<\/a>",
+        "date": "2022-06-08 12:12:44",
+        "seen": null,
+        "payload": {
+            "url": "https:\/\/www.betaseries.com\/sondage\/390-les-series-en-stories"
+        }
     }
 }

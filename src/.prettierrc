@@ -1,0 +1,6 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "singleQuote": true,
+  "trailingComma": "all",
+  "tabWidth": 4
+}
