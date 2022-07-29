@@ -3,6 +3,8 @@ import { Episode } from "./Episode";
 import { RelatedProp, RenderHtml } from "./RenderHtml";
 import { Show } from "./Show";
 export declare class Season extends RenderHtml {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /**
      * Les différents sélecteurs CSS des propriétés de l'objet
      * @static

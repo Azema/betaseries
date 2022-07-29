@@ -17,6 +17,8 @@ export declare type MediaTypes = {
     className: Class<Base>;
 };
 export declare abstract class MediaBase extends RenderHtml implements implAddNote {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /** @type {string} */
     description: string;
     /** @type {number} */

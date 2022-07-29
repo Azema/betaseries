@@ -229,6 +229,8 @@ export interface implShow {
 export declare class Show extends Media implements implShow, implAddNote {
     /***************************************************/
     /***************************************************/
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}

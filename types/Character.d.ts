@@ -3,6 +3,8 @@ import { implFillDecorator } from "./Decorators";
 import { MediaType } from "./Media";
 import { Changes, RelatedProp } from "./RenderHtml";
 export declare class Character implements implFillDecorator {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static relatedProps: Record<string, RelatedProp>;
     /**
      * Nom de l'acteur/actrice
@@ -125,6 +127,8 @@ export declare class PersonMedias {
     getTemplate(): string;
 }
 export declare class Person implements implFillDecorator {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static relatedProps: Record<string, RelatedProp>;
     static selectorsCSS: Record<string, string>;
     /**

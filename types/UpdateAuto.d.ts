@@ -1,6 +1,8 @@
 import { Obj } from "./Base";
 import { Show } from "./Show";
 export declare class UpdateAuto {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     private static instance;
     static intervals: Array<Obj>;
     /**

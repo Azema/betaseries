@@ -36,6 +36,8 @@ export declare enum TypeDisplayComment {
 export declare class CommentBS extends Base implements implFillDecorator {
     /*************************************************/
     /*************************************************/
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /**
      * @type {Object.<string, RelatedProp>}
      */

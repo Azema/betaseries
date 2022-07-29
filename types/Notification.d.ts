@@ -1,4 +1,5 @@
-import { Obj } from "./Base";
+import { Obj, EventTypes } from "./Base";
+import { fnEmitter, implEmitterDecorator } from "./Decorators";
 /**
  * Les différents types de notifications
  */
@@ -56,17 +57,27 @@ export declare class NotifPayload {
  * Contient les notifications anciennes et nouvelles
  * @class NotificationList
  */
-export declare class NotificationList {
+export declare class NotificationList implements implEmitterDecorator {
+    static logger: import("./Debug").Debug;
+    static debug: any;
+    static EventTypes: EventTypes[];
     /**
      * Retourne les notifications du membre
      * @param   {number} [nb = 10] Nombre de notifications à récupérer
      * @returns {Promise<NotificationList>}
      */
     static fetch(nb?: number): Promise<NotificationList>;
+    static fromJSON(notifs: any): NotificationList;
     old: Array<NotificationBS>;
     new: Array<NotificationBS>;
     seen: boolean;
+    private __decorators;
     constructor();
+    hasListeners(event: EventTypes): boolean;
+    on(event: EventTypes, fn: fnEmitter): implEmitterDecorator;
+    off(event: EventTypes, fn?: fnEmitter): implEmitterDecorator;
+    once(event: EventTypes, fn: fnEmitter): implEmitterDecorator;
+    emit(event: EventTypes): implEmitterDecorator;
     /**
      * Symbol Iterator pour pouvoir itérer sur l'objet dans les boucles for
      */
@@ -92,6 +103,9 @@ export declare class NotificationList {
      * tableau old
      */
     markAllAsSeen(): void;
+    getLastId(): number;
+    hasNew(): boolean;
+    toJSON(): object;
 }
 /**
  * Classe NotificationBS

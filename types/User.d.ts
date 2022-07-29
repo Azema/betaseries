@@ -20,6 +20,8 @@ export declare class Next {
  * @extends RenderHtml
  */
 export declare class User extends RenderHtml {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /**
      * Objet contenant les relations entre les données de l'API BS et la classe User
      * @type {Record<string, RelatedProp>}

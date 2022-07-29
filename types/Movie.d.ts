@@ -30,6 +30,8 @@ export declare enum MovieStatus {
 export declare class Movie extends Media implements implAddNote {
     /***************************************************/
     /***************************************************/
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static propsAllowedOverride: object;
     static overrideType: string;
     static selectorsCSS: Record<string, string>;

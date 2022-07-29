@@ -65,6 +65,8 @@ export declare type WatchedBy = {
     avatar?: string;
 };
 export declare class Episode extends MediaBase implements implAddNote {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static selectorsCSS: Record<string, string>;
     static relatedProps: Record<string, RelatedProp>;
     static fetch(epId: number): Promise<Episode>;

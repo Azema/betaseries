@@ -16,6 +16,8 @@ export declare type CustomEvent = {
 export declare class CommentsBS extends Base implements implRepliesComment {
     /*************************************************/
     /*************************************************/
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}

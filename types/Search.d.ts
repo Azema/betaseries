@@ -81,6 +81,8 @@ export declare class ParamsSearchMovies extends ParamsSearchAbstract {
     toRequest(): Record<string, string | number>;
 }
 export declare class Search {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static searchShows(params: ParamsSearchShows): Promise<ResultSearch>;
     static getShowIds(params: ParamsSearchShows): Promise<Array<number>>;
     static searchMovies(params: ParamsSearchMovies): Promise<ResultSearch>;

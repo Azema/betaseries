@@ -101,6 +101,8 @@ export declare type ParamsFetchSubtitles = {
  * @class
  */
 export declare class Subtitles {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /**
      * Collection de subtitles
      * @type {Subtitle[]}

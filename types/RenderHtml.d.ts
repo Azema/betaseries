@@ -50,6 +50,8 @@ export interface implRenderHtml {
  * @implements {implFillDecorator}
  */
 export declare abstract class RenderHtml extends Base implements implRenderHtml, implFillDecorator {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static relatedProps: Record<string, RelatedProp>;
     static selectorsCSS: Record<string, string>;
     /**

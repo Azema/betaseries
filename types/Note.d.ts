@@ -5,6 +5,8 @@ export interface implAddNote {
     addVote(note: number): Promise<boolean>;
 }
 export declare class Note {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     /**
      * Nombre de votes
      * @type {number}

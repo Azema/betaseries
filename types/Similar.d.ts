@@ -25,6 +25,8 @@ export interface implDialog {
  * @implements {implMovie}
  */
 export declare class Similar extends Media implements implShow, implMovie {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static relatedProps: {};
     backdrop: string;
     director: string;
@@ -88,7 +90,7 @@ export declare class Similar extends Media implements implShow, implMovie {
      * de présentation du similar
      * @return {string}
      */
-    getContentPopup(): string;
+    getContentPopup(): Promise<string>;
     /**
      * Retourne le contenu HTML du titre de la popup
      * @return {string}

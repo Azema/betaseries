@@ -3,6 +3,7 @@
  * @module BetaSeries
  */
 import { CacheUS } from "./Cache";
+import { Debug } from "./Debug";
 import { Member } from "./Member";
 /**
  * Un objet Error, type ExceptionIdentification
@@ -32,17 +33,19 @@ export declare type NetworkStateEvents = {
  * @alias EventTypes
  */
 export declare enum EventTypes {
-    UPDATE = "update",
-    SAVE = "save",
     ADD = "add",
-    DELETE = "delete",
     ADDED = "added",
-    REMOVE = "remove",
-    NOTE = "note",
     ARCHIVE = "archive",
-    UNARCHIVE = "unarchive",
+    DELETE = "delete",
+    HIDE = "hide",
+    NEW = "new",
+    NOTE = "note",
+    REMOVE = "remove",
+    SAVE = "save",
+    SEEN = "seen",
     SHOW = "show",
-    HIDE = "hide"
+    UNARCHIVE = "unarchive",
+    UPDATE = "update"
 }
 /**
  * HTTP_VERBS
@@ -201,12 +204,24 @@ export declare class FakePromise {
      */
     launch(): Promise<any>;
 }
+export declare type fnListener = (event: CustomEvent, obj: Base) => void;
+export declare type objListener = {
+    fn: fnListener;
+    args?: any[];
+};
+interface Emitter {
+    hasListeners(event: EventTypes): boolean;
+    on(event: EventTypes, fn: fnListener, ...args: any[]): this;
+    off(name: EventTypes): this;
+    once(event: EventTypes, fn: fnListener, ...argsOnce: any[]): this;
+    emit(event: EventTypes): this;
+}
 /**
  * Classe de base contenant essentiellement des propriétés et des méthodes statiques
  * @class
  * @abstract
  */
-export declare abstract class Base {
+export declare abstract class Base implements Emitter {
     /**
      * Types d'évenements gérés par cette classe
      * @type {Array}
@@ -236,7 +251,7 @@ export declare abstract class Base {
      * @return {Base} L'instance du média
      * @sealed
      */
-    addListener(name: EventTypes, fn: Callback, ...args: any[]): this;
+    addListener(name: EventTypes, fn: fnListener, ...args: any[]): this;
     /**
      * Permet d'ajouter un listener sur plusieurs types d'évenements
      * @param  {EventTypes[]} names -   Le type d'évenement
@@ -245,7 +260,7 @@ export declare abstract class Base {
      * @return {Base} L'instance du média
      * @sealed
      */
-    addListeners(names: EventTypes[], fn: Callback, ...args: any[]): this;
+    addListeners(names: EventTypes[], fn: fnListener, ...args: any[]): this;
     /**
      * Permet de supprimer un listener sur un type d'évenement
      * @param  {string}   name - Le type d'évenement
@@ -253,7 +268,7 @@ export declare abstract class Base {
      * @return {Base} L'instance du média
      * @sealed
      */
-    removeListener(name: EventTypes, fn: Callback): this;
+    removeListener(name: EventTypes, fn: fnListener): this;
     /**
      * Appel les listeners pour un type d'évenement
      * @param  {EventTypes} name - Le type d'évenement
@@ -261,18 +276,56 @@ export declare abstract class Base {
      * @sealed
      */
     _callListeners(name: EventTypes): this;
+    /**
+     * Check if this emitter has `event` handlers.
+     *
+     * @param event - Le type d'évènement
+     * @returns {boolean}
+     */
+    hasListeners(event: EventTypes): boolean;
+    /**
+     * Listen on the given `event` with `fn`.
+     * @param   {EventTypes} event - Le type d'évènement à écouter
+     * @param   {fnListener} fn - La fonction callback
+     * @param   {...*} args - les paramètres supplémentaires à ajouter à la function callback
+     * @returns {Base}
+     */
+    on(event: EventTypes, fn: fnListener, ...args: any[]): this;
+    /**
+     * Remove all registered callbacks for `event`.
+     * @param   {EventTypes} name - Le type d'évènement dont l'écoute est annulée
+     * @returns {Base}
+     */
+    off(name: EventTypes): this;
+    /**
+     * Adds an `event` listener that will be invoked a single
+     * time then automatically removed.
+     * @param {EventTypes} event - Le type d'évènement à écouter
+     * @param {fnListener} fn - La fonction callback
+     * @param {...*} argsOnce - les paramètres supplémentaires à ajouter à la function callback
+     * @returns {Base}
+     */
+    once(event: EventTypes, fn: fnListener, ...argsOnce: any[]): this;
+    /**
+     * Emit `event`.
+     * @param  {EventTypes} event - Le type d'évenement
+     * @return {Base} L'instance du média
+     */
+    emit(event: EventTypes): this;
 }
 /**
  * Classe principale du projet, contenant toutes les propriétés et méthodes statiques
  * @class
  */
 export declare class UsBetaSeries {
+    static setDebug: typeof Debug;
+    static logger: Debug;
     /**
      * Flag de debug pour le dev
      * @static
-     * @type {boolean}
+     * @type {Function}
      */
-    static debug: boolean;
+    static debug: (...args: any[]) => void;
     /**
      * L'objet cache du script pour stocker les données
      * @static
@@ -513,3 +566,4 @@ declare global {
         camelCase: () => string;
     }
 }
+export {};

@@ -75,6 +75,8 @@ export declare class OptionsMember {
     constructor(data: Obj);
 }
 export declare class Member implements implFillDecorator {
+    static logger: import("./Debug").Debug;
+    static debug: any;
     static relatedProps: Record<string, RelatedProp>;
     /**
      * Retourne les infos du membre connecté
@@ -165,7 +167,7 @@ export declare class Member implements implFillDecorator {
      * Tableau des notifications du membre
      * @type {NotificationList}
      */
-    notifications: NotificationList;
+    _notifications: NotificationList;
     private __decorators;
     __initial: boolean;
     __changes: Record<string, Changes>;
@@ -177,6 +179,13 @@ export declare class Member implements implFillDecorator {
      * @returns {Member}
      */
     constructor(data: Obj);
+    get notifications(): NotificationList;
+    /**
+     * Définit la propriété `notifications` et lui ajoute un listener sur l'event SEEN
+     * @param  {NotificationList} list - La liste des notifications
+     * @throws {TypeError}
+     */
+    set notifications(list: NotificationList);
     /**
      * Remplit l'objet avec les données fournit en paramètre
      * @param   {Obj} data - Les données provenant de l'API
@@ -201,7 +210,8 @@ export declare class Member implements implFillDecorator {
     checkNotifs(): void;
     addNotifications(notifs: Obj): void;
     /**
-     * renderNotifications - Affiche les notifications du membre
+     * renderNotifications - Affiche les notifications du membre sur la page Web
+     * @returns {void}
      */
     renderNotifications(): void;
 }
