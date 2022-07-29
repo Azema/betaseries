@@ -36,6 +36,8 @@ export class Movie extends Media implements implAddNote {
     /***************************************************/
     /*                      STATIC                     */
     /***************************************************/
+    static logger = new UsBetaSeries.setDebug('Media:Movie');
+    static debug = Movie.logger.debug.bind(Movie.logger);
 
     static propsAllowedOverride: object = {
         poster: { path: 'poster' }
@@ -281,7 +283,7 @@ export class Movie extends Media implements implAddNote {
     public changeStatus(state: MovieStatus): Promise<this> {
         const self = this;
         if (!UsBetaSeries.userIdentified() || this.user.status === state) {
-            if (UsBetaSeries.debug) console.info('User not identified or state is equal with user status');
+            console.info('User not identified or state is equal with user status');
             return Promise.resolve(this);
         }
         return UsBetaSeries.callApi(HTTP_VERBS.POST, this.mediaType.plural, 'movie', {id: this.id, state: state})

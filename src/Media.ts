@@ -20,6 +20,8 @@ export type MediaTypes = {
 };
 
 export abstract class MediaBase extends RenderHtml implements implAddNote {
+    static logger = new UsBetaSeries.setDebug('Media');
+    static debug = MediaBase.logger.debug.bind(MediaBase.logger);
 
     /*
                     PROPERTIES
@@ -58,7 +60,7 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
      */
     _initRender(): this {
         if (!this.elt) return this;
-        // console.log('Base._initRender', this);
+        // MediaBase.debug('Base._initRender', this);
         this.objNote
             .updateAttrTitle()
             .updateStars();
@@ -70,7 +72,7 @@ export abstract class MediaBase extends RenderHtml implements implAddNote {
      */
     updatePropRenderObjNote(): void {
         if (! this.elt) return;
-        if (UsBetaSeries.debug) console.log('updatePropRenderObjNote');
+        MediaBase.debug('updatePropRenderObjNote');
         this.objNote
             .updateStars()
             .updateAttrTitle();
@@ -364,7 +366,7 @@ export abstract class Media extends MediaBase {
             if (type.propsAllowedOverride[prop].params) {
                 override[type.overrideType][this.id][prop] = {value, params};
                 path = UsBetaSeries.replaceParams(path, type.propsAllowedOverride[prop].params, params);
-                console.log('override', {prop, value, params, path});
+                MediaBase.debug('override', {prop, value, params, path});
             }
             UsBetaSeries.setPropValue(this, path, value);
             await UsBetaSeries.gm_funcs.setValue('override', override);
@@ -382,9 +384,9 @@ export abstract class Media extends MediaBase {
         const type = (this.constructor as typeof Media);
         const overrideType = type.overrideType;
         const override = await UsBetaSeries.gm_funcs.getValue('override', {shows: {}, movies: {}});
-        if (UsBetaSeries.debug) console.log('_overrideProps override', override);
+        MediaBase.debug('_overrideProps override', override);
         if (Reflect.has(override[overrideType], this.id)) {
-            if (UsBetaSeries.debug) console.log('_overrideProps override found', override[overrideType][this.id]);
+            MediaBase.debug('_overrideProps override found', override[overrideType][this.id]);
             for (const prop in override[overrideType][this.id]) {
                 let path = type.propsAllowedOverride[prop].path;
                 let value = override[overrideType][this.id][prop];
@@ -393,7 +395,7 @@ export abstract class Media extends MediaBase {
                     const params = override[overrideType][this.id][prop].params;
                     path = UsBetaSeries.replaceParams(path, type.propsAllowedOverride[prop].params, params);
                 }
-                if (UsBetaSeries.debug) console.log('_overrideProps prop[%s]', prop, {path, value});
+                MediaBase.debug('_overrideProps prop[%s]', prop, {path, value});
                 UsBetaSeries.setPropValue(this, path, value);
             }
         }
@@ -419,13 +421,13 @@ export abstract class Media extends MediaBase {
         return new Promise((res, rej) => {
             fetch(`${proxy}?tab=series&id=${tvdb_id}`, initFetch)
             .then(res => {
-                // console.log('_getTvdbUrl response', res);
+                MediaBase.debug('_getTvdbUrl response', res);
                 if (res.ok) {
                     return res.json();
                 }
                 return rej();
             }).then(data => {
-                // console.log('_getTvdbUrl data', data);
+                MediaBase.debug('_getTvdbUrl data', data);
                 if (data) { res(data.url) } else { rej(); }
             });
         });

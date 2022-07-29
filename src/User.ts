@@ -1,4 +1,4 @@
-import { Obj } from "./Base";
+import { Obj, UsBetaSeries } from "./Base";
 import { WatchedBy } from "./Episode";
 import { RelatedProp, RenderHtml } from "./RenderHtml";
 
@@ -28,6 +28,9 @@ export class Next {
  * @extends RenderHtml
  */
 export class User extends RenderHtml {
+    static logger = new UsBetaSeries.setDebug('User');
+    static debug = User.logger.debug.bind(User.logger);
+
     /**
      * Objet contenant les relations entre les données de l'API BS et la classe User
      * @type {Record<string, RelatedProp>}

@@ -117,6 +117,9 @@ export type ParamsFetchSubtitles = {
  * @class
  */
 export class Subtitles {
+    static logger = new UsBetaSeries.setDebug('Subtitles');
+    static debug = Subtitles.logger.debug.bind(Subtitles.logger);
+
     /**
      * Collection de subtitles
      * @type {Subtitle[]}

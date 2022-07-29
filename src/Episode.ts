@@ -72,6 +72,9 @@ export type WatchedBy = {
 };
 
 export class Episode extends MediaBase implements implAddNote {
+    static logger = new UsBetaSeries.setDebug('Episode');
+    static debug = Episode.logger.debug.bind(Episode.logger);
+
     static selectorsCSS: Record<string, string> = {};
     static relatedProps: Record<string, RelatedProp> = {
         // data: Obj => object: Show
@@ -367,23 +370,23 @@ export class Episode extends MediaBase implements implAddNote {
 
         let changed = false;
         if ($checkSeen.length > 0 && $checkSeen.attr('id') === undefined) {
-            if (UsBetaSeries.debug) console.log('ajout de l\'attribut ID à l\'élément "checkSeen"');
+            Episode.debug('ajout de l\'attribut ID à l\'élément "checkSeen"');
             // On ajoute l'attribut ID
             $checkSeen.attr('id', 'episode-' + this.id);
             $checkSeen.data('id', this.id);
             $checkSeen.data('pos', pos);
             $checkSeen.data('special', this.special ? '1': '0');
         }
-        // if (BetaSeries.debug) console.log('updateCheckSeen', {seen: this.user.seen, elt: this.elt, checkSeen: $checkSeen.length, classSeen: $checkSeen.hasClass('seen'), pos: pos, Episode: this});
+        // if (BetaSeries.debug) Episode.debug('updateCheckSeen', {seen: this.user.seen, elt: this.elt, checkSeen: $checkSeen.length, classSeen: $checkSeen.hasClass('seen'), pos: pos, Episode: this});
         // Si le membre a vu l'épisode et qu'il n'est pas indiqué, on change le statut
         if (this.user.seen && $checkSeen.length > 0 && !$checkSeen.hasClass('seen')) {
-            if (UsBetaSeries.debug) console.log('Changement du statut (seen) de l\'épisode %s', this.code);
+            Episode.debug('Changement du statut (seen) de l\'épisode %s', this.code);
             this.updateRender('seen', false);
             changed = true;
         }
         // Si le membre n'a pas vu l'épisode et qu'il n'est pas indiqué, on change le statut
         else if (!this.user.seen && $checkSeen.length > 0 && $checkSeen.hasClass('seen')) {
-            if (UsBetaSeries.debug) console.log('Changement du statut (notSeen) de l\'épisode %s', this.code);
+            Episode.debug('Changement du statut (notSeen) de l\'épisode %s', this.code);
             this.updateRender('notSeen', false);
             changed = true;
         }
@@ -471,7 +474,7 @@ export class Episode extends MediaBase implements implAddNote {
 
             UsBetaSeries.callApi(method, 'episodes', 'watched', args)
             .then((data: Obj) => {
-                if (UsBetaSeries.debug) console.log('updateStatus %s episodes/watched', method, data);
+                Episode.debug('updateStatus %s episodes/watched', method, data);
                 // Si un épisode est vu et que la série n'a pas été ajoutée
                 // au compte du membre connecté
                 if (self._season && ! self._season.showInAccount() && data.episode.show.in_account) {
@@ -517,9 +520,9 @@ export class Episode extends MediaBase implements implAddNote {
                 }
             })
             .catch(err => {
-                if (UsBetaSeries.debug) console.error('updateStatus error %s', err);
+                console.error('updateStatus error %s', err);
                 if (err && err == 'changeStatus') {
-                    if (UsBetaSeries.debug) console.log('updateStatus error %s changeStatus', method);
+                    Episode.debug('updateStatus error %s changeStatus', method);
                     self.user.seen = (status === 'seen') ? true : false;
                     self.updateRender(status);
                     if (self.season) {
@@ -544,7 +547,7 @@ export class Episode extends MediaBase implements implAddNote {
      */
     updateRender(newStatus: string, update = true): Episode {
         const $elt: JQuery<HTMLElement> = this.elt.find('.checkSeen');
-        if (UsBetaSeries.debug) console.log('Episode.changeStatus (season: %d, episode: %d, statut: %s)', this.season.number, this.number, newStatus, {elt: $elt, update: update});
+        Episode.debug('Episode.changeStatus (season: %d, episode: %d, statut: %s)', this.season.number, this.number, newStatus, {elt: $elt, update: update});
         if (newStatus === 'seen') {
             $elt.css('background', ''); // On ajoute le check dans la case à cocher
             $elt.addClass('seen'); // On ajoute la classe 'seen'
@@ -583,11 +586,11 @@ export class Episode extends MediaBase implements implAddNote {
     toggleSpinner(display: boolean): Episode {
         if (! display) {
             jQuery('.spinner').remove();
-            // if (BetaSeries.debug) console.log('toggleSpinner');
-            if (UsBetaSeries.debug) console.groupEnd();
+            // if (BetaSeries.debug) Episode.debug('toggleSpinner');
+            if (Episode.logger.enabled) console.groupEnd();
         } else {
-            if (UsBetaSeries.debug) console.groupCollapsed('episode checkSeen');
-            // if (BetaSeries.debug) console.log('toggleSpinner');
+            if (Episode.logger.enabled) console.groupCollapsed('episode checkSeen');
+            // if (BetaSeries.debug) Episode.debug('toggleSpinner');
             this.elt.find('.slide__image').first().prepend(`
                 <div class="spinner">
                     <div class="spinner-item"></div>

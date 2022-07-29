@@ -282,6 +282,9 @@ export class ParamsSearchMovies extends ParamsSearchAbstract {
     }
 }
 export class Search {
+    static logger = new UsBetaSeries.setDebug('Search');
+    static debug = Search.logger.debug.bind(Search.logger);
+
     static searchShows(params: ParamsSearchShows): Promise<ResultSearch> {
         const result: ResultSearch = {
             shows: [],

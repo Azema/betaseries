@@ -43,6 +43,7 @@ module.exports = function(grunt) {
         src: {
             tsc: [
                 '<%= distdir %>/tsc/Cache.js',
+                '<%= distdir %>/tsc/Debug.js',
                 '<%= distdir %>/tsc/Base.js',
                 '<%= distdir %>/tsc/RenderHtml.js',
                 '<%= distdir %>/tsc/Character.js',
@@ -66,6 +67,7 @@ module.exports = function(grunt) {
             ],
             js: [
                 '<%= distdir %>/js/Cache.js',
+                '<%= distdir %>/js/Debug.js',
                 '<%= distdir %>/js/Base.js',
                 '<%= distdir %>/js/RenderHtml.js',
                 '<%= distdir %>/js/Character.js',
@@ -90,7 +92,8 @@ module.exports = function(grunt) {
         },
         paths: {
             oauth: path.resolve('../../betaseries-oauth'),
-            doc: path.resolve('./doc')
+            doc: path.resolve('./doc'),
+            pageTest: path.resolve('./PagesWebTest')
         },
         clean: ['<%= distdir %>/*'],
         lineending: {
@@ -229,21 +232,84 @@ module.exports = function(grunt) {
                      */
                     onCreateServer: function(server, connect) {
                         connect.storageFile = {};
-                        const { Server } = require('socket.io');
+                        /* const { Server } = require('socket.io');
                         const io = new Server(server, {
                             cors: {origin: 'https://www.betaseries.com'}
                         });
                         const Redis = require("ioredis");
-                        const { checkNotifs, authApi, getRedisUrl } = require('./websockets/socket');
+                        const { checkNotifs, getRedisUrl } = require('./websockets/socket');
                         // TODO: pensez au fichier de config dans le répertoire websockets
                         const redisUrl = getRedisUrl();
                         /** @type {Redis} */
-                        const redisClient = new Redis(redisUrl);
+                        /* const redisClient = new Redis(redisUrl);
                         const { RedisSessionStore } = require("./websockets/sessionStore");
                         const sessionStore = new RedisSessionStore(redisClient);
                         const { randomBytes } = require("crypto");
                         const randomId = () => randomBytes(8).toString("hex");
-                        const cleanToken = (token) => String(token).replace(/[^a-fA-F0-9]*/g, '').trim();
+                        const cleanToken = (token) => String(token).replace(/[^a-fA-F0-9]+/g, '').trim();
+                        function Emitter(userId) {
+                            this.userId = userId;
+                            this.callbacks = {};
+                            this.status = 0; // 0: not init, 1: init, 2: launch, 3: stopped
+                            return this;
+                        }
+                        Emitter.prototype = {
+                            init: function(socket) {
+                                console.log('Emitter.init', this);
+                                this.on('error', (err, nbRetry = 0) => {
+                                    // Gérer les erreurs
+                                    console.log('Emitter.on(error) nb retry: %d', nbRetry, err);
+                                })
+                                .on('goodbye', () => {
+                                    this.status = 3;
+                                    console.log('Emitter.on(goodbye) disconnect');
+                                    socket.to(socket.userId.toString()).emit('goodbye');
+                                    socket.disconnect(true);
+                                })
+                                .on('news', (data) => {
+                                    console.log('Emitter.on(news): %d notifications found', data.notifications.length, {lastNotifId: data.lastNotifId, token: socket.token});
+                                    socket.to(socket.userId.toString()).emit('notifications', {notifications: data.notifications, lastNotifId: data.lastNotifId});
+                                    // console.log('Nouvelles notifications: last ID(%d)', data.lastNotifId);
+                                    sessionStore.saveSession(socket.sessionID, {
+                                        userId: socket.userId,
+                                        lastNotifId: data.lastNotifId,
+                                        token: socket.token,
+                                        connected: true
+                                    });
+                                })
+                                .on('token', async (token) => {
+                                    const matchingSockets = await io.in(socket.userId.toString()).allSockets();
+                                    console.log('Emitter.on(token) - nbSockets: %d', matchingSockets.size);
+                                    io.in(socket.userId.toString()).emit('token', {token});
+                                    sessionStore.saveSession(socket.sessionID, {
+                                        userId: socket.userId,
+                                        lastNotifId: socket.lastNotifId,
+                                        token: token,
+                                        connected: true
+                                    });
+                                })
+                                .status = 1;
+                                return this;
+                            },
+                            on: function(event, fn) {
+                                this.callbacks = this.callbacks || {};
+                                if (!this.callbacks[event]) {
+                                    this.callbacks[event] = [];
+                                }
+                                this.callbacks[event].push(fn);
+                                return this;
+                            },
+                            emit: function(event, ...args) {
+                                if (this.callbacks[event]) {
+                                    for (let c = 0, _len = this.callbacks[event].length; c < _len; c++) {
+                                        this.callbacks[event][c].apply(this, args);
+                                    }
+                                }
+                                return this;
+                            }
+                        }; */
+                        /** @type {Object.<string, Emitter>} */
+                        /* const emitters = {};
                         // Middleware authentification
                         io.use(async (socket, next) => {
                             // console.log('wbesocket middleware', socket.handshake.auth);
@@ -265,7 +331,10 @@ module.exports = function(grunt) {
                                     if (socket.handshake.auth.token) {
                                         socket.token = cleanToken(socket.handshake.auth.token);
                                     }
-                                    console.log('wbesocket session found', {lastNotifId: socket.lastNotifId, token: socket.token, userId: socket.userId, sessionID: socket.sessionID});
+                                    if (!Reflect.has(emitters, socket.userId)) {
+                                        emitters[socket.userId] = new Emitter(socket.userId).init(socket);
+                                    }
+                                    // console.log('wbesocket session found', {lastNotifId: socket.lastNotifId, token: socket.token, userId: socket.userId, sessionID: socket.sessionID});
                                     return next();
                                 }
                             }
@@ -290,7 +359,10 @@ module.exports = function(grunt) {
                                 token: socket.token,
                                 connected: true
                             });
-                            console.log('a new session with user connected with userId: %d', userId, socket.sessionID);
+                            if (!Reflect.has(emitters, userId)) {
+                                emitters[userId] = new Emitter(userId).init(socket);
+                            }
+                            // console.log('a new session with user connected with userId: %d', userId, socket.sessionID);
                             next();
                         });
                         io.on('connection', (socket) => {
@@ -307,9 +379,16 @@ module.exports = function(grunt) {
                                 userId: socket.userId,
                                 lastNotifId: socket.lastNotifId
                             });
+                            socket.join(socket.userId.toString());
                             // 2. Récupérer les notifs sur l'API BS
-                            if (socket.token && socket.token.length > 0) {
+
+                            socket.emitter = emitters[socket.userId];
+                            console.log('Socket.on(connection) - emitter:', socket.emitter);
+                            if (socket.emitter.status === 1) {
+                                socket.emitter.status = 2;
                                 checkNotifs(socket, sessionStore);
+                            } */
+                            /* if (socket.token && socket.token.length > 0) {
                             } else {
                                 authApi(socket, (err) => {
                                     if (err) {
@@ -319,23 +398,29 @@ module.exports = function(grunt) {
                                     }
                                     checkNotifs(socket, sessionStore);
                                 });
-                            }
+                            } */
                             // 3. Si nouvelles notifs, envoyer les notifs au client
 
-                            socket.on('disconnect', () => {
-                                console.log('wbesocket event.disconnect');
+                            /* socket.on('disconnect', async () => {
+                                const matchingSockets = await io.in(socket.userId.toString()).allSockets();
+                                const isDisconnected = matchingSockets.size === 0;
+                                console.log('wbesocket event.disconnect - nbSockets: %d', matchingSockets.size);
                                 sessionStore.saveSession(socket.sessionID, {
                                     userId: socket.userId,
                                     lastNotifId: socket.lastNotifId,
                                     token: socket.token,
                                     connected: false
                                 });
-                                if (socket.timer) {
-                                    console.log('websocket disconnect clearTimeout');
-                                    clearTimeout(socket.timer);
+                                if (isDisconnected) {
+                                    emitters[socket.userId].status = 3;
+                                    delete emitters[socket.userId];
+                                    if (socket.timer) {
+                                        console.log('websocket disconnect clearTimeout');
+                                        clearTimeout(socket.timer);
+                                    }
                                 }
                             });
-                        });
+                        }); */
                     },
                     // remove next from params
                     middleware: function(connect, _options, middlewares) {
@@ -512,6 +597,50 @@ module.exports = function(grunt) {
                         );
                         return middlewares;
                     }
+                }
+            },
+            test: {
+                options: {
+                    protocol: 'https',
+                    key: grunt.file.read('./ssl/localhost.key').toString(),
+                    cert: grunt.file.read('./ssl/localhost.crt').toString(),
+                    ca: grunt.file.read('./ssl/myCA.pem').toString(),
+                    hostname: 'localhost',
+                    port: 9002,
+                    base: {
+                        path: '<%= paths.pageTest %>',
+                        options: {
+                            dotfiles: 'allow',
+                            index: 'index.html'
+                        }
+                    },
+                    debug: true,
+                    keepalive: true,
+                    middleware: function(connect, options, middlewares) {
+                        // inject a custom middleware into the array of default middlewares
+                        middlewares.unshift(function(req, res, next) {
+                            if (req.url.startsWith('/ajax')) {
+                                res.statusCode = 404;
+                                return res.end();
+                            }
+                            else if (req.url === '/serie/zoey-extraordinary-playlist') {
+                                res.setHeader('Content-Type', 'text/html');
+                                return res.end(fs.readFileSync(path.resolve('./PagesWebTest/Zoey-Extraordinary-Playlist.html')));
+                            } else if (req.url.startsWith('/serie/Zoey-Extraordinary-Playlist_files/')) {
+                                const pathFile = req.url.replace('/serie', path.resolve('./PagesWebTest')).replace(/\?.*$/, '');
+                                try {
+                                    if (fs.statSync(pathFile, {throwIfNoEntry: false})) {
+                                        return res.end(fs.readFileSync(pathFile));
+                                    }
+                                } catch(err) {
+                                    console.error('Error Stat file: ', err);
+                                }
+                            }
+                            next();
+                        });
+
+                        return middlewares;
+                    },
                 }
             }
         }

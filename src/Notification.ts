@@ -1,4 +1,5 @@
-import { Obj, HTTP_VERBS, UsBetaSeries, isNull } from "./Base";
+import { Obj, HTTP_VERBS, UsBetaSeries, isNull, EventTypes } from "./Base";
+import { AbstractDecorator, EmitterDecorator, fnEmitter, implEmitterDecorator } from "./Decorators";
 
 /*
 {
@@ -108,7 +109,15 @@ export class NotifPayload {
  * Contient les notifications anciennes et nouvelles
  * @class NotificationList
  */
-export class NotificationList {
+export class NotificationList implements implEmitterDecorator {
+    static logger = new UsBetaSeries.setDebug('Notification');
+    static debug = NotificationList.logger.debug.bind(NotificationList.logger);
+
+    static EventTypes: EventTypes[] = [
+        EventTypes.SEEN,
+        EventTypes.NEW
+    ];
+
     /**
      * Retourne les notifications du membre
      * @param   {number} [nb = 10] Nombre de notifications à récupérer
@@ -133,14 +142,44 @@ export class NotificationList {
             return new NotificationList();
         }) */;
     }
+    public static fromJSON(notifs): NotificationList {
+        const list = new NotificationList();
+        for (const type of ['new', 'old']) {
+            for (let n = 0, _len = notifs[type].length; n < _len; n++) {
+                list.add(notifs[type][n]);
+            }
+        }
+        if (!isNull(notifs.seen)) {
+            list.seen = notifs.seen;
+        }
+        return list;
+    }
 
     old: Array<NotificationBS>;
     new: Array<NotificationBS>;
     seen: boolean;
+    private __decorators: Record<string, AbstractDecorator> = {
+        emitter: new EmitterDecorator(this)
+    };
     constructor() {
         this.old = [];
         this.new = [];
         this.seen = false;
+    }
+    hasListeners(event: EventTypes): boolean {
+        return (this.__decorators.emitter as EmitterDecorator).hasListeners(event);
+    }
+    on(event: EventTypes, fn: fnEmitter): implEmitterDecorator {
+        return (this.__decorators.emitter as EmitterDecorator).on(event, fn);
+    }
+    off(event: EventTypes, fn?: fnEmitter): implEmitterDecorator {
+        return (this.__decorators.emitter as EmitterDecorator).off(event, fn);
+    }
+    once(event: EventTypes, fn: fnEmitter): implEmitterDecorator {
+        return (this.__decorators.emitter as EmitterDecorator).once(event, fn);
+    }
+    emit(event: EventTypes): implEmitterDecorator {
+        return (this.__decorators.emitter as EmitterDecorator).emit(event);
     }
     /**
      * Symbol Iterator pour pouvoir itérer sur l'objet dans les boucles for
@@ -161,8 +200,12 @@ export class NotificationList {
      * @param {NotificationBS} notif La notification à ajouter
      */
     public add(notif: NotificationBS): void {
+        if (!(notif instanceof NotificationBS)) {
+            notif = new NotificationBS(notif);
+        }
         const category = (notif.seen === null) ? 'new' : 'old';
         this[category].push(notif);
+        if (category === 'new') this.emit(EventTypes.NEW);
     }
     /**
      * Tri les tableaux des notifications en ordre DESC
@@ -170,6 +213,7 @@ export class NotificationList {
      */
     public sort(): NotificationList {
         const sortNotifs = (a: NotificationBS, b: NotificationBS) => {
+            if (isNull(a) || isNull(b)) return 0;
             if (a.date.getTime() > b.date.getTime())
                 return -1;
             else if (a.date.getTime() < b.date.getTime())
@@ -193,7 +237,26 @@ export class NotificationList {
             }
             this.new = [];
             this.seen = false;
+            this.emit(EventTypes.SEEN);
         }
+    }
+    public getLastId(): number {
+        if (this.new.length > 0) {
+            return this.new[0].id;
+        } else if (this.old.length > 0) {
+            return this.old[0].id;
+        }
+        return null;
+    }
+    public hasNew(): boolean {
+        return this.new.length > 0;
+    }
+    public toJSON(): object {
+        return {
+            'new': this.new,
+            'old': this.old,
+            'seen': this.seen
+        };
     }
 }
 /**

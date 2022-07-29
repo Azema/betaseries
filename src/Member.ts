@@ -1,4 +1,4 @@
-import { UsBetaSeries, HTTP_VERBS, Obj, isNull } from "./Base";
+import { UsBetaSeries, HTTP_VERBS, Obj, isNull, EventTypes } from "./Base";
 import { AbstractDecorator, FillDecorator, implFillDecorator } from "./Decorators";
 import { NotificationBS, NotificationList } from "./Notification";
 import { Changes, RelatedProp } from "./RenderHtml";
@@ -90,6 +90,9 @@ export class Member implements implFillDecorator {
     /*
                     STATIC
      */
+    static logger = new UsBetaSeries.setDebug('Member');
+    static debug = Member.logger.debug.bind(Member.logger);
+
     static relatedProps: Record<string, RelatedProp> = {
         "id": {key: "id", type: 'number'},
         "fb_id": {key: "fb_id", type: 'number'},
@@ -216,7 +219,7 @@ export class Member implements implFillDecorator {
      * Tableau des notifications du membre
      * @type {NotificationList}
      */
-    notifications: NotificationList;
+    _notifications: NotificationList;
 
     private __decorators: Record<string, AbstractDecorator> = {
         fill: new FillDecorator(this)
@@ -240,6 +243,55 @@ export class Member implements implFillDecorator {
     constructor(data: Obj) {
         this.notifications = new NotificationList();
         return this.fill(data);
+    }
+
+    get notifications(): NotificationList {
+        return this._notifications;
+    }
+
+    /**
+     * Définit la propriété `notifications` et lui ajoute un listener sur l'event SEEN
+     * @param  {NotificationList} list - La liste des notifications
+     * @throws {TypeError}
+     */
+    set notifications(list: NotificationList) {
+        if (!(list instanceof NotificationList)) {
+            throw new TypeError("Property notifications must be an instance of NotificationList");
+        }
+        this._notifications = list;
+        /**
+         *
+         * @param {CustomEvent} event
+         * @this NotificationList
+         */
+        const addBadgeNotifs = function(event: CustomEvent) {
+            Member.debug('NotificationList.setter notifications - function addBadgeNotifs', event, this);
+            if (jQuery('.menu-icon--bell').length > 0) {
+                jQuery('.menu-icon--bell').replaceWith(`<span class="menu-icon menu-icon-bell fa-solid fa-bell"></span>`);
+            }
+            const $bell = jQuery('.menu-item.js-growl-container .menu-icon-bell');
+            const $badge = jQuery('#menuUnseenNotifications');
+            if (this.hasNew()) {
+                if ($badge.length <= 0) {
+                    // Alerter le membre de nouvelles notifications
+                    jQuery('.menu-wrapper .js-iconNotifications').append(`<i class="unread-count unread-notifications" id="menuUnseenNotifications">${this.new.length}</i>`);
+                } else {
+                    $badge.text(this.new.length);
+                }
+            } else if ($badge.length > 0) {
+                $badge.remove();
+            }
+            $bell.toggleClass('fa-shake', this.hasNew());
+        };
+        const removeBadgeNotifs = function(event: CustomEvent) {
+            Member.debug('NotificationList.setter notifications - function removeBadgeNotifs', event, this);
+            jQuery('#menuUnseenNotifications').remove();
+            jQuery('.menu-item.js-growl-container .menu-icon-bell').removeClass('fa-shake');
+            localStorage.setItem('notifications', JSON.stringify(this));
+        };
+        this._notifications
+            .on(EventTypes.NEW, addBadgeNotifs)
+            .on(EventTypes.SEEN, removeBadgeNotifs);
     }
 
     /**
@@ -292,18 +344,6 @@ export class Member implements implFillDecorator {
          const fetchNotifs = () => {
             NotificationList.fetch(50).then(notifs => {
                 this.notifications = notifs;
-                const $badge = jQuery('#menuUnseenNotifications');
-                if (notifs.new.length > 0) {
-                    if ($badge.length <= 0) {
-                        // Alerter le membre de nouvelles notifications
-                        jQuery('.menu-wrapper .js-iconNotifications').append(`<i class="unread-count unread-notifications" id="menuUnseenNotifications">${notifs.new.length}</i>`);
-                    } else {
-                        $badge.text(notifs.new.length);
-                    }
-                    jQuery('.menu-icon--bell').removeClass('has-notifications');
-                } else if ($badge.length > 0) {
-                    $badge.remove();
-                }
             });
         };
         // On met à jour les notifications toutes les 5 minutes
@@ -312,8 +352,6 @@ export class Member implements implFillDecorator {
     }
 
     public addNotifications(notifs: Obj): void {
-        jQuery('.menu-icon--bell').removeClass('has-notifications');
-        const $badge = jQuery('#menuUnseenNotifications');
         if (isNull(this.notifications)) {
             this.notifications = new NotificationList();
         }
@@ -321,20 +359,11 @@ export class Member implements implFillDecorator {
             this.notifications.add(new NotificationBS(notifs[n]));
         }
         this.notifications.sort();
-        if (this.notifications.new.length > 0) {
-            if ($badge.length <= 0) {
-                // Alerter le membre de nouvelles notifications
-                jQuery('.menu-wrapper .js-iconNotifications').append(`<i class="unread-count unread-notifications" id="menuUnseenNotifications">${this.notifications.new.length}</i>`);
-            } else {
-                $badge.text(this.notifications.new.length);
-            }
-        } else if ($badge.length > 0) {
-            $badge.remove();
-        }
     }
 
     /**
-     * renderNotifications - Affiche les notifications du membre
+     * renderNotifications - Affiche les notifications du membre sur la page Web
+     * @returns {void}
      */
     public renderNotifications(): void {
         const $growl = jQuery('#growl'),

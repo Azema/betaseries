@@ -4,6 +4,9 @@ import { MediaType } from "./Media";
 import { Changes, RelatedProp } from "./RenderHtml";
 
 export class Character implements implFillDecorator {
+    static logger = new UsBetaSeries.setDebug('Character');
+    static debug = Character.logger.debug.bind(Character.logger);
+
     static relatedProps: Record<string, RelatedProp> = {
         "actor": {key: "actor", type: 'string'},
         // "description": {key: "description", type: 'string'},
@@ -72,7 +75,7 @@ export class Character implements implFillDecorator {
                     title = title.replace(/&nbsp;/g, '');
                 }
                 if (title == this.actor) {
-                    // if (UsBetaSeries.debug) console.log('Character._initRender: actor found', {actor: this.actor, title});
+                    Character.debug('Character._initRender: actor found', {actor: this.actor, title});
                     self.elt = jQuery(elt);
                     self.elt.attr('data-person-id', this.person_id);
                     return false;
@@ -264,6 +267,9 @@ export class PersonMedias {
 }
 
 export class Person implements implFillDecorator {
+    static logger = new UsBetaSeries.setDebug('Person');
+    static debug = Character.logger.debug.bind(Character.logger);
+
     static relatedProps: Record<string, RelatedProp> = {
         "id": {key: "id", type: 'number'},
         "name": {key: "name", type: 'string'},

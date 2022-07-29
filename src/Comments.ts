@@ -21,6 +21,8 @@ export class CommentsBS extends Base implements implRepliesComment {
     /*************************************************/
     /*                  STATIC                       */
     /*************************************************/
+    static logger = new UsBetaSeries.setDebug('Comments');
+    static debug = CommentsBS.logger.debug.bind(CommentsBS.logger);
 
     /**
      * Types d'évenements gérés par cette classe
@@ -243,7 +245,7 @@ export class CommentsBS extends Base implements implRepliesComment {
      */
     public addComment(data: Obj | CommentBS): this {
         const method = this.order == OrderComments.DESC ? Array.prototype.unshift : Array.prototype.push;
-        if (UsBetaSeries.debug) console.log('addComment order: %s - method: %s', this.order, method.name);
+        CommentsBS.debug('addComment order: %s - method: %s', this.order, method.name);
         if (data instanceof CommentBS) {
             method.call(this.comments, data);
         } else {
@@ -381,9 +383,9 @@ export class CommentsBS extends Base implements implRepliesComment {
         return new Promise((resolve, reject) => {
             let promise = Promise.resolve(self);
 
-            if (UsBetaSeries.debug) console.log('Base ', {length: self.comments.length, nbComments: self.nbComments});
+            CommentsBS.debug('Base ', {length: self.comments.length, nbComments: self.nbComments});
             if (self.comments.length <= 0 && self.nbComments > 0) {
-                if (UsBetaSeries.debug) console.log('Base fetchComments call');
+                CommentsBS.debug('Base fetchComments call');
                 promise = self.fetchComments(nbpp) as Promise<this>;
             }
             promise.then(async () => {
@@ -408,7 +410,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                     // Si le commentaires à des réponses et qu'elles ne sont pas chargées
                     if (comment.nbReplies > 0 && comment.replies.length <= 0) {
                         // On récupère les réponses
-                        if (UsBetaSeries.debug) console.log('Comments render getTemplate fetchReplies');
+                        CommentsBS.debug('Comments render getTemplate fetchReplies');
                         await comment.fetchReplies();
                         // On ajoute un boutton pour afficher/masquer les réponses
                     }
@@ -421,7 +423,7 @@ export class CommentsBS extends Base implements implRepliesComment {
                     template += `
                         <button type="button" class="btn-reset btn-greyBorder moreComments" style="margin-top: 10px; width: 100%;">
                             ${UsBetaSeries.trans("timeline.comments.display_more")}
-                            <i class="fa fa-cog fa-spin fa-2x fa-fw" style="display:none;margin-left:15px;vertical-align:middle;"></i>
+                            <i class="fa-solid fa-cog fa-spin fa-2x" style="display:none;margin-left:15px;vertical-align:middle;"></i>
                             <span class="sr-only">Loading...</span>
                         </button>`;
                 }
@@ -957,7 +959,7 @@ export class CommentsBS extends Base implements implRepliesComment {
      * @returns {void}
      */
     public render(): void {
-        if (UsBetaSeries.debug) console.log('CommentsBS render');
+        CommentsBS.debug('CommentsBS render');
         // La popup et ses éléments
         const self = this,
               $popup = jQuery('#popin-dialog'),

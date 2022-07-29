@@ -1,4 +1,4 @@
-import { Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, UsBetaSeries} from "./Base";
+import { Obj, EventTypes, Rating, HTTP_VERBS, Callback, objToArr, UsBetaSeries, isNull} from "./Base";
 import { implAddNote, Note } from "./Note";
 import {Media, MediaType} from "./Media";
 import {Season} from "./Season";
@@ -333,6 +333,8 @@ export class Show extends Media implements implShow, implAddNote {
     /***************************************************/
     /*                      STATIC                     */
     /***************************************************/
+    static logger = new UsBetaSeries.setDebug('Media:Show');
+    static debug = Show.logger.debug.bind(Show.logger);
 
     /**
      * Types d'évenements gérés par cette classe
@@ -465,7 +467,7 @@ export class Show extends Media implements implShow, implAddNote {
             .then(data => {
                 try {
                     const show = new Show(data.show, jQuery('.blockInformations'));
-                    // console.log('Show::_fetch', show);
+                    // Show.debug('Show::_fetch', show);
                     return show;
                 } catch (err) {
                     console.error('Show::_fetch', err);
@@ -1004,8 +1006,8 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {boolean}
      */
     async isMarkedToSee(): Promise<boolean> {
-        const toSee: Obj = await UsBetaSeries.gm_funcs.getValue('toSee', {});
-        return toSee[this.id] !== undefined;
+        const toSee: Obj = await UsBetaSeries.gm_funcs.getValue('toSee', []);
+        return !isNull(toSee[this.id]);
     }
     /**
      * Supprime l'identifant de la liste des séries à voir,
@@ -1181,8 +1183,8 @@ export class Show extends Media implements implShow, implAddNote {
         this.updateArchived();
         // this.updateNote();
         const note = this.objNote;
-        if (UsBetaSeries.debug) {
-            console.log('Next ID et status', {
+        if (Show.logger.enabled) {
+            Show.debug('Next ID et status', {
                 next: this.user.next.id,
                 status: this.status,
                 archived: this.user.archived,
@@ -1195,7 +1197,7 @@ export class Show extends Media implements implShow, implAddNote {
             // On propose d'archiver si la série n'est plus en production
             if (this.isEnded() && ! this.isArchived())
             {
-                if (UsBetaSeries.debug) console.log('Série terminée, popup proposition archivage');
+                Show.debug('Série terminée, popup proposition archivage');
                 promise = new Promise(resolve => {
                     // eslint-disable-next-line no-undef
                     new PopupAlert({
@@ -1214,7 +1216,7 @@ export class Show extends Media implements implShow, implAddNote {
             }
             // On propose de noter la série
             if (note.user === 0) {
-                if (UsBetaSeries.debug) console.log('Proposition de voter pour la série');
+                Show.debug('Proposition de voter pour la série');
                 promise.then(() => {
                     let retourCallback = false;
                     // eslint-disable-next-line no-undef
@@ -1250,7 +1252,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @return {void}
      */
     updateProgressBar(): void {
-        if (UsBetaSeries.debug) console.log('updateProgressBar');
+        Show.debug('updateProgressBar');
         // On met à jour la barre de progression
         jQuery('.progressBarShow').css('width', this.user.status.toFixed(1) + '%');
     }
@@ -1259,7 +1261,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     updateArchived(): void {
         if (!this.elt) return;
-        if (UsBetaSeries.debug) console.log('Show updateArchived');
+        Show.debug('Show updateArchived');
         const $btnArchive = jQuery('#reactjs-show-actions button.btn-archive', this.elt);
         if (this.isArchived() && $btnArchive.length > 0) {
             $btnArchive.trigger('click');
@@ -1272,7 +1274,7 @@ export class Show extends Media implements implShow, implAddNote {
      */
     updateNextEpisode(cb: Callback = UsBetaSeries.noop): void {
         if (!this.elt) return;
-        if (UsBetaSeries.debug) console.log('updateNextEpisode');
+        Show.debug('updateNextEpisode');
         const self = this;
         const $nextEpisode = jQuery('a.blockNextEpisode', this.elt);
         /**
@@ -1300,7 +1302,7 @@ export class Show extends Media implements implShow, implAddNote {
                     image: ''
                 });
             }
-            if (UsBetaSeries.debug) console.log('nextEpisode et show.user.next OK', this.user, next);
+            Show.debug('nextEpisode et show.user.next OK', this.user, next);
             // Modifier l'image
             const $img = $nextEpisode.find('img'),
                   $remaining = $nextEpisode.find('.remaining div'),
@@ -1318,7 +1320,7 @@ export class Show extends Media implements implShow, implAddNote {
             $remaining.text($remaining.text().trim().replace(/^\d+/, getNbEpisodesUnwatchedTotal()));
         }
         else if ($nextEpisode.length <= 0 && this.user.next && !isNaN(this.user.next.id)) {
-            if (UsBetaSeries.debug) console.log('No nextEpisode et show.user.next OK', this.user);
+            Show.debug('No nextEpisode et show.user.next OK', this.user);
             buildNextEpisode(this);
         }
         else if (! this.user.next || isNaN(this.user.next.id)) {
@@ -1392,14 +1394,14 @@ export class Show extends Media implements implShow, implAddNote {
             jQuery('#reactjs-show-actions > div > button').off('click').one('click', (e: JQuery.ClickEvent) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (UsBetaSeries.debug) console.groupCollapsed('AddShow');
+                if (Show.logger.enabled) console.groupCollapsed('AddShow');
                 const done = function(): void {
                     // On met à jour les boutons Archiver et Favori
                     changeBtnAdd(self);
                     // On met à jour le bloc du prochain épisode à voir
                     self.updateNextEpisode(function() {
                         self._callListeners(EventTypes.ADDED);
-                        if (UsBetaSeries.debug) console.groupEnd();
+                        if (Show.logger.enabled) console.groupEnd();
                     });
                 };
                 self.addToAccount()
@@ -1409,7 +1411,7 @@ export class Show extends Media implements implShow, implAddNote {
                         return;
                     }
                     UsBetaSeries.notification('Erreur d\'ajout de la série', err);
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (Show.logger.enabled) console.groupEnd();
                 });
             });
         }
@@ -1525,7 +1527,7 @@ export class Show extends Media implements implShow, implAddNote {
                 // self.addNumberVoters();
                 // On supprime le btn ToSeeLater
                 self.elt.find('.blockInformations__action .btnMarkToSee').parent().remove();
-                self.elt.find('.blockInformations__title .fa-clock-o').remove();
+                self.elt.find('.blockInformations__title .fa-clock').remove();
                 const toSee = await UsBetaSeries.gm_funcs.getValue('toSee', {});
                 if (toSee[self.id] !== undefined) {
                     delete toSee[self.id];
@@ -1597,7 +1599,7 @@ export class Show extends Media implements implShow, implAddNote {
                                     season.episodes[e].elt = $(checks.get(e));
                                 }
                                 if (e === season.episodes.length - 1) update = true;
-                                if (UsBetaSeries.debug) console.log('clean episode %d', e, update);
+                                Show.debug('clean episode %d', e, update);
                                 season.episodes[e].updateRender('notSeen', update);
                             }
                         });
@@ -1629,16 +1631,16 @@ export class Show extends Media implements implShow, implAddNote {
                     title: UsBetaSeries.trans("popup.delete_show.title", { "%title%": self.title }),
                     text: UsBetaSeries.trans("popup.delete_show.text", { "%title%": self.title }),
                     callback_yes: function() {
-                        if (UsBetaSeries.debug) console.groupCollapsed('delete show');
+                        if (Show.logger.enabled) console.groupCollapsed('delete show');
                         self.removeFromAccount()
                         .then(done, err => {
                             if (err && err.code !== undefined && err.code === 2004) {
                                 done();
-                                if (UsBetaSeries.debug) console.groupEnd();
+                                if (Show.logger.enabled) console.groupEnd();
                                 return;
                             }
                             UsBetaSeries.notification('Erreur de suppression de la série', err);
-                            if (UsBetaSeries.debug) console.groupEnd();
+                            if (Show.logger.enabled) console.groupEnd();
                         });
                     },
                     callback_no: UsBetaSeries.noop
@@ -1651,15 +1653,36 @@ export class Show extends Media implements implShow, implAddNote {
      * @sync
      */
     async addBtnToSee(): Promise<void> {
-        if (this.elt.find('.btnMarkToSee').length > 0) return;
+        Show.debug('Show.addBtnToSee');
         const self = this;
-        const btnHTML = `
-            <div class="blockInformations__action">
-                <button class="btn-reset btn-transparent btnMarkToSee" type="button" title="Ajouter la série aux séries à voir">
-                    <i class="fa fa-clock-o" aria-hidden="true"></i>
-                </button>
-                <div class="label">A voir</div>
-            </div>`;
+        let $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
+        if ($btn.length <= 0) {
+            const btnHTML = `
+                <div class="blockInformations__action">
+                    <button class="btn-reset btn-transparent btnMarkToSee" type="button" title="Ajouter la série aux séries à voir">
+                        <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                    </button>
+                    <div class="label">A voir</div>
+                </div>`;
+            this.elt.find('.blockInformations__actions').last().append(btnHTML);
+            $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
+            $btn.on('click', async (e: JQuery.ClickEvent) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const $btn = jQuery(e.currentTarget);
+                const toSee = await toggleToSeeShow(self.id);
+                if (toSee) {
+                    $btn.find('i.fa-solid').css('color', 'var(--body_background)');
+                    $btn.attr('title', 'Retirer la série des séries à voir');
+                    self.elt.find('.blockInformations__title').append('<i class="fa-solid fa-clock" aria-hidden="true" style="font-size:0.6em;margin-left:5px;vertical-align:middle;" title="Série à voir plus tard"></i>');
+                } else {
+                    $btn.find('i.fa-solid').css('color', 'var(--default-color)');
+                    $btn.attr('title', 'Ajouter la série aux séries à voir');
+                    self.elt.find('.blockInformations__title .fa-solid').remove();
+                }
+                $btn.blur();
+            });
+        }
         const toggleToSeeShow = async (showId: number): Promise<boolean> => {
             const storeToSee: Array<number> = await UsBetaSeries.gm_funcs.getValue('toSee', []);
             const toSee = storeToSee.includes(showId);
@@ -1671,29 +1694,11 @@ export class Show extends Media implements implShow, implAddNote {
             UsBetaSeries.gm_funcs.setValue('toSee', storeToSee);
             return toSee;
         };
-        this.elt.find('.blockInformations__actions').last().append(btnHTML);
-        const $btn = this.elt.find('.blockInformations__action .btnMarkToSee');
-        $btn.on('click', async (e: JQuery.ClickEvent) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const $btn = jQuery(e.currentTarget);
-            const toSee = await toggleToSeeShow(self.id);
-            if (toSee) {
-                $btn.find('i.fa').css('color', 'var(--body_background)');
-                $btn.attr('title', 'Retirer la série des séries à voir');
-                self.elt.find('.blockInformations__title').append('<i class="fa fa-clock-o" aria-hidden="true" style="font-size:0.6em;margin-left:5px;vertical-align:middle;" title="Série à voir plus tard"></i>');
-            } else {
-                $btn.find('i.fa').css('color', 'var(--default-color)');
-                $btn.attr('title', 'Ajouter la série aux séries à voir');
-                self.elt.find('.blockInformations__title .fa').remove();
-            }
-            $btn.blur();
-        });
         const toSee: Obj = await UsBetaSeries.gm_funcs.getValue('toSee', []);
-        if (toSee[this.id] !== undefined) {
-            $btn.find('i.fa').css('color', 'var(--body_background)');
+        if (toSee.includes(this.id)) {
+            $btn.find('i.fa-solid').css('color', 'var(--body_background)');
             $btn.attr('title', 'Retirer la série des séries à voir');
-            self.elt.find('.blockInformations__title').append('<i class="fa fa-clock-o" aria-hidden="true" style="font-size:0.6em;" title="Série à voir plus tard"></i>');
+            self.elt.find('.blockInformations__title').append('<i class="fa-solid fa-clock" aria-hidden="true" style="font-size:0.6em;" title="Série à voir plus tard"></i>');
         }
     }
     /**
@@ -1714,17 +1719,17 @@ export class Show extends Media implements implShow, implAddNote {
         $btnArchive.off('click').click((e: JQuery.ClickEvent): void => {
             e.stopPropagation();
             e.preventDefault();
-            if (UsBetaSeries.debug) console.groupCollapsed('show-archive');
+            if (Show.logger.enabled) console.groupCollapsed('show-archive');
             // Met à jour le bouton d'archivage de la série
             function updateBtnArchive(promise: Promise<Show>, transform: string, label: string, notif: string) {
                 promise.then(() => {
                     const $parent = $(e.currentTarget).parent();
                     $('span', e.currentTarget).css('transform', transform);
                     $('.label', $parent).text(UsBetaSeries.trans(label));
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (Show.logger.enabled) console.groupEnd();
                 }, err => {
                     UsBetaSeries.notification(notif, err);
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (Show.logger.enabled) console.groupEnd();
                 });
             }
             if (! self.isArchived()) {
@@ -1743,7 +1748,7 @@ export class Show extends Media implements implShow, implAddNote {
         $btnFavoris.off('click').click((e: JQuery.ClickEvent): void => {
             e.stopPropagation();
             e.preventDefault();
-            if (UsBetaSeries.debug) console.groupCollapsed('show-favoris');
+            if (Show.logger.enabled) console.groupCollapsed('show-favoris');
             if (! self.isFavorite()) {
                 self.favorite()
                 .then(() => {
@@ -1753,10 +1758,10 @@ export class Show extends Media implements implShow, implAddNote {
                                 <path d="M15.156.91a5.887 5.887 0 0 0-4.406 2.026A5.887 5.887 0 0 0 6.344.909C3.328.91.958 3.256.958 6.242c0 3.666 3.33 6.653 8.372 11.19l1.42 1.271 1.42-1.28c5.042-4.528 8.372-7.515 8.372-11.18 0-2.987-2.37-5.334-5.386-5.334z"></path>
                             </svg>
                             </span>`);
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (Show.logger.enabled) console.groupEnd();
                 }, err => {
                     UsBetaSeries.notification('Erreur de favoris de la série', err);
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (Show.logger.enabled) console.groupEnd();
                 });
             } else {
                 self.unfavorite()
@@ -1767,10 +1772,10 @@ export class Show extends Media implements implShow, implAddNote {
                                 <path d="M14.5 0c-1.74 0-3.41.81-4.5 2.09C8.91.81 7.24 0 5.5 0 2.42 0 0 2.42 0 5.5c0 3.78 3.4 6.86 8.55 11.54L10 18.35l1.45-1.32C16.6 12.36 20 9.28 20 5.5 20 2.42 17.58 0 14.5 0zm-4.4 15.55l-.1.1-.1-.1C5.14 11.24 2 8.39 2 5.5 2 3.5 3.5 2 5.5 2c1.54 0 3.04.99 3.57 2.36h1.87C11.46 2.99 12.96 2 14.5 2c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"></path>
                             </svg>
                             </span>`);
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (Show.logger.enabled) console.groupEnd();
                 }, err => {
                     UsBetaSeries.notification('Erreur de favoris de la série', err);
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (Show.logger.enabled) console.groupEnd();
                 });
             }
         });
@@ -1779,7 +1784,7 @@ export class Show extends Media implements implShow, implAddNote {
      * Ajoute la classification dans les détails de la ressource
      */
     addRating() {
-        if (UsBetaSeries.debug) console.log('addRating');
+        Show.debug('addRating');
 
         if (this.rating) {
             const rating: Rating = UsBetaSeries.ratings[this.rating] !== undefined ? UsBetaSeries.ratings[this.rating] : null;
@@ -1821,7 +1826,7 @@ export class Show extends Media implements implShow, implAddNote {
      * @returns {Season}
      */
     getSeason(seasonNumber: number): Season {
-        if (UsBetaSeries.debug) console.log('Show.getSeason: seasonNumber(%d)', seasonNumber);
+        Show.debug('Show.getSeason: seasonNumber(%d)', seasonNumber);
         if (seasonNumber <= 0 || seasonNumber > this.seasons.length) {
             throw new RangeError(`seasonNumber[${seasonNumber}] is out of range of seasons(length: ${this.seasons.length})`);
         }
@@ -1845,7 +1850,7 @@ export class Show extends Media implements implShow, implAddNote {
         };
         return new Promise((res, rej) => {
             if (format === Images.formats.poster) {
-                if (UsBetaSeries.debug) console.log('Show.getDefaultImage poster', this.images.poster);
+                Show.debug('Show.getDefaultImage poster', this.images.poster);
                 if (this.images.poster) res(this.images.poster);
                 else {
                     this._getTvdbUrl(this.thetvdb_id).then(url => {
@@ -1920,7 +1925,7 @@ export class Show extends Media implements implShow, implAddNote {
             const posters = {};
             if (this.images?._local.poster) posters['local'] = [this.images._local.poster];
             this._getTvdbUrl(this.thetvdb_id).then(url => {
-                // console.log('getAllPosters url', url);
+                // Show.debug('getAllPosters url', url);
                 if (!url) return res(posters);
                 const urlTvdb = new URL(url);
                 fetch(`${proxy}${urlTvdb.pathname}/artwork/posters`, initFetch)

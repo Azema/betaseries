@@ -2,6 +2,7 @@
  * @module BetaSeries
  */
 import { DataTypesCache, CacheUS } from "./Cache";
+import { Debug } from "./Debug";
 import { Member } from "./Member";
 
 
@@ -36,17 +37,19 @@ export type NetworkStateEvents = {
  * @alias EventTypes
  */
 export enum EventTypes {
+    ADD = 'add',
+    ADDED = 'added',
+    ARCHIVE = 'archive',
+    DELETE = 'delete',
+    HIDE = 'hide',
+    NEW = 'new',
+    NOTE = 'note',
+    REMOVE = 'remove',
+    SAVE = 'save',
+    SEEN = 'seen',
+    SHOW = 'show',
+    UNARCHIVE = 'unarchive',
     UPDATE = 'update',
-        SAVE = 'save',
-        ADD = 'add',
-        DELETE = 'delete',
-        ADDED = 'added',
-        REMOVE = 'remove',
-        NOTE = 'note',
-        ARCHIVE = 'archive',
-        UNARCHIVE = 'unarchive',
-        SHOW = 'show',
-        HIDE = 'hide'
 }
 /**
  * HTTP_VERBS
@@ -177,14 +180,14 @@ function checkNetwork(milliseconds = 0) {
                     UsBetaSeries.networkTimeout = null;
                 }
                 UsBetaSeries.changeNetworkState(NetworkState.online);
-                console.log('Network is come back');
+                UsBetaSeries.debug('Network is come back');
             }
         }).catch(err => {
             milliseconds += (milliseconds === 0) ? 1000 : 10000;
             if (err.message.toLowerCase() !== 'failed to fetch') {
                 console.error('checkNetwork catch: ', err);
             }
-            console.log('checkNetwork: Fetch aborted (next check in: %s)', duration(milliseconds / 1000));
+            UsBetaSeries.logger.log('checkNetwork: Fetch aborted (next check in: %s)', duration(milliseconds / 1000));
             UsBetaSeries.networkTimeout = setTimeout(checkNetwork, milliseconds, milliseconds);
         });
 }
@@ -370,13 +373,24 @@ export class FakePromise {
             });
     }
 }
-
+export type fnListener = (event: CustomEvent, obj: Base) => void;
+export type objListener = {
+    fn: fnListener;
+    args?: any[];
+}
+interface Emitter {
+    hasListeners(event: EventTypes): boolean;
+    on(event: EventTypes, fn: fnListener, ...args: any[]): this;
+    off(name: EventTypes): this;
+    once(event: EventTypes, fn: fnListener, ...argsOnce: any[]): this;
+    emit(event: EventTypes): this;
+}
 /**
  * Classe de base contenant essentiellement des propriétés et des méthodes statiques
  * @class
  * @abstract
  */
-export abstract class Base {
+export abstract class Base implements Emitter {
 
     /**
      * Types d'évenements gérés par cette classe
@@ -392,7 +406,7 @@ export abstract class Base {
      * Contient les écouteurs d'évènements de l'objet
      * @type {object}
      */
-    private __listeners: object;
+    private __listeners: Record<string, Array<fnListener | objListener>>;
 
     /**
      * Constructor
@@ -420,6 +434,7 @@ export abstract class Base {
         }
         return this;
     }
+
     /**
      * Permet d'ajouter un listener sur un type d'évenement
      * @param  {EventTypes} name - Le type d'évenement
@@ -427,29 +442,24 @@ export abstract class Base {
      * @return {Base} L'instance du média
      * @sealed
      */
-    public addListener(name: EventTypes, fn: Callback, ...args: any[]): this {
-        //if (BetaSeries.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name);
+    public addListener(name: EventTypes, fn: fnListener, ...args: any[]): this {
+        const logger = UsBetaSeries.logger.extend('listeners');
+        logger.debug('Base[%s] add Listener on event %s', this.constructor.name, name);
         // On vérifie que le type d'event est pris en charge
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
             throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
         }
-        if (this.__listeners[name] === undefined) {
+        if (isNull(this.__listeners[name])) {
             this.__listeners[name] = [];
         }
         for (const func of this.__listeners[name]) {
             if (typeof func === 'function' && func.toString() == fn.toString()) return;
         }
-        if (args.length > 0) {
-            this.__listeners[name].push({
-                fn: fn,
-                args: args
-            });
-        } else {
-            this.__listeners[name].push(fn);
-        }
-        if (UsBetaSeries.debug) console.log('Base[%s] add Listener on event %s', this.constructor.name, name, this.__listeners[name]);
+        this.__listeners[name].push((args.length <= 0) ? fn : {fn, args});
+        logger.debug('Base[%s] add Listener on event %s', this.constructor.name, name, this.__listeners[name]);
         return this;
     }
+
     /**
      * Permet d'ajouter un listener sur plusieurs types d'évenements
      * @param  {EventTypes[]} names -   Le type d'évenement
@@ -458,7 +468,7 @@ export abstract class Base {
      * @return {Base} L'instance du média
      * @sealed
      */
-    public addListeners(names: EventTypes[], fn: Callback, ...args: any[]): this {
+    public addListeners(names: EventTypes[], fn: fnListener, ...args: any[]): this {
         try {
             for (const name of names) {
                 this.addListener(name, fn, args);
@@ -468,6 +478,7 @@ export abstract class Base {
         }
         return this;
     }
+
     /**
      * Permet de supprimer un listener sur un type d'évenement
      * @param  {string}   name - Le type d'évenement
@@ -475,17 +486,26 @@ export abstract class Base {
      * @return {Base} L'instance du média
      * @sealed
      */
-    public removeListener(name: EventTypes, fn: Callback): this {
+    public removeListener(name: EventTypes, fn: fnListener): this {
         if (this.__listeners[name] !== undefined) {
             for (let l = 0; l < this.__listeners[name].length; l++) {
-                if ((typeof this.__listeners[name][l] === 'function' && this.__listeners[name][l].toString() === fn.toString()) ||
-                    this.__listeners[name][l].fn.toString() == fn.toString()) {
+                if ((
+                        typeof this.__listeners[name][l] === 'function' &&
+                        this.__listeners[name][l].toString() === fn.toString()
+                    ) ||
+                    (
+                        typeof this.__listeners[name][l] === 'object' &&
+                        typeof (this.__listeners[name][l] as objListener).fn === 'function' &&
+                        (this.__listeners[name][l] as objListener).fn.toString() == fn.toString()
+                    )
+                ) {
                     this.__listeners[name].splice(l, 1);
                 }
             }
         }
         return this;
     }
+
     /**
      * Appel les listeners pour un type d'évenement
      * @param  {EventTypes} name - Le type d'évenement
@@ -493,9 +513,10 @@ export abstract class Base {
      * @sealed
      */
     public _callListeners(name: EventTypes): this {
-        // if (BetaSeries.debug) console.log('Base[%s] call Listeners of event %s', this.constructor.name, name, this.__listeners);
+        // UsBetaSeries.debug.extend('listeners')('Base[%s] call Listeners of event %s', this.constructor.name, name, this.__listeners);
         if ((this.constructor as typeof Base).EventTypes.indexOf(name) >= 0 && this.__listeners[name].length > 0) {
-            if (UsBetaSeries.debug) console.log('Base[%s] call %d Listeners on event %s', this.constructor.name, this.__listeners[name].length, name, this.__listeners);
+            const logger = UsBetaSeries.logger.extend('listeners');
+            logger.debug('Base[%s] call %d Listeners on event %s', this.constructor.name, this.__listeners[name].length, name, this.__listeners);
             const event = new CustomEvent('betaseries', {
                 detail: {
                     name
@@ -503,16 +524,79 @@ export abstract class Base {
             });
             for (let l = 0; l < this.__listeners[name].length; l++) {
                 if (typeof this.__listeners[name][l] === 'function') {
-                    this.__listeners[name][l].call(this, event, this);
+                    (this.__listeners[name][l] as fnListener).call(this, event, this);
                 } else {
-                    const args: any[] = this.__listeners[name][l].args;
-                    this.__listeners[name][l].fn.apply(this, [event, this].concat(args));
+                    const args: any[] = (this.__listeners[name][l] as objListener).args;
+                    (this.__listeners[name][l] as objListener).fn.apply(this, [event, this].concat(args));
                 }
             }
         }
         return this;
     }
 
+    /**
+     * Check if this emitter has `event` handlers.
+     *
+     * @param event - Le type d'évènement
+     * @returns {boolean}
+     */
+    public hasListeners(event: EventTypes): boolean {
+        return !! this.__listeners[event].length;
+    }
+
+    /**
+     * Listen on the given `event` with `fn`.
+     * @param   {EventTypes} event - Le type d'évènement à écouter
+     * @param   {fnListener} fn - La fonction callback
+     * @param   {...*} args - les paramètres supplémentaires à ajouter à la function callback
+     * @returns {Base}
+     */
+    public on(event: EventTypes, fn: fnListener, ...args: any[]): this {
+        return this.addListener(event, fn, args);
+    }
+
+    /**
+     * Remove all registered callbacks for `event`.
+     * @param   {EventTypes} name - Le type d'évènement dont l'écoute est annulée
+     * @returns {Base}
+     */
+    public off(name: EventTypes): this {
+        if ((this.constructor as typeof Base).EventTypes.indexOf(name) < 0) {
+            throw new Error(`${name} ne fait pas partit des events gérés par cette classe`);
+        }
+        if (!isNull(this.__listeners[name])) {
+            delete this.__listeners[name];
+        }
+        return this;
+    }
+
+    /**
+     * Adds an `event` listener that will be invoked a single
+     * time then automatically removed.
+     * @param {EventTypes} event - Le type d'évènement à écouter
+     * @param {fnListener} fn - La fonction callback
+     * @param {...*} argsOnce - les paramètres supplémentaires à ajouter à la function callback
+     * @returns {Base}
+     */
+    public once(event: EventTypes, fn: fnListener, ...argsOnce: any[]): this {
+        function on(...args: any[]) {
+          this.removeEventListener(event, on);
+          fn.apply(this, args);
+        }
+
+        on.fn = fn;
+        this.on(event, on, argsOnce);
+        return this;
+    }
+
+    /**
+     * Emit `event`.
+     * @param  {EventTypes} event - Le type d'évenement
+     * @return {Base} L'instance du média
+     */
+    public emit(event: EventTypes): this {
+        return this._callListeners(event);
+    }
 }
 
 /**
@@ -520,15 +604,17 @@ export abstract class Base {
  * @class
  */
 export class UsBetaSeries {
+    static setDebug = Debug;
     /*
                     STATIC
-    */
+     */
+    static logger = new UsBetaSeries.setDebug('BS');
     /**
      * Flag de debug pour le dev
      * @static
-     * @type {boolean}
+     * @type {Function}
      */
-    static debug = false;
+    static debug: (...args: any[]) => void = UsBetaSeries.logger.fnDebug;
     /**
      * L'objet cache du script pour stocker les données
      * @static
@@ -548,22 +634,22 @@ export class UsBetaSeries {
      * @throws  {Error} Si la donnée de remplacement n'est pas trouvée
      */
     static generateRoute(routeType: string, data: object = {}): string {
-        // console.log('UsBetaSeries.generateRoute', {routeType, data, routes: this.routes});
+        // UsBetaSeries.debug('UsBetaSeries.generateRoute', {routeType, data, routes: this.routes});
         if (isNull(this.routes[routeType]) || isNull(data))
             return null;
         let route = this.routes[routeType],
             found: RegExpMatchArray;
-        // console.log('UsBetaSeries.generateRoute model route: %s', route);
+        // UsBetaSeries.debug('UsBetaSeries.generateRoute model route: %s', route);
         const reg = /\{(\w+)\}/;
         while (!isNull(found = route.match(reg))) {
-            // console.log('UsBetaSeries.generateRoute while route: %s', route, found);
+            // UsBetaSeries.debug('UsBetaSeries.generateRoute while route: %s', route, found);
             if (isNull(data[found[1]])) {
-                // console.log('UsBetaSeries.generateRoute while data not found', route, data[found[1]]);
+                // UsBetaSeries.debug('UsBetaSeries.generateRoute while data not found', route, data[found[1]]);
                 throw new Error(`UsBetaSeries.generateRoute data[${found[1]}] not found`);
             }
             route = route.replace(reg, data[found[1]]);
         }
-        // console.log('UsBetaSeries.generateRoute return route: %s', route);
+        // UsBetaSeries.debug('UsBetaSeries.generateRoute return route: %s', route);
         return route;
     }
     /**
@@ -797,7 +883,7 @@ export class UsBetaSeries {
      * @return {Promise}
      */
     static authenticate(): Promise < string > {
-        if (UsBetaSeries.debug) console.log('authenticate');
+        UsBetaSeries.debug('authenticate');
         if (jQuery('#containerIframe').length <= 0) {
             jQuery('body').append(`
                     <div id="containerIframe">
@@ -815,9 +901,9 @@ export class UsBetaSeries {
         return new Promise((resolve, reject) => {
             function receiveMessage(event) {
                 const origin = new URL(UsBetaSeries.serverOauthUrl).origin;
-                // if (debug) console.log('receiveMessage', event);
+                // UsBetaSeries.debug('receiveMessage', event);
                 if (event.origin !== origin) {
-                    if (UsBetaSeries.debug) console.error('receiveMessage {origin: %s}', event.origin, event);
+                    console.error('receiveMessage {origin: %s}', event.origin, event);
                     reject(`event.origin is not ${origin}`);
                     return;
                 }
@@ -882,6 +968,7 @@ export class UsBetaSeries {
             // Identification required
             throw new ExceptionIdentification("Identification required");
         }
+        const logger = (new UsBetaSeries.setDebug('BS:API'));
         let check = false;
         let display = true;
 
@@ -901,8 +988,8 @@ export class UsBetaSeries {
             },
             checkKeys = Object.keys(UsBetaSeries.api.check);
 
-        if (UsBetaSeries.debug && display) {
-            console.log('UsBetaSeries::callApi', {
+        if (display) {
+            logger.debug('parameters', {
                 type: type,
                 resource: resource,
                 action: action,
@@ -914,7 +1001,7 @@ export class UsBetaSeries {
         // On retourne la ressource en cache si elle y est présente
         if (UsBetaSeries.cache && !force && type === 'GET' && args && 'id' in args &&
             UsBetaSeries.cache.has((resource as DataTypesCache), args.id)) {
-            //if (debug) console.log('UsBetaSeries.callApi retourne la ressource du cache (%s: %d)', resource, args.id);
+            //logger.debug('UsBetaSeries.callApi retourne la ressource du cache (%s: %d)', resource, args.id);
             return new Promise((resolve) => {
                 resolve(UsBetaSeries.cache.get((resource as DataTypesCache), args.id));
                 UsBetaSeries.hideLoader();
@@ -941,14 +1028,15 @@ export class UsBetaSeries {
         // On check si on doit vérifier la validité du token
         // (https://www.betaseries.com/bugs/api/461)
         if (UsBetaSeries.userIdentified() && checkKeys.indexOf(resource) !== -1 &&
-            UsBetaSeries.api.check[resource].indexOf(action) !== -1) {
+            UsBetaSeries.api.check[resource].indexOf(action) !== -1)
+        {
             check = true;
             if (UsBetaSeries.__checkAuthenticate) {
-                if (UsBetaSeries.debug) console.log('UsBetaSeries::callApi authenticate in progress');
+                logger.debug('authenticate in progress');
                 return new Promise((res, rej) => {
                     let loop = 0;
                     const checkAuthenticate = function checkAuthenticate(): void {
-                        if (UsBetaSeries.debug) console.log('checkAuthenticate(%d) for %s %s/%s', ++loop, type, resource, action);
+                        logger.debug('checkAuthenticate(%d) for %s %s/%s', ++loop, type, resource, action);
                         if (UsBetaSeries.__checkAuthenticate && UsBetaSeries.__networkState === NetworkState.online) {
                             setTimeout(checkAuthenticate, 1000);
                         } else if (UsBetaSeries.__networkState === NetworkState.offline) {
@@ -959,10 +1047,7 @@ export class UsBetaSeries {
                                 .then(data => res(data))
                                 .catch(err => rej(err));
                         } else {
-                            if (UsBetaSeries.debug)
-                                console.log('UsBetaSeries::callApi checkAuthenticate - condition unknown', {
-                                    checkAuthenticate: UsBetaSeries.__checkAuthenticate
-                                });
+                                logger.debug('checkAuthenticate - condition unknown', { checkAuthenticate: UsBetaSeries.__checkAuthenticate});
                         }
                     };
                     checkAuthenticate();
@@ -998,12 +1083,12 @@ export class UsBetaSeries {
                 .then(response => {
                     UsBetaSeries.__nbNetTimeout = 0;
                     UsBetaSeries.counter++; // Incrément du compteur de requêtes à l'API
-                    if (UsBetaSeries.debug && (display || response.status !== 200))
-                        console.log('UsBetaSeries::callApi fetchUri (%s %s) response status: %d', type, uri, response.status);
+                    if (display || response.status !== 200)
+                        //logger.debug('fetchUri (%s %s) response status: %d', type, uri, response.status);
                     // On récupère les données et les transforme en objet
                     response.json().then((data) => {
-                        if (UsBetaSeries.debug && (display || response.status !== 200))
-                            console.log('UsBetaSeries::callApi fetchUri (%s %s) data', type, uri, data);
+                        if (display || response.status !== 200)
+                            logger.debug('fetchUri (%s %s) data', type, uri, data);
                         // On gère le retour d'erreurs de l'API
                         if (data.errors !== undefined && data.errors.length > 0) {
                             const code = data.errors[0].code,
@@ -1028,7 +1113,7 @@ export class UsBetaSeries {
                         }
                         // On gère les erreurs réseau
                         if (!response.ok) {
-                            console.error('UsBetaSeries::callApi Fetch erreur network', response);
+                            console.error('Fetch erreur network', response);
                             reject(response);
                             UsBetaSeries.hideLoader();
                             return;
@@ -1037,18 +1122,16 @@ export class UsBetaSeries {
                         UsBetaSeries.hideLoader();
                     });
                 }).catch(error => {
-                    console.warn('UsBetaSeries::callApi fetchUri catch (%s: %s/%s)', type, resource, action);
+                    console.warn('fetchUri catch (%s: %s/%s)', type, resource, action);
                     if (error.name === 'AbortError') {
                         if (++UsBetaSeries.__nbNetTimeout > UsBetaSeries.__maxTimeout) {
-                            if (UsBetaSeries.debug)
-                                console.log('%d timeout consecutifs, Network state to offline', UsBetaSeries.__nbNetTimeout);
+                            logger.debug('%d timeout consecutifs, Network state to offline', UsBetaSeries.__nbNetTimeout);
                             UsBetaSeries.changeNetworkState(NetworkState.offline, true);
                         }
-                        if (UsBetaSeries.debug)
-                            console.log('UsBetaSeries::callApi AbortError Timeout(nb retry: %d) fetchUri', UsBetaSeries.__nbNetTimeout);
+                        logger.debug('AbortError Timeout(nb retry: %d) fetchUri', UsBetaSeries.__nbNetTimeout);
                         return;
                     }
-                    console.warn('UsBetaSeries::callApi fetchUri error: ' + error.message);
+                    console.warn('fetchUri error: ' + error.message);
                     console.error(error);
                     reject(error);
                 }).finally(() => {
@@ -1064,13 +1147,13 @@ export class UsBetaSeries {
                     mode: 'cors',
                     cache: 'no-cache'
                 };
-                if (UsBetaSeries.debug && display) console.info('%ccall /members/is_active', 'color:#1d6fb2');
+                if (display) logger.info('%ccall /members/is_active', 'color:#ffc107');
                 fetchTimeout(`${UsBetaSeries.api.url}/members/is_active`, paramsFetch, UsBetaSeries.timeoutRequests).ready()
                     .then((resp: Response) => {
                         UsBetaSeries.__nbNetTimeout = 0;
                         UsBetaSeries.counter++; // Incrément du compteur de requêtes à l'API
                         if (!resp.ok && resp.status === 400) {
-                            if (UsBetaSeries.debug) console.log('authenticate for %s: %s/%s', type, resource, action);
+                            logger.debug('authenticate for %s: %s/%s', type, resource, action);
                             // Appel de l'authentification pour obtenir un token valide
                             UsBetaSeries.authenticate().then(() => {
                                 // On met à jour le token pour le prochain appel à l'API
@@ -1087,21 +1170,19 @@ export class UsBetaSeries {
                         fetchUri(resolve, reject);
                     }).catch(error => {
                         UsBetaSeries.__checkAuthenticate = false;
-                        console.warn('UsBetaSeries::callApi fetch members/is_active catch');
+                        console.warn('fetch members/is_active catch');
                         if (error.name === 'AbortError') {
                             if (++UsBetaSeries.__nbNetTimeout > UsBetaSeries.__maxTimeout) {
-                                if (UsBetaSeries.debug)
-                                    console.log('%d timeout consecutifs, Network state to offline', UsBetaSeries.__nbNetTimeout);
+                                logger.debug('%d timeout consecutifs, Network state to offline', UsBetaSeries.__nbNetTimeout);
                                 UsBetaSeries.changeNetworkState(NetworkState.offline, true);
                             }
-                            if (UsBetaSeries.debug)
-                                console.log('UsBetaSeries::callApi AbortError Timeout(nb retry: %d) members/is_active', UsBetaSeries.__nbNetTimeout);
+                            logger.debug('AbortError Timeout(nb retry: %d) members/is_active', UsBetaSeries.__nbNetTimeout);
                             return;
                         } else if (error.message.toLowerCase() === 'failed to fetch') {
-                            if (UsBetaSeries.debug) console.log('On déclare le réseau hors ligne. Le retour du réseau sera testé régulièrement.');
+                            logger.debug('On déclare le réseau hors ligne. Le retour du réseau sera testé régulièrement.');
                             UsBetaSeries.changeNetworkState(NetworkState.offline, true);
                         } else {
-                            if (UsBetaSeries.debug) console.log('Il y a eu un problème avec l\'opération fetch: ' + error.message);
+                            logger.debug('Il y a eu un problème avec l\'opération fetch: ' + error.message);
                         }
                         console.error(error);
                         reject(error);

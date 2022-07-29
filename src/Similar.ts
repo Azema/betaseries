@@ -27,6 +27,9 @@ export interface implDialog {
  * @implements {implMovie}
  */
 export class Similar extends Media implements implShow, implMovie {
+    static logger = new UsBetaSeries.setDebug('Similar');
+    static debug = Similar.logger.debug.bind(Similar.logger);
+
     static relatedProps = {};
 
     /* Interface implMovie */
@@ -141,7 +144,7 @@ export class Similar extends Media implements implShow, implMovie {
         const $title: JQuery<HTMLElement> = this.elt.find('.slide__title'),
               self: Similar = this;
         $title.html($title.html() +
-            `<i class="fa fa-wrench popover-wrench"
+            `<i class="fa-solid fa-wrench popover-wrench"
                 aria-hidden="true"
                 style="margin-left:5px;cursor:pointer;"
                 data-id="${self.id}"
@@ -153,7 +156,7 @@ export class Similar extends Media implements implShow, implMovie {
             e.stopPropagation();
             e.preventDefault();
 
-            //if (debug) console.log('Popover Wrench', eltId, self);
+            //if (debug) Similar.debug('Popover Wrench', eltId, self);
             this.fetch().then(function(data) {
                 // eslint-disable-next-line no-undef
                 dialog.setContent(renderjson.set_show_to_level(2)(data[self.mediaType.singular]));
@@ -169,9 +172,9 @@ export class Similar extends Media implements implShow, implMovie {
      * de présentation du similar
      * @return {string}
      */
-    getContentPopup() {
+    async getContentPopup() {
         const self = this;
-        //if (debug) console.log('similars tempContentPopup', objRes);
+        //if (debug) Similar.debug('similars tempContentPopup', objRes);
         let description = this.description;
         if (description.length > 200) {
             description = description.substring(0, 200) + '…';
@@ -202,11 +205,11 @@ export class Similar extends Media implements implShow, implMovie {
         }
         template = '<div>';
         if (this.mediaType.singular === MediaType.show) {
-            const status = `<i class="fa fa-${this.status.toLowerCase() == 'ended' ? 'ban' : 'spinner'}" title="Statut ${this.status.toLowerCase() == 'ended' ? 'terminé' : 'en cours'}" aria-hidden="true"></i>`;
+            const status = `<i class="fa-solid fa-${this.status.toLowerCase() == 'ended' ? 'octagon-exclamation' : 'spinner'}" title="Statut ${this.status.toLowerCase() == 'ended' ? 'terminé' : 'en cours'}" aria-hidden="true"></i>`;
             const seen = (this.user.status > 0) ? 'Vu à <strong>' + this.user.status + '%</strong>' : 'Pas vu';
             template += `<p>
                 <strong>${this.nbSeasons}</strong> saison${(this.nbSeasons > 1 ? 's':'')},
-                <strong>${this.nbEpisodes}</strong> <i class="fa fa-film" title="épisodes" aria-hidden="true"></i>, `;
+                <strong>${this.nbEpisodes}</strong> <i class="fa-solid fa-films" title="épisodes" aria-hidden="true"></i>, `;
             if (this.objNote.total > 0) {
                 template += `<strong>${this.objNote.total}</strong> votes`;
                 if (this.objNote.user > 0) {
@@ -215,21 +218,30 @@ export class Similar extends Media implements implShow, implMovie {
             } else {
                 template += 'Aucun vote';
             }
-            template += `<span style="margin-left:5px;"><strong>${self.nbComments}</strong> <i class="fa fa-comment" title="commentaires" aria-hidden="true"></i></span>`;
+            template += `<span style="margin-left:5px;"><strong>${self.nbComments}</strong> <i class="fa-solid fa-comments" title="commentaires" aria-hidden="true"></i></span>`;
             if (! this.in_account) {
                 template += `<span style="margin-left:5px;">
-                    <a href="javascript:;" class="addShow"><i class="fa fa-plus" title="Ajouter" aria-hidden="true"></i></a> -
-                    <a href="javascript:;" class="toSeeShow" data-show-id="${self.id}"><i class="fa fa-clock-o" title="A voir" aria-hidden="true"></i></a>
-                </span>`;
+                    <a href="javascript:;" class="addShow"><i class="fa-solid fa-plus" title="Ajouter" aria-hidden="true"></i></a> -`;
+                const storeToSee: Array<number> = await UsBetaSeries.gm_funcs.getValue('toSee', []);
+                const toSee = storeToSee.includes(this.id);
+                if (toSee) {
+                    template += `<a href="javascript:;" class="toSeeShow" data-show-id="${self.id}">
+                        <i class="fa-solid fa-clock-rotate-left" title="Ne plus voir" aria-hidden="true"></i>
+                    </a></span>`;
+                } else {
+                    template += `<a href="javascript:;" class="toSeeShow" data-show-id="${self.id}">
+                        <i class="fa-solid fa-user-clock" title="A voir" aria-hidden="true"></i>
+                    </a></span>`;
+                }
             }
             template += '</p>';
             template += _renderGenres();
             template += _renderCreation();
             let archived = '';
             if (this.user.status > 0 && this.user.archived === true) {
-                archived = ', Archivée: <i class="fa fa-check-circle-o" aria-hidden="true"></i>';
+                archived = ', Archivée: <i class="fa-solid fa-circle-check" aria-hidden="true"></i>';
             } else if (this.user.status > 0) {
-                archived = ', Archivée: <i class="fa fa-circle-o" aria-hidden="true"></i>';
+                archived = ', Archivée: <i class="fa-solid fa-circle" aria-hidden="true"></i>';
             }
             if (this.showrunner && this.showrunner.name.length > 0) {
                 template += `<p><u>Show Runner:</u> <strong>${this.showrunner.name}</strong></p>`;
@@ -247,7 +259,7 @@ export class Similar extends Media implements implShow, implMovie {
             } else {
                 template += 'Aucun vote';
             }
-            template += `<span style="margin-left:5px;"><strong>${self.nbComments}</strong> <i class="fa fa-comment" title="commentaires" aria-hidden="true"></i></span>`;
+            template += `<span style="margin-left:5px;"><strong>${self.nbComments}</strong> <i class="fa-solid fa-comments" title="commentaires" aria-hidden="true"></i></span>`;
             template += '</p>';
             // Ajouter une case à cocher pour l'état "Vu"
             template += `<p><label for="seen">Vu</label>
@@ -272,7 +284,7 @@ export class Similar extends Media implements implShow, implMovie {
      * @return {string}
      */
     getTitlePopup(): string {
-        // if (BetaSeries.debug) console.log('getTitlePopup', this);
+        // if (BetaSeries.debug) Similar.debug('getTitlePopup', this);
         let title: string = this.title;
         if (this.objNote.total > 0) {
             title += ' <span style="font-size: 0.8em;color:var(--link_color);">' +
@@ -284,7 +296,7 @@ export class Similar extends Media implements implShow, implMovie {
                     <img src="https://thetvdb.com/images/logo.svg" width="40px" />
                 </a>
                 <a href="javascript:;" onclick="showUpdate('${this.title}', ${this.id}, '0')" style="margin-left:5px; color:var(--default_color);" title="Mettre à jour les données venant de TheTVDB">
-                    <i class="fa fa-refresh" aria-hidden="true"></i>
+                    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
                 </a>
             </span>`;
         return title;

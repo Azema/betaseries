@@ -41,6 +41,8 @@ export class CommentBS extends Base implements implFillDecorator {
     /*************************************************/
     /*                  STATIC                       */
     /*************************************************/
+    static logger = new UsBetaSeries.setDebug('Comments:Comment');
+    static debug = CommentBS.logger.debug.bind(CommentBS.logger);
     /**
      * @type {Object.<string, RelatedProp>}
      */
@@ -607,7 +609,7 @@ export class CommentBS extends Base implements implFillDecorator {
         const val = parseInt($thumbs.text(), 10);
         const result = (vote == this.thumbed) ? val + vote : val - vote;
         const text = result > 0 ? `+${result}` : result.toString();
-        // if (BetaSeries.debug) console.log('renderThumbs: ', {val, vote, result, text});
+        // if (BetaSeries.debug) CommentBS.debug('renderThumbs: ', {val, vote, result, text});
         $thumbs.text(text);
         if (this.thumbed == 0) {
             // On supprime la couleur de remplissage des icones de vote
@@ -908,7 +910,7 @@ export class CommentBS extends Base implements implFillDecorator {
          * On affiche/masque les options du commentaire
          */
         const $btnOptions = $container.find('.btnToggleOptions');
-        // if (BetaSeries.debug) console.log('Comment loadEvents toggleOptions.length', $btnOptions.length);
+        // if (BetaSeries.debug) CommentBS.debug('Comment loadEvents toggleOptions.length', $btnOptions.length);
         $btnOptions.on('click', (e: JQuery.ClickEvent) => {
             e.stopPropagation();
             e.preventDefault();
@@ -1216,10 +1218,10 @@ export class CommentBS extends Base implements implFillDecorator {
             $title = $contentReact.find('.title');
             let nav = '';
             if (! self._parent.isFirst(self.id)) {
-                nav += ' <i class="fa fa-chevron-circle-left prev-comment" aria-hidden="true" title="Commentaire précédent"></i>';
+                nav += ' <i class="fa-solid fa-circle-chevron-left prev-comment" aria-hidden="true" title="Commentaire précédent"></i>';
             }
             if (! self._parent.isLast(self.id)) {
-                nav += '  <i class="fa fa-chevron-circle-right next-comment" aria-hidden="true" title="Commentaire suivant"></i>';
+                nav += '  <i class="fa-solid fa-circle-chevron-right next-comment" aria-hidden="true" title="Commentaire suivant"></i>';
             }
             $title.append(UsBetaSeries.trans("blog.title.comments") + nav);
             // On ajoute les templates HTML du commentaire,

@@ -12,6 +12,9 @@ enum StarTypes {
     DISABLE = 'disable'
 }
 export class Note {
+    static logger = new UsBetaSeries.setDebug('Note');
+    static debug = Note.logger.debug.bind(Note.logger);
+
     /**
      * Nombre de votes
      * @type {number}
@@ -127,7 +130,7 @@ export class Note {
      * @param {Callback} cb - Fonction callback
      */
     public createPopupForVote(cb: Callback = UsBetaSeries.noop): void {
-        if (UsBetaSeries.debug) console.log('objNote createPopupForVote');
+        Note.debug('objNote createPopupForVote');
         // La popup et ses éléments
         const self = this,
               $popup = jQuery('#popin-dialog'),
@@ -135,7 +138,7 @@ export class Note {
               $contentReact = $popup.find('.popin-content-reactmodule'),
               $closeButtons = $popup.find(".js-close-popupalert"),
               hidePopup = () => {
-                  if (UsBetaSeries.debug) console.log('objNote createPopupForVote hidePopup');
+                  Note.debug('objNote createPopupForVote hidePopup');
                   $popup.attr('aria-hidden', 'true');
                   $contentHtmlElement.find(".button-set").show();
                   $contentHtmlElement.hide();
@@ -143,7 +146,7 @@ export class Note {
                   $text.find('.star-svg').off('mouseenter').off('mouseleave').off('click');
                 },
                 showPopup = () => {
-                    if (UsBetaSeries.debug) console.log('objNote createPopupForVote showPopup');
+                    Note.debug('objNote createPopupForVote showPopup');
                     $contentHtmlElement.find(".button-set").hide();
                     $contentHtmlElement.show();
                     $contentReact.hide();

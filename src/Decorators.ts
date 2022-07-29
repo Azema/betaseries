@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { UsBetaSeries, isNull, Obj } from "./Base";
+import { UsBetaSeries, isNull, Obj, EventTypes } from "./Base";
 import { Changes, RelatedProp, RenderHtml } from "./RenderHtml";
 
 /*
@@ -62,19 +62,9 @@ export function validateType(target: any, propertyKey: string, descriptor: Prope
 /*                          Custom Decorators                                   */
 /********************************************************************************/
 
-/**
- * implFillDecorator
- * @interface implFillDecorator
+/*
+ *              Abstract Decorator
  */
-export interface implFillDecorator {
-    __initial: boolean;
-    __changes: Record<string, Changes>;
-    __props: Array<string>;
-    elt: JQuery<HTMLElement>;
-    fill(data: Obj): implFillDecorator;
-    updatePropRender(propKey: string): void;
-    toJSON(): object;
-}
 
 /**
  * AbstractDecorator - Classe abstraite des decorators
@@ -82,6 +72,9 @@ export interface implFillDecorator {
  * @abstract
  */
 export abstract class AbstractDecorator {
+    static logger = new UsBetaSeries.setDebug('Decorators');
+    static debug = AbstractDecorator.logger.debug.bind(AbstractDecorator.logger);
+
     protected __target: any;
 
     constructor(target: any) {
@@ -95,6 +88,24 @@ export abstract class AbstractDecorator {
     set target(target) {
         this.__target = target;
     }
+}
+
+/*
+ *              Fill Decorator
+ */
+
+/**
+ * implFillDecorator
+ * @interface implFillDecorator
+ */
+ export interface implFillDecorator {
+    __initial: boolean;
+    __changes: Record<string, Changes>;
+    __props: Array<string>;
+    elt: JQuery<HTMLElement>;
+    fill(data: Obj): implFillDecorator;
+    updatePropRender(propKey: string): void;
+    toJSON(): object;
 }
 
 /**
@@ -143,12 +154,14 @@ export class FillDecorator extends AbstractDecorator {
             const hasTransform = Reflect.has(relatedProp, 'transform');
             if (!isNull(value) && hasTransform && typeof relatedProp.transform === 'function') {
                 value = relatedProp.transform(target, value);
+            } else if (isNull(value) && hasDefault) {
+                value = relatedProp.default;
             }
             if (isNull(oldValue) && isNull(value)) return undefined;
             let subType = null;
             if (typeof type === 'string' && /^array<\w+>$/.test(type)) {
                 subType = type.match(/<(\w+)>$/)[1];
-                if (UsBetaSeries.debug) console.log('FillDecorator.fill for (%s.%s) type: array - subType: %s', self.constructor.name, key, subType, value);
+                AbstractDecorator.debug('FillDecorator.fill for (%s.%s) type: array - subType: %s', self.constructor.name, key, subType, value);
             }
             switch(type) {
                 case 'string':
@@ -165,7 +178,21 @@ export class FillDecorator extends AbstractDecorator {
                     if (oldValue === value) return undefined;
                     break;
                 case 'boolean':
-                    value = (typeNV === 'boolean') ? value : hasDefault ? relatedProp.default : null;
+                    switch(typeof value) {
+                        case 'string':
+                            if (value.toLowerCase() === 'true' || value === '1') {
+                                value = true;
+                            }
+                            else if (value.toLowerCase() === 'false' || value === '1') {
+                                value = false;
+                            }
+                            break;
+                        case 'number':
+                        default:
+                            value = !!value;
+                            break;
+                    }
+                    value = (typeof value === 'boolean') ? value : hasDefault ? relatedProp.default : null;
                     if (oldValue === value) return undefined;
                     break;
                 case 'array': {
@@ -216,7 +243,7 @@ export class FillDecorator extends AbstractDecorator {
                         value = (! isNull(value)) ? Object.assign({}, value) : hasDefault ? relatedProp.default : null;
                     }
                     else if (typeof type === 'function' && !isNull(value) && !(value instanceof type)) {
-                        // if (BetaSeries.debug) console.log('FillDecorator.fill: type Function for [%s.%s]', classStatic.name, key, {type, value});
+                        // if (BetaSeries.debug) AbstractDecorator.debug('FillDecorator.fill: type Function for [%s.%s]', classStatic.name, key, {type, value});
                         // value = Reflect.construct(type, [value]);
                         value = new (type)(value);
                         if (typeof value === 'object' && Reflect.has(value, 'parent')) {
@@ -226,7 +253,7 @@ export class FillDecorator extends AbstractDecorator {
                     if (self.__initial || isNull(oldValue)) return value;
                     let changed = false;
                     try {
-                        // if (BetaSeries.debug) console.log('comparaison d\'objets', {typeOld: typeof oldValue, oldValue, typeNew: typeof value, value});
+                        // if (BetaSeries.debug) AbstractDecorator.debug('comparaison d\'objets', {typeOld: typeof oldValue, oldValue, typeNew: typeof value, value});
                         if (
                             (isNull(oldValue) && !isNull(value)) ||
                             (!isNull(oldValue) && isNull(value))
@@ -235,7 +262,7 @@ export class FillDecorator extends AbstractDecorator {
                         }
                         else if (typeof value === 'object' && !isNull(value)) {
                             if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
-                                if (UsBetaSeries.debug) console.log('compare objects with JSON.stringify and are differents', {oldValue, value});
+                                AbstractDecorator.debug('compare objects with JSON.stringify and are differents', {oldValue, value});
                                 changed = true;
                             }
                         }
@@ -258,7 +285,7 @@ export class FillDecorator extends AbstractDecorator {
             }
             return value;
         }
-        // console.log('FillDecorator.fill target: %s', self.constructor.name, data, (self.constructor as typeof RenderHtml).relatedProps);
+        // AbstractDecorator.debug('FillDecorator.fill target: %s', self.constructor.name, data, (self.constructor as typeof RenderHtml).relatedProps);
         // On reinitialise les changements de l'objet
         self.__changes = {};
         for (const propKey in (self.constructor as typeof RenderHtml).relatedProps) {
@@ -289,10 +316,10 @@ export class FillDecorator extends AbstractDecorator {
                         const oldValue = self['_' + relatedProp.key];
                         // Si value est undefined, alors pas de modification de valeur
                         if (value === undefined) {
-                            // console.log('FillDecorator.fill setter[%s.%s] not changed', self.constructor.name, relatedProp.key, relatedProp.type, {newValue, oldValue, relatedProp});
+                            // AbstractDecorator.debug('FillDecorator.fill setter[%s.%s] not changed', self.constructor.name, relatedProp.key, relatedProp.type, {newValue, oldValue, relatedProp});
                             return;
                         }
-                        if (UsBetaSeries.debug) console.log('FillDecorator.fill setter[%s.%s] value changed', self.constructor.name, relatedProp.key, {type: relatedProp.type, newValue, oldValue, value, relatedProp});
+                        AbstractDecorator.debug('FillDecorator.fill setter[%s.%s] value changed', self.constructor.name, relatedProp.key, {type: relatedProp.type, newValue, oldValue, value, relatedProp});
                         // On set la nouvelle valeur
                         self['_' + relatedProp.key] = value;
                         // On stocke le changement de valeurs
@@ -303,7 +330,7 @@ export class FillDecorator extends AbstractDecorator {
                 };
             }
 
-            // if (BetaSeries.debug) console.log('FillDecorator.fill descriptor[%s.%s]', this.constructor.name, relatedProp.key, {relatedProp, dataProp, descriptor});
+            // if (BetaSeries.debug) AbstractDecorator.debug('FillDecorator.fill descriptor[%s.%s]', this.constructor.name, relatedProp.key, {relatedProp, dataProp, descriptor});
             // Lors de l'initialisation, on définit la propriété de l'objet
             // et on ajoute le nom de la propriété dans le tableau __props
             if (self.__initial) {
@@ -334,16 +361,182 @@ export class FillDecorator extends AbstractDecorator {
         if (! self.elt || ! self.__props.includes(propKey)) return;
         const fnPropKey = 'updatePropRender' + propKey.camelCase().upperFirst();
         const classStatic = self.constructor as typeof RenderHtml;
-        // if (UsBetaSeries.debug) console.log('FillDecorator.updatePropRender(%s.%s)', classStatic.name, propKey, fnPropKey);
+        AbstractDecorator.debug('FillDecorator.updatePropRender(%s.%s)', classStatic.name, propKey, fnPropKey);
         if (Reflect.has(self, fnPropKey)) {
-            // if (UsBetaSeries.debug) console.log('FillDecorator.updatePropRender call method: %s.%s', classStatic.name, fnPropKey);
+            AbstractDecorator.debug('FillDecorator.updatePropRender call method: %s.%s', classStatic.name, fnPropKey);
             self[fnPropKey]();
         }
         else if (classStatic.selectorsCSS && classStatic.selectorsCSS[propKey]) {
-            // if (UsBetaSeries.debug) console.log('FillDecorator.updatePropRender default method: class: %s - selector: %s', classStatic.name, classStatic.selectorsCSS[propKey]);
+            AbstractDecorator.debug('FillDecorator.updatePropRender default method: class: %s - selector: %s', classStatic.name, classStatic.selectorsCSS[propKey]);
             const selectorCSS = classStatic.selectorsCSS[propKey];
             jQuery(selectorCSS, self.elt).text(self[propKey].toString());
             delete self.__changes[propKey];
         }
     }
+}
+
+/*
+ *              Emitter Decorator
+ */
+
+export type fnEmitter = (event: CustomEvent, ...args: any[]) => void;
+export type OnceEmitter = { fn: fnEmitter; };
+export interface implEmitterDecorator {
+    hasListeners(event: EventTypes): boolean;
+    on(event: EventTypes, fn: fnEmitter): implEmitterDecorator;
+    off(event: EventTypes, fn?: fnEmitter): implEmitterDecorator;
+    once(event: EventTypes, fn: fnEmitter): implEmitterDecorator;
+    emit(event: EventTypes): implEmitterDecorator;
+}
+export class EmitterDecorator extends AbstractDecorator implements implEmitterDecorator {
+    /**
+     * Les fonctions callback
+     * @type {Object.<string, fnEmitter[]>}
+     */
+    private __callbacks: Record<string, Array<fnEmitter | OnceEmitter>>;
+
+    /**
+     * EmiiterDecorator
+     * @param target - La classe implémentant l'interface implEmitterDecorator
+     * @returns {EmitterDecorator}
+     * @throws {Error}
+     */
+    constructor(target: implEmitterDecorator) {
+        super(target);
+        if (!Reflect.has(target.constructor, 'EventTypes')) {
+            throw new Error(`Class: ${target.constructor.name} must have a static property "EventTypes"`);
+        }
+        this.__callbacks = {};
+        return this;
+    }
+
+    /**
+     * Check if this emitter has `event` handlers.
+     *
+     * @param {EventTypes} event
+     * @return {Boolean}
+     */
+    hasListeners(event: EventTypes): boolean {
+        return !! this.__callbacks[event].length;
+    }
+
+    /**
+     * Listen on the given `event` with `fn`.
+     * @param   {EventTypes} event - Le nom de l'évènement sur lequel déclenché le callback
+     * @param   {fnEmitter} fn - La fonction callback
+     * @returns {implEmitterDecorator}
+     */
+    on(event: EventTypes, fn: fnEmitter): implEmitterDecorator {
+        //AbstractDecorator.debug('EmitterDecorator[%s] method(on) event %s', this.constructor.name, event);
+        // On vérifie que le type d'event est pris en charge
+        if ((this.target.constructor).EventTypes.indexOf(event) < 0) {
+            throw new Error(`EmitterDecorator.on: ${event} ne fait pas partit des events gérés par la classe ${this.target.constructor.name}`);
+        }
+        this.__callbacks = this.__callbacks || {};
+        this.__callbacks[event] = this.__callbacks[event] || [];
+        for (const func of this.__callbacks[event]) {
+            if (typeof func === 'function' && func.toString() == fn.toString()) return this.target;
+        }
+        this.__callbacks[event].push(fn);
+        if (UsBetaSeries.debug)
+            AbstractDecorator.debug('EmitterDecorator.on[%s] addEventListener on event %s', this.target.constructor.name, event, this.__callbacks[event]);
+        return this.target;
+    }
+
+    /**
+     * Remove the given callback for `event` or all
+     * registered callbacks.
+     *
+     * @param {EventTypes} event
+     * @param {fnEmitter} [fn]
+     * @return {implEmitterDecorator}
+     */
+    off(event: EventTypes, fn?: fnEmitter): implEmitterDecorator {
+        this.__callbacks = this.__callbacks || {};
+
+        // all
+        if (isNull(event) && isNull(fn)) {
+            this.__callbacks = {};
+            return this.target;
+        }
+
+        // specific event
+        const callbacks = this.__callbacks[event];
+        if (!callbacks) return this.target;
+
+        // remove all handlers
+        if (isNull(fn)) {
+            delete this.__callbacks[event];
+            return this.target;
+        }
+
+        // remove specific handler
+        let cb: fnEmitter | OnceEmitter;
+        for (let i = 0; i < callbacks.length; i++) {
+            cb = callbacks[i];
+            if (cb === fn || (cb as OnceEmitter).fn === fn) {
+                callbacks.splice(i, 1);
+                break;
+            }
+        }
+
+        // Remove event specific arrays for event types that no
+        // one is subscribed for to avoid memory leak.
+        if (callbacks.length === 0) {
+            delete this.__callbacks[event];
+        }
+
+        return this.target;
+    }
+
+    /**
+     * Adds an `event` listener that will be invoked a single
+     * time then automatically removed.
+     *
+     * @param {EventTypes} event
+     * @param {fnEmitter} fn
+     * @return {implEmitterDecorator}
+     */
+    once(event: EventTypes, fn: fnEmitter): implEmitterDecorator {
+        /**
+         * function that runs a single time
+         * @param {...*} args
+         */
+        const on = (...args: any[]) => {
+            AbstractDecorator.debug('EmiiterDecorator.once => on called');
+            this.off(event, on); // delete callback when called (emit play with a copy of callbacks)
+            // args.unshift(new CustomEvent('betaseries', { detail: { event }}));
+            fn.apply(this.target, args);
+        }
+
+        on.fn = fn;
+        this.on(event, on);
+        return this.target;
+    }
+
+    /**
+     * Emit `event` with the given args.
+     *
+     * @param {EventTypes} event
+     * @param {...*} args
+     * @return {implEmitterDecorator}
+     */
+    emit(event: EventTypes, ...args: any[]): implEmitterDecorator {
+        if (UsBetaSeries.debug)
+            AbstractDecorator.debug('EmiiterDecorator.emit[%s] call Listeners of event %s', this.target.constructor.name, event, this.__callbacks);
+        this.__callbacks = this.__callbacks || {};
+
+        let callbacks = this.__callbacks[event];
+
+        if (callbacks) {
+            args.unshift(new CustomEvent('betaseries', { detail: { event }}));
+            callbacks = callbacks.slice(0); // copy of callbacks (see: EmitterDecorator.once)
+            for (let i = 0, len = callbacks.length; i < len; ++i) {
+                (callbacks[i] as fnEmitter).apply(this.target, args);
+            }
+        }
+
+        return this.target;
+    }
+
 }

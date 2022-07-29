@@ -6,6 +6,9 @@ import { Show } from "./Show";
 declare const PopupAlert;
 
 export class Season extends RenderHtml {
+    static logger = new UsBetaSeries.setDebug('Show:Season');
+    static debug = Season.logger.debug.bind(Season.logger);
+
     /**
      * Les différents sélecteurs CSS des propriétés de l'objet
      * @static
@@ -111,7 +114,7 @@ export class Season extends RenderHtml {
 
         const $nbEpisode = jQuery(Season.selectorsCSS.nbEpisodes, this.elt);
         const $spanNbEpisodes = jQuery(Season.selectorsCSS.nbEpisodes + ' span.nbEpisodes', this.elt);
-        // if (UsBetaSeries.debug) console.log('Season._initRender', $nbEpisode, $spanNbEpisodes);
+        Season.debug('Season._initRender', $nbEpisode, $spanNbEpisodes);
         if ($nbEpisode.length > 0 && $spanNbEpisodes.length <= 0) {
             $nbEpisode.empty().append(`<span class="nbEpisodes">${this.nbEpisodes}</span> épisodes`);
         }
@@ -198,7 +201,7 @@ export class Season extends RenderHtml {
                         if (episode) {
                             episode.fill(data.episodes[e]);
                         } else {
-                            if (UsBetaSeries.debug) console.log('Season.checkEpisodes: episode(pos: %d) unknown', e, data.episodes[e]);
+                            Season.debug('Season.checkEpisodes: episode(pos: %d) unknown', e, data.episodes[e]);
                             const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
                             self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
                         }
@@ -244,7 +247,7 @@ export class Season extends RenderHtml {
                         if (episode) {
                             episode.fill(data.episodes[e]);
                         } else {
-                            if (UsBetaSeries.debug) console.log('Season.checkEpisodes: episode(pos: %d) unknown', e, data.episodes[e]);
+                            Season.debug('Season.checkEpisodes: episode(pos: %d) unknown', e, data.episodes[e]);
                             const selector = `#episodes .slides_flex .slide_flex:nth-child(${e+1})`;
                             self.episodes.push(new Episode(data.episodes[e], self, jQuery(selector)));
                         }
@@ -366,16 +369,16 @@ export class Season extends RenderHtml {
     update(): Promise<Season> {
         const self = this;
         return this.fetchEpisodes().then(() => {
-            // if (UsBetaSeries.debug) console.log('Season.update: episodes', self.episodes);
+            Season.debug('Season.update: episodes', self.episodes);
             for (const episode of self.episodes) {
-                // if (UsBetaSeries.debug) console.log('Season.update: check episode changes', episode);
+                Season.debug('Season.update: check episode changes', episode);
                 if (episode.isModified()) {
-                    if (UsBetaSeries.debug) console.log('Season.update changed true', self);
+                    Season.debug('Season.update changed true', self);
                     return self.updateRender()
                                .updateShow().then(() => self);
                 }
             }
-            if (UsBetaSeries.debug) console.log('Season.update no changes');
+            Season.debug('Season.update no changes');
             return self;
         }).catch(err => {
             console.error(err);
@@ -393,7 +396,7 @@ export class Season extends RenderHtml {
         const lenSpecials: number = this.getNbEpisodesSpecial();
         const lenNotSpecials: number = lenEpisodes - lenSpecials;
         const lenSeen: number = self.getNbEpisodesSeen();
-        if (UsBetaSeries.debug) console.log('Season.updateRender', {lenEpisodes, lenSpecials, lenNotSpecials, lenSeen});
+        Season.debug('Season.updateRender', {lenEpisodes, lenSpecials, lenNotSpecials, lenSeen});
         /**
          * Met à jour la vignette de la saison courante
          * et change de saison, si il y en a une suivante
@@ -401,10 +404,10 @@ export class Season extends RenderHtml {
         const seasonViewed = function(): void {
             // On check la saison
             self.elt.find('.slide__image').prepend('<div class="checkSeen"></div>');
-            if (UsBetaSeries.debug) console.log('Season.updateRender: Tous les épisodes de la saison ont été vus', self.elt, self.elt.next());
+            Season.debug('Season.updateRender: Tous les épisodes de la saison ont été vus', self.elt, self.elt.next());
             // Si il y a une saison suivante, on la sélectionne
             if (self.elt.next('.slide_flex').length > 0) {
-                if (UsBetaSeries.debug) console.log('Season.updateRender: Il y a une autre saison');
+                Season.debug('Season.updateRender: Il y a une autre saison');
                 self.elt.removeClass('slide--current');
                 self.elt.next('.slide_flex').find('.slide__image').trigger('click');
             }

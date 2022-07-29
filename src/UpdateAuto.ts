@@ -2,6 +2,9 @@ import { UsBetaSeries, Obj } from "./Base";
 import { Show } from "./Show";
 
 export class UpdateAuto {
+    static logger = new UsBetaSeries.setDebug('UpdateAuto');
+    static debug = UpdateAuto.logger.debug.bind(UpdateAuto.logger);
+
     private static instance: UpdateAuto;
 
     static intervals: Array<Obj> = [
@@ -260,10 +263,10 @@ export class UpdateAuto {
      */
     stop(): UpdateAuto {
         if (!this.status) {
-            if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task stop (%cnot started%c)', 'color:#fd7e14', 'color:inherit', 'color:#dc3545', 'color:inherit');
+            UpdateAuto.debug('%cUpdateAuto%c: task stop (%cnot started%c)', 'color:#fd7e14', 'color:inherit', 'color:#dc3545', 'color:inherit');
             return this;
         }
-        if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task stop', 'color:#fd7e14', 'color:inherit');
+        UpdateAuto.debug('%cUpdateAuto%c: task stop', 'color:#fd7e14', 'color:inherit');
         if (this._show.user.remaining <= 0 && this._show.isEnded()) {
             this._auto = false;
             this._interval = 0;
@@ -286,10 +289,10 @@ export class UpdateAuto {
      */
     async delete(): Promise<UpdateAuto> {
         if (!this._exist) {
-            if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task delete (%cnot exists%c)', 'color:#dc3545', 'color:inherit', 'color:#fd7e14', 'color:inherit');
+            UpdateAuto.debug('%cUpdateAuto%c: task delete (%cnot exists%c)', 'color:#dc3545', 'color:inherit', 'color:#fd7e14', 'color:inherit');
             return Promise.resolve(this);
         }
-        if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task delete', 'color:#dc3545', 'color:inherit');
+        UpdateAuto.debug('%cUpdateAuto%c: task delete', 'color:#dc3545', 'color:inherit');
         this.stop();
         const objUpAuto = await UsBetaSeries.gm_funcs.getValue('objUpAuto', {});
         if (objUpAuto[this._showId] !== undefined) {
@@ -313,7 +316,7 @@ export class UpdateAuto {
         // Si les options sont modifiées pour arrêter la tâche
         // et que le statut est en cours
         if (this.status && (!this.auto || this.interval <= 0)) {
-            if (UsBetaSeries.debug) console.log('close interval updateEpisodeListAuto');
+            UpdateAuto.debug('close interval updateEpisodeListAuto');
             return this.stop();
         }
         // Si les options modifiées pour lancer
@@ -329,10 +332,10 @@ export class UpdateAuto {
                 return this;
             }
             if (this._timer) {
-                if (UsBetaSeries.debug) console.log('close old interval timer');
+                UpdateAuto.debug('close old interval timer');
                 clearInterval(this._timer);
             }
-            if (UsBetaSeries.debug) console.log('%cUpdateAuto%c: task launch', 'color:#28a745', 'color:inherit');
+            UpdateAuto.debug('%cUpdateAuto%c: task launch', 'color:#28a745', 'color:inherit');
             if (! this.status) this.status = true;
             this._tick();
             this._timer = setInterval(this._tick.bind(this), (this.interval * 60) * 1000);
@@ -348,16 +351,14 @@ export class UpdateAuto {
      */
     private _tick(): void {
         this._lastUpdate = Date.now();
-        if (UsBetaSeries.debug) {
-            console.log('[%s] UpdateAuto tick', (new Date).format('datetime'));
-        }
+        UpdateAuto.debug('[%s] UpdateAuto tick', (new Date).format('datetime'));
         jQuery('#episodes .updateEpisodes').trigger('click');
         if ( ! this.status) {
             this.status = true;
         }
-        // if (BetaSeries.debug) console.log('UpdateAuto setInterval objShow', Object.assign({}, this));
+        // if (BetaSeries.debug) UpdateAuto.debug('UpdateAuto setInterval objShow', Object.assign({}, this));
         if (! this.auto || this.show.user.remaining <= 0) {
-            if (UsBetaSeries.debug) console.log('Arrêt de la mise à jour auto des épisodes');
+            UpdateAuto.debug('Arrêt de la mise à jour auto des épisodes');
             this.stop();
         }
     }

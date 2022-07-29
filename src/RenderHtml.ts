@@ -1,4 +1,4 @@
-import { Base, Obj } from "./Base";
+import { Base, Obj, UsBetaSeries } from "./Base";
 import { AbstractDecorator, FillDecorator, implFillDecorator } from "./Decorators";
 
 /**
@@ -52,6 +52,8 @@ export interface implRenderHtml {
  * @implements {implFillDecorator}
  */
 export abstract class RenderHtml extends Base implements implRenderHtml, implFillDecorator {
+    static logger = new UsBetaSeries.setDebug('RenderHtml');
+    static debug = RenderHtml.logger.debug.bind(RenderHtml.logger);
 
     static relatedProps: Record<string, RelatedProp> = {};
     static selectorsCSS: Record<string, string> = {};
