@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.5.23
+// @version      1.5.95
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -31,9 +31,10 @@ if (!window) {
     const { Character, Person, PersonMedias, PersonMedia } = require('./types/Character');
     const { CommentBS } = require('./types/Comment');
     const { CommentsBS } = require('./types/Comments');
+    const { Debug } = require('./types/Debug');
     const { Episode } = require('./types/Episode');
     const { Media, MediaBase, MediaType } = require('./types/Media');
-    const { NotificationBS } = require('./types/Notification');
+    const { NotificationBS, NotificationList } = require('./types/Notification');
     const { Show, PlatformList } = require('./types/Show');
     const { Movie, MovieStatus } = require('./types/Movie');
     const { Member } = require('./types/Member');
@@ -51,7 +52,8 @@ if (!window) {
  * @typedef { import('./types/Character').Person } Person
  * @typedef { import('./types/Character').personMedia } personMedia
  * @typedef { import('./types/Comment').CommentBS } CommentBS
- * @typedef { import('./types/Comments').Episode } CommentsBS
+ * @typedef { import('./types/Comments').CommentsBS } CommentsBS
+ * @typedef { import('./types/Debug').Debug } Debug
  * @typedef { import('./types/Episode').Episode } Episode
  * @typedef { import('./types/Media').Media } Media
  * @typedef { import('./types/Media').MediaBase } MediaBase
@@ -83,7 +85,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-B/JhxU4a/6iH+9n4/zOBQiNhNCF/E5QoSqZRfkqRE0b+9nQJALg+Gky+3lQqYTXW';
+const sriBundle = 'sha384-eVwzSX0H/54VnG8zZyJ7Pv97oXPhBEPQojXSaM/M9+cBeEIFTkJkGKwWbHtHxJd7';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -242,6 +244,7 @@ const loadJS = function( src, attributes = {}, callback, onerror ) {
  * @param {JQueryStatic} $ - Library JQuery
  */
 const launchScript = function($) {
+    UsBetaSeries.setDebug.enable('userscript userscript:socket -userscript:load BS BS:API');
     const debug = false,
           origin = window.location.origin,
           url = window.location.pathname,
@@ -249,6 +252,9 @@ const launchScript = function($) {
           regDomain = new RegExp(domain, 'i'),
           regexUser = new RegExp('^/membre/[A-Za-z0-9]*$'),
           noop = function () {},
+          /** @type {Debug} */
+          logger = new UsBetaSeries.setDebug('userscript'),
+          log = logger.fnLog,
     // URI des images et description des classifications TV et films
     ratings = {
         'D-10': {
@@ -476,9 +482,9 @@ const launchScript = function($) {
                     UsBetaSeries.member = member;
                     // On affiche la version du script
                     if (typeof GM_info !== 'undefined') {
-                        if (UsBetaSeries.debug) console.log('%cUserScript BetaSeries%c: v%s - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit', user.login);
+                            log('%cUserScript BetaSeries%c: v%s - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit', user.login);
                     } else {
-                        if (UsBetaSeries.debug) console.log('%cUserScript BetaSeries%c - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', 'color:#00979c', 'color:inherit', user.login);
+                            log('%cUserScript BetaSeries%c - %cMembre%c: %s', 'color:#e7711b', 'color:inherit', 'color:#00979c', 'color:inherit', user.login);
                     }
                     // On désactive les fonctions de notifications originales
                     unsafeWindow.notificationChecker = () => {};
@@ -511,9 +517,9 @@ const launchScript = function($) {
                 });
             } else {
                 if (typeof GM_info !== 'undefined') {
-                    // console.log('GM_info', GM_info);
+                    // log('GM_info', GM_info);
                     // On affiche la version du script
-                    if (UsBetaSeries.debug) console.log('%cUserScript BetaSeries%c: v%s - %cMembre%c: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit');
+                    log('%cUserScript BetaSeries%c: v%s - %cMembre%c: Guest', 'color:#e7711b', 'color:inherit', GM_info.script.version, 'color:#00979c', 'color:inherit');
                 }
             }
             system.checkApiVersion();
@@ -572,10 +578,10 @@ const launchScript = function($) {
                         }
                     };
                     const updateImg = (i, elt) => {
-                        if (debug) console.log('headerSearch updateImg[%d]', i);
+                            log('headerSearch updateImg[%d]', i);
                         const $elt = $(elt);
                         const $col = $elt.parents('.col-md-4').first();
-                        // if (debug) console.log('col', $col);
+                            // log('col', $col);
                         if ($col.hasClass('show_searchResult')) {
                             // Show
                             const slug = $elt.attr('href').split('/').pop();
@@ -584,7 +590,7 @@ const launchScript = function($) {
                                  * @typedef {Show} show
                                  */
                                 if (show.in_account && show.user.status > 0) {
-                                    if (debug) console.log('show[%s]: found and viewed', slug);
+                                        log('show[%s]: found and viewed', slug);
                                     $('.mainLink', $elt)
                                         .css('textDecoration', 'line-throught')
                                         .css('color', 'red');
@@ -621,14 +627,14 @@ const launchScript = function($) {
                                 updateImg(0, $node);
                             }*/
                             else if (mutation.addedNodes[0].nodeName.toLowerCase() === 'form') {
-                                console.log('Observer HeaderSearch mutation', mutation);
+                                    log('Observer HeaderSearch mutation', mutation);
                                 $('input', $node).keyup((e) => {
                                     const target = $(e.currentTarget);
-                                    console.log('HeaderSearch input value', e.currentTarget.value);
+                                        log('HeaderSearch input value', e.currentTarget.value);
                                     if (target && /^imdb:\s*tt\d+/i.test(target.val())) {
                                         e.stopPropagation();
                                         const imdb_id = target.val().match(/^imdb:\s*(tt\d+)/i)[1].trim();
-                                        console.log('HeaderSearch imdb_id: ', imdb_id);
+                                            log('HeaderSearch imdb_id: ', imdb_id);
                                         Show.fetchByImdb(imdb_id, true).then(show => {
                                             let template = `
                                             <div class="col-md-4 kz_k1 show_searchResult">
@@ -685,7 +691,7 @@ const launchScript = function($) {
                                     else if (target && /^tvdb:\s*\d+/i.test(target.val())) {
                                         e.stopPropagation();
                                         const tvdb_id = target.val().match(/^tvdb:\s*(\d+)/i)[1].trim();
-                                        console.log('HeaderSearch tvdb_id: ', tvdb_id);
+                                            log('HeaderSearch tvdb_id: ', tvdb_id);
                                         Show.fetchByTvdb(tvdb_id).then(show => {
                                             let template = `
                                             <div class="col-md-4 kz_k1 show_searchResult">
@@ -716,7 +722,7 @@ const launchScript = function($) {
                                     else if (target && /^tmdb:\s*\d+/i.test(target.val())) {
                                         e.stopPropagation();
                                         const tmdb_id = target.val().match(/^tmdb:\s*(\d+)/i)[1].trim();
-                                        console.log('HeaderSearch tmdb_id: ', tmdb_id);
+                                            log('HeaderSearch tmdb_id: ', tmdb_id);
                                         Movie.fetchByTmdb(tmdb_id, true).then(movie => {
                                             let template = `
                                             <div class="col-md-4 kz_k1 movie_searchResult">
@@ -762,12 +768,11 @@ const launchScript = function($) {
                 return;
             }
             const version = resources.version;
-            // Styles
-            for (const style in resources.css) {
-                if (scriptsAndStyles[style]) {
-                    let key = Object.keys(resources.css[style])[0];
-                    if (scriptsAndStyles[style].integrity) {
-                        scriptsAndStyles[style].integrity = resources.css[style][key];
+            // log('updateResources', resources);
+            for (const resKey in resources.resources) {
+                // log('updateResources key: %s', resKey);
+                if (!scriptsAndStyles[resKey]) {
+                    continue;
                     }
                     scriptsAndStyles[style].href += '?v=' + version;
                 }
@@ -868,7 +873,7 @@ const launchScript = function($) {
                     if (!Number.isNaN(lastF) && lastF > parseFloat(UsBetaSeries.api.versions.last)) {
                         window.alert("L'API possède une nouvelle version: " + latest);
                     }
-                    console.log("%cAPI BetaSeries%c: v%s", 'color:#e7711b', 'color:inherit', latest);
+                    log("%cAPI BetaSeries%c: v%s", 'color:#e7711b', 'color:inherit', latest);
                 }
             });
         },
@@ -905,8 +910,10 @@ const launchScript = function($) {
          * @return {void}
          */
         addScriptAndLink: function(name, onloadFn = noop) {
+            const logLoad = logger.extend('load').fnDebug;
+            // console.log('addScriptAndLink logLoad', logLoad);
             if (name instanceof Array) {
-                // if (UsBetaSeries.debug) console.log('addScriptAndLink array.length = %d', name.length);
+                logLoad('addScriptAndLink array.length = %d', name.length);
                 if (name.length > 1) {
                     const elt = name.shift();
                     system.addScriptAndLink(elt, () => system.addScriptAndLink(name, onloadFn) );
@@ -918,31 +925,20 @@ const launchScript = function($) {
                 }
             }
             // index = index || ++indexCallLoad;
-            // if (UsBetaSeries.debug) console.log('[%d] addScriptAndLink: %s', index, name);
+            logLoad('addScriptAndLink: %s', name);
             // On vérifie que le nom est connu
             if (!scriptsAndStyles || !(name in scriptsAndStyles)) {
                 throw new Error(`${name} ne fait pas partit des données de scripts ou de styles`);
             }
-            const data = scriptsAndStyles[name];
-            // On vérifie si il est déjà chargé
-            if (data.called && data.loaded) {
-                // if (UsBetaSeries.debug) console.log('[%d] %s(%s) déjà appelé et chargé, on renvoie direct', index, data.type, name);
-                return onloadFn();
-            } else if (data.called && !data.loaded) {
-                system.waitPresent(() => { return scriptsAndStyles[name].loaded; }, onloadFn, 10, 10);
-                return;
-            }
-            scriptsAndStyles[name].called = true;
-            if (data.type === 'script') {
+            const loadScript = function(data, cb) {
                 const loadErrorScript = function(oError) {
-                    if (UsBetaSeries.debug) console.log('loadErrorScript error', oError);
+                    logLoad('loadErrorScript error', oError);
                     console.error("The script " + oError.target.src + " didn't load correctly.");
                 }
-                let origOnLoadFunction = onloadFn;
-                onloadFn = function() {
-                    // if (UsBetaSeries.debug) console.log('[%d] script(%s) chargé, on renvoie le callback', index, name);
-                    scriptsAndStyles[name].loaded = true;
-                    origOnLoadFunction();
+                const onloadFn = function() {
+                    logLoad('script(%s) chargé, on renvoie le callback', name);
+                    data.loaded = true;
+                    cb();
                 };
                 loadJS(data.src, {
                     integrity: data.integrity,
@@ -953,14 +949,14 @@ const launchScript = function($) {
             }
             else if (data.type === 'style') {
                 const loadErrorStyle = function(oError) {
-                    if (UsBetaSeries.debug) console.log('loadErrorStyle error', oError);
+                    logLoad('loadErrorStyle error', oError);
                     console.error("The style " + oError.target.href + " didn't load correctly.");
                 }
                 let origOnLoadFunction = onloadFn;
                 onloadFn = function() {
-                    // if (UsBetaSeries.debug) console.log('[%d] style(%s) chargé, on renvoie le callback', index, name);
-                    scriptsAndStyles[name].loaded = true;
-                    origOnLoadFunction();
+                    logLoad('style(%s) chargé, on renvoie le callback', name);
+                    data.loaded = true;
+                    cb();
                 };
                 loadCSS( data.href, null, data.media, {
                     integrity: data.integrity,
@@ -1113,9 +1109,9 @@ const launchScript = function($) {
             // Indique de quel type de ressource il s'agit
             const type = medias.getApiResource(location.pathname.split('/')[1]);
             id = id || medias.getResourceId();
-            if (UsBetaSeries.debug) console.log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
+            log('getResource{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
             return type.class.fetch(id).then(resource => {
-                // console.log('getResource', resource);
+                // log('getResource', resource);
                 return resource.init();
             }).catch(err => {
                 system.notification('fetch Resource', 'Erreur de récupération de la resource de type ' + type.singular + ', Erreur: ' + err);
@@ -1133,7 +1129,7 @@ const launchScript = function($) {
                   // Indique la fonction à appeler en fonction de la ressource
                   fonction = type.singular == 'show' || type.singular == 'episode' ? 'display' : 'movie';
             id = (id === null) ? medias.getResourceId() : id;
-            if (UsBetaSeries.debug) console.log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
+            log('getResourceData{id: %d, nocache: %s, type: %s}', id, ((nocache) ? 'true' : 'false'), type.singular);
             return UsBetaSeries.callApi('GET', type.plural, fonction, { 'id': id }, nocache);
         },
         /**
@@ -1210,7 +1206,7 @@ const launchScript = function($) {
             // Créer une popup affichant les différents posters
             res.getAllPosters().then(posters => {
                 const keys = Object.keys(posters);
-                console.log('posters', posters, keys);
+                log('posters', posters, keys);
                 let template = '<div class="posters">';
                 for (const title of keys) {
                     template += `<div class="row title">${title.charAt(0).toUpperCase() + title.slice(1)}</div><div class="row">`;
@@ -1279,7 +1275,7 @@ const launchScript = function($) {
                             dialog.close();
                         });
                     });
-                // console.log('Dialog', dialog);
+                // log('Dialog', dialog);
             });
         },
         /**
@@ -1290,7 +1286,7 @@ const launchScript = function($) {
         checkPoster: function(res) {
             const $poster = $('.blockInformations__poster img');
             if ($poster.length <= 0) {
-                if (debug) console.log('checkPoster poster not found');
+                log('checkPoster poster not found');
                 res.getDefaultImage('poster').then(img => {
                     /*
                     <img class="displayBlock objectFitCover" src="" width="300" height="450" alt="">
@@ -1344,12 +1340,12 @@ const launchScript = function($) {
                     $seasons = $('#seasons .slide_flex');
                 // On vérifie que les saisons et les episodes soient chargés sur la page
                 if ($episodes.length <= 0 || $seasons.length <= 0 || $episodes.length < len) {
-                    if (UsBetaSeries.debug) console.log('%cwaitSeasonsAndEpisodesLoaded%c: En attente du chargement des vignettes', 'color:#ffc107', 'color:inherit');
+                    log('%cwaitSeasonsAndEpisodesLoaded%c: En attente du chargement des vignettes', 'color:#ffc107', 'color:inherit');
                     return;
                 }
-                if (UsBetaSeries.debug) console.log('%cwaitSeasonsAndEpisodesLoaded%c: seasons and episodes are loaded', 'color: #28a745', 'color:inherit');
+                log('%cwaitSeasonsAndEpisodesLoaded%c: seasons and episodes are loaded', 'color: #28a745', 'color:inherit');
                 clearInterval(timer);
-                console.groupCollapsed('upgradeEpisodes');
+                if (logger.enabled) console.groupCollapsed('upgradeEpisodes');
                 if (typeof onfulfilled === 'function') onfulfilled();
             }, 200);
         },
@@ -1455,7 +1451,7 @@ const launchScript = function($) {
                     objUpAuto.stop();
                 }
                 system.addScriptAndLink(['popover', 'bootstrap'], function() {
-                    // if (UsBetaSeries.debug) console.log('updateAutoEpisodeList: Loading popover');
+                    log('updateAutoEpisodeList: Loading popover');
                     $('#updateEpisodeList .updateElement').popover({
                         container: $('#updateEpisodeList'),
                         // delay: { "show": 500, "hide": 100 },
@@ -1516,10 +1512,10 @@ const launchScript = function($) {
                                     .attr('title', 'Activer la tâche de mise à jour auto');
                             } else {
                                 if (!objUpAuto.show.in_account) {
-                                    if (UsBetaSeries.debug) console.log('La série n\'est pas sur le compte du membre');
+                                    log('La série n\'est pas sur le compte du membre');
                                     return;
                                 } else if (objUpAuto.interval <= 0) {
-                                    if (UsBetaSeries.debug) console.log('Le paramètre interval est <= 0');
+                                    log('Le paramètre interval est <= 0');
                                     $('.popover button[type="submit"]').before('<div class="form-group"><p class="alert alert-warning">Veuillez renseigner les paramètres de mise à jour.</p></div>');
                                     return;
                                 } else if (objUpAuto.interval > 0) {
@@ -1557,7 +1553,7 @@ const launchScript = function($) {
                             if (objUpAuto.auto !== checkAuto) { objUpAuto._auto = checkAuto; changed = true; }
                             if (objUpAuto.interval != intervalAuto) { objUpAuto._interval = intervalAuto; changed = true; }
                             if (changed) objUpAuto._save();
-                            if (UsBetaSeries.debug) console.log('optionsUpdateEpisodeList submit', objUpAuto);
+                            log('optionsUpdateEpisodeList submit', objUpAuto);
                             objUpAuto.launch();
                             $('#updateEpisodeList .updateElement').popover('hide');
                         });
@@ -1592,7 +1588,7 @@ const launchScript = function($) {
             }
             const seasons = $('#seasons .slide_flex .slide__image');
             let vignettes = getVignettes();
-            if (UsBetaSeries.debug) console.log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
+            log('Nb seasons: %d, nb vignettes: %d', seasons.length, vignettes.length);
             /**
              * Ajoute une écoute sur l'objet Show, sur l'évenement UPDATE, ARCHIVE et UNARCHIVE
              * pour mettre à jour l'update auto des épisodes
@@ -1602,7 +1598,7 @@ const launchScript = function($) {
              */
             function updateAuto(event) {
                 const show = this;
-                if (UsBetaSeries.debug) console.log('upgradeEpisodes > updateAuto: Listener called by ', event.detail?.name, {"this": this});
+                log('upgradeEpisodes > updateAuto: Listener called by ', event.detail?.name, {"this": this});
                 UpdateAuto.getInstance(show).then(objUpAuto => {
                     // Si il n'y a plus d'épisodes à regarder sur la série
                     if (event.detail.name === EventTypes.UPDATE && show.user.remaining <= 0) {
@@ -1639,11 +1635,11 @@ const launchScript = function($) {
             function addCheckSeen() {
                 vignettes = getVignettes();
                 const seasonNum = parseInt($('#seasons .slide--current').attr('href').split('/').pop(), 10);
-                if (UsBetaSeries.debug) console.log('season number: ', seasonNum);
+                log('season number: ', seasonNum);
                 if (res.currentSeason === undefined || res.currentSeason.number !== seasonNum) {
                     res.setCurrentSeason(seasonNum);
                 }
-                if (UsBetaSeries.debug) console.log('currentSeason: ', res.currentSeason);
+                log('currentSeason: ', res.currentSeason);
                 // Contient la promesse de récupérer les épisodes de la saison courante
                 res.currentSeason.fetchEpisodes()
                 // On ajoute la description des épisodes dans des Popup
@@ -1660,7 +1656,7 @@ const launchScript = function($) {
                             const $elt = $(e.currentTarget),
                                 episodeId = parseInt($elt.data('id'), 10),
                                 episode = res.currentSeason.getEpisode(episodeId);
-                            if (UsBetaSeries.debug) console.log('click checkSeen', episode, res);
+                            log('click checkSeen', episode, res);
                             // On vérifie si l'épisode a déjà été vu
                             if ($elt.hasClass('seen')) {
                                 // On demande à l'enlever des épisodes vus
@@ -1697,15 +1693,15 @@ const launchScript = function($) {
                                 elt.classList.add("js-lazy-image-handled");
                                 elt[attr] = defImgShow;
                                 elt.classList.add("fade-in");
-                                // console.log('lazyload onerror show', elt, res.images.show, attr);
+                                // log('lazyload onerror show', elt, res.images.show, attr);
                             };
                         }
                         $('#episodes .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
                     }).catch(() => {});
                 })
                 .finally(() => {
-                    console.log('userscript.medias.upgradeEpisodes fetchEpisodes finally');
-                    console.groupEnd('upgradeEpisodes');
+                    log('userscript.medias.upgradeEpisodes fetchEpisodes finally');
+                    if (logger.enabled) console.groupEnd('upgradeEpisodes');
                 });
                 // Ajouter un bouton de mise à jour des épisodes de la saison courante
                 if ($('#updateEpisodeList').length < 1) {
@@ -1723,7 +1719,7 @@ const launchScript = function($) {
                     $('#episodes .updateEpisodes').on('click', (e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        if (UsBetaSeries.debug) console.groupCollapsed('updateEpisodes');
+                        if (logger.enabled) console.groupCollapsed('updateEpisodes');
                         // On ferme la popup des options d'update auto
                         $('#updateEpisodeList .updateElement').popover('hide');
                         const self = $(e.currentTarget);
@@ -1732,9 +1728,9 @@ const launchScript = function($) {
                             fnLazy(); // On affiche les images lazyload
                         }).finally(() => {
                             self.addClass('finish');
-                            if (UsBetaSeries.debug) {
-                                console.log('userscript.medias.upgradeEpisodes checkEpisodes finally');
-                                console.groupEnd('updateEpisodes');
+                            if (logger.enabled) {
+                                log('userscript.medias.upgradeEpisodes checkEpisodes finally');
+                                if (logger.enabled) console.groupEnd('updateEpisodes');
                             }
                         });
                     });
@@ -1745,17 +1741,17 @@ const launchScript = function($) {
 
             // On ajoute un event sur le changement de saison
             seasons.on('click', () => {
-                if (UsBetaSeries.debug) console.groupCollapsed('season click');
+                if (logger.enabled) console.groupCollapsed('season click');
                 $('#episodes .checkSeen').off('click');
                 $('#episodes .slide__image').off('inserted.bs.popover');
                 $('#episodes .slide__image').popover('dispose');
                 // On attend que les vignettes de la saison choisie soient chargées
                 medias.waitSeasonsAndEpisodesLoaded(() => {
                     addCheckSeen();
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (logger.enabled) console.groupEnd();
                 }, () => {
                     console.error('Season click Timeout');
-                    if (UsBetaSeries.debug) console.groupEnd();
+                    if (logger.enabled) console.groupEnd();
                 });
             });
             // On active les menus dropdown
@@ -1782,7 +1778,7 @@ const launchScript = function($) {
                 if ($btn.hasClass('btn--grey')) {
                     typeBtn = 'hide';
                 }
-                if (debug) console.log('upgradeSeasonsActions typeBtn: %s', typeBtn);
+                log('upgradeSeasonsActions typeBtn: %s', typeBtn);
                 const seasonNum = parseInt($btn.parents('.dropdown-menu').siblings('.slide__title').text().match(/\d+/).shift(), 10);
                 res.seasons[seasonNum-1].fetchEpisodes().then(season => {
                     season[typeBtn]();
@@ -1795,7 +1791,7 @@ const launchScript = function($) {
                 const $target = $(e.target);
                 const $poster = $target.siblings('img');
                 const indexSeason = parseInt($target.parents('.slide_flex').attr('href').split('/').pop(), 10) - 1;
-                // console.log('seasons choiceImg', {indexSeason});
+                // log('seasons choiceImg', {indexSeason});
                 medias.choiceImage(res, (src) => {
                     res.override('season', src, {season: indexSeason});
                     $poster.attr('src', src);
@@ -1810,7 +1806,7 @@ const launchScript = function($) {
          * @return {void}
          */
         replaceSuggestSimilarHandler: function($elt, objSimilars = []) {
-            if (UsBetaSeries.debug) console.log('replaceSuggestSimilarHandler', {elt: $elt, objSimilars});
+            log('replaceSuggestSimilarHandler', {elt: $elt, objSimilars});
 
             if (typeof $elt === 'string') $elt = $($elt);
             if ($elt.hasClass('usbs')) return;
@@ -1888,7 +1884,7 @@ const launchScript = function($) {
                                     break;
                                 /* Touche Entrée */
                                 case 13:
-                                    if (UsBetaSeries.debug) console.log('current_item', current_item);
+                                    log('current_item', current_item);
                                     if (current_item.length !== 0) {
                                         autocompleteSimilar(current_item.find("span"));
                                     }
@@ -1981,18 +1977,18 @@ const launchScript = function($) {
         similarsViewed: function(res) {
             // On vérifie que l'utilisateur est connecté et que la clé d'API est renseignée
             if (!UsBetaSeries.userIdentified() || betaseries_api_user_key === '' || !/(serie|film)/.test(url)) return;
-            if (UsBetaSeries.debug) console.groupCollapsed('similarsViewed');
+            if (logger.enabled) console.groupCollapsed('similarsViewed');
             if (res instanceof Show && $('#similars').length <= 0) {
                 res.addListener(EventTypes.ADD, medias.addSimilarsSection);
             }
             let $similars = $('#similars .slide__title'), // Les titres des ressources similaires
             len = $similars.length; // Le nombre de similaires
-            if (UsBetaSeries.debug) console.log('nb similars: %d', len, res.nbSimilars);
+            log('nb similars: %d', len, res.nbSimilars);
             // On sort si il n'y a aucun similars ou si il s'agit de la vignette d'ajout
             if (len <= 0 || (len === 1 && $($similars.parent().get(0)).find('button').length === 1)) {
                 $('.updateSimilars').addClass('finish');
                 medias.replaceSuggestSimilarHandler($('#similars div.slides_flex div.slide_flex div.slide__image > button'));
-                console.groupEnd();
+                if (logger.enabled) console.groupEnd();
                 return;
             }
             /*
@@ -2054,7 +2050,7 @@ const launchScript = function($) {
                      * @return {String}              La position de la popup
                      */
                     let funcPlacement = (_tip, elt) => {
-                        //if (UsBetaSeries.debug) console.log('funcPlacement', tip, $(tip).width());
+                        //log('funcPlacement', tip, $(tip).width());
                         let rect = elt.getBoundingClientRect(),
                             width = $(window).width(),
                             sizePopover = 320;
@@ -2071,7 +2067,7 @@ const launchScript = function($) {
                         // On décode le titre du similar
                         similar.decodeTitle();
                         // On ajoute l'icone pour visualiser les data JSON du similar
-                        if (UsBetaSeries.debug) {
+                        if (logger.enabled) {
                             similar.wrench(dialog);
                         }
                         //$link.attr('data-placement', funcPlacement(null, $elt.get(0)));
@@ -2125,7 +2121,7 @@ const launchScript = function($) {
                                     }
                                     objSimilar.changeState(-1).then(() => {
                                         const checked = $(e.currentTarget).siblings('input:checked');
-                                        // if (UsBetaSeries.debug) console.log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
+                                        log('Reset changeState nbChecked(%d) similar', checked.length, objSimilar);
                                         checked.get(0).checked = false;
                                         checked.removeAttr('checked');
                                         // On supprime le bandeau Vu
@@ -2140,13 +2136,13 @@ const launchScript = function($) {
                                 e.stopPropagation();
                                 // e.preventDefault();
                                 const $elt = $(e.currentTarget).parent().children('input:checked');
-                                if (UsBetaSeries.debug) console.log('input.movie click - checked(%d)', $elt.length);
+                                log('input.movie click - checked(%d)', $elt.length);
                                 if ($elt.length <= 0) {
                                     $elt.siblings('button').hide();
                                     return;
                                 }
                                 const state = parseInt($elt.val(), 10);
-                                if (UsBetaSeries.debug) console.log('input.movie change: %d', state, $elt);
+                                log('input.movie change: %d', state, $elt);
                                 objSimilar.changeState(state).then(similar => {
                                     if (state === MovieStatus.SEEN) {
                                         $elt.parents('a').prepend(`<img src="${serverBaseUrl}/img/viewed.png" class="bandViewed"/>`);
@@ -2155,7 +2151,7 @@ const launchScript = function($) {
                                         $elt.parents('a').find('.bandViewed').remove();
                                     }
                                     $elt.siblings('button').show();
-                                    if (UsBetaSeries.debug) console.log('movie mustSee/seen OK', similar);
+                                    log('movie mustSee/seen OK', similar);
                                 }, err => {
                                     console.warn('movie mustSee/seen KO', err);
                                 });
@@ -2179,7 +2175,8 @@ const launchScript = function($) {
                                 e.preventDefault();
                                 const $link = $(e.currentTarget);
                                 const showId = parseInt($link.data('showId'), 10);
-                                const toSee = await system.toggleToSeeShow(showId);
+                                log('Popover toSeeShow', {$link, $icon, showId, toSee});
+                                system.toggleToSeeShow(showId).then(toSee => {
                                 if (toSee) {
                                     $link.children('span').text('Ne plus voir');
                                 } else {
@@ -2194,7 +2191,7 @@ const launchScript = function($) {
                               placement = funcPlacement(null, this),
                               resId = parseInt($link.data('id'), 10),
                               objSimilar = res.getSimilar(resId);
-                        // if (debug) console.log('placement similar: ', placement);
+                        // log('placement similar: ', placement);
                         $('.popover-header').html(objSimilar.getTitlePopup());
                         $('.popover-body').html(objSimilar.getContentPopup());
                         // On gère le placement de la Popover par rapport à l'image du similar
@@ -2205,7 +2202,7 @@ const launchScript = function($) {
                         }
                     });
                     $('.updateSimilars').addClass('finish');
-                    console.groupEnd();
+                    if (logger.enabled) console.groupEnd();
                 });
             }, (err) => {
                 system.notification('Erreur de récupération des similars', 'similarsViewed: ' + err);
@@ -2230,7 +2227,7 @@ const launchScript = function($) {
             [].forEach.call(document.querySelectorAll(".js-popinalert-comments"), function(el) {
                 const cId = el.getAttribute('data-comment-id');
                 $(el).replaceWith(`<button type="button" class="btn-reset js-popup-comments zIndex10" data-comment-id="${cId}"></button>`);
-                // if (UsBetaSeries.debug) console.log('eventListener comment retiré');
+                log('eventListener comment retiré');
             });
             const eventComments = () => {
                 /**
@@ -2239,14 +2236,14 @@ const launchScript = function($) {
                 const $comments = $('#comments .slide__comment .js-popup-comments');
                 // TODO: Gérer les boutons d'affichage des spoilers
                 // const $btnDisplaySpoiler = $('#comments .slide__comment .js-display-spoiler');
-                if (debug) console.log('eventComments');
+                log('eventComments');
                 $comments.off('click').on('click', e => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (debug) console.log('eventComments click');
+                    log('eventComments click');
                     let promise = Promise.resolve();
                     if (res.comments.length <= 0 || res.comments.length < $comments.length) {
-                        if (debug) console.log('eventComments fetchComments', {comments: res.comments.length, vignettes: $comments.length});
+                        log('eventComments fetchComments', {comments: res.comments.length, vignettes: $comments.length});
                         promise = res.comments.fetchComments();
                     }
                     promise.then(() => {
@@ -2255,19 +2252,19 @@ const launchScript = function($) {
                              * @type {CommentBS}
                              */
                             objComment = res.comments.getComment(commentId);
-                        if (debug) console.log('eventComments promise commentId: %d', commentId, objComment);
+                        log('eventComments promise commentId: %d', commentId, objComment);
                         if (!(objComment instanceof CommentBS)) {
                             system.notification('Affichage commentaire', "Le commentaire n'a pas été retrouvé");
                             console.warn('Commentaire introuvable', {commentId, objComment, 'comments': res.comments});
                             return;
                         }
-                        objComment.addListener('show', () => {
+                        objComment.on(EventTypes.SHOW, () => {
                             const $textarea = $('.writing textarea');
                             const users = objComment.getLogins();
                             $textarea.textcomplete([{
                                 match: /(^|\s)@(\w{1,})$/,
                                 search: function (term, callback) {
-                                    console.log('textcomplete search term', term);
+                                    log('textcomplete search term', term);
                                     callback(users.filter(user => { return user.startsWith(term); }));
                                 },
                                 replace: function (word) {
@@ -2276,7 +2273,7 @@ const launchScript = function($) {
                             }])
                             .on({
                                 'textComplete:show': function (e) {
-                                    if (debug) console.log('textComplete:show', e, this);
+                                        log('textComplete:show', e, this);
                                     $('ul.textcomplete-dropdown').get(0).style.zIndex = 2050;
                                 }
                             });
@@ -2286,14 +2283,14 @@ const launchScript = function($) {
                 });
                 const $btnModal = $('#js-open-comments-modal');
                 $btnModal.removeAttr('onclick').off('click').on('click', e => {
-                    if (debug) console.log('Event click on comments');
+                    log('Event click on comments');
                     e.stopPropagation();
                     e.preventDefault();
                     res.comments.render();
                 });
                 if ($comments.length <= 0 && $btnModal.length <= 0) {
                     $('#comments .slide_flex button.actorEmpty').removeAttr('onclick').off('click').on('click', e => {
-                        if (debug) console.log('Event zero comments');
+                        log('Event zero comments');
                         e.stopPropagation();
                         e.preventDefault();
                         res.comments.render();
@@ -2303,7 +2300,7 @@ const launchScript = function($) {
             $('#comments .slide__comment').off('click');
             system.addScriptAndLink(['textcomplete'], eventComments);
             const evaluations = function() {
-                if (debug) console.log('evaluations');
+                log('evaluations');
                 res.comments.showEvaluations().then((template) => {
                     const $title = $('#comments .blockTitle');
                     $title.popover('dispose');
@@ -2332,7 +2329,7 @@ const launchScript = function($) {
                     match: /(^|\s)@(\w{1,})$/,
                     search: function (term, callback) {
                         const results = users.filter(user => { return user.startsWith(term); });
-                        console.log('textcomplete search term', term, results);
+                        log('textcomplete search term', term, results);
                         callback(results);
                     },
                     replace: function (word) {
@@ -2341,7 +2338,7 @@ const launchScript = function($) {
                 }])
                 .on({
                     'textComplete:show': function (e) {
-                        if (debug) console.log('textComplete:show', e, this);
+                        log('textComplete:show', e, this);
                         $('ul.textcomplete-dropdown').get(0).style.zIndex = 2050;
                     }
                 });
@@ -2358,7 +2355,7 @@ const launchScript = function($) {
                   $btnVote = $blockMeta.find('button');
             const displayNotesInPopup = function() {
                 system.addScriptAndLink(['popover', 'bootstrap'], () => {
-                    if (UsBetaSeries.debug) console.log('callback after load popover and bootstrap');
+                    log('callback after load popover and bootstrap');
                     //res.removeListener(EventTypes.NOTE, displayNotesInPopup);
                     const popupVote = function() {
                         // On met en forme le nombre de votes
@@ -2408,7 +2405,7 @@ const launchScript = function($) {
                 e.stopPropagation();
                 e.preventDefault();
                 res.objNote.createPopupForVote((note) => {
-                    if (UsBetaSeries.debug) console.log('createPopupForVote callback', note);
+                    log('createPopupForVote callback', note);
                 });
             });
             if (res.objNote.user > 0) {
@@ -2422,7 +2419,7 @@ const launchScript = function($) {
          */
         observeBtnVu: function(objRes) {
             const $btnVu = $(`.blockInformations__action .label:contains("${trans('film.button.watched.label')}")`).siblings('button');
-            if (UsBetaSeries.debug) console.log('observeBtnVu', $btnVu);
+            log('observeBtnVu', $btnVu);
             /**
              * Met à jour le bouton Vu
              * @param {number} state L'état de visionnage du film (TOSEE or SEEN)
@@ -2437,7 +2434,7 @@ const launchScript = function($) {
             $btnVu.off('click').on('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (UsBetaSeries.debug) console.log('observeBtnVu click');
+                log('observeBtnVu click');
 
                 // _this.markAsView.blur();
                 if (!UsBetaSeries.userIdentified()) {
@@ -2473,7 +2470,7 @@ const launchScript = function($) {
                 let type = medias.getApiResource(location.pathname.split('/')[1]); // Indique de quel type de ressource il s'agit
                 medias.getResourceData().then(function (data) {
                     const dialog = system.getDialog();
-                    // if (UsBetaSeries.debug) console.log('addBtnDev promise return', data);
+                    log('addBtnDev promise return', data);
                     dialog
                         .setContent(renderjson.set_show_to_level(2)(data[type.singular]))
                         .setTitle('Données du média')
@@ -2709,7 +2706,7 @@ const launchScript = function($) {
                     _resizeMenu: function() {
                         const clientRect = document.getElementById('platform-button').getBoundingClientRect();
                         const size = window.innerHeight - (clientRect.y + clientRect.height);
-                        console.log('_resizeMenu', size);
+                        log('_resizeMenu', size);
                         this.menu.height(size);
                         this.menu.width(clientRect.width);
                     }
@@ -2725,11 +2722,11 @@ const launchScript = function($) {
                         $platforms
                             .iconselectmenu({
                                 open: function() {
-                                    console.log('iconselectmenuopen');
+                                    log('iconselectmenuopen');
                                     const onerror = (err, elt) => {
-                                        //console.log('lazyLoad error URL: ', defImgShow);
-                                        $(elt).replaceWith('<i class="fa fa-youtube-play fa-2x" aria-hidden="true"></i>');
-                                        // console.log('lazyload onerror show', elt, res.images.show, attr);
+                                        //log('lazyLoad error URL: ', defImgShow);
+                                        $(elt).replaceWith('<i class="fa-solid fa-youtube fa-2x" aria-hidden="true"></i>');
+                                        // log('lazyload onerror show', elt, res.images.show, attr);
                                     };
                                     $('#platform-menu .js-lazy-image').lazyload(Object.assign({onerror}, optionsLazyload));
                                 }
@@ -2749,9 +2746,9 @@ const launchScript = function($) {
                         no: false,
                         showClose: true,
                         callback: function() {
-                            // console.log('callback PopupAlert');
+                            // log('callback PopupAlert');
                             $('#platform_type').on('change', () => {
-                                // console.log('platform_type change', e);
+                                // log('platform_type change', e);
                                 let type = $('#platform_type option:selected').val();
                                 const $platforms = $('#platform');
                                 $platforms.empty();
@@ -2766,7 +2763,7 @@ const launchScript = function($) {
                             });
                             $( "form.form-middle" ).on( "submit", function( event ) {
                                 event.preventDefault();
-                                console.log( $( this ).serializeArray() );
+                                log( $( this ).serializeArray() );
                                 popup.closePopin();
                             });
                             $('button.js-close-popupalert[type="button"]').on('click', popup.closePopin);
@@ -2785,19 +2782,19 @@ const launchScript = function($) {
         checkNextEpisode: function(res) {
             const $block404 = $('.blockInformations .blockNextEpisode .media-left .block404');
             if ($block404.length > 0) {
-                if (debug) console.log('checkNextEpisode block404 found');
+                log('checkNextEpisode block404 found');
                 res.getDefaultImage('wide').then(defImgShow => {
                     let onerror = null;
                     if (defImgShow != null) {
                         onerror = (err, elt, url, attr) => {
-                            // console.log('checkNextEpisode lazyLoad error URL: ', defImgShow, url);
+                            // log('checkNextEpisode lazyLoad error URL: ', defImgShow, url);
                             elt.classList.add("js-lazy-image-handled");
                             if (!regDomain.test(defImgShow)) {
                                 elt.crossOrigin = 'anonymous';
                             }
                             elt[attr] = defImgShow;
                             elt.classList.add("fade-in");
-                            // console.log('lazyload onerror show', elt, res.images.show, attr);
+                            // log('lazyload onerror show', elt, res.images.show, attr);
                         };
                         $block404.replaceWith(`<img class="js-lazy-image" data-src="${defImgShow}" width="124" height="70">`);
                     }
@@ -2827,7 +2824,7 @@ const launchScript = function($) {
                     e.stopPropagation();
                     const personId = parseInt(e.currentTarget.dataset.personId);
                     if (isNull(personId)) {
-                        if (debug) console.log('userscript media.upgradeActors personId not found', e.currentTarget);
+                        log('userscript media.upgradeActors personId not found', e.currentTarget);
                         return false;
                     }
                     const character = show.getCharacter(personId);
@@ -3054,7 +3051,7 @@ const launchScript = function($) {
                 };
                 system.addScriptAndLink('tablecss');
                 $('body').append(dialogHTML);
-                //if (UsBetaSeries.debug) console.log(currentUser, otherMember, trads);
+                log(currentUser, otherMember, trads);
                 for (const [key, value] of Object.entries(trads)) {
                     if (typeof value == 'object') {
                         for (const [subkey, subvalue] of Object.entries(trads[key])) {
@@ -3129,7 +3126,7 @@ const launchScript = function($) {
             });
             $inpSearchFriends.on('input', () => {
                 let val = $inpSearchFriends.val().toString().trim().toLowerCase();
-                if (UsBetaSeries.debug) console.log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
+                log('Search Friends: ' + val, idFriends.indexOf(val), objFriends[val]);
                 if (val === '' || idFriends.indexOf(val) === -1) {
                     $('.timeline-item').show();
                     if (val === '') {
@@ -3139,7 +3136,7 @@ const launchScript = function($) {
                 }
                 $('.clearSearch').show();
                 $('.timeline-item').hide();
-                if (UsBetaSeries.debug) console.log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
+                log('Item: ', $('.timeline-item .infos a[href="' + objFriends[val].link + '"]'));
                 $('.timeline-item .infos a[href="' + objFriends[val].link + '"]').parents('.timeline-item').show();
             });
             $('.clearSearch').on('click', () => {
@@ -3429,7 +3426,7 @@ const launchScript = function($) {
          */
         displayNotes: function() {
             if (url.split('/').pop() == 'agenda') return;
-            if (debug) console.log('series displayNotes');
+            log('series displayNotes');
             let $actionsShows = $('#annuaire-list .bottomActionMovie');
             if ($actionsShows.length > 0) {
                 let ids = [];
@@ -3457,7 +3454,7 @@ const launchScript = function($) {
          * pour ajouter/retirer la série du tableau des séries à voir
          */
         addBtnToSee: async function() {
-            if (debug) console.log('series addBtnToSee');
+            log('series addBtnToSee');
 
             /** @type {JQuery<HTMLElement>} */
             const $bottomActions = $('#annuaire-list .bottomActionMovie');
@@ -3471,7 +3468,7 @@ const launchScript = function($) {
                  */
                 (_, elt) =>
             {
-                // console.log('bottomActionMovie elt', elt);
+                // log('bottomActionMovie elt', elt);
                 const showId = parseInt(elt.dataset.sid, 10);
                 const btnHTML = `
                         <button class="btn-reset btnMarkToSee" type="button" title="Ajouter la série aux séries à voir">
@@ -3517,7 +3514,7 @@ const launchScript = function($) {
                 currentShowIds = {};
             // En attente du chargement des épisodes
             if (len <= 0) {
-                if (UsBetaSeries.debug) console.log('updateAgenda - nb containers: %d', len);
+                log('updateAgenda - nb containers: %d', len);
                 return;
             }
             const params = {
@@ -3535,7 +3532,7 @@ const launchScript = function($) {
                         .data('showId', data.shows[t].id)
                         .data('code', data.shows[t].unseen[0].code.toLowerCase());
                     currentShowIds[data.shows[t].id] = { code: data.shows[t].unseen[0].code.toLowerCase() };
-                    //if (UsBetaSeries.debug) console.log('title: %s - code: %s', title, episode);
+                    log('title: %s - code: %s', title, episode);
                 }
             });
             if ($('.updateElements').length === 0) {
@@ -3548,7 +3545,7 @@ const launchScript = function($) {
                 $('.updateEpisodes').on('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (UsBetaSeries.debug) console.groupCollapsed('Agenda updateEpisodes');
+                    if (logger.enabled) console.groupCollapsed('Agenda updateEpisodes');
                     $containersEpisode = $('#reactjs-episodes-to-watch .ComponentEpisodeContainer');
                     const self = $(e.currentTarget), len = $containersEpisode.length;
                     self.removeClass('finish');
@@ -3563,12 +3560,12 @@ const launchScript = function($) {
                     Media.callApi('GET', 'episodes', 'list', params)
                     .then((data) => {
                         let newShowIds = {}, show;
-                        if (UsBetaSeries.debug) console.log('updateAgenda updateEpisodes', data);
+                        log('updateAgenda updateEpisodes', data);
                         for (let s = 0; s < data.shows.length; s++) {
                             show = data.shows[s];
                             newShowIds[show.id] = { code: show.unseen[0].code.toLowerCase() };
                             if (currentShowIds[show.id] === undefined) {
-                                if (UsBetaSeries.debug) console.log('Une nouvelle série est arrivée', show);
+                                log('Une nouvelle série est arrivée', show);
                                 // Il s'agit d'une nouvelle série
                                 // TODO Ajouter un nouveau container
                                 let newContainer = $(buildContainer(show.unseen[0]));
@@ -3576,7 +3573,7 @@ const launchScript = function($) {
                                 $($containersEpisode.get(s)).parent().after(newContainer);
                             }
                         }
-                        if (UsBetaSeries.debug) console.log('Iteration principale');
+                        log('Iteration principale');
                         let container, unseen;
                         // Itération principale sur les containers
                         for (let e = 0; e < len; e++) {
@@ -3584,7 +3581,7 @@ const launchScript = function($) {
                             unseen = null;
                             // Si la serie n'est plus dans la liste
                             if (newShowIds[container.data('showId')] === undefined) {
-                                if (UsBetaSeries.debug) console.log('La série %d ne fait plus partie de la liste', container.data('showId'));
+                                log('La série %d ne fait plus partie de la liste', container.data('showId'));
                                 container.parent().remove();
                                 continue;
                             }
@@ -3600,7 +3597,7 @@ const launchScript = function($) {
                                 }
                             }
                             if (unseen && container.data('code') !== unseen.code.toLowerCase()) {
-                                if (UsBetaSeries.debug) console.log('Episode à mettre à jour', unseen);
+                                log('Episode à mettre à jour', unseen);
                                 // Mettre à jour l'épisode
                                 let mainLink = $('a.mainLink', container), text = unseen.code + ' - ' + unseen.title;
                                 // On met à jour le titre et le lien de l'épisode
@@ -3617,15 +3614,15 @@ const launchScript = function($) {
                                 renderNote(unseen.note.mean, container);
                             }
                             else {
-                                console.log('Episode Show unchanged', unseen);
+                                log('Episode Show unchanged', unseen);
                             }
                         }
                         fnLazy();
                         self.addClass('finish');
-                        if (UsBetaSeries.debug) console.groupEnd();
+                        if (logger.enabled) console.groupEnd();
                     }, (err) => {
                         system.notification('Erreur de mise à jour des épisodes', 'updateAgenda: ' + err);
-                        if (UsBetaSeries.debug) console.groupEnd();
+                        if (logger.enabled) console.groupEnd();
                     });
                 });
             }
@@ -3836,7 +3833,7 @@ const launchScript = function($) {
                 len = $containersMovie.length;
             // En attente du chargement des épisodes
             if (len <= 0) {
-                if (UsBetaSeries.debug) console.log('updateAgenda - nb containers: %d', len);
+                log('updateAgenda - nb containers: %d', len);
                 return;
             }
             const params = {
@@ -3862,7 +3859,7 @@ const launchScript = function($) {
             $('div.form-group button.btn-btn.btn--blue').prop('onclick', null).off('click').on('click', (e, key) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if (UsBetaSeries.debug) console.log('nouveau parametre handler', key);
+                log('nouveau parametre handler', key);
                 // On ajoute une nouvelle ligne de paramètre
                 newApiParameter();
                 // On insère la clé du paramètre, si elle est présente
@@ -3882,7 +3879,7 @@ const launchScript = function($) {
                 // En attente de la documentation de l'API
                 system.waitDomPresent('#doc code', () => {
                     let paramsDoc = $('#doc > ul > li > code');
-                    if (UsBetaSeries.debug) console.log('paramsDoc', paramsDoc);
+                    log('paramsDoc', paramsDoc);
                     paramsDoc.css('cursor', 'pointer');
                     // On ajoute la clé du paramètre dans une nouvelle ligne de paramètre
                     paramsDoc.click((e) => {
@@ -3949,7 +3946,7 @@ const launchScript = function($) {
          * Le sommaire est constitué des liens vers les fonctions des méthodes.
          */
         sommaireDevApi: function() {
-            if (UsBetaSeries.debug) console.log('build sommaire');
+            log('build sommaire');
             let titles = $('.maincontent h2'), methods = {};
             // Ajout du style CSS pour les tables
             system.addScriptAndLink('tablecss');
@@ -4024,7 +4021,7 @@ const launchScript = function($) {
                 methods[key][verb] = { id: id, title: desc };
             }
             // Construire un sommaire des fonctions
-            //if (UsBetaSeries.debug) console.log('methods', methods);
+            log('methods', methods);
             $('.maincontent h1').after(buildTable());
             $('#sommaire').slideDown();
             $('.linkSommaire').on('click', (e) => {
@@ -4060,9 +4057,9 @@ const launchScript = function($) {
         checkArticle: function() {
             $('a').on('click', () => {
                 $('a').off('click');
-                console.log('Event click', origin, url, window.location.pathname);
+                log('Event click', origin, url, window.location.pathname);
                 if (window.history.state != state) {
-                    console.log('on a changé de page');
+                    log('on a changé de page');
                     state = window.history.state;
                     setTimeout(noop, 0);
                     if (/^\/article\//.test(location.pathname))
@@ -4080,13 +4077,13 @@ const launchScript = function($) {
                 system.waitDomPresent('.blogArticleMain .blogArticleContent a', () => {
                     const $article = $('.blogArticleMain .blogArticleContent');
                     let $links = $article.find('a');
-                    if (UsBetaSeries.debug) console.log('links(%d) before filter', $links.length);
+                    log('links(%d) before filter', $links.length);
                     $links = $links.filter(function() {
-                        // console.log('filter', this);
+                        // log('filter', this);
                         if (this.onclick !== null) return false;
                         return /^\/(serie|film)\//.test(this.pathname);
                     });
-                    if (UsBetaSeries.debug) console.log('links(%d) after filter', $links.length);
+                    log('links(%d) after filter', $links.length);
                     let popups = {};
                     $('head').append(`
                         <style type="text/css">
@@ -4156,10 +4153,10 @@ const launchScript = function($) {
                         if (popups[key] == undefined) {
                             popups[key] = createMedia(anchor.get(0));
                         }
-                        if (UsBetaSeries.debug) console.log('Popup created', anchor.text());
+                        log('Popup created', anchor.text());
                         if (popups[key] instanceof Promise) {
                             popups[key].then(data => {
-                                // console.log('Promise popus[%s]', key, data);
+                                // log('Promise popus[%s]', key, data);
                                 anchor.popover({
                                     container: anchor,
                                     delay: { "show": 500, "hide": 100 },
@@ -4173,7 +4170,7 @@ const launchScript = function($) {
                                 popups[key] = data;
                             });
                         } else {
-                            // console.log('Object popup[%s]', key, popups[key]);
+                            // log('Object popup[%s]', key, popups[key]);
                             anchor.popover({
                                 container: anchor,
                                 delay: { "show": 500, "hide": 100 },
@@ -4365,7 +4362,7 @@ const launchScript = function($) {
          */
         _bindKeypress(e) {
             e.stopPropagation();
-            // console.log('_bindKeypress', this, e);
+            // log('_bindKeypress', this, e);
             if (27 === e.which) {
                 e.preventDefault();
                 this.close();
@@ -4511,7 +4508,8 @@ const launchScript = function($) {
     /**
      * Paramétrage de la super classe abstraite Base et UpdateAuto
      */
-    UsBetaSeries.debug = debug;
+    // UsBetaSeries.debug = debug;
+    // if (debug) UsBetaSeries.setDebug.enable('userscript');
     UsBetaSeries.cache = cache;
     UsBetaSeries.routes = routes;
     UsBetaSeries.notification = system.notification;
@@ -4549,11 +4547,11 @@ const launchScript = function($) {
     };
 
     unsafeWindow.addEventListener('offline', () => {
-        console.log('userscript Event Network Offline');
+        log('userscript Event Network Offline');
         UsBetaSeries.changeNetworkState(NetworkState.offline);
     });
     unsafeWindow.addEventListener('online', () => {
-        console.log('userscript Event Network Online');
+        log('userscript Event Network Online');
         UsBetaSeries.changeNetworkState(NetworkState.online);
     });
 
@@ -4650,7 +4648,7 @@ const launchScript = function($) {
         // On récupère d'abord la ressource courante pour instancier un objet Media
         medias.getResource(true).then((objRes) => {
             if (debug) {
-                console.log('objet resource Media(%s)', objRes.constructor.name, objRes);
+                log('objet resource Media(%s)', objRes.constructor.name, objRes);
                 medias.addBtnDev(); // On ajoute le bouton de Dev
             }
             system.removeAds(); // On retire les pubs
@@ -4686,7 +4684,7 @@ const launchScript = function($) {
     // Fonctions appeler sur les pages des membres
     else if (UsBetaSeries.userIdentified() && (regexUser.test(url) || /^\/membre\/[A-Za-z0-9]*\/amis$/.test(url))) {
         system.waitPresent(() => { return typeof user !== 'undefined'; }, () => {
-            if (debug) console.log('regexUser OK');
+            log('regexUser OK');
 
             if (regexUser.test(url)) {
                 // On récupère les infos du membre connecté
@@ -4716,7 +4714,7 @@ const launchScript = function($) {
     }
     // Fonctions appeler sur la page de recherche des séries
     else if (/^\/series\//.test(url)) {
-        if (UsBetaSeries.debug) console.log('Page des séries');
+        log('Page des séries');
         system.waitPagination();
         series.seriesFilterPays();
         if (/agenda/.test(url)) {
@@ -4725,7 +4723,7 @@ const launchScript = function($) {
     }
     // Fonctions appeler sur la page de recherche des films
     else if (/^\/films\//.test(url)) {
-        if (debug) console.log('Pages des films');
+        log('Pages des films');
         system.waitPagination();
         if (/agenda/.test(url)) {
             system.waitDomPresent('#reactjs-movies-to-watch .ComponentEpisodeContainer', movies.updateAgenda, 50, 1000);
@@ -4733,7 +4731,7 @@ const launchScript = function($) {
     }
     // Fonctions appeler sur les pages des articles
     else if (/^\/article\//.test(url)) {
-        if (UsBetaSeries.debug) console.log('Page d\'un article');
+        log('Page d\'un article');
         articles.checkArticle();
         articles.addPopupOnLinks();
     }
@@ -4752,18 +4750,17 @@ types: [
     'forum'
 ]
 */
-const initFetch = {
+/*
+ * Récupère le manifest des ressources pour le userscript
+ */
+fetch(`${serverBaseUrl}/config/betaseries/manifest.json`, {
     method: 'GET',
     headers: {
         accept: 'application/json'
     },
     mode: 'cors',
     cache: 'no-cache'
-};
-/*
- * Récupère le manifest des ressources pour le userscript
- */
-fetch(`${serverBaseUrl}/config/betaseries/manifest.json`, initFetch)
+})
 .then(resp => {
     if (resp.ok) {
         return resp.json();
