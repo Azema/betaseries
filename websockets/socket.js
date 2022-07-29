@@ -23,22 +23,30 @@ const colors = {
     white: '\x1b[37m',
     initial: '\x1b[0m'
 };
+/**
+ * Retourne la date de maintenant sous forme de chaine (dd/mm/yyyy HH:MM:SS)
+ * @returns {string}
+ */
 const dateFormatted = () => {
     const now = new Date();
     return `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
 }
+/**
+ * Création d'une instance axios pour l'API BetaSeries
+ */
 const axiosAPI = axios.create({
     baseURL: 'https://api.betaseries.com',
     timeout: 10000
 });
 
-// Alter defaults after instance has been created
+// Ajout des en-têtes spécifiques à l'API BetaSeries
 axiosAPI.defaults.headers.common['Accept'] = 'application/json';
 axiosAPI.defaults.headers.common['X-BetaSeries-Version'] = '3.0';
 axiosAPI.defaults.headers.common['X-BetaSeries-Key'] = betaseries_api_user_key;
 
 /**
  * Retourne la chaine de connexion au serveur Redis
+ * en utilisant les infos dans le fichier de config
  * @returns {string}
  */
 function getRedisUrl() {
@@ -61,6 +69,9 @@ function getRedisUrl() {
  */
 function checkToken(socket, cb) {
     console.log('[%s] %scheckToken\x1b[0m: token: %s', dateFormatted(), colors.yellow, socket.token);
+    if (!socket.emitter || socket.emitter?.status !== 2) {
+        return cb('Emitter status: ' + socket.emitter.status.toString());
+    }
     axiosAPI.get('/members/is_active')
         .then(res => {
             if (res.status == 400) {
@@ -70,6 +81,7 @@ function checkToken(socket, cb) {
                         return cb(err);
                     }
                     socket.token = newToken;
+                    socket.emitter.emit('token', newToken);
                     return cb();
                 });
             } else {
@@ -87,7 +99,8 @@ function checkToken(socket, cb) {
                             return cb(err);
                         }
                         socket.token = newToken;
-                        // console.log('checkToken3 cb', typeof cb);
+                        socket.emitter.emit('token', newToken);
+                        console.log('checkToken3 cb', typeof cb);
                         return cb();
                     });
                 } catch(err) {
@@ -110,17 +123,18 @@ const checkNotifs = function(socket, sessionStore) {
     axiosAPI.defaults.headers.common['X-BetaSeries-Token'] = socket.token || '';
     const relaunch = (err) => {
         if (err) {
+            socket.nbRetry++;
+            socket.emitter.emit('error', err, socket.nbRetry);
             console.error('relaunch checkNotifs error, nbRetry: %d - err: %s', socket.nbRetry, err);
             if (socket.nbRetry < 5) {
                 console.log('relaunch checkNotifs in %d seconds', timeoutCheckNotifs/1000);
-                socket.nbRetry++;
                 socket.timer = setTimeout(checkNotifs, timeoutCheckNotifs, socket, sessionStore);
             } else if (socket.timer) {
                 console.warn('checkNotifs no relaunch checkNotifs, clear timer');
-                clearTimeout(socket.timer);
+                socket.emitter.emit('goodbye');
             }
         } else {
-            // console.log('relaunch checkNotifs in %d seconds', timeoutCheckNotifs/1000);
+            console.log('relaunch checkNotifs in %d seconds', timeoutCheckNotifs/1000);
             socket.timer = setTimeout(checkNotifs, timeoutCheckNotifs, socket, sessionStore);
         }
     }
@@ -130,8 +144,8 @@ const checkNotifs = function(socket, sessionStore) {
             relaunch(err);
             return null;
         }
-
-        axiosAPI.get('/members/notifications?all=true&sort=DESC&number=20')
+        const nbNotifs = config.nbNotifs || 20;
+        axiosAPI.get('/members/notifications?all=true&sort=DESC&number=' + nbNotifs.toString())
             .then(res => {
                 const contentType = res.headers['content-type'];
                 let error;
@@ -162,15 +176,10 @@ const checkNotifs = function(socket, sessionStore) {
                             notifs.push(data.notifications[n]);
                         }
                         socket.lastNotifId = data.notifications[0].id;
-                        socket.emit('notifications', {notifications: notifs, lastNotifId: socket.lastNotifId});
+                        // socket.to(socket.userId.toString()).emit('notifications', {notifications: notifs, lastNotifId: socket.lastNotifId});
                         // Nouvelles notifications
-                        sessionStore.saveSession(socket.sessionID, {
-                            userId: socket.userId,
-                            lastNotifId: socket.lastNotifId,
-                            token: socket.token,
-                            connected: true
-                        });
-                        console.log('news notifications(%d) found', notifs.length, {lastNotifId: socket.lastNotifId, token: socket.token});
+                        socket.emitter.emit('news', {notifications: notifs, lastNotifId: socket.lastNotifId});
+                        // console.log('news notifications(%d) found', notifs.length, {lastNotifId: socket.lastNotifId, token: socket.token});
                     }
                 } catch (err) {
                     console.error('Error parse json data', err);
@@ -214,12 +223,13 @@ const authApi = function(socket, cb) {
                 res.resume();
                 return cb(error.message);
             }
-            // console.log('auth request body:', res.data);
+            console.log('auth request body:', res.data);
             if (res.data.token) {
                 socket.token = res.data.token;
                 axiosAPI.defaults.headers.common['X-BetaSeries-Token'] = res.data.token;
                 return cb(null, res.data.token);
             }
+            res.resume();
         }).catch(err => {
             console.error('authApi catch - error request: %s', err.message);
             cb(err.message);
