@@ -134,8 +134,9 @@ export class CommentsBS extends Base implements implRepliesComment {
                 vignette.attr('data-comment-id', self.comments[v].id);
             }
         };
-        if (this.comments.length <= 0 && this.nbComments > 0) {
-            const $vignettes = jQuery('#comments .slides_flex .slide_flex');
+        console.log('comments init (length: %d, nbComments: %d)', this.comments.length, this.nbComments);
+        const $vignettes = jQuery('#comments .slides_flex .slide_flex');
+        if (this.comments.length <= 0 && (this.nbComments > 0 || $vignettes.length > 0)) {
             this.fetchComments($vignettes.length)
             .then(addCommentId);
         } else {
@@ -381,12 +382,12 @@ export class CommentsBS extends Base implements implRepliesComment {
     public async getTemplate(nbpp: number): Promise<string> {
         const self = this;
         return new Promise((resolve, reject) => {
-            let promise = Promise.resolve(self);
+            let promise: Promise<CommentsBS> = Promise.resolve(self);
 
             CommentsBS.debug('Base ', {length: self.comments.length, nbComments: self.nbComments});
             if (self.comments.length <= 0 && self.nbComments > 0) {
                 CommentsBS.debug('Base fetchComments call');
-                promise = self.fetchComments(nbpp) as Promise<this>;
+                promise = self.fetchComments(nbpp) as Promise<CommentsBS>;
             }
             promise.then(async () => {
                 let comment: CommentBS,

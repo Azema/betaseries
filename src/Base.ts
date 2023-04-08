@@ -94,12 +94,8 @@ export type Obj = {
 export type Callback = () => void;
 
 export function objToArr(obj: Base, data: Obj): Array < any > {
-    if (data instanceof Array) return data;
-    const values = [];
-    for (const key in data) {
-        values.push(data[key]);
-    }
-    return values;
+    if (Array.isArray(data)) return data;
+    return Object.values(data);
 }
 /**
  * Fonction servant à vérifier si une variable existe et si elle est nulle

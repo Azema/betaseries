@@ -28,7 +28,7 @@ export type ResultSearch = {
 }
 export abstract class ParamsSearchAbstract {
     static valuesAllowed: Record<string, Array<string>> = {};
-    static valuesDefault: {
+    static valuesDefault = {
         limit: 20,
         offset: 0,
         tri: 'popularite'

@@ -1,7 +1,7 @@
 import { Obj, HTTP_VERBS, UsBetaSeries } from "./Base";
 import { Media, MediaType, MediaTypes } from "./Media";
 import { Season } from "./Season";
-import { implShow, Showrunner, Platforms, Images, Picture, Show } from "./Show";
+import { implShow, Showrunner, Platforms, Images, Picture, Show, SocialLink } from "./Show";
 import { implMovie, Movie, OtherTitle } from "./Movie";
 import { Platform_link } from "./Episode";
 import { Person } from "./Character";
@@ -61,7 +61,7 @@ export class Similar extends Media implements implShow, implMovie {
     seasons: Season[];
     nbSeasons: number;
     showrunner: Showrunner;
-    social_links: string[];
+    social_links: SocialLink[];
     status: string;
     thetvdb_id: number;
     persons: Array<Person>;
@@ -70,8 +70,8 @@ export class Similar extends Media implements implShow, implMovie {
         if (type.singular === MediaType.movie) {
             data.in_account = data.user.in_account;
             delete data.user.in_account;
-            data.description = data.synopsis;
-            delete data.synopsis;
+            // data.description = data.synopsis;
+            // delete data.synopsis;
         }
         super(data);
         this.mediaType = type;
@@ -126,6 +126,15 @@ export class Similar extends Media implements implShow, implMovie {
             $slideImg.prepend(
                 `<img src="${UsBetaSeries.serverBaseUrl}/img/viewed.png" class="bandViewed"/>`
             );
+            let progress = 0;
+            if (this.mediaType.singular === MediaType.movie) {
+                progress = 100;
+            } else if (this.mediaType.singular === MediaType.show) {
+                progress = this.user.status;
+            }
+            Similar.debug('Similar progress', progress, this);
+            let eltProgress = `<div class="progressBarShow" style="width: ${progress.toFixed(2)}%" data-id="${this.id}" data-userStatus="${this.user.status}"></div>`;
+            $slideImg.append(eltProgress);
         }
         // On ajoute des infos pour la recherche du similar pour les popups
         $slideImg
@@ -205,15 +214,15 @@ export class Similar extends Media implements implShow, implMovie {
         }
         template = '<div>';
         if (this.mediaType.singular === MediaType.show) {
-            const status = `<i class="fa-solid fa-${this.status.toLowerCase() == 'ended' ? 'octagon-exclamation' : 'spinner'}" title="Statut ${this.status.toLowerCase() == 'ended' ? 'terminé' : 'en cours'}" aria-hidden="true"></i>`;
+            const status = `<i class="fa-solid fa-${this.status.toLowerCase() == 'ended' ? 'lock' : 'spinner'}" title="Statut ${this.status.toLowerCase() == 'ended' ? 'terminé' : 'en cours'}" aria-hidden="true"></i>`;
             const seen = (this.user.status > 0) ? 'Vu à <strong>' + this.user.status + '%</strong>' : 'Pas vu';
             template += `<p>
                 <strong>${this.nbSeasons}</strong> saison${(this.nbSeasons > 1 ? 's':'')},
-                <strong>${this.nbEpisodes}</strong> <i class="fa-solid fa-films" title="épisodes" aria-hidden="true"></i>, `;
+                <strong>${this.nbEpisodes}</strong> <i class="fa-solid fa-film" title="épisodes" aria-hidden="true"></i>, `;
             if (this.objNote.total > 0) {
                 template += `<strong>${this.objNote.total}</strong> votes`;
                 if (this.objNote.user > 0) {
-                    template += `, votre note: ${this.objNote.user}`;
+                    template += `, votre note: <strong>${this.objNote.user}</strong>,`;
                 }
             } else {
                 template += 'Aucun vote';

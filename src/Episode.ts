@@ -10,7 +10,21 @@ import { RelatedProp } from "./RenderHtml";
 
 declare const PopupAlert;
 
-export type Platform_link = {
+export class Platform_link {
+    /**
+     * Contructeur
+     * @param {Obj} data - Les données de l'objet
+     */
+    constructor(data: Obj) {
+        if (Array.isArray(data)) data = data.shift();
+        this.id = parseInt(data.id, 10);
+        if (data.platform_id) this.platform_id = parseInt(data.platform_id, 10);
+        this.link = data.link;
+        this.platform = data.platform;
+        if (data.color) this.color = data.color;
+        if (data.type) this.type = data.type;
+        if (data.logo) this.logo = data.logo;
+    }
     /**
      * Identifiant de l'épisode sur la plateforme
      * @type {number}

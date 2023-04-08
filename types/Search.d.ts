@@ -26,9 +26,9 @@ export declare type ResultSearch = {
 export declare abstract class ParamsSearchAbstract {
     static valuesAllowed: Record<string, Array<string>>;
     static valuesDefault: {
-        limit: 20;
-        offset: 0;
-        tri: 'popularite';
+        limit: number;
+        offset: number;
+        tri: string;
     };
     static separator: string;
     text: string;

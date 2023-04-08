@@ -67,7 +67,7 @@ export declare class Movie extends Media implements implAddNote {
     director: string;
     original_release_date: Date;
     other_title: OtherTitle;
-    platform_links: Array<Platform_link>;
+    _platforms: Array<Platform_link>;
     poster: string;
     production_year: number;
     release_date: Date;

@@ -3,7 +3,7 @@ import { CacheUS } from "./Cache";
 import { Character, Person, PersonMedias, PersonMedia } from "./Character";
 import { CommentBS } from "./Comment";
 import { CommentsBS } from "./Comments";
-import { Episode } from "./Episode";
+import { Episode, Platform_link } from "./Episode";
 import { Media, MediaBase } from "./Media";
 import { Member, OptionsMember, Stats } from "./Member";
 import { Movie } from "./Movie";
@@ -76,6 +76,7 @@ UsBetaSeries.bsModule = {
     "Picture": Picture,
     "Platform": Platform,
     "PlatformList": PlatformList,
+    "Platform_link": Platform_link,
     "ParamsSearchMovies": ParamsSearchMovies,
     "ParamsSearchShows": ParamsSearchShows,
     "Platforms": Platforms,
@@ -102,11 +103,10 @@ UsBetaSeries.bsModule = {
 UsBetaSeries.getInstance = (className: string, ...args: any[]): any => {
 
     // TODO: Handle Null and invalid className arguments
-    if (typeof UsBetaSeries.bsModule[className] !== undefined) {
+    if (UsBetaSeries.checkClassname(className)) {
         return new UsBetaSeries.bsModule[className](args);
-    } else {
-        throw new Error("Class not found: " + className);
     }
+    throw new Error("Class not found: " + className);
 }
 /**
  * checkClassname - Fonction servant à vérifier si la classe est connue
@@ -116,5 +116,5 @@ UsBetaSeries.getInstance = (className: string, ...args: any[]): any => {
  * @returns {boolean}
  */
 UsBetaSeries.checkClassname = (className: string): boolean => {
-    return typeof UsBetaSeries.bsModule[className] !== undefined;
+    return typeof UsBetaSeries.bsModule[className] !== 'undefined';
 }

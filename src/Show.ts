@@ -299,6 +299,14 @@ export class Showrunner {
     /** @type {string} */
     picture: string;
 }
+export class SocialLink {
+    constructor(data: Obj) {
+        this.type = data.type;
+        this.external_id = data.external_id;
+    }
+    type: string;
+    external_id: string;
+}
 /**
  * Interface de la classe Show
  * @interface implShow
@@ -317,7 +325,7 @@ export interface implShow {
     platforms: Platforms;
     seasons: Array<Season>;
     showrunner: Showrunner;
-    social_links: Array<string>;
+    social_links: Array<SocialLink>;
     status: string;
     thetvdb_id: number;
     persons: Array<Person>;
@@ -427,7 +435,7 @@ export class Show extends Media implements implShow, implAddNote {
         showrunner: {key: "showrunner", type: Showrunner},
         similars: {key: "nbSimilars", type: 'number', default: 0},
         slug: {key: 'slug', type: 'string', default: ''},
-        social_links: {key: "social_links", type: 'array', default: []},
+        social_links: {key: "social_links", type: 'array', default: [], transform: Show.transformSocialLinks},
         status: {key: "status", type: "string", default: ''},
         thetvdb_id: {key: "thetvdb_id", type: 'number', default: 0},
         themoviedb_id: {key: "tmdb_id", type: 'number', default: 0},
@@ -452,6 +460,18 @@ export class Show extends Media implements implShow, implAddNote {
             seasons[data[s].number - 1] = new Season(data[s], obj);
         }
         return seasons;
+    }
+
+    static transformSocialLinks(obj: Show, data: Obj): Array<SocialLink> {
+        if (!obj.elt) return [];
+        if (Array.isArray(obj.social_links) && obj.social_links.length === data.length) {
+            return obj.social_links;
+        }
+        const socialLinks = [];
+        for (let s = 0, _len = data.length; s < _len; s++) {
+            socialLinks.push(new SocialLink(data[s]));
+        }
+        return socialLinks;
     }
 
     /**
@@ -635,9 +655,9 @@ export class Show extends Media implements implShow, implAddNote {
     showrunner: Showrunner;
     /**
      * Tableau des liens sociaux de la série
-     * @type {string[]}
+     * @type {SocialLink[]}
      */
-    social_links: Array<string>;
+    social_links: Array<SocialLink>;
     /**
      * Statut de la série (en cours ou terminée)
      * @type {string}
@@ -713,6 +733,8 @@ export class Show extends Media implements implShow, implAddNote {
             $title.empty().append(`<span class="title">${title}</span>`);
             Show.selectorsCSS.title += ' span.title';
         }
+        this.updatePropRenderDescription();
+
         const $details = jQuery('.blockInformations__details li', this.elt);
         for (let d = 0, _len = $details.length; d < _len; d++) {
             const $li = jQuery($details.get(d));
@@ -752,6 +774,40 @@ export class Show extends Media implements implShow, implAddNote {
             }
         }
         return this;
+    }
+    updatePropRenderDescription(): void {
+        const $description = jQuery(Show.selectorsCSS.description).last();
+        if ($description.text().length > 500) {
+            const description = $description.html();
+            // Truncate description
+            if ($description.find('br').length > 0) {
+                Show.debug('updatePropRenderDescription index', description);
+                const index = description.indexOf('<br>');
+                Show.debug('updatePropRenderDescription index', index);
+                let showDescription = description.substring(0, index-1);
+                const hideDescription = '<span class="sr-only">' + description.substring(index+4) + '</span>';
+                showDescription += '<a class="js-show-full" role="button"></a>';
+                $description.empty().append(showDescription, hideDescription);
+                const $span = $('.blockInformations__synopsis span');
+                const $btnMore = $description.last().find('a.js-show-full');
+                $description
+                    .before('<style>a[role="button"].js-show-full:before {content: " …"}</style>')
+                    .prop('title', 'Afficher la totalité de la description')
+                    .on('click', (e) => {
+                        e.stopPropagation();
+                        if ($span.hasClass('sr-only')) {
+                            $span.removeClass('sr-only');
+                            $btnMore.hide();
+                            $description.prop('title', 'Tronquer la description');
+                        } else {
+                            $span.addClass('sr-only');
+                            $btnMore.show();
+                            $description.prop('title', 'Afficher la totalité de la description');
+                        }
+                    })
+                    .css('cursor', 'pointer');
+            }
+        }
     }
     /**
      * Met à jour le nombre de followers sur la page Web
@@ -1254,7 +1310,7 @@ export class Show extends Media implements implShow, implAddNote {
     updateProgressBar(): void {
         Show.debug('updateProgressBar');
         // On met à jour la barre de progression
-        jQuery('.progressBarShow').css('width', this.user.status.toFixed(1) + '%');
+        jQuery('.blockInformations__poster .progressBarShow').css('width', this.user.status.toFixed(1) + '%');
     }
     /**
      * Simule un clic sur le bouton d'archivage de la série sur la page Web
@@ -1928,7 +1984,7 @@ export class Show extends Media implements implShow, implAddNote {
                 // Show.debug('getAllPosters url', url);
                 if (!url) return res(posters);
                 const urlTvdb = new URL(url);
-                fetch(`${proxy}${urlTvdb.pathname}/artwork/posters`, initFetch)
+                fetch(`${proxy}${urlTvdb.pathname}#artwork-posters`, initFetch)
                 .then((resp: Response) => {
                     if (resp.ok) {
                         return resp.text();
@@ -1941,7 +1997,7 @@ export class Show extends Media implements implShow, implAddNote {
                     posters['TheTVDB'] = [];
                     const parser = new DOMParser();
                     const doc: Document = parser.parseFromString(html, 'text/html');
-                    const imgs: NodeListOf<HTMLImageElement> = doc.querySelectorAll('a.thumbnail img');
+                    const imgs: NodeListOf<HTMLImageElement> = doc.querySelectorAll('#artwork-posters a.lightbox img');
                     for (let l = 0; l < imgs.length; l++) {
                         posters['TheTVDB'].push(imgs[l].dataset.src);
                     }

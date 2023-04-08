@@ -40,9 +40,9 @@ openssl req -x509 -new -nodes -key myCA.key -sha256 -days 825 -out myCA.pem
 
 NAME="localhost" # Use your own domain name
 # Generate a private key
-openssl genrsa -out $NAME.key 2048
+openssl genrsa -out "$NAME.key" 2048
 # Create a certificate-signing request
-openssl req -new -key $NAME.key -out $NAME.csr
+openssl req -new -key "$NAME.key" -out "$NAME.csr"
 # Create a config file for the extensions
 >$NAME.ext cat <<-EOF
 authorityKeyIdentifier=keyid,issuer
@@ -55,5 +55,4 @@ IP.1 = 192.168.1.12 # Optionally, add an IP address (if the connection which you
 IP.2 = 127.0.0.1
 EOF
 # Create the signed certificate
-openssl x509 -req -in $NAME.csr -CA myCA.pem -CAkey myCA.key -CAcreateserial \
--out $NAME.crt -days 825 -sha256 -extfile $NAME.ext
+openssl x509 -req -in "$NAME.csr" -CA myCA.pem -CAkey myCA.key -CAcreateserial -out "$NAME.crt" -days 825 -sha256 -extfile "$NAME.ext"

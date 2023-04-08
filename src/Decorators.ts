@@ -161,6 +161,7 @@ export class FillDecorator extends AbstractDecorator {
             let subType = null;
             if (typeof type === 'string' && /^array<\w+>$/.test(type)) {
                 subType = type.match(/<(\w+)>$/)[1];
+                type = 'array';
                 AbstractDecorator.debug('FillDecorator.fill for (%s.%s) type: array - subType: %s', self.constructor.name, key, subType, value);
             }
             switch(type) {
@@ -196,29 +197,42 @@ export class FillDecorator extends AbstractDecorator {
                     if (oldValue === value) return undefined;
                     break;
                 case 'array': {
+                    // console.log(`FillDecorator checkTypeValue array key(${key}) value(${JSON.stringify(value)})`);
                     if (!isNull(subType) && Array.isArray(value)) {
+                        // console.log(`FillDecorator checkTypeValue array subtype(${subType})`);
                         const data = [];
                         let isClass = false;
                         if (UsBetaSeries.checkClassname(subType)) {
                             isClass = true;
                         }
+                        // console.log(`FillDecorator checkTypeValue array subtype isClass(${isClass?'true':'false'})`);
                         for (let d = 0, _len = value.length; d < _len; d++) {
                             let subVal = value[d];
-                            if (isClass) subVal = UsBetaSeries.getInstance(subType, [value[d]]);
+                            // console.log(`FillDecorator checkTypeValue array subVal(${JSON.stringify(subVal)})`);
+                            if (isClass) subVal = UsBetaSeries.getInstance(subType, subVal);
                             data.push(subVal);
                         }
                         value = data;
+                        // console.log(`FillDecorator checkTypeValue array new value(${JSON.stringify(value)})`);
+
                     } else {
                         if (self.__initial || !Array.isArray(oldValue)) return value;
                     }
                     let diff = false;
-                    for (let i = 0, _len = oldValue.length; i < _len; i++) {
-                        if (oldValue[i] !== value[i]) {
-                            diff = true;
-                            break;
-                        }
+                    if (!oldValue) {
+                        console.warn(`checkTypeValue array key(${key}) target ${JSON.stringify(target)}`);
                     }
-                    if (!diff) return undefined;
+                    if (oldValue) {
+                        for (let i = 0, _len = oldValue.length; i < _len; i++) {
+                            if (oldValue[i] !== value[i]) {
+                                diff = true;
+                                break;
+                            }
+                        }
+                        if (!diff) return undefined;
+                    } else {
+                        return value;
+                    }
                     break;
                 }
                 case 'date': {
@@ -281,7 +295,7 @@ export class FillDecorator extends AbstractDecorator {
             if ((typeof type === 'string' && typeof value !== type) ||
                 (typeof type === 'function' && !(value instanceof type)))
             {
-                throw new TypeError(`Invalid value for key "${target.constructor.name}.${key}". Expected type "${(typeof type === 'string') ? type : JSON.stringify(type)}" but got "${typeof value}"`);
+                throw new TypeError(`Invalid value for key "${target.constructor.name}.${key}". Expected type "${(typeof type === 'string') ? type : JSON.stringify(type)}" but got "${typeof value}" value: ${JSON.stringify(value)}`);
             }
             return value;
         }

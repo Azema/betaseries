@@ -196,6 +196,11 @@ export declare class Showrunner {
     /** @type {string} */
     picture: string;
 }
+export declare class SocialLink {
+    constructor(data: Obj);
+    type: string;
+    external_id: string;
+}
 /**
  * Interface de la classe Show
  * @interface implShow
@@ -214,7 +219,7 @@ export interface implShow {
     platforms: Platforms;
     seasons: Array<Season>;
     showrunner: Showrunner;
-    social_links: Array<string>;
+    social_links: Array<SocialLink>;
     status: string;
     thetvdb_id: number;
     persons: Array<Person>;
@@ -272,6 +277,7 @@ export declare class Show extends Media implements implShow, implAddNote {
      * @returns {Array<Season>}
      */
     static seasonsDetailsToSeasons(obj: Show, data: Obj): Array<Season>;
+    static transformSocialLinks(obj: Show, data: Obj): Array<SocialLink>;
     /**
      * Méthode static servant à récupérer une série sur l'API BS
      * @static
@@ -405,9 +411,9 @@ export declare class Show extends Media implements implShow, implAddNote {
     showrunner: Showrunner;
     /**
      * Tableau des liens sociaux de la série
-     * @type {string[]}
+     * @type {SocialLink[]}
      */
-    social_links: Array<string>;
+    social_links: Array<SocialLink>;
     /**
      * Statut de la série (en cours ou terminée)
      * @type {string}
@@ -444,6 +450,7 @@ export declare class Show extends Media implements implShow, implAddNote {
      * @returns {Show}
      */
     _initRender(): this;
+    updatePropRenderDescription(): void;
     /**
      * Met à jour le nombre de followers sur la page Web
      */

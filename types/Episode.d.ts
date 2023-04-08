@@ -4,7 +4,12 @@ import { Season } from "./Season";
 import { Subtitles } from "./Subtitle";
 import { MediaBase } from "./Media";
 import { RelatedProp } from "./RenderHtml";
-export declare type Platform_link = {
+export declare class Platform_link {
+    /**
+     * Contructeur
+     * @param {Obj} data - Les données de l'objet
+     */
+    constructor(data: Obj);
     /**
      * Identifiant de l'épisode sur la plateforme
      * @type {number}
@@ -37,7 +42,7 @@ export declare type Platform_link = {
      * @type {string}
      */
     logo?: string;
-};
+}
 export declare type ReleasesSvod = {
     displayOriginal: boolean;
     releases: Array<string>;

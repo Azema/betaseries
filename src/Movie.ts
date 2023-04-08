@@ -73,7 +73,7 @@ export class Movie extends Media implements implAddNote {
         original_release_date: {key: "original_release_date", type: 'date'},
         original_title: {key: "original_title", type: 'string', default: ''},
         other_title: {key: "other_title", type: 'object', default: {}},
-        platform_links: {key: "platforms", type: 'array', default: []},
+        platform_links: {key: "platforms", type: 'array<Platform_link>', default: []},
         poster: {key: "poster", type: 'string', default: ''},
         production_year: {key: "production_year", type: 'number', default: 0},
         release_date: {key: "release_date", type: 'date'},
@@ -142,7 +142,8 @@ export class Movie extends Media implements implAddNote {
     director: string;
     original_release_date: Date;
     other_title: OtherTitle;
-    platform_links: Array<Platform_link>;
+    // platform_links: Array<Platform_link>;
+    _platforms: Array<Platform_link>;
     poster: string;
     production_year: number;
     release_date: Date;
@@ -167,7 +168,7 @@ export class Movie extends Media implements implAddNote {
         data.in_account = data.user?.in_account;
         super(data, element);
         this._local = {poster: null};
-        this.platform_links = [];
+        this._platforms = [];
         this.mediaType = {singular: MediaType.movie, plural: 'movies', className: Movie};
         return this.fill(data)._initRender();
     }

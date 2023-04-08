@@ -40,6 +40,7 @@ export declare class User extends RenderHtml {
     next: Next;
     profile: string;
     remaining: number;
+    screeners: Array<any>;
     seen: boolean;
     status: number;
     tags: string;

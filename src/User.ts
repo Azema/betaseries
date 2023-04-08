@@ -48,6 +48,7 @@ export class User extends RenderHtml {
         next: {key: "next", type: Next},
         profile: {key: 'profile', type: 'string', default: ''},
         remaining: {key: "remaining", type: 'number', default: 0},
+        screeners: {key: 'screeners', type: 'array', default: []},
         seen: {key: "seen", type: 'boolean', default: false},
         status: {key: "status", type: 'number', default: 0},
         tags: {key: 'tags', type: 'string', default: ''},
@@ -66,6 +67,7 @@ export class User extends RenderHtml {
     next: Next;
     profile: string;
     remaining: number;
+    screeners: Array<any>;
     seen: boolean;
     status: number;
     tags: string;

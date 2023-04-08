@@ -1,7 +1,7 @@
 import { Obj } from "./Base";
 import { Media, MediaTypes } from "./Media";
 import { Season } from "./Season";
-import { implShow, Showrunner, Platforms, Images, Picture } from "./Show";
+import { implShow, Showrunner, Platforms, Images, Picture, SocialLink } from "./Show";
 import { implMovie, OtherTitle } from "./Movie";
 import { Platform_link } from "./Episode";
 import { Person } from "./Character";
@@ -55,7 +55,7 @@ export declare class Similar extends Media implements implShow, implMovie {
     seasons: Season[];
     nbSeasons: number;
     showrunner: Showrunner;
-    social_links: string[];
+    social_links: SocialLink[];
     status: string;
     thetvdb_id: number;
     persons: Array<Person>;

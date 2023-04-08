@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         us_betaseries
 // @namespace    https://github.com/Azema/betaseries
-// @version      1.5.95
+// @version      1.5.167
 // @description  Ajoute quelques améliorations au site BetaSeries
 // @author       Azema
 // @homepage     https://github.com/Azema/betaseries
@@ -85,7 +85,7 @@ const themoviedb_api_user_key = '';
 const serverOauthUrl = 'https://azema.github.io/betaseries-oauth';
 const serverBaseUrl = 'https://azema.github.io/betaseries-oauth';
 /* SRI du fichier app-bundle.js */
-const sriBundle = 'sha384-eVwzSX0H/54VnG8zZyJ7Pv97oXPhBEPQojXSaM/M9+cBeEIFTkJkGKwWbHtHxJd7';
+const sriBundle = 'sha384-83JhbfJwL91GVal9VqyYXQ/zcdkYyBY82ClbB7qQneelN03Ia7132uqlJK+C3dD0';
 /************************************************************************************************/
 // @ts-check
 let resources = {};
@@ -582,10 +582,13 @@ const launchScript = function($) {
                  * Permet d'ajouter des améliorations au menu de recherche du site
                  */
                 (function headerSearch() {
-                    // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
-                    // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
-                    const observer = new MutationObserver(mutationsList => {
+                    let timer = false, leftTime = Date.now(), beObs = false;
+                    const updateResults = () => {
+                        const $containerResults = $('.ComponentHeaderSearchContainer');
+                        if ($containerResults.length <= 0) { log('updateResults ComponentHeaderSearchContainer not found'); return; }
+                        log('headerSearch updateResults');
                         const updateTitle = (i, e) => {
+                            log('headerSearch updateTitle', i);
                             if (system.isTruncated(e)) {
                                 $(e).parents('a').attr('title', $(e).text());
                             }
@@ -624,24 +627,33 @@ const launchScript = function($) {
                                 })
                             }
                         };
+                        $('.col-md-4', $containerResults).each((i, elt) => {
+                            log('headerSearch updateResults col[%d] found', i);
+                            const $elt = $(elt);
+                            $('.mainLink', $elt).each(updateTitle);
+                            $('a.js-searchResult', $elt).each(updateImg);
+                        });
+                    }
+                    // On observe l'espace lié à la recherche de séries ou de films, en haut de page.
+                    // Afin de modifier quelque peu le résultat, pour pouvoir lire l'intégralité du titre
+                    const observer = new MutationObserver(mutationsList => {
                         for (let mutation of mutationsList) {
+                            log('Observer HeaderSearch mutation', mutation);
                             if (mutation.type == 'childList' && mutation.addedNodes.length === 1) {
+                                const $target = $(mutation.target);
+                                if (!beObs && $target.hasClass('b_e')) {
+                                    observer.observe(mutation.target, { childList: true, subtree: true });
+                                    beObs = true;
+                                }
                                 /** @type {JQuery<HTMLElement>} */
                                 const $node = $(mutation.addedNodes[0]);
-                                if ($node.hasClass('col-md-4')) {
-                                    $('.mainLink', $node).each(updateTitle);
-                                    $('a.js-searchResult', $node).each(updateImg);
-                                }
-                                /*else if ($node.hasClass('js-searchResult')) {
-                                    const title = $('.mainLink', $node).get(0);
-                                    if (system.isTruncated(title)) {
-                                        $node.attr('title', $(title).text());
-                                    }
-                                    updateImg(0, $node);
-                                }*/
-                                else if (mutation.addedNodes[0].nodeName.toLowerCase() === 'form') {
-                                        log('Observer HeaderSearch mutation', mutation);
-                                    $('input', $node).keyup((e) => {
+                                /* if ($node.hasClass('js-searchResult')) {
+                                    if (timer && (Date.now() - leftTime) < 2000) clearTimeout(timer);
+                                    timer = setTimeout(updateResults, 2000);
+                                } */
+                                if (mutation.addedNodes[0].nodeName.toLowerCase() === 'form') {
+                                    
+                                    $('input', $node).on('keyup', (e) => {
                                         const target = $(e.currentTarget);
                                             log('HeaderSearch input value', e.currentTarget.value);
                                         if (target && /^imdb:\s*tt\d+/i.test(target.val())) {
@@ -900,7 +912,7 @@ const launchScript = function($) {
             if ($('.userscript-notifications').length <= 0) {
                 $('#fb-root').after('<div class="userscript-notifications"><h3><span class="title"></span><i class="fa-solid fa-xmark" aria-hidden="true"></i></h3><p class="text"></p></div>');
                 notifContainer = $('.userscript-notifications');
-                $('.userscript-notifications .fa-times').on('click', () => {
+                $('.userscript-notifications .fa-xmark').on('click', () => {
                     $('.userscript-notifications').slideUp();
                 });
             }
@@ -1219,7 +1231,7 @@ const launchScript = function($) {
             $paraSynopsis.last()
                 .before('<style>a[role="button"].js-show-full:before {content: " …"}</style>')
                 .prop('title', 'Afficher la totalité de la description')
-                .click((e) => {
+                .on('click', (e) => {
                     e.stopPropagation();
                     if ($span.hasClass('sr-only')) {
                         $span.removeClass('sr-only');
@@ -1347,7 +1359,13 @@ const launchScript = function($) {
                 e.stopPropagation();
                 medias.choiceImage(res, (src) => {
                     res.override('poster', src);
-                    $('.blockInformations__poster img').attr('src', src);
+                    let $img = $('.blockInformations__poster img');
+                    if ($img.length <= 0) {
+                        $('.blockInformations__poster .block404')
+                            .replaceWith('<img class="displayBlock objectFitCover" crossorigin="Anonymous" src="" width="300" height="450" alt="poster show">');
+                        $img = $('.blockInformations__poster img');
+                    }
+                    $img.attr('src', src);
                 });
             });
         },
@@ -2235,9 +2253,11 @@ const launchScript = function($) {
                         $('.popover-body').html(await objSimilar.getContentPopup());
                         // On gère le placement de la Popover par rapport à l'image du similar
                         if (placement == 'left') {
-                            const img = $popover.siblings('img.js-lazy-image'),
-                                  space = $popover.width() + (img.width() / 2) + 5;
+                            const space = $popover.width() /*+ (img.width() / 2)*/ + 10;
                             $popover.css('left', `-${space}px`);
+                        } else {
+                            const img = $popover.siblings('img.js-lazy-image');
+                            $popover.css('left', img.width());
                         }
                     });
                     $('.updateSimilars').addClass('finish');
@@ -2275,6 +2295,7 @@ const launchScript = function($) {
                  * @type {JQuery<HTMLElement>}
                  */
                 const $comments = $('#comments .slide__comment .js-popup-comments');
+                const $authors = $('#comments .slide_flex .slide__author');
                 // TODO: Gérer les boutons d'affichage des spoilers
                 // const $btnDisplaySpoiler = $('#comments .slide__comment .js-display-spoiler');
                 log('eventComments');
@@ -2335,6 +2356,22 @@ const launchScript = function($) {
                         e.stopPropagation();
                         e.preventDefault();
                         res.comments.render();
+                    });
+                } else {
+                    // Update author image
+                    log('Update authors comments');
+                    const regSrc = new RegExp('https://img.betaseries.com/.*www.betaseries.comhttps%3A%2F%2Fpictures.betaseries.com.*');
+                    $authors.each((i, elt) => {
+                        const img = $('.avatar img.js-lazy-image', elt);
+                        log('author img', img, elt);
+                        if (img.length > 0) {
+                            if (regSrc.test(img.attr('data-src'))) {
+                                img.removeClass('js-lazy-image');
+                                let src = img.attr('data-src').replace(/img.betaseries.com.*comhttps%3A%2F%2F/, '');
+                                src = src.replace('%2F', '/');
+                                img.attr('src', src);
+                            }
+                        }
                     });
                 }
             };
@@ -2519,6 +2556,30 @@ const launchScript = function($) {
                 }, (err) => {
                     system.notification('Erreur de récupération de la ressource', 'addBtnDev: ' + err);
                 });
+            });
+            /*
+             * Bouton Title clipboard
+             */
+            const btnTitle = '<i id="btnCopyTitle" class="fa fa-copy" title="Copier le titre" style="font-size:0.65em;cursor:pointer;"></i>';
+            $('.blockInformations__title').append(btnTitle);
+            $('#btnCopyTitle').on('click', (e) => {
+                e.stopPropagation();
+                const $btn = $(e.target);
+                const title = $('.blockInformations__title .title').text().trim();
+                navigator.clipboard.writeText(title).then(function() {
+                    /* Animation de copie réussie */
+                    $btn.on('animationend', () => {
+                        $btn.removeClass('copied');
+                    });
+                    $btn.addClass('copied');
+                }).catch(function() {
+                    /* échec de l’écriture dans le presse-papiers */
+                    const origColor = $btn.css('backgroundColor');
+                    const redColor = getComputedStyle(document.documentElement).getPropertyValue('--red');
+                    $btn.animate({'background-color': redColor}, {duration: 'slow', complete: () => {
+                        $btn.animate({'background-color': origColor}, {duration: 'slow'});
+                    }});
+                  });
             });
             /*
              *             Bouton ID clipboard
@@ -2861,7 +2922,9 @@ const launchScript = function($) {
                 promise = res.fetchCharacters();
             }
             promise.then((show) => {
-                $actors.off('click').on('click', (e) => {
+                $actors
+                .attr('href', '#')
+                .off('click').on('click', (e) => {
                     e.stopPropagation();
                     const personId = parseInt(e.currentTarget.dataset.personId);
                     if (isNull(personId)) {
@@ -3896,6 +3959,12 @@ const launchScript = function($) {
          * Ajoute des améliorations sur la page de la console de l'API
          */
         updateApiConsole: function() {
+            $('#right').append(`<style>
+                .api-params .fa-2x {margin-left: 10px;vertical-align:middle;cursor:pointer;}
+                .api-params input:disabled {background-color:#6d6e70;opacity:0.5;}
+                .disable-param.active {color:red;}
+                .api-params:first-child .fa-lock {cursor:not-allowed;}
+            </style>`);
             // Listener sur le btn nouveau paramètre
             $('div.form-group button.btn-btn.btn--blue').prop('onclick', null).off('click').on('click', (e, key) => {
                 e.stopPropagation();
@@ -3923,7 +3992,7 @@ const launchScript = function($) {
                     log('paramsDoc', paramsDoc);
                     paramsDoc.css('cursor', 'pointer');
                     // On ajoute la clé du paramètre dans une nouvelle ligne de paramètre
-                    paramsDoc.click((e) => {
+                    paramsDoc.on('click', (e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         $('div.form-group button.btn-btn.btn--blue').trigger('click', [$(e.currentTarget).text().trim()]);
@@ -3931,7 +4000,7 @@ const launchScript = function($) {
                 });
             });
             // Ajoute un cadenas vérouillé au paramètre 'Version' non-modifiable
-            $('.api-params:first').append('<i class="fa-solid fa-lock fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:not-allowed;" aria-hidden="true"></i>');
+            $('.api-params:first').append('<i class="fa-solid fa-lock fa-2x" aria-hidden="true"></i>');
             addRemoveParamToConsole();
             addToggleShowResult();
             /**
@@ -3940,8 +4009,9 @@ const launchScript = function($) {
             function addRemoveParamToConsole() {
                 let elts = $('.api-params:not(.remove):not(.lock):not(:first)');
                 elts
-                    .append('<i class="remove-input fa-solid fa-circle-minus fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
-                    .append('<i class="lock-param fa-solid fa-lock-open fa-2x" style="margin-left: 10px;vertical-align:middle;cursor:pointer;" aria-hidden="true"></i>')
+                    .append('<i class="remove-input fa-solid fa-circle-minus fa-2x" aria-hidden="true" title="Supprimer le paramètre"></i>')
+                    .append('<i class="lock-param fa-solid fa-lock-open fa-2x" aria-hidden="true" title="Vérouiller le paramètre"></i>')
+                    .append('<i class="disable-param fa-solid fa-ban fa-2x unactive" aria-hidden="true" title="Désactiver le paramètre"></i>')
                     .addClass('remove');
                 $('.remove-input').on('click', (e) => {
                     $(e.currentTarget).parent('.api-params').remove();
@@ -3960,25 +4030,42 @@ const launchScript = function($) {
                         self.parent('.api-params').addClass('remove').removeClass('lock');
                     }
                 });
+                $('.disable-param', elts).on('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    let self = $(e.currentTarget);
+                    if (self.hasClass('unactive')) {
+                        self.removeClass('unactive').addClass('active');
+                        self.parent('.api-params').find('input[name="value[]"]').attr('disabled', '');
+                    } else {
+                        self.removeClass('active').addClass('unactive');
+                        self.parent('.api-params').find('input[name="value[]"]').removeAttr('disabled');
+                    }
+                });
             }
             function addToggleShowResult() {
                 let $result = $('#result');
                 // On ajoute un titre pour la section de résultat de la requête
-                $result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa-solid fa-circle-chevron-down" aria-hidden="true"></i></span></h2>');
-                $('.toggle').on('click', () => {
+                $result.before('<h2>Résultat de la requête <span class="toggle" style="margin-left:10px;"><i class="fa-solid fa-chevron-circle-down" aria-hidden="true"></i></span></h2>');
+                const $toggle = $('#right .toggle');
+                $toggle.on('click', () => {
                     // On réalise un toggle sur la section de résultat et on modifie l'icône du chevron
                     $result.toggle(400, () => {
+                        const $chevron = $('i', $toggle);
+                        $chevron
+                            .removeClass('fa-chevron-circle-up')
+                            .removeClass('fa-chevron-circle-down');
                         if ($result.is(':hidden')) {
-                            $('.toggle i').removeClass('fa-circle-chevron-up').addClass('fa-circle-chevron-down');
+                            $chevron.addClass('fa-chevron-circle-down');
                         }
                         else {
-                            $('.toggle i').removeClass('fa-circle-chevron-down').addClass('fa-circle-chevron-up');
+                            $chevron.addClass('fa-chevron-circle-up');
                         }
                     });
                 });
                 // On modifie le sens du chevron lors du lancement d'une requête
                 $('button.is-full').on('click', () => {
-                    $('.toggle i').removeClass('fa-circle-chevron-down').addClass('fa-circle-chevron-up');
+                    $('.toggle i').removeClass('fa-chevron-circle-down').addClass('fa-chevron-circle-up');
                 });
             }
         },
@@ -4033,7 +4120,7 @@ const launchScript = function($) {
                             <thead class="thead-dark">
                                 <tr>
                                     <th colspan="5" scope="col" class="col-lg-12 liTitle">
-                                        Sommaire <i class="fa-solid fa-circle-chevron-up" aria-hidden="true" title="Fermer le sommaire"></i>
+                                        Sommaire <i class="fa-solid fa-chevron-circle-up" aria-hidden="true" title="Fermer le sommaire"></i>
                                     </th>
                                 </tr>
                             </thead>
@@ -4057,7 +4144,7 @@ const launchScript = function($) {
                 // ajouter les ID aux titres des methodes, ainsi qu'un chevron pour renvoyer au sommaire
                 let $title = $(titles.get(t)), id = $title.text().trim().toLowerCase().replace(/ /, '_').replace(/\//, '-'), txt = $title.text().trim().split(' ')[1], desc = $title.next('p').text(), key = txt.toLowerCase().replace(/\//, ''), verb = $title.text().trim().split(' ')[0].toUpperCase();
                 $title.attr('id', id);
-                $title.append('<i class="fa-solid fa-circle-chevron-up" aria-hidden="true" title="Retour au sommaire"></i>');
+                $title.append('<i class="fa-solid fa-chevron-circle-up" aria-hidden="true" title="Retour au sommaire"></i>');
                 if (!(key in methods)) methods[key] = { title: txt };
                 methods[key][verb] = { id: id, title: desc };
             }

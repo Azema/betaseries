@@ -232,18 +232,19 @@ module.exports = function(grunt) {
                      */
                     onCreateServer: function(server, connect) {
                         connect.storageFile = {};
-                        /* const { Server } = require('socket.io');
+                        const { Server } = require('socket.io');
                         const io = new Server(server, {
                             cors: {origin: 'https://www.betaseries.com'}
                         });
-                        const Redis = require("ioredis");
-                        const { checkNotifs, getRedisUrl } = require('./websockets/socket');
+                        // const Redis = require("ioredis");
+                        const { checkNotifs } = require('./websockets/socket');
                         // TODO: pensez au fichier de config dans le répertoire websockets
-                        const redisUrl = getRedisUrl();
+                        // const redisUrl = getRedisUrl();
                         /** @type {Redis} */
-                        /* const redisClient = new Redis(redisUrl);
-                        const { RedisSessionStore } = require("./websockets/sessionStore");
-                        const sessionStore = new RedisSessionStore(redisClient);
+                        // const redisClient = new Redis(redisUrl);
+                        // const { RedisSessionStore } = require("./websockets/sessionStore");
+                        const { InMemorySessionStore } = require("./websockets/sessionStore");
+                        const sessionStore = new InMemorySessionStore();
                         const { randomBytes } = require("crypto");
                         const randomId = () => randomBytes(8).toString("hex");
                         const cleanToken = (token) => String(token).replace(/[^a-fA-F0-9]+/g, '').trim();
@@ -251,10 +252,12 @@ module.exports = function(grunt) {
                             this.userId = userId;
                             this.callbacks = {};
                             this.status = 0; // 0: not init, 1: init, 2: launch, 3: stopped
+                            this.socket = null;
                             return this;
                         }
                         Emitter.prototype = {
                             init: function(socket) {
+                                this.socket = socket;
                                 console.log('Emitter.init', this);
                                 this.on('error', (err, nbRetry = 0) => {
                                     // Gérer les erreurs
@@ -263,27 +266,27 @@ module.exports = function(grunt) {
                                 .on('goodbye', () => {
                                     this.status = 3;
                                     console.log('Emitter.on(goodbye) disconnect');
-                                    socket.to(socket.userId.toString()).emit('goodbye');
-                                    socket.disconnect(true);
+                                    this.socket/* .to(socket.userId.toString()) */.emit('goodbye');
+                                    this.socket.disconnect(true);
                                 })
                                 .on('news', (data) => {
-                                    console.log('Emitter.on(news): %d notifications found', data.notifications.length, {lastNotifId: data.lastNotifId, token: socket.token});
-                                    socket.to(socket.userId.toString()).emit('notifications', {notifications: data.notifications, lastNotifId: data.lastNotifId});
+                                    console.log('Emitter.on(news): %d notifications found', data.notifications.length, {lastNotifId: data.lastNotifId, token: this.socket.token});
+                                    this.socket/* .to(this.socket.userId.toString()) */.emit('notifications', {notifications: data.notifications, lastNotifId: data.lastNotifId});
                                     // console.log('Nouvelles notifications: last ID(%d)', data.lastNotifId);
-                                    sessionStore.saveSession(socket.sessionID, {
-                                        userId: socket.userId,
+                                    sessionStore.saveSession(this.socket.sessionID, {
+                                        userId: this.socket.userId,
                                         lastNotifId: data.lastNotifId,
-                                        token: socket.token,
+                                        token: this.socket.token,
                                         connected: true
                                     });
                                 })
                                 .on('token', async (token) => {
-                                    const matchingSockets = await io.in(socket.userId.toString()).allSockets();
+                                    const matchingSockets = await io.in(this.socket.userId.toString()).allSockets();
                                     console.log('Emitter.on(token) - nbSockets: %d', matchingSockets.size);
-                                    io.in(socket.userId.toString()).emit('token', {token});
-                                    sessionStore.saveSession(socket.sessionID, {
-                                        userId: socket.userId,
-                                        lastNotifId: socket.lastNotifId,
+                                    io.in(this.socket.userId.toString()).emit('token', {token});
+                                    sessionStore.saveSession(this.socket.sessionID, {
+                                        userId: this.socket.userId,
+                                        lastNotifId: this.socket.lastNotifId,
                                         token: token,
                                         connected: true
                                     });
@@ -307,9 +310,9 @@ module.exports = function(grunt) {
                                 }
                                 return this;
                             }
-                        }; */
+                        };
                         /** @type {Object.<string, Emitter>} */
-                        /* const emitters = {};
+                        const emitters = {};
                         // Middleware authentification
                         io.use(async (socket, next) => {
                             // console.log('wbesocket middleware', socket.handshake.auth);
@@ -387,7 +390,7 @@ module.exports = function(grunt) {
                             if (socket.emitter.status === 1) {
                                 socket.emitter.status = 2;
                                 checkNotifs(socket, sessionStore);
-                            } */
+                            }
                             /* if (socket.token && socket.token.length > 0) {
                             } else {
                                 authApi(socket, (err) => {
@@ -401,7 +404,7 @@ module.exports = function(grunt) {
                             } */
                             // 3. Si nouvelles notifs, envoyer les notifs au client
 
-                            /* socket.on('disconnect', async () => {
+                            socket.on('disconnect', async () => {
                                 const matchingSockets = await io.in(socket.userId.toString()).allSockets();
                                 const isDisconnected = matchingSockets.size === 0;
                                 console.log('wbesocket event.disconnect - nbSockets: %d', matchingSockets.size);
@@ -420,7 +423,7 @@ module.exports = function(grunt) {
                                     }
                                 }
                             });
-                        }); */
+                        });
                     },
                     // remove next from params
                     middleware: function(connect, _options, middlewares) {
